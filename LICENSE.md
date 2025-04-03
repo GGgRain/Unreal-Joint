@@ -8,7 +8,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 ## **Article 1 (Copyright and Ownership)**
 
-1. The **Licensor exclusively owns all copyrights and intellectual property rights** to this Software, which is protected globally by copyright laws and other applicable laws.
+1. The **Licensor exclusively owns all copyrights and intellectual property rights** to this Software, which is protected globally by copyright laws and other applicable laws. (Copyright (c) 2025 GGgRain)
     
 2. **All types of content included in this Software, such as source code, binaries, and assets (hereinafter referred to as "Content"), belong to the Licensor**, and users may not infringe upon these rights.
     
