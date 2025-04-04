@@ -6,7 +6,7 @@ Last Revised Date: 2025-04-05
 
 # **Joint Plugin License Agreement**
 
-This License Agreement (hereinafter referred to as the "Agreement") establishes the rights and restrictions related to the use of the **Joint Plugin (hereinafter referred to as the "Software")**, which is solely owned by **DevGrain** (hereinafter referred to as the "Licensor").
+This License Agreement (hereinafter referred to as the "Agreement") establishes the rights and restrictions related to the use of the **Joint Plugin (hereinafter referred to as the "Software")**, which is solely owned by **DevGrain (GGgRain)** (hereinafter referred to as the "Licensor").
 
 By downloading, installing, executing, using, or modifying this Software, you are deemed to have legally agreed to all the terms of this Agreement and bear the legal responsibilities associated with it.
 
@@ -14,7 +14,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 ## **Article 1 (Copyright and Ownership)**
 
-1. The **Licensor exclusively owns all copyrights and intellectual property rights** to this Software, which is protected globally by copyright laws and other applicable laws. (Copyright (c) GGgRain, All rights reserved)
+1. The **Licensor exclusively owns all copyrights and intellectual property rights** to this Software, which is protected globally by copyright laws and other applicable laws. (Copyright (c) DevGrain (GGgRain), All rights reserved)
     
 2. **All types of content included in this Software, such as source code, binaries, and assets (hereinafter referred to as "Content"), belong to the Licensor**, and users may not infringe upon these rights.
     
