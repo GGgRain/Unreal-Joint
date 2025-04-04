@@ -1,3 +1,5 @@
+Most Recent Revision : 04/04/2025
+
 # **Joint Plugin License Agreement**
 
 This License Agreement (hereinafter referred to as the "Agreement") establishes the rights and restrictions related to the use of the **Joint Plugin (hereinafter referred to as the "Software")**, which is solely owned by **DevGrain** (hereinafter referred to as the "Licensor").
@@ -72,7 +74,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
         
     - The exemption **cannot be transferred, sold, or assigned to a third party**, and the Licensor may change exemption eligibility at its discretion.
         
-    - **Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 25, 2025, are exempt from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
+    - **Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 12, 2025, are exempt from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
         
 ## **Article 5 (Rights and Restrictions for Derivative Software)**
 
@@ -126,7 +128,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 ### **Supplementary Provisions**
 
-1. This Agreement shall take effect on **April 25, 2025**.
+1. This Agreement shall take effect on **April 12, 2025**.
     
 2. Amendments to this Agreement shall take effect within seven days of official notification.
 
