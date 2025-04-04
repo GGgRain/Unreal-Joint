@@ -134,15 +134,15 @@ By downloading, installing, executing, using, or modifying this Software, you ar
     
 2. The Licensor **reserves the right to take appropriate legal action in cases of serious copyright or intellectual property violations**, including seeking compensation for damages if necessary.
 
-3.If a violation occurs outside South Korea, the Licensor may take action in accordance with **applicable international laws**. Depending on the situation, possible measures may include:
+3. If a violation occurs outside South Korea, the Licensor may take action in accordance with **applicable international laws**. Depending on the situation, possible measures may include:
     
-    - **Requesting compliance with copyright laws (e.g., DMCA, EU Copyright Directive, GDPR, etc.)**
+    - Requesting compliance with copyright laws (e.g., DMCA, EU Copyright Directive, GDPR, etc.)
         
-    - **Resolving disputes through local legal channels, if deemed necessary**
+    - Resolving disputes through local legal channels, if deemed necessary
         
-    - **Requesting content removal from online platforms (e.g., Steam, Epic Games Store, GitHub) to prevent unauthorized distribution**
+    - Requesting content removal from online platforms (e.g., Steam, Epic Games Store, GitHub) to prevent unauthorized distribution
         
-    - **Considering international arbitration under ICC or UNCITRAL as an alternative to litigation**
+    - Considering international arbitration under ICC or UNCITRAL as an alternative to litigation
         
 4. Users who cause financial or reputational harm to the Licensor due to a breach of this Agreement may be held responsible for **reasonable legal costs** incurred in resolving the issue, as permitted by applicable laws.
     
