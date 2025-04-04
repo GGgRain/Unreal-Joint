@@ -1,4 +1,8 @@
-Most Recent Revision : 04/04/2025
+Effective Date: 2024-04-13 
+
+Initial Revision Date: 2024-04-05 
+
+Last Revised Date: 2025-04-05
 
 # **Joint Plugin License Agreement**
 
@@ -20,61 +24,85 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 1. Users are free to modify and improve this Software.
     
-2. However, **distributing the modified Software as an independent project or separate software is strictly prohibited.** This restriction prevents license circumvention and the release of competing products derived from this Software.
-    
-3. The following actions are **prohibited without prior written approval from the Licensor**:
+2. However, **distributing the modified Software as an independent project or separate software in any public manner is prohibited**. This restriction prevents license circumvention and the release of competing products derived from this Software.
+
+3. Modifications may be shared within an organization or with written approval from the Licensor.
+   
+4. The following actions are **prohibited without prior written approval from the Licensor**:
     
     - Redistributing the Software in whole or in part in an exclusive format.
         
     - Unilaterally modifying the Software’s license.
+   
+5. These restrictions are set strictly to protect copyright and intellectual property rights. However, if these terms significantly hinder necessary activities, users may discuss separate arrangements with the Licensor to apply this Agreement differently on a case-by-case basis.
         
 ## **Article 3 (Contributions)**
 
-1. Contributions refer to modifications or content provided by users to improve this Software, such as through its GitHub repository or official Discord channel.
+1. **Contributions** refer to modifications, improvements, or content voluntarily provided by users to enhance this Software, including but not limited to contributions made via its GitHub repository or official Discord channel.
     
-2. Contributors are deemed to agree to **transfer the copyright of their contributions to the Licensor** to maintain consistency in copyright ownership and clarify legal responsibilities.
+2. **Contributors retain the copyright** to their contributions. However, by submitting a contribution, contributors grant the Licensor a **non-exclusive, irrevocable, worldwide, royalty-free license** to use, modify, sublicense, and distribute the contribution **only within the scope of this Software** to ensure compatibility and legal clarity.
+    
+3. **Contributors confirm that their contributions do not infringe on any third-party rights, including copyrights, patents, or trade secrets.** The contributor shall be solely responsible for any legal disputes arising from their contributions.
+    
+4. **The Licensor is not obligated to accept or incorporate all contributions** and reserves the right to modify or remove contributions as necessary.
+    
+5. **Contributors may continue using their contributions in other projects** as long as doing so does not violate this Agreement or cause conflicts with the Software's licensing terms.
 
+6. **Contributors may request the removal or modification of their contributions within two (2) months of submission.** The specifics of such requests, including code removal or modification, shall be coordinated with the Licensor. The Licensor must make reasonable efforts to comply with such requests unless the contribution has become an **essential and non-removable component** of a core feature of the Software, such that its removal would cause substantial disruption or require significant redevelopment.
+  
 ## **Article 4 (Usage and Royalty Provisions)**
 
-1. Users must use this Software **in compliance with the conditions of this Agreement**, regardless of whether their usage is for commercial or non-commercial purposes.
+1. Users must use this software in accordance with the terms of this agreement, **regardless of whether the purpose is commercial or non-commercial**.
+
+2. If the annual total revenue of a project utilizing this software **does not exceed the royalty threshold**, **the royalty program does not apply to that project.** In this case, users are not required to make any payments, and they are also not obligated to submit revenue-related information for the royalty program.
+
+3. If the annual total revenue of a project utilizing this software **exceeds the royalty threshold ($15,000 USD, last updated on April 4, 2024)**, **the royalty program will apply to that specific project**.
     
-2. If a project utilizing this Software generates an **annual gross revenue exceeding USD 15,000**, the **royalty program applies specifically to that project**.
+4. The details of the royalty program are as follows:
     
-3. The royalty program details are as follows:
+    - **If the annual revenue of a project using this software exceeds the royalty threshold, the Licensor must be paid a royalty percentage (1%, last updated on April 4, 2024) on the excess amount.**
+        
+    - **Annual revenue** refers to the total revenue generated during the applicable year (January 1 – December 31).
+        
+    - A "project" subject to royalties includes all revenue-generating software or media in which this Software is directly integrated, executed, or utilized as a core component. This includes but is not limited to **plugins, sub-plugins, frameworks, games, platforms, and game engines** where this Software is actively running as part of the final product. **Additionally, if this Software is used as a core element in datasets, movies, animations, or similar media—such that its functionality or output is essential to the final product—those projects are also subject to royalties.** 
     
-    - **If the annual revenue of a project using this Software exceeds USD 15,000, 1% of the excess amount must be paid to the Licensor.**  
-        (For example, if the revenue is USD 25,000, the excess amount is USD 10,000, and the royalty is USD 100.)
+    - However, passive usage such as inspiration, references, or indirect influence without direct integration does not fall under royalty obligations.
         
-    - **Annual revenue** refers to total revenue generated between January 1 and December 31 of the given year.
+    - Even if multiple derivative software solutions are used, **royalties for this software are only charged once per project.** (e.g., if a project uses both Joint Native and Joint Yggdrasil simultaneously, royalties are charged only once.)
         
-    - **The royalty applies to all revenue-generating mediums**, including but not limited to plugins, sub-plugins, frameworks, games, platforms, game engines, TV shows, videos, films, images, novels, texts, datasets, and corpora.
+    - If separate projects each use Joint, then each project is subject to a separate Joint royalty program. This means the calculation of amounts and payment obligations occur separately for each project.
         
-    - Even if multiple derivative software components are used, **the royalty is imposed only once per project.**  
-        (For example, if a project simultaneously uses Joint Native and Joint Yggdrasil, only one royalty payment is required.)
+    - The royalty payment process requires filling out a form provided in Joint's official GitHub repository, attaching the necessary information for revenue calculation and payment, and sending the completed form to the Licensor (typically via email: devgrain13@gmail.com). Payment must be completed according to an invoice issued by the Licensor, within the specified deadline. The exact process may be updated and announced later.
         
-    - **Separate projects are subject to separate royalty payments.** Each project is independently assessed and required to pay royalties accordingly.
-        
-    - The royalty payment process involves filling out the designated form on the Software's GitHub page, submitting the necessary financial details, and paying the calculated amount by the specified deadline.
-        
-    - If separate projects each use Joint, each project is independently subject to the Joint royalty program, meaning calculations and payment obligations apply separately to each.
-        
-    - To complete the royalty payment, users must provide the necessary revenue details, accept the calculated fee, and make the payment according to the issued invoice.
-        
-    - Once the information is submitted, the Licensor will issue an invoice and send it to the provided contact information (typically via email). Users must make the payment in full by the deadline stated in the invoice.
-        
-4. **If a project’s annual revenue does not exceed USD 15,000, the royalty program does not apply to that project.** Users in this category are not required to pay any fees but **must still provide revenue details for verification purposes.**
+    - After submitting the required information for royalty calculation, the Licensor will issue an invoice and send it to the contact information provided during submission (typically via email). Users must pay the exact amount specified in the invoice by the stated deadline.
     
-5. **For educational and non-commercial research purposes**, royalty fees may be waived **upon obtaining prior written approval from the Licensor**.
+5. **Modification and Limitations of Royalty Terms**
+
+    - The applicable figures for the royalty percentage and royalty threshold may change upon revision. The Licensor is obligated to notify users of such changes and will announce each revision and its details via the official Discord and GitHub repository.
+
+	- **Changes to the royalty percentage or royalty threshold must be announced at least two (2) months in advance.** The Licensor must notify users via the official Discord and GitHub repository.
+	    
+	- During this period, the Licensor **shall engage in discussions with users** to address concerns and adjustments regarding the changes. However, the final decision remains at the discretion of the Licensor.
+	    
+	- **The Licensor is obligated to make adjustments in a reasonable and fair manner**, considering industry standards, market conditions, and user feedback. While user input will be taken into account, the Licensor retains the authority to implement necessary changes as long as they fall within the agreed limits of this Agreement.
+	    
+	- **When increasing the royalty percentage**, the Licensor may raise it by a maximum of **0.5% over a six-month period**, divided into quarterly increments of up to **0.5% per quarter** based on a mid-year division around June 30. **However, under no circumstances shall the royalty percentage exceed a maximum cap of 3%.**
+	    
+	- **There are no specific limitations on changes to the royalty threshold, but the threshold shall not be set below $10,000 USD under any circumstances.**
+	    
+6. **For educational and non-commercial research purposes**, royalties may be waived **only with prior written approval from the Licensor**.
     
-6. Users who fail to fulfill their royalty payment obligations **will be considered in breach of this Agreement**, and the Licensor may revoke their license and take legal action.
+7. Failure to comply with royalty payment obligations **will be considered a breach of contract, and the Licensor may take appropriate actions, including license revocation and legal measures**.
     
-7. **Certain individuals or organizations designated by the Licensor may be exempt from royalty obligations.**
-    
-    - However, such exemptions **are granted at the sole discretion of the Licensor**, who reserves the right to review and modify exemptions on a case-by-case basis.
-        
-    - The exemption **cannot be transferred, sold, or assigned to a third party**, and the Licensor may change exemption eligibility at its discretion.
-        
-    - **Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 12, 2025, are exempt from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
+8. **Certain individuals or organizations designated by the Licensor may be exempt from royalty obligations.** This is only for the special cases: 
+
+     - ***Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 12, 2025, are exempt from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
+
+		- However, such exemptions **are granted solely at the discretion of the Licensor**, who retains the right to review, approve, or modify each exemption on a case-by-case basis. **This provision is intended to prevent abuse or inequitable application of the license terms.
+	        
+	    - The exemption **cannot be transferred, sold, or assigned to a third party**, and the Licensor may change exemption eligibility at its discretion.
+	    
+	    - In this case, The users must provide their Order ID to let the Licensor identify each individuals.
         
 ## **Article 5 (Rights and Restrictions for Derivative Software)**
 
@@ -92,45 +120,49 @@ By downloading, installing, executing, using, or modifying this Software, you ar
         
     - Additionally, users of derivative software must be clearly informed about amendments to this Agreement, including the Joint Royalty Program.
         
-5. **Restrictions on Distributing Derivative Software**
-    
-    - Prior written approval from the Licensor is required for distributing derivative software, and all requested information must be provided.
-        
-    - Any changes to the distribution format or details must be immediately reported to the Licensor, who reserves the right to impose restrictions on the modified distribution.
+5. **Guidelines for Distributing Derivative Software**
+
+	- Distribution of derivative software is generally subject to the Licensor's prior written approval. Contributors are encouraged to provide sufficient details when making such requests to facilitate a smooth review process.
+	
+	- If any changes are made to the distribution format or key details after approval, the Licensor should be promptly informed. The Licensor may suggest adjustments or impose additional conditions based on the nature of the modifications.
+	
+	- However, if a derivative software is found to pose significant concerns—such as copyright infringement, severely poor quality, misleading licensing practices, or excessive pricing—that are deemed to substantially harm the reputation of Joint, its user base, or the rights and interests of the Licensor, **the Licensor reserves the right to restrict the distribution of such software**. **This right shall be exercised only as a last resort**, when other means such as consultation or revision requests have failed or are deemed insufficient to prevent harm.
         
 ## **Article 6 (Breach of Agreement and Legal Actions)**
 
-- If a user violates this Agreement, **the Licensor may immediately terminate the license and prohibit further use of the Software**.
+1. If a user **fails to comply** with this Agreement, the Licensor may **temporarily suspend or, if necessary, terminate the license**. However, in most cases, the user will be given a **reasonable opportunity and timeframe—at least three (3) months from the Licensor’s notification—to correct the issue.** The Licensor may grant additional time depending on the circumstances
     
-- The Licensor may seek **damages for copyright and intellectual property infringement and take criminal or civil legal action as necessary**.
+2. The Licensor **reserves the right to take appropriate legal action in cases of serious copyright or intellectual property violations**, including seeking compensation for damages if necessary.
+
+3.If a violation occurs outside South Korea, the Licensor may take action in accordance with **applicable international laws**. Depending on the situation, possible measures may include:
     
-- If a user violates this Agreement while using or distributing the Software outside South Korea, the Licensor may take additional legal actions, including:
-    
-    - **Legal actions under applicable copyright laws (e.g., DMCA, EU Copyright Directive, GDPR, etc.).**
+    - **Requesting compliance with copyright laws (e.g., DMCA, EU Copyright Directive, GDPR, etc.)**
         
-    - **Filing civil or criminal lawsuits and claiming damages in local courts.**
+    - **Resolving disputes through local legal channels, if deemed necessary**
         
-    - **Reporting copyright infringement and requesting content removal from online platforms such as Steam, Epic Games Store, and GitHub.**
+    - **Requesting content removal from online platforms (e.g., Steam, Epic Games Store, GitHub) to prevent unauthorized distribution**
         
-    - **Initiating international arbitration through institutions such as the ICC or UNCITRAL.**
+    - **Considering international arbitration under ICC or UNCITRAL as an alternative to litigation**
         
-- Users who violate this Agreement are legally responsible for damages suffered by the Licensor and must **cover legal and attorney fees as permitted by South Korean law or relevant jurisdictions**.
-    
-- This Agreement **cannot be modified or amended without the official written approval of the Licensor**.
+4. Users who cause financial or reputational harm to the Licensor due to a breach of this Agreement may be held responsible for **reasonable legal costs** incurred in resolving the issue, as permitted by applicable laws.
     
 ## **Article 7 (Governing Law and Jurisdiction)**
 
-1. This Agreement is governed by the laws of South Korea, and **all disputes related to this Agreement shall be exclusively resolved in South Korean courts**.
+1. This Agreement is **primarily** governed by the laws of South Korea, and legal disputes shall **preferentially** be resolved in South Korean courts.
     
-2. However, if a user operates outside South Korea, the Licensor may take **additional legal actions in accordance with relevant laws, such as DMCA and GDPR**.
-    
-3. In the case of international disputes, arbitration shall be conducted under the **ICC's international arbitration laws in Seoul, South Korea, and the final ruling shall be subject to the jurisdiction of South Korean courts**.
+2. **If a user resides outside South Korea, alternative legal venues may be considered** to ensure a fair and accessible resolution process. The Licensor and the user may mutually agree to resolve disputes in a **jurisdiction more accessible to the user**, provided that the alternative jurisdiction does not compromise the Licensor's legal protections.
 
-### **Supplementary Provisions**
-
-1. This Agreement shall take effect on **April 12, 2025**.
+3. **International Arbitration Option**: Instead of litigation, either party may choose to resolve disputes through arbitration under the **ICC (International Chamber of Commerce) or UNCITRAL (United Nations Commission on International Trade Law)** rules. Arbitration may take place **in a neutral location mutually agreed upon by both parties**, rather than being restricted to Seoul, South Korea.
     
-2. Amendments to this Agreement shall take effect within seven days of official notification.
+4. **Binding and Enforceable Decisions**: Any arbitration ruling shall be legally binding upon both parties, and if necessary, it may be enforced in the courts of relevant jurisdictions.
+    
+5. **Compliance with International Laws**: If applicable, the Licensor may take additional legal actions under relevant international laws, such as **DMCA, GDPR, or other jurisdiction-specific regulations**, to ensure compliance with copyright and intellectual property laws.
+
+## **Article 8 (Amendments and Revisions)**
+
+1. This Agreement was first established on April 4, 2025 (Initial Revision Date), and takes effect from that date.
+
+2. Amendments to this Agreement shall take effect 7 days after official notification, unless otherwise specified.
 
 ### **Final Confirmation**
 
