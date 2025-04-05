@@ -106,7 +106,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 		- The changes in this provision will not be applied retroactively, and users can receive benefits according to the Joint License terms that were in place at the time of their purchase.
 
-		- In this case, The users must provide their Order ID to let the Licensor identify each individuals.
+		- In this case, the users must provide their Order ID to let the Licensor identify each individual.
 
 	- However, such exemptions and benefits **are granted solely at the discretion of the Licensor**, who retains the right to review, approve, or modify each exemption on a case-by-case basis. **This provision is intended to prevent abuse or inequitable application of the license terms.
 	        
