@@ -86,7 +86,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 	    
 	- **The Licensor is obligated to make adjustments in a reasonable and fair manner**, considering industry standards, market conditions, and user feedback. While user input will be taken into account, the Licensor retains the authority to implement necessary changes as long as they fall within the agreed limits of this Agreement.
 	    
-	- **When increasing the royalty percentage**, the Licensor may raise it by a maximum of **0.5% over a six-month period**, divided into quarterly increments of up to **0.5% per quarter** based on a mid-year division around June 30. **However, under no circumstances shall the royalty percentage exceed a maximum cap of 3%.**
+	- **When increasing the royalty percentage**, the Licensor must raise it by no more than 0.5% every six months, based on a mid-year division around June 30. Under no circumstances shall the royalty percentage exceed a maximum cap of 3%.
 	    
 	- **There are no specific limitations on changes to the royalty threshold, but the threshold shall not be set below $10,000 USD under any circumstances.**
 	    
