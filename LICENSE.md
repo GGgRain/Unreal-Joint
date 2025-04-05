@@ -49,7 +49,9 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 5. **Contributors may continue using their contributions in other projects** as long as doing so does not violate this Agreement or cause conflicts with the Software's licensing terms.
 
 6. **Contributors may request the removal or modification of their contributions within two (2) months of submission.** The specifics of such requests, including code removal or modification, shall be coordinated with the Licensor. The Licensor must make reasonable efforts to comply with such requests unless the contribution has become an **essential and non-removable component** of a core feature of the Software, such that its removal would cause substantial disruption or require significant redevelopment.
-  
+
+7. **Contributors who make significant technical contributions to the project’s development or business contributions such as promotion may receive additional benefits, such as reduced royalty rates, with the approval of the Licensor.**
+        
 ## **Article 4 (Usage and Royalty Provisions)**
 
 1. Users must use this software in accordance with the terms of this agreement, **regardless of whether the purpose is commercial or non-commercial**.
@@ -94,15 +96,23 @@ By downloading, installing, executing, using, or modifying this Software, you ar
     
 7. Failure to comply with royalty payment obligations **will be considered a breach of contract, and the Licensor may take appropriate actions, including license revocation and legal measures**.
     
-8. **Certain individuals or organizations designated by the Licensor may be exempt from royalty obligations.** This is only for the special cases: 
+8. **Certain individuals or organizations may be exempt from royalty obligations or receive benefits, such as reduced royalty rate application.** This applies to special cases: 
 
-     - ***Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 12, 2025, are exempt from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
+	- ***Individuals or organizations that officially purchased the Software from Unreal Marketplace (or Fab) before April 12, 2025, are exempt or take discounts from the royalty program.** Additionally, for these users, **the license terms applicable at the time of purchase will continue to apply to future versions of the Software** (e.g., Fab Standard License).
 
-		- However, such exemptions **are granted solely at the discretion of the Licensor**, who retains the right to review, approve, or modify each exemption on a case-by-case basis. **This provision is intended to prevent abuse or inequitable application of the license terms.
+		- This royalty exemption and benefit provision is intended to reward users who have supported and used Joint projects from the beginning. As a result, the support will be differentiated based on specific periods.
+   
+		- Specifically, users who purchased the plugin between the first release of Simple Dialogue System (the prior product of Joint) and March 21, 2025, will be exempt from the royalty program. Other users may receive at least a 30% royalty price discount or more on a case-by-case basis.
+
+		- The changes in this provision will not be applied retroactively, and users can receive benefits according to the Joint License terms that were in place at the time of their purchase.
+
+		- In this case, The users must provide their Order ID to let the Licensor identify each individuals.
+
+	- However, such exemptions and benefits **are granted solely at the discretion of the Licensor**, who retains the right to review, approve, or modify each exemption on a case-by-case basis. **This provision is intended to prevent abuse or inequitable application of the license terms.
 	        
-	    - The exemption **cannot be transferred, sold, or assigned to a third party**, and the Licensor may change exemption eligibility at its discretion.
-	    
-	    - In this case, The users must provide their Order ID to let the Licensor identify each individuals.
+	- The exemption and benefits **cannot be transferred, sold, or assigned to a third party**, and the Licensor may change exemption eligibility at its discretion.
+  
+	- Users who make significant technical contributions to the project’s development or business contributions such as promotion may receive additional benefits, such as reduced royalty rates, with the approval of the Licensor.
         
 ## **Article 5 (Rights and Restrictions for Derivative Software)**
 
