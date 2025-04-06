@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/f6eb0625-7867-43fb-a3b8-0dfbc7a54be8" width="300" height="300" alt="Joint Logo">
+  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" width="400" height="200" alt="Joint Logo">
 </div>
 
 <div align="center">
