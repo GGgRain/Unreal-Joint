@@ -82,7 +82,7 @@ As of April 5, 2025, <b>if your project using Joint earns more than $15,000 USD 
 
 <h3 align="center">🤝 Contribute and Support Our Projects – To Earn Rewards!</h3>
 <p>
-We plan to offer substantial royalty discounts to users who provide meaningful support – **whether technical, financial, business, or promotional.**<br/>
+We plan to offer substantial royalty discounts to users who provide meaningful support – <b>whether technical, financial, business, or promotional.</b><br/>
 Contributions, especially in the form of promotion or business partnerships, are extremely valuable to our team. In return, we plan to provide reasonable rewards for those who support us.
 </p>
 
