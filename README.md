@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" width="400" height="200" alt="Joint Logo">
+  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" height="200" alt="Joint Logo">
 </div>
 
 <div align="center">
@@ -63,7 +63,7 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
   </a>
 </p>
 
-## :memo: Joint Plugin License & Changes After It Became Open Source##
+## :memo: Joint Plugin License & Changes After It Became Open Source ##
 
 ### 🎉 Now Joint is an Open-Source Project!
 
@@ -108,7 +108,7 @@ Joint allows you to bring any gameplay mechanics or data you need on the script 
 Playing sounds, triggering animations, spawning actors, granting items or quests... Whatever it is, if Unreal Engine Can do it, you can make it a fragment and attach it to your dialogue.
 
 
-
+(wait 스킵, 시퀀서, 캐릭터 애니메이션, 캐릭터 파티클 재생, 오디오 재생, 미니게임 재생 장면 하나하나 빌드)
 
 
 Joint also provides built-in fragment and asset sets for basic and common dialogue productions in Joint Native, apache 2.0 open-source Sub Plugin for Joint, to let you starts off right away!
@@ -145,7 +145,11 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 
 ### 4. Reactive & Dynamic Dialogue - Even in Multiplayer, Even After Localization, Even Between Clients with Different Languages
 
+모듈러 시스템의 특징 설명
+
 ### 5. PERFECT QOL Features
+
+검색, 변경, 벌크 검색, 컴파일러, 매니지먼트, 디버거 등
 
 ## :inbox_tray: Installation ##
 
@@ -172,6 +176,12 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 
 If you have an issue on installing our plugin, please join [our official support Discord channel](https://discord.gg/DzNFax2aBS) for further assistance.
 
+## Contributions ##
+
+사용자 권리 명시
+
 ## :loudspeaker: Supports ##
 
 If you need help, feel free to join our [official Discord support channel](https://discord.gg/DzNFax2aBS). Our community is happy to assist you with any plugin-related queries.
+
+디스코드 아이콘 추가
