@@ -182,6 +182,11 @@ If you have an issue on installing our plugin, please join [our official support
 
 ## :loudspeaker: Supports ##
 
-If you need help, feel free to join our [official Discord support channel](https://discord.gg/DzNFax2aBS). Our community is happy to assist you with any plugin-related queries.
+<div align="center">
+  <a href="https://discord.gg/DzNFax2aBS" target="_blank">
+    <img src="https://github.com/user-attachments/assets/02a06438-3198-4b43-9c07-17eaa7075b82" height="100px" alt="Chat on Discord">
+  </a>
+</div>
 
-디스코드 아이콘 추가
+
+If you need help, feel free to join our [official Discord support channel](https://discord.gg/DzNFax2aBS). Our community is happy to assist you with any plugin-related queries.
