@@ -1,8 +1,8 @@
-Effective Date: 2024-04-13 
+Effective Date: 2024-04-18
 
 Initial Revision Date: 2024-04-05 
 
-Last Revised Date: 2025-04-05
+Last Revised Date: 2025-04-11
 
 # **Joint Plugin License Agreement**
 
@@ -27,14 +27,16 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 2. However, **distributing the modified Software as an independent project or separate software in any public manner is prohibited**. This restriction prevents license circumvention and the release of competing products derived from this Software.
 
 3. Modifications may be shared within an organization or with written approval from the Licensor.
+
+4. Any modified Softwares must have the same license policy, Joint Plugin License, without further modification. And must be revised according to each revision of the original license.
    
-4. The following actions are **prohibited without prior written approval from the Licensor**:
+5. The following actions are **prohibited without prior written approval from the Licensor**:
     
     - Redistributing the Software in whole or in part in an exclusive format.
         
     - Unilaterally modifying the Software’s license.
    
-5. These restrictions are set strictly to protect copyright and intellectual property rights. However, if these terms significantly hinder necessary activities, users may discuss separate arrangements with the Licensor to apply this Agreement differently on a case-by-case basis.
+6. These restrictions are set strictly to protect copyright and intellectual property rights. However, if these terms significantly hinder necessary activities, users may discuss separate arrangements with the Licensor to apply this Agreement differently on a case-by-case basis.
         
 ## **Article 3 (Contributions)**
 
