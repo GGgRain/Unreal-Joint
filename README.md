@@ -17,6 +17,9 @@
   <a href="https://discord.gg/DzNFax2aBS">
     <img src="https://img.shields.io/discord/977755047557496882?logo=discord&logoColor=white" alt="Chat on Discord">
   </a>
+  <a href="https://gggrain.github.io/Unreal-Joint-Documentation/docs/category/joint-1">
+    <img src="https://img.shields.io/badge/release%20notes-00B2EE.svg" alt="Release Notes">
+  </a>
 </p>
 
 <p align="center">
