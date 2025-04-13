@@ -29,7 +29,11 @@
 </p>
 
 
-(Still working on it... It's not the final version)
+<div align="center">
+  <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
+  <h3>(This readme page is still WIP, I'm having really busy days recently..)</h3>
+</div>
+
 
 ## :mag: About ##
 
