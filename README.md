@@ -166,7 +166,7 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 4. Launch your project and confirm it runs successfully. If you see a prompt asking about building modules, click **Yes**.
 
 > [!TIP] 
-> Check this out especially if you've never compiled or used C++ codes on your Unreal Engine before:
+> Check this out, especially if you've never compiled or used C++ code on your Unreal Engine before:
 > If the plugin doesn’t launch properly, you may check your machine's Visual Studio configuration for the C++ code build to be valid. Please make sure to follow these steps:
 > 
 > In your Visual Studio configuration (you can modify it in Visual Studio Installer) :
@@ -174,8 +174,12 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 > * Go to Individual components
 > * Type “MSVC” in the search bar
 > * Check “MSVC v143 - VS 2022 C++ x64/86 build tools (v14.38-17.8)”
-> * Then click modify in right bot corner
+> * Then click modify in the right bottom corner
+>
+> Second, You have to install **Game development with C++** workload as well.
 > 
+> ![vs2022_workloads_game_development](https://github.com/user-attachments/assets/6465a82e-ffc9-4dbd-bda4-86c30b0a83c1)
+>
 > Big thanks to "Kieran" - who posted the fix for the issue on the forum. 
 > 
 > Original Post: https://forums.unrealengine.com/t/help-visual-studio-preferred-version-in-5-4/2001249
