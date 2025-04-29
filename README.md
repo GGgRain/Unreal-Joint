@@ -173,8 +173,8 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 > * Click Modify on the 2022 version
 > * Go to Individual components
 > * Type “MSVC” in the search bar
-> * Check “MSVC v143 - VS 2022 C++ x64/86 build tools (v14.38-17.8)”  (**IMPORTANT, YOU HAVE TO UNINSTALL ALL OTHER VERSIONS OF THIS COMPONENT TO MAKE IT RUN!!!!**)
-> * Then click modify in the right bottom corner
+> * Check “MSVC v143 - VS 2022 C++ x64/86 build tools (v14.38-17.8)” 
+> * Then click modify in the bottom right corner
 >
 > Second, You have to install **Game development with C++** workload as well.
 > 
