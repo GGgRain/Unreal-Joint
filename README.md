@@ -17,6 +17,9 @@
   <a href="https://discord.gg/DzNFax2aBS">
     <img src="https://img.shields.io/discord/977755047557496882?logo=discord&logoColor=white" alt="Chat on Discord">
   </a>
+  <a href="https://gggrain.github.io/Unreal-Joint-Documentation/docs/category/joint-1">
+    <img src="https://img.shields.io/badge/release%20notes-00B2EE.svg" alt="Release Notes">
+  </a>
 </p>
 
 <p align="center">
@@ -102,7 +105,6 @@ You can also receive active technical support via our official GitHub and Discor
 > [!NOTE]
 > Please refer to the [LICENSE](LICENSE.md) file for further details.
 
-
 ## :clipboard: Main Features ##
 
 ### 1. Implement, and Stack Dialogue Features To Build Incredible Dialogue
@@ -164,21 +166,39 @@ https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
 4. Launch your project and confirm it runs successfully. If you see a prompt asking about building modules, click **Yes**.
 
 > [!TIP] 
-> Check this out especially if you've never compiled or used C++ codes on your Unreal Engine before:
+> Check this out, especially if you've never compiled or used C++ code on your Unreal Engine before:
 > If the plugin doesn’t launch properly, you may check your machine's Visual Studio configuration for the C++ code build to be valid. Please make sure to follow these steps:
 > 
 > In your Visual Studio configuration (you can modify it in Visual Studio Installer) :
 > * Click Modify on the 2022 version
 > * Go to Individual components
 > * Type “MSVC” in the search bar
-> * Check “MSVC v143 - VS 2022 C++ x64/86 build tools (v14.38-17.8)”
-> * Then click modify in right bot corner
+> * Check “MSVC v143 - VS 2022 C++ x64/86 build tools (v14.38-17.8)” 
+> * Then click modify in the bottom right corner
+>
+> Second, You have to install **Game development with C++** workload as well.
 > 
+> ![vs2022_workloads_game_development](https://github.com/user-attachments/assets/6465a82e-ffc9-4dbd-bda4-86c30b0a83c1)
+>
 > Big thanks to "Kieran" - who posted the fix for the issue on the forum. 
 > 
 > Original Post: https://forums.unrealengine.com/t/help-visual-studio-preferred-version-in-5-4/2001249
 
 If you have an issue on installing our plugin, please join [our official support Discord channel](https://discord.gg/DzNFax2aBS) for further assistance.
+
+
+## Official Webpage ##
+
+Joint provides [official documentation page](https://gggrain.github.io/Unreal-Joint-Documentation/) that contains tutorial & release notes & news for the updates!
+
+Come along to find further details for the lastest updates and how to use the system or to see how the system has evolved!
+
+<div align="center">
+    <a href="https://github.com/GGgRain/Unreal-Joint/stargazers" target="_blank">
+      <img src="https://github.com/user-attachments/assets/8e96ec7c-11dd-4f67-96ec-f1dbd105b144" alt="Badge showing the total of project stars">
+      <img src="https://github.com/user-attachments/assets/1676b25d-d9d5-4a5b-b061-89718e4f1442" alt="Badge showing the total of project stars">
+    </a>
+</div>
 
 ## Contributions ##
 

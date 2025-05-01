@@ -60,11 +60,11 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 2. If the annual total revenue of a project utilizing this software **does not exceed the royalty threshold**, **the royalty program does not apply to that project.** In this case, users are not required to make any payments, and they are also not obligated to submit revenue-related information for the royalty program.
 
-3. If the annual total revenue of a project utilizing this software **exceeds the royalty threshold ($15,000 USD, last updated on April 4, 2024)**, **the royalty program will apply to that specific project**.
+3. If the annual total revenue of a project utilizing this software **exceeds the royalty threshold ($15,000 USD, last updated on April 4, 2025)**, **the royalty program will apply to that specific project**.
     
 4. The details of the royalty program are as follows:
     
-    - **If the annual revenue of a project using this software exceeds the royalty threshold, the Licensor must be paid a royalty percentage (1%, last updated on April 4, 2024) on the excess amount.**
+    - **If the annual revenue of a project using this software exceeds the royalty threshold, the Licensor must be paid a royalty percentage (1%, last updated on April 4, 2025) on the excess amount.**
         
     - **Annual revenue** refers to the total revenue generated during the applicable year (January 1 – December 31).
         
