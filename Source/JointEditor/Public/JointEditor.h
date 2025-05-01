@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "Editor/SharedType/JointEditorSharedTypes.h"
+
 #include "CoreMinimal.h"
 #include "Toolkits/AssetEditorToolkit.h"
 #include "Modules/ModuleInterface.h"
@@ -24,7 +26,7 @@ namespace JointToolTabNames
 	static const FName JointCompilerTab("JointCompiler");
 }
 
-class FJointEditorModule : 
+class JOINTEDITOR_API FJointEditorModule : 
 	public IHasMenuExtensibility, 
 	public IHasToolBarExtensibility, 
 	public IModuleInterface
@@ -67,11 +69,15 @@ protected:
 
 	void RegisterModuleCommand();
 
+protected:
+
+	void AppendActiveJointRedirects();
+
 public:
 	
-	void OpenJointManagementTab();
-	void OpenJointBulkSearchReplaceTab();
-	void OpenJointCompilerTab();
+	static void OpenJointManagementTab();
+	static void OpenJointBulkSearchReplaceTab();
+	static void OpenJointCompilerTab();
 	
 	TSharedRef<SDockTab> OnSpawnJointManagementTab(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSpawnJointBulkSearchReplaceTab(const FSpawnTabArgs& SpawnTabArgs);
@@ -137,14 +143,16 @@ public:
 	TSharedPtr<FJointManagementTabHandler> JointManagementTabHandler;
 
 public:
-
-	TSharedPtr<struct FGraphNodeClassHelper> GetEdClassCache();
-
-	TSharedPtr<struct FGraphNodeClassHelper> GetClassCache();
-
-	TSharedPtr<struct FGraphNodeClassHelper> EdClassCache;
 	
-	TSharedPtr<struct FGraphNodeClassHelper> ClassCache;
+	TSharedPtr<FJointGraphNodeClassHelper> GetEdClassCache();
+
+	TSharedPtr<FJointGraphNodeClassHelper> GetClassCache();
+
+private:
+
+	TSharedPtr<FJointGraphNodeClassHelper> EdClassCache;
+	
+	TSharedPtr<FJointGraphNodeClassHelper> ClassCache;
 
 public:
 	
@@ -155,6 +163,11 @@ public:
 	 * This object is a singleton object, you can also access to it by UJointDebugger::Get();
 	 */
 	TObjectPtr<UJointDebugger> JointDebugger;
+
+public:
+
+	static FJointEditorModule* Get();
+
 
 };
 

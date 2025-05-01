@@ -7,20 +7,23 @@
 
 #include "UObject/Interface.h"
 
-#include "EdGraph/EdGraphNode.h" // for ed pin structures.
-#include "EdGraph/EdGraphPin.h" // for ed pin structures.
+#include "EdGraph/EdGraphNode.h" // For ed pin structures.
+#include "EdGraph/EdGraphPin.h" // For ed pin structures.
+
+#include "Styling/SlateBrush.h" // For FSlateBrush
+#include "Logging/TokenizedMessage.h" // For FTokenizedMessage
 
 #include "JointSharedTypes.generated.h"
 
+class UJointNodeBase;
 class AJointActor;
 class UTexture2D;
 
 class UActorComponent;
 class UDataTable;
 
-class UJointNodeBase;
-
 class IPropertyHandle;
+
 
 /**
  * A data structure that contains the setting data for a property that will be used to display on the graph node by automatically generated slates.
@@ -31,17 +34,13 @@ struct JOINT_API FJointGraphNodePropertyData
 	GENERATED_BODY()
 
 public:
-
 	FJointGraphNodePropertyData();
-	
+
 	FJointGraphNodePropertyData(const FName& InPropertyName);
 
 public:
-	
 	UPROPERTY(EditAnywhere, Category = "Data")
 	FName PropertyName;
-	
-
 };
 
 
@@ -63,21 +62,11 @@ struct JOINT_API FJointNodePointer
 	GENERATED_BODY()
 
 public:
-	
-	FJointNodePointer():
-#if WITH_EDITORONLY_DATA
-		Node(nullptr),
-		EditorNode(nullptr)
-#else
-		Node(nullptr)
-#endif
-	
-	{}
+	FJointNodePointer();
 
-	~FJointNodePointer() {}
+	~FJointNodePointer();
 
 public:
-	
 	/**
 	 * The node instance that this structure refers to.
 	 * Please notice that this property can refer to the nodes that are not originated from the parent Joint manager, and the node on that graph might not be loaded at the time.
@@ -87,8 +76,6 @@ public:
 	TSoftObjectPtr<UJointNodeBase> Node;
 
 public:
-
-
 #if WITH_EDITORONLY_DATA
 
 	/**
@@ -96,14 +83,12 @@ public:
 	 */
 	UPROPERTY()
 	TSoftObjectPtr<class UEdGraphNode> EditorNode;
-	
+
 #endif
 
-	
 public:
-	
 #if WITH_EDITORONLY_DATA
-	
+
 	/**
 	 * The node instance classes that can be picked up on this structure.
 	 * This is useful when want to make a filter for this instance.
@@ -119,23 +104,22 @@ public:
 	 */
 	UPROPERTY(AdvancedDisplay, EditAnywhere, Category = "Node")
 	TSet<TSubclassOf<UJointNodeBase>> DisallowedType;
-	
+
 #endif
 
 
 #if WITH_EDITOR
-	
+
 	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
 
-	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node, const FString& OptionalStructurePropertyName);
+	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node,
+	                                                                const FString& OptionalStructurePropertyName);
 
 #endif
+	
+	bool operator==(const FJointNodePointer& Other) const;
 
-
-	bool operator==(const FJointNodePointer& Other) const
-	{
-		return GetTypeHash(this) == GetTypeHash(&Other);
-	}
+	bool IsValid() const;
 	
 };
 
@@ -144,6 +128,8 @@ FORCEINLINE uint32 GetTypeHash(const FJointNodePointer& Struct)
 	return FCrc::MemCrc32(&Struct, sizeof(FGuid));
 }
 
+#define RESOLVE_JOINT_POINTER(Pointer, T) \
+((Pointer.Node && Cast<T>(Pointer.Node.Get())) ? Cast<T>(Pointer.Node.Get()) : nullptr)
 
 
 /**
@@ -155,17 +141,13 @@ struct JOINT_API FJointNodes
 	GENERATED_BODY()
 
 public:
+	FJointNodes();
 
-	FJointNodes() {}
-
-	FJointNodes(const TArray<UJointNodeBase*>& InNodes) : Nodes(InNodes) {}
-
+	FJointNodes(const TArray<UJointNodeBase*>& InNodes);
 
 public:
-
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Objects")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Objects")
 	TArray<UJointNodeBase*> Nodes;
-	
 };
 
 
@@ -185,23 +167,142 @@ namespace EJointEdSlateDetailLevel
 }
 
 
+/**
+ * Node setting data for the Joint editor. Mainly related to the visuals.
+ */
+USTRUCT(BlueprintType)
+struct JOINT_API FJointEdNodeSetting
+{
+	GENERATED_BODY()
+
+public:
+	FJointEdNodeSetting();
+
+public:
+	/**
+	 * The brush image to display inside the Iconic Node (a little colored block next to the node name) of the graph node slate.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Iconic Node")
+	FSlateBrush IconicNodeImageBrush;
+
+public:
+	/**
+	 * Whether to use specified graph node body color
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseSpecifiedGraphNodeBodyColor = false;
+
+	/**
+	 * Node body's color. Change this to customize the color of the node.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FLinearColor NodeBodyColor = FLinearColor::Green;
+
+	/**
+	 * Whether to use NodeShadowImageBrush instead of the default brush.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseCustomNodeShadowImageBrush = false;
+
+	/**
+	 * Whether to use InnerNodeBodyImageBrush instead of the default brush.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseCustomInnerNodeBodyImageBrush = false;
+
+	/**
+	 * Whether to use bUseCustomOuterNodeBodyImageBrush instead of the default brush.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseCustomOuterNodeBodyImageBrush = false;
+
+
+	/**
+	 * The brush for the node shadow.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FSlateBrush NodeShadowImageBrush;
+
+	/**
+	 * The brush for Inner Node Body Image.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FSlateBrush InnerNodeBodyImageBrush;
+
+	/**
+	 * The brush for Outer Node Body Image.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FSlateBrush OuterNodeBodyImageBrush;
+
+public:
+	/**
+	 * Whether to display a ClassFriendlyName hint text next to the Iconic node that will be displayed only when SlateDetailLevel is not SlateDetailLevel_Maximum.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	bool bAllowDisplayClassFriendlyNameText = true;
+
+
+	/**
+	 * Whether to use the simplified display of the class friendly name text instead of original class friendly name text on the graph node.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	bool bUseSimplifiedDisplayClassFriendlyNameText = false;
+
+	/**
+	 * The simplified class friendly name text that will be displayed on the graph node.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	FText SimplifiedClassFriendlyNameText;
+
+public:
+	/**
+	 * The SlateDetailLevel that the graph node of this node instance will use by default.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual")
+	TEnumAsByte<EJointEdSlateDetailLevel::Type> DefaultEdSlateDetailLevel =
+		EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
+
+
+	/**
+	 * The data for the properties that will be displayed on the graph node by automatically generated slate.
+	 * Useful when you want to show some properties on the graph, but don't afford to implement a custom editor node class for the node.
+	 * Also, you can still use this value to implement a simple display for a property on custom editor node class.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Editing")
+	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
+
+public:
+	/**
+	 * If true, The detail tab of the node will show off the editor node's pin data property.
+	 * You can control it to make a new pin, or control the existing pins.
+	 * This works best with the fragments that you created by yourself.
+	 *
+	 * You must check this true to use OnPinConnectionChanged(), OnUpdatePinData() properly.
+	 */
+
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Pin")
+	bool bAllowNodeInstancePinControl = false;
+
+public:
+	void UpdateFromNode(const UJointNodeBase* Node);
+};
+
+
 USTRUCT(BlueprintType)
 struct JOINT_API FJointEdPinDataSetting
 {
 	GENERATED_BODY()
 
 public:
-	
 	FJointEdPinDataSetting();
 
 public:
-
 	/**
 	 * Whether to display the name text of the pin all the time, without hovering.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Pin Data Setting")
 	bool bAlwaysDisplayNameText = false;
-	
 };
 
 /**
@@ -214,68 +315,50 @@ struct JOINT_API FJointEdPinData
 	GENERATED_BODY()
 
 public:
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Editor Node")
 	FName PinName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Editor Node")
 	TEnumAsByte<enum EEdGraphPinDirection> Direction;
-	
+
 	UPROPERTY(VisibleAnywhere, Category="Editor Node")
 	FEdGraphPinType Type;
 
 public:
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Editor Node - Visual")
 	FJointEdPinDataSetting Settings;
 
 public:
-	
 	//Guid of the pin instance that has been implemented by this data.
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Editor Node")
 	FGuid ImplementedPinId;
-	
+
 public:
-	
 	FJointEdPinData();
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection);
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType);
 
-	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType, const FJointEdPinDataSetting& InSettings);
-	
-	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType, const FJointEdPinDataSetting& InSettings,  const FGuid& InGuid);
+	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType,
+	                const FJointEdPinDataSetting& InSettings);
 
-	
+	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType,
+	                const FJointEdPinDataSetting& InSettings, const FGuid& InGuid);
+
+
 	FJointEdPinData(const FJointEdPinData& Other);
 
-
-
 public:
-
 	static const FJointEdPinData PinData_Null;
 
-	bool HasSameSignature(const FJointEdPinData& Other) const
-	{
-		return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type;
-	}
+	bool HasSameSignature(const FJointEdPinData& Other) const;
 
-	void CopyPropertiesFrom(const FJointEdPinData& Other)
-	{
-		PinName = Other.PinName;
-		Direction = Other.Direction;
-		Type = Other.Type;
-		Settings = Other.Settings;
-	}
+	void CopyPropertiesFrom(const FJointEdPinData& Other);
 
-	bool operator==(const FJointEdPinData& Other) const
-	{
-		return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type && ImplementedPinId == Other.ImplementedPinId;
-	}
+	bool operator==(const FJointEdPinData& Other) const;
 
 public:
-
 	/**
 	 * Pin Type declaration.
 	 *
@@ -288,7 +371,6 @@ public:
 
 	//Type of the pin for parent pin of the sub node. (Don't use it, it only needs for the system.)
 	static const FEdGraphPinType PinType_Joint_SubNodeParent;
-	
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointEdPinData& Struct)
@@ -296,11 +378,7 @@ FORCEINLINE uint32 GetTypeHash(const FJointEdPinData& Struct)
 	return FCrc::MemCrc32(&Struct, sizeof(FGuid));
 }
 
-
-inline bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B)
-{
-	return A == B;
-}
+inline bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B);
 
 
 UENUM(BlueprintType)
@@ -324,26 +402,22 @@ struct JOINT_API FJointEdLogMessage
 	GENERATED_BODY()
 
 public:
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Message")
 	TEnumAsByte<EJointEdMessageSeverity::Type> Severity;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Message")
 	FText Message;
-	
+
 public:
-	
 	FJointEdLogMessage();
 
 	FJointEdLogMessage(const EJointEdMessageSeverity::Type& InVerbosity, const FText& InMessage);
-	
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointEdLogMessage& Struct)
 {
 	return FCrc::MemCrc32(&Struct, sizeof(FJointEdLogMessage));
 }
-
 
 
 /**
@@ -363,21 +437,18 @@ class JOINT_API IJointEdNodeInterface
 	GENERATED_BODY()
 
 public:
-
-	IJointEdNodeInterface() {}
+	IJointEdNodeInterface();
 
 public:
-
 	/**
 	 * Get the node instance the ed node has.
 	 * @return node instance of the graph node.
 	 */
 	virtual UObject* JointEdNodeInterface_GetNodeInstance();
-	
+
 	/**
 	 * Get the pin data from the editor node.
 	 * @return pin data of the editor node.
 	 */
 	virtual TArray<FJointEdPinData> JointEdNodeInterface_GetPinData();
-	
 };

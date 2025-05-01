@@ -1,6 +1,8 @@
 ﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Slate/SJointManagerViewer.h"
+
+#include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
 #include "JointEdUtils.h"
 #include "Filter/JointTreeFilter.h"
@@ -9,6 +11,8 @@
 #include "SearchTree/Builder/IJointTreeBuilder.h"
 #include "Misc/MessageDialog.h"
 #include "Styling/SlateStyleMacros.h"
+#include "UObject/TextProperty.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SSearchBox.h"
@@ -60,25 +64,24 @@ void SJointManagerViewer::OnReplaceAllButtonPressed()
 TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 {
 	TAttribute<bool> IsEnabled_Search_Attr = TAttribute<bool>::CreateLambda([this]
-		{
-			return Mode != EJointManagerViewerMode::Search ? true : false;
-		});
+	{
+		return Mode != EJointManagerViewerMode::Search ? true : false;
+	});
 
 	TAttribute<bool> IsEnabled_Replace_Attr = TAttribute<bool>::CreateLambda([this]
-		{
-			return Mode != EJointManagerViewerMode::Replace ? true : false;
-		});
+	{
+		return Mode != EJointManagerViewerMode::Replace ? true : false;
+	});
 
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Top)
 		.AutoWidth()
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		[
-			SNew(SButton)
-			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round")
-			.ContentPadding(FJointEditorStyle::Margin_Button)
+			SNew(SJointOutlineButton)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.OnPressed(this, &SJointManagerViewer::OnSearchModeButtonPressed)
 			.IsEnabled(IsEnabled_Search_Attr)
 			[
@@ -88,7 +91,7 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 				.AutoWidth()
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SBox)
 					.WidthOverride(16)
@@ -102,11 +105,11 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 				.AutoWidth()
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
 					.Text(LOCTEXT("SearchBox", "Search"))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
 					.ColorAndOpacity(FLinearColor(1, 1, 1))
 				]
 			]
@@ -115,11 +118,10 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Top)
 		.AutoWidth()
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		[
-			SNew(SButton)
-			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round")
-			.ContentPadding(FJointEditorStyle::Margin_Button)
+			SNew(SJointOutlineButton)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.OnPressed(this, &SJointManagerViewer::OnReplaceModeButtonPressed)
 			.IsEnabled(IsEnabled_Replace_Attr)
 			[
@@ -129,7 +131,7 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 				.AutoWidth()
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SBox)
 					.WidthOverride(16)
@@ -143,11 +145,11 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 				.AutoWidth()
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
 					.Text(LOCTEXT("ReplaceBox", "Replace"))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
 					.ColorAndOpacity(FLinearColor(1, 1, 1))
 				]
 			]
@@ -166,28 +168,28 @@ void SJointManagerViewer::RebuildWidget()
 	Tree->BuildFromJointManagers();
 
 	TAttribute<FSlateColor> NodeVisibilityCheckBoxColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-		{
-			if (!NodeVisibilityCheckbox.IsValid()) { return FLinearColor(0.5, 0.2, 0.2); }
-			return (NodeVisibilityCheckbox->IsChecked())
-				       ? FLinearColor(0.7, 0.4, 0.02)
-				       : FLinearColor(0.03, 0.03, 0.03);
-		});
+	{
+		if (!NodeVisibilityCheckbox.IsValid()) { return FLinearColor(0.5, 0.2, 0.2); }
+		return (NodeVisibilityCheckbox->IsChecked())
+			       ? FLinearColor(0.7, 0.4, 0.02)
+			       : FLinearColor(0.03, 0.03, 0.03);
+	});
 
 	TAttribute<ECheckBoxState> NodeVisibilityIsChecked_Attr = TAttribute<ECheckBoxState>::CreateLambda([this]
-		{
-			return (Tree->Builder->IsShowingNodes()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-		});
+	{
+		return (Tree->Builder->IsShowingNodes()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	});
 
 
 	TAttribute<EVisibility> VisibilityByMode_Search_Attr = TAttribute<EVisibility>::CreateLambda([this]
-		{
-			return (Mode == EJointManagerViewerMode::Search) ? EVisibility::Visible : EVisibility::Collapsed;
-		});
+	{
+		return (Mode == EJointManagerViewerMode::Search) ? EVisibility::Visible : EVisibility::Collapsed;
+	});
 
 	TAttribute<EVisibility> VisibilityByMode_Replace_Attr = TAttribute<EVisibility>::CreateLambda([this]
-		{
-			return (Mode == EJointManagerViewerMode::Replace) ? EVisibility::Visible : EVisibility::Collapsed;
-		});
+	{
+		return (Mode == EJointManagerViewerMode::Replace) ? EVisibility::Visible : EVisibility::Collapsed;
+	});
 
 
 	this->ChildSlot
@@ -245,106 +247,70 @@ void SJointManagerViewer::RebuildWidget()
 			+ SVerticalBox::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Top)
-			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
-			[
-
-				SAssignNew(ReplaceFromSearchBox, SSearchBox)
-				.HintText(LOCTEXT("FilterReplaceFrom", "Replace from..."))
-				.ToolTipText(LOCTEXT("FilterReplaceFromHint", "Type a text to search and replace from"))
-				.OnTextChanged(this, &SJointManagerViewer::OnFilterReplaceFromTextChanged)
-			]
-			+ SVerticalBox::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Top)
-			.AutoHeight()
-			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
-			[
-				SAssignNew(ReplaceToSearchBox, SSearchBox)
-				.HintText(LOCTEXT("FilterReplaceTo", "Replace to..."))
-				.ToolTipText(LOCTEXT("FilterReplaceToHint", "Type a text to search and replace to"))
-				.OnTextChanged(this, &SJointManagerViewer::OnFilterReplaceToTextChanged)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.HAlign(HAlign_Left)
-			.VAlign(VAlign_Center)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(4.0f, 0.0f, 0.0f, 4.0f)
+				.FillWidth(1)
 				[
-					SNew(SButton)
-					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round")
-					.ContentPadding(FJointEditorStyle::Margin_Button)
-					.OnPressed(this, &SJointManagerViewer::OnReplaceNextButtonPressed)
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					.AutoHeight()
 					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("ReplaceNextBoxText", "Replace Next"))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-						.ColorAndOpacity(FLinearColor(1, 1, 1))
+						SAssignNew(ReplaceFromSearchBox, SSearchBox)
+						.HintText(LOCTEXT("FilterReplaceFrom", "Replace from..."))
+						.ToolTipText(LOCTEXT("FilterReplaceFromHint", "Type a text to search and replace from"))
+						.OnTextChanged(this, &SJointManagerViewer::OnFilterReplaceFromTextChanged)
+					]
+					+ SVerticalBox::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					.AutoHeight()
+					[
+						SAssignNew(ReplaceToSearchBox, SSearchBox)
+						.HintText(LOCTEXT("FilterReplaceTo", "Replace to..."))
+						.ToolTipText(LOCTEXT("FilterReplaceToHint", "Type a text to search and replace to"))
+						.OnTextChanged(this, &SJointManagerViewer::OnFilterReplaceToTextChanged)
 					]
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
-				.Padding(4.0f, 0.0f, 0.0f, 4.0f)
 				[
-					SNew(SButton)
-					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round")
-					.ContentPadding(FJointEditorStyle::Margin_Button)
-					.OnPressed(this, &SJointManagerViewer::OnReplaceAllButtonPressed)
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					.AutoHeight()
 					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("ReplaceAllBoxText", "Replace All"))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-						.ColorAndOpacity(FLinearColor(1, 1, 1))
-					]
-				]
-			]
-		]
-		/*
-		+ SVerticalBox::Slot()
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Top)
-		.AutoHeight()
-		.Padding(0.0f, 0.0f, 0.0f, 4.0f)
-		[
-			//SAssignNew(SearchBox, SSearchBox)
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Top)
-			.AutoWidth()
-			.Padding(0.0f, 0.0f, 0.0f, 4.0f)
-			[
-				SNew(SBorder)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(NodeVisibilityCheckBoxColor_Attr)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(2))
-					.AutoWidth()
-					[
-						SAssignNew(NodeVisibilityCheckbox, SCheckBox)
-						.IsChecked(NodeVisibilityIsChecked_Attr)
-						.OnCheckStateChanged(this, &SJointManagerViewer::OnNodeVisibilityCheckBoxCheckStateChanged)
-						.BorderBackgroundColor(FLinearColor(1, 1, 1, 1))
+						SNew(SJointOutlineButton)
+						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
+						.OnPressed(this, &SJointManagerViewer::OnReplaceNextButtonPressed)
 						[
 							SNew(STextBlock)
-							.Text(LOCTEXT("NodeVisibilityBoxText", "Node"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-							.ColorAndOpacity(FLinearColor(1, 1, 1))
+							.Text(LOCTEXT("ReplaceNextBoxText", "Replace Next"))
+							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
 						]
-						// sorry, but god's sake, I was really lazy to handle it more cleverly
 					]
-	
+					+ SVerticalBox::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					.AutoHeight()
+					[
+						SNew(SJointOutlineButton)
+						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
+						.OnPressed(this, &SJointManagerViewer::OnReplaceAllButtonPressed)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("ReplaceAllBoxText", "Replace All"))
+							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
+						]
+					]
 				]
 			]
 		]
-		*/
 		+ SVerticalBox::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
@@ -394,7 +360,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 			if (FStrProperty* StrProperty = CastField<FStrProperty>(CastedPtr.Pin()->Property))
 			{
 				const FString String = StrProperty->GetPropertyValue(
-					StrProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter));
+					StrProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get()));
 
 				const uint32 Index = String.Find(ReplaceFrom);
 
@@ -404,7 +370,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 						String.Len() - Index - ReplaceFrom.Len());
 
 					StrProperty->SetPropertyValue(
-						StrProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter),
+						StrProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get()),
 						NewTextString);
 
 					++OccurrenceCount;
@@ -413,7 +379,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 			else if (FNameProperty* NameProperty = CastField<FNameProperty>(CastedPtr.Pin()->Property))
 			{
 				const FString String = NameProperty->GetPropertyValue(
-					NameProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter)).ToString();
+					NameProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get())).ToString();
 
 				const uint32 Index = String.Find(ReplaceFrom);
 
@@ -423,7 +389,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 						String.Len() - Index - ReplaceFrom.Len());
 
 					NameProperty->SetPropertyValue(
-						NameProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter),
+						NameProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get()),
 						FName(NewTextString));
 
 					++OccurrenceCount;
@@ -432,7 +398,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 			else if (FTextProperty* TextProperty = CastField<FTextProperty>(CastedPtr.Pin()->Property))
 			{
 				const FText Text = TextProperty->GetPropertyValue(
-					TextProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter));
+					TextProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get()));
 
 				const FString TextToString = Text.ToString();
 
@@ -449,7 +415,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 					const FString Key = FTextInspector::GetKey(Text).Get(FString());
 
 					FJointEdUtils::JointText_StaticStableTextIdWithObj(
-						CastedPtr.Pin()->PropertyOuter,
+						CastedPtr.Pin()->PropertyOuter.Get(),
 						IEditableTextProperty::ETextPropertyEditAction::EditedSource,
 						NewTextString,
 						Namespace,
@@ -462,7 +428,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 
 
 					TextProperty->SetPropertyValue(
-						TextProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter), FinalText);
+						TextProperty->ContainerPtrToValuePtr<void>(CastedPtr.Pin()->PropertyOuter.Get()), FinalText);
 
 					++OccurrenceCount;
 				}
@@ -540,7 +506,7 @@ void SJointManagerViewer::OnFilterTextChanged(const FText& Text)
 void SJointManagerViewer::OnFilterTextCommitted(const FText& Text, ETextCommit::Type Arg)
 {
 	SearchFilterText = Text;
-	
+
 	Tree->SetHighlightInlineFilterText(SearchFilterText);
 	Tree->SetQueryInlineFilterText(FJointTreeFilter::ReplaceInqueryableCharacters(SearchFilterText));
 }
@@ -548,10 +514,10 @@ void SJointManagerViewer::OnFilterTextCommitted(const FText& Text, ETextCommit::
 void SJointManagerViewer::OnFilterReplaceFromTextChanged(const FText& Text)
 {
 	ReplaceFromText = Text;
-	
+
 	Tree->SetHighlightInlineFilterText(ReplaceFromText);
 	Tree->SetQueryInlineFilterText(FJointTreeFilter::ReplaceInqueryableCharacters(ReplaceFromText));
-	
+
 	Tree->ApplyFilter();
 }
 
@@ -564,7 +530,7 @@ void SJointManagerViewer::OnFilterReplaceToTextChanged(const FText& Text)
 
 void SJointManagerViewer::SetMode(const EJointManagerViewerMode InMode)
 {
-	if(!(Tree && Tree->Filter)) return;
+	if (!(Tree && Tree->Filter)) return;
 
 	Mode = InMode;
 
@@ -572,27 +538,41 @@ void SJointManagerViewer::SetMode(const EJointManagerViewerMode InMode)
 	{
 	case EJointManagerViewerMode::Search:
 
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(MakeShareable(new FJointTreeFilterItem("Tag:FName")))) Item->SetIsEnabled(false);
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(MakeShareable(new FJointTreeFilterItem("Tag:FString")))) Item->SetIsEnabled(false);
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(MakeShareable(new FJointTreeFilterItem("Tag:FText")))) Item->SetIsEnabled(false);
-		
-		if(SearchSearchBox.IsValid()) FSlateApplication::Get().SetKeyboardFocus( SearchSearchBox.ToSharedRef() );
-		
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FName"))))
+			Item->SetIsEnabled(false);
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FString"))))
+			Item->SetIsEnabled(false);
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindEqualItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FText"))))
+			Item->SetIsEnabled(false);
+
+		if (SearchSearchBox.IsValid()) FSlateApplication::Get().SetKeyboardFocus(SearchSearchBox.ToSharedRef());
+
 		break;
-		
+
 	case EJointManagerViewerMode::Replace:
-		
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(MakeShareable(new FJointTreeFilterItem("Tag:FName")))) Item->SetIsEnabled(true);	
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(MakeShareable(new FJointTreeFilterItem("Tag:FString")))) Item->SetIsEnabled(true);	
-		if(TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(MakeShareable(new FJointTreeFilterItem("Tag:FText")))) Item->SetIsEnabled(true);	
-		
-		if(ReplaceFromSearchBox.IsValid()) FSlateApplication::Get().SetKeyboardFocus( ReplaceFromSearchBox.ToSharedRef() );
-		
+
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FName"))))
+			Item->SetIsEnabled(true);
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FString"))))
+			Item->SetIsEnabled(true);
+		if (TSharedPtr<FJointTreeFilterItem> Item = Tree->Filter->FindOrAddItem(
+			MakeShareable(new FJointTreeFilterItem("Tag:FText"))))
+			Item->SetIsEnabled(true);
+
+		if (ReplaceFromSearchBox.IsValid())
+			FSlateApplication::Get().SetKeyboardFocus(
+				ReplaceFromSearchBox.ToSharedRef());
+
 		break;
 	}
 }
 
-void SJointManagerViewer::SetTargetManager(TArray<UJointManager*> NewManagers)
+void SJointManagerViewer::SetTargetManager(TArray<TWeakObjectPtr<UJointManager>> NewManagers)
 {
 	JointManagers = NewManagers;
 

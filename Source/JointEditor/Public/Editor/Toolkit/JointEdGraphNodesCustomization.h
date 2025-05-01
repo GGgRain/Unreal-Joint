@@ -54,11 +54,18 @@ public:
 	// IDetailCustomization interface
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
 	// End of IDetailCustomization interface
+
 public:
 	
-	void OnSetClass(const UClass* Class);
+	void OnChangeNodeSetClass(const UClass* Class);
+	void OnChangeEditorNodeSetClass(const UClass* Class);
 
 	TArray< TWeakObjectPtr<UObject> > CachedSelectedObjects;
+
+public:
+	
+	void HideDeveloperModeProperties(IDetailLayoutBuilder& DetailBuilder);
+
 	
 };
 
@@ -136,6 +143,47 @@ public:
 
 };
 
+class JOINTEDITOR_API FJointEdGraphCustomization: public IDetailCustomization
+{
+	
+public:
+	
+	static TSharedRef<IDetailCustomization> MakeInstance();
+
+	// IDetailCustomization interface
+	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
+	// End of IDetailCustomization interface
+
+public:
+
+	void OnRecaptureButtonPressed();
+
+public:
+
+	TArray<TWeakObjectPtr<UJointEdGraph>> CachedGraph;
+};
+
+
+class JOINTEDITOR_API FJointManagerCustomization: public IDetailCustomization
+{
+	
+public:
+	
+	static TSharedRef<IDetailCustomization> MakeInstance();
+
+	// IDetailCustomization interface
+	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
+	// End of IDetailCustomization interface
+
+public:
+
+	void OnClearPackageMetadata();
+
+public:
+
+	TArray<TWeakObjectPtr<UJointManager>> CachedManager;
+
+};
 
 class JOINTEDITOR_API FJointBuildPresetCustomization: public IDetailCustomization
 {

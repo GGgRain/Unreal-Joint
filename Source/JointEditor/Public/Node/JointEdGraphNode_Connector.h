@@ -18,8 +18,7 @@ class JOINTEDITOR_API UJointEdGraphNode_Connector : public UJointEdGraphNode
 public:
 
 	UJointEdGraphNode_Connector();
-
-
+	
 public:
 
 	//UObject Interface
@@ -51,6 +50,9 @@ public:
 
 	virtual bool CanHaveSubNode() const override;
 
+	virtual bool CanReplaceNodeClass() override;
+
+	virtual bool CanReplaceEditorNodeClass() override;
 
 public:
 	

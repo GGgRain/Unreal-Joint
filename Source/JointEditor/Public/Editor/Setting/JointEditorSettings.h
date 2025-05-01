@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointManagementTabs.h"
 #include "Engine/DeveloperSettings.h"
+#include "SharedType/JointEditorSharedTypes.h"
 #include "JointEditorSettings.generated.h"
 
 class UJointManager;
@@ -14,6 +16,7 @@ class UJointEdGraphPin;
 namespace JointEditorDefaultSettings {
 
 	static const bool bUseLODRenderingForSimplePropertyDisplay(true);
+	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(35);
 
 	//Graph Editor
 	static const bool bUseGrid(false);
@@ -74,6 +77,14 @@ namespace JointEditorDefaultSettings {
 	static const float SelfSplineVerticalDeltaRange(200.0f);
 	static const FVector2D SelfSplineTangentFromHorizontalDelta(FVector2D(4.0f, 4.0f));
 	static const FVector2D SelfSplineTangentFromVerticalDelta(FVector2D(0.f, 4.0f));
+
+
+
+
+
+	//Detail Panel
+	static const float DescriptionCardBoxMaxDesiredHeight(400.0f);
+
 	
 }
 
@@ -100,6 +111,14 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "Experiment", meta = (DisplayName = "Use LOD Rendering For Simple Property Display (BETA)"))
 	bool bUseLODRenderingForSimplePropertyDisplay = JointEditorDefaultSettings::bUseLODRenderingForSimplePropertyDisplay;
 
+	/** 
+	 * LOD retainer Period for the SimplePropertyDisplay.
+	 * Higher value means higher frequency of the update.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "Experiment", meta = (DisplayName = "LOD Rendering For Simple Property Display Retainer Period (BETA)"))
+	int LODRenderingForSimplePropertyDisplayRetainerPeriod = JointEditorDefaultSettings::LODRenderingForSimplePropertyDisplayRetainerPeriod;
+
+	
 public:
 
 	/** Enables or disables the display of a background grid in the material and blueprint editors. */
@@ -278,13 +297,29 @@ public:
 
 public:
 
+	/** Default color assigned to nodes when no specific color is set. */
+	UPROPERTY(Config, EditAnywhere, Category = "Detail Panel", meta = (DisplayName = "Description Card Box Max Desired Height"))
+	float DescriptionCardBoxMaxDesiredHeight = JointEditorDefaultSettings::DescriptionCardBoxMaxDesiredHeight;
+
+public:
+
 	/**
 	 * A set of classes to hide on the editor, especially new node context menu and new fragment context menu.
 	 * This is useful when you have your own implementation of any specific native node, and want to hide the old one.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Editing", meta = (DisplayName = "Node Classes To Hide"))
 	TSet<TSubclassOf<UJointNodeBase>> NodeClassesToHide;
-	
+
+public:
+
+	/**
+	 * Enables or disables the developer mode.
+	 * It will show some additional information about the nodes, and graph.
+	 * This is useful for debugging and development purposes, especially good to see how internal data is working.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Debugging", meta = (DisplayName = "Enable Developer Mode"))
+	bool bEnableDeveloperMode = true;
+
 public:
 
 	//Internal Properties
@@ -294,6 +329,20 @@ public:
 	
 	UPROPERTY(Config)
 	bool bDebuggerEnabled = true;
+
+public:
+
+	/** 
+	 * A set of class name redirects for the editor.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Joint Redirects", meta = (DisplayName = "Joint Class Name Redirects"))
+	TArray<FJointCoreRedirect> JointCoreRedirects;
+
+public:
+
+	void AddCoreRedirect(const FJointCoreRedirect& Redirect);
+	
+	void RemoveCoreRedirect(const FJointCoreRedirect& Redirect);
 	
 public:
 	
@@ -305,11 +354,8 @@ public:
 
 	static UJointEditorSettings* Get();
 
-private:
-	
-	static UJointEditorSettings* CollectEditorSettingInstance();
+	static void Save();
 
-	static UJointEditorSettings* Instance;
 
 public:
 	

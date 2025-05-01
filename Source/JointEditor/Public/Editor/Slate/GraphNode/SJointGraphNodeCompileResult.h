@@ -2,6 +2,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Logging/TokenizedMessage.h"
+#include "Widgets/SCompoundWidget.h"
 
 class SJointGraphNodeBase;
 

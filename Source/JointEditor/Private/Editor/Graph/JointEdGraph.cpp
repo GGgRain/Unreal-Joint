@@ -232,7 +232,7 @@ void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
 
 void UJointEdGraph::CleanUpNodes()
 {
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = GetCacheJointGraphNodes();
+	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = GetCachedJointGraphNodes();
 
 	for (TSoftObjectPtr<UJointEdGraphNode> JointEdGraphNode : GraphNodes)
 	{
@@ -272,7 +272,7 @@ void UJointEdGraph::PatchNodePickers()
 
 void UJointEdGraph::ExecuteForAllNodesInHierarchy(const TFunction<void(UEdGraphNode*)>& Func)
 {
-	const TSet<TSoftObjectPtr<UJointEdGraphNode>>& CachedNodes = GetCacheJointGraphNodes();
+	const TSet<TSoftObjectPtr<UJointEdGraphNode>>& CachedNodes = GetCachedJointGraphNodes();
 
 	for (TSoftObjectPtr<UJointEdGraphNode> JointEdGraphNode : CachedNodes)
 	{
@@ -350,7 +350,7 @@ void UJointEdGraph::CompileJointGraph()
 	const double CompileEndTime = FPlatformTime::Seconds();
 
 	if (OnCompileFinished.IsBound()) OnCompileFinished.Execute(
-		UJointEdGraph::FJointGraphCompileInfo(GetCacheJointGraphNodes().Num(),(CompileEndTime - CompileStartTime)));
+		UJointEdGraph::FJointGraphCompileInfo(GetCachedJointGraphNodes().Num(),(CompileEndTime - CompileStartTime)));
 }
 
 void UJointEdGraph::UpdateSubNodeChains()
@@ -396,6 +396,34 @@ void UJointEdGraph::UpdateClassDataForNode(UJointEdGraphNode* Node, const bool b
 	}
 }
 
+void UJointEdGraph::GrabUnknownClassDataFromGraph()
+{
+	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
+	{
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(EdGraphNode);
+
+		GrabUnknownClassDataFromNode(Node, true);
+	}
+}
+
+void UJointEdGraph::GrabUnknownClassDataFromNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes)
+{
+	if(!Node) return;
+	
+	if(!Node->NodeClassData.GetClass())
+	{
+		FJointGraphNodeClassHelper::AddUnknownClass(Node->NodeClassData);
+	}
+
+	if(bPropagateToSubNodes)
+	{
+		for (UJointEdGraphNode* SubNode : Node->SubNodes)
+		{
+			GrabUnknownClassDataFromNode(SubNode, bPropagateToSubNodes);
+		}
+	}
+}
+
 void UJointEdGraph::UpdateClassData()
 {
 	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
@@ -423,14 +451,14 @@ UEdGraphNode* UJointEdGraph::FindGraphNodeForNodeInstance(const UObject* NodeIns
 }
 
 
-TSet<TSoftObjectPtr<UObject>> UJointEdGraph::GetCacheJointNodeInstances(const bool bForce)
+TSet<TSoftObjectPtr<UObject>> UJointEdGraph::GetCachedJointNodeInstances(const bool bForce)
 {
 	if (bForce || CachedJointNodeInstances.IsEmpty()) CacheJointNodeInstances();
 
 	return CachedJointNodeInstances;
 }
 
-TSet<TSoftObjectPtr<UJointEdGraphNode>> UJointEdGraph::GetCacheJointGraphNodes(const bool bForce)
+TSet<TSoftObjectPtr<UJointEdGraphNode>> UJointEdGraph::GetCachedJointGraphNodes(const bool bForce)
 {
 	if (bForce || CachedJointGraphNodes.IsEmpty()) CacheJointGraphNodes();
 
@@ -499,6 +527,7 @@ bool UJointEdGraph::CanRemoveNestedObject(UObject* TestObject) const
 
 void UJointEdGraph::RemoveOrphanedNodes()
 {
+	
 	UpdateSubNodeChains();
 	
 	// Obtain a list of all nodes actually in the asset and discard unused nodes
@@ -510,7 +539,7 @@ void UJointEdGraph::RemoveOrphanedNodes()
 
 	uint16 count = 0;
 
-	GetCacheJointNodeInstances();
+	GetCachedJointNodeInstances();
 	
 	for (auto InnerIt = AllInners.CreateConstIterator(); InnerIt; ++InnerIt)
 	{

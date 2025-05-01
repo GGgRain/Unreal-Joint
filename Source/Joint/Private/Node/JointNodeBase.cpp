@@ -28,9 +28,9 @@ UJointNodeBase::UJointNodeBase()
 
 #if WITH_EDITORONLY_DATA
 
-	IconicNodeImageBrush = FSlateBrush();
-	IconicNodeImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
-	IconicNodeImageBrush.ImageSize = FVector2D(2,2);
+	EdNodeSetting.IconicNodeImageBrush = FSlateBrush();
+	EdNodeSetting.IconicNodeImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+	EdNodeSetting.IconicNodeImageBrush.ImageSize = FVector2D(2,2);
 
 #endif
 	
@@ -264,11 +264,61 @@ TArray<FJointEdPinData> UJointNodeBase::GetPinData() const
 	
 }
 
+
+
+
+const FJointEdPinConnectionResponse UJointNodeBase::CanAttachThisAtParentNode_Implementation(const UObject* InParentNode) const
+{
+	//Do whatever you want if you need. 
+	//We recommend you to wrap all stuffs in this function with if WITH_EDITOR macro to prevent all possible exploit on the runtime scenarios.
+#if WITH_EDITOR
+
+	//Check if the node instance is valid.
+	if (InParentNode == nullptr) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage", "Unknown reason"));
+
+	//if the node instance is the same as this node, disallow the connection.
+	if (InParentNode == this) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage_SameNode", "Can not attach a node to the same node. How are you even doing this?"));
+
+	//Allow the connection.
+	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
+
+#endif
+
+	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, INVTEXT("CANNOT CHANGE ATTACHMENT ON RUNTIME"));
+	
+}
+
+
+
+const FJointEdPinConnectionResponse UJointNodeBase::CanAttachSubNodeOnThis_Implementation(const UObject* InSubNode) const
+
+{
+	//Do whatever you want if you need. 
+	//We recommend you to wrap all stuffs in this function with if WITH_EDITOR macro to prevent all possible exploit on the runtime scenarios.
+#if WITH_EDITOR
+
+	//Check if the node instance is valid.
+	if (InSubNode == nullptr) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage", "Unknown reason"));
+
+	//if the node instance is the same as this node, disallow the connection.
+	if (InSubNode == this) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage_SameNode", "Can not attach a node to the same node. How are you even doing this?"));
+
+	//Allow the connection.
+	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
+
+#endif
+
+	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, INVTEXT("CANNOT CHANGE ATTACHMENT ON RUNTIME"));
+	
+}
+
+
+
 bool UJointNodeBase::GetAllowNodeInstancePinControl()
 {
 	
 #if WITH_EDITOR  
-	return bAllowNodeInstancePinControl;  
+	return EdNodeSetting.bAllowNodeInstancePinControl;  
 #else  
 	return false;  
 #endif

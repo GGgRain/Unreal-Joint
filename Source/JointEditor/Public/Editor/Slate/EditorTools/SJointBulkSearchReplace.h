@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "ContentBrowserDelegates.h"
 #include "IAssetTypeActions.h"
+#include "Framework/Docking/TabManager.h"
 #include "Widgets/SCompoundWidget.h"
 
 

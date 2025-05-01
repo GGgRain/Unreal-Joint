@@ -27,6 +27,7 @@
 #include "SLevelOfDetailBranchNode.h"
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
+#include "Async/Async.h"
 #include "Framework/Commands/GenericCommands.h"
 
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -46,6 +47,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SInvalidationPanel.h"
+#include "Widgets/Images/SImage.h"
 #include "Windows/WindowsPlatformApplicationMisc.h"
 
 class UVolt_ASM_InterpWidgetTransform;
@@ -77,7 +79,7 @@ void SJointMultiNodeIndex::Construct(const FArguments& InArgs)
 		[
 			SNew(SBorder)
 			.BorderImage(IndexBrush)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			.BorderBackgroundColor(FLinearColor(1, 1, 1, 1))
 			.VAlign(VAlign_Center)
 			.HAlign(HAlign_Center)
@@ -138,7 +140,7 @@ void SJointGraphPinOwnerNodeBox::PopulateSlate()
 		SNew(SVerticalBox)
 		.Visibility(EVisibility::SelfHitTestInvisible)
 		+ SVerticalBox::Slot()
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		.AutoHeight()
 		[
 			SNew(STextBlock)
@@ -147,7 +149,7 @@ void SJointGraphPinOwnerNodeBox::PopulateSlate()
 			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
 		]
 		+ SVerticalBox::Slot()
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		.AutoHeight()
 		[
 			SAssignNew(PinBox, SVerticalBox)
@@ -162,7 +164,7 @@ void SJointGraphPinOwnerNodeBox::PopulateSlate()
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.Visibility(EVisibility::Visible)
-			.ContentMargin(FJointEditorStyle::Margin_Frame)
+			.ContentMargin(FJointEditorStyle::Margin_Normal)
 			[
 				SAssignNew(PinBox, SVerticalBox)
 				.Visibility(EVisibility::SelfHitTestInvisible)
@@ -190,7 +192,7 @@ void SJointGraphPinOwnerNodeBox::AddPin(const TSharedRef<SGraphPin>& TargetPin)
 	TargetPin->SetOwner(StaticCastSharedRef<SGraphNode>(this->OwnerGraphNode.Pin().ToSharedRef()));
 
 	PinBox.Pin()->AddSlot()
-		.Padding(FJointEditorStyle::Margin_PinGap)
+		.Padding(FJointEditorStyle::Margin_Tiny)
 		.AutoHeight()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
@@ -225,7 +227,7 @@ void SJointGraphNodeInsertPoint::PopulateSlate()
 		.RenderTransformPivot(FVector2D(0.5, 0.5))
 		.RenderOpacity(0)
 		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.Padding(FJointEditorStyle::Margin_Border * 0.6)
+		.Padding(FJointEditorStyle::Margin_Normal * 0.6)
 	];
 }
 
@@ -404,7 +406,7 @@ void SJointBuildPreset::PopulateSlate()
 		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
 		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
 		OutlineHoverColor.A = 0.1;
-		
+
 		this->ChildSlot
 		[
 			SAssignNew(PresetBorder, SJointOutlineBorder)
@@ -416,11 +418,11 @@ void SJointBuildPreset::PopulateSlate()
 			.OutlineHoverColor(OutlineHoverColor)
 			.OnHovered(this, &SJointBuildPreset::OnHovered)
 			.OnUnhovered(this, &SJointBuildPreset::OnUnHovered)
-			.ContentMargin(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			[
 				SAssignNew(PresetTextBlock, STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
-					.Text(Preset->PresetInitial)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
+				.Text(Preset->PresetInitial)
 			]
 		];
 	}
@@ -428,12 +430,12 @@ void SJointBuildPreset::PopulateSlate()
 
 void SJointBuildPreset::OnHovered()
 {
-	if(PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1);
+	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1);
 }
 
 void SJointBuildPreset::OnUnHovered()
 {
-	if(PresetTextBlock) PresetTextBlock->SetRenderOpacity(1);
+	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(1);
 }
 
 void SJointBuildPreset::Update()
@@ -442,14 +444,13 @@ void SJointBuildPreset::Update()
 	{
 		if (PresetBorder.IsValid())
 		{
-
 			FLinearColor NormalColor = Preset->PresetColor;
 			FLinearColor HoverColor = Preset->PresetColor * 1.5;
 			HoverColor.A = 0.1;
 			FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
 			FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
 			OutlineHoverColor.A = 0.1;
-			
+
 			PresetBorder->NormalColor = NormalColor;
 			PresetBorder->HoverColor = HoverColor;
 			PresetBorder->OutlineNormalColor = OutlineNormalColor;
@@ -485,7 +486,7 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 
 	if (DragConnectionOp.IsValid())
 	{
-		GEditor->BeginTransaction(LOCTEXT("DragDropNode", "Drag&Drop SubNode"));
+		GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_DragDropNode", "Drag & Drop a sub node"));
 
 		TArray<UEdGraphNode*> ModifiedNodes;
 
@@ -592,14 +593,14 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-		.Padding(FJointEditorStyle::Margin_Border)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		[
 			SNew(SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-			.ContentMargin(FJointEditorStyle::Margin_Button)
+			.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.OnHovered(this, &SJointNodePointerSlate::OnHovered)
 			.OnUnhovered(this, &SJointNodePointerSlate::OnUnhovered)
 			.HAlign(HAlign_Fill)
@@ -616,7 +617,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 					.AutoHeight()
 					.HAlign(HAlign_Left)
 					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Frame * 0.5)
+					.Padding(FJointEditorStyle::Margin_Small)
 					[
 						SAssignNew(DisplayNameBlock, STextBlock)
 						.Text(InArgs._DisplayName)
@@ -627,7 +628,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 					.AutoHeight()
 					.HAlign(HAlign_Left)
 					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Frame * 0.5)
+					.Padding(FJointEditorStyle::Margin_Small)
 					[
 						SAssignNew(RawNameBlock, STextBlock)
 						.Text(GetRawName())
@@ -652,7 +653,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_PinGap)
+						.ContentPadding(FJointEditorStyle::Margin_Tiny)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("PickupButtonTooltip", "Pick up a new node for the property."))
 						.OnClicked(this, &SJointNodePointerSlate::OnPickupButtonPressed)
@@ -672,7 +673,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_PinGap)
+						.ContentPadding(FJointEditorStyle::Margin_Tiny)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("GoButtonTooltip", "Go to the node selected"))
 						.OnClicked(this, &SJointNodePointerSlate::OnGoButtonPressed)
@@ -692,7 +693,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_PinGap)
+						.ContentPadding(FJointEditorStyle::Margin_Tiny)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("CopyButtonTooltip", "Copy the structure to the clipboard"))
 						.OnClicked(this, &SJointNodePointerSlate::OnCopyButtonPressed)
@@ -712,7 +713,7 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_PinGap)
+						.ContentPadding(FJointEditorStyle::Margin_Tiny)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("PasteTooltip", "Paste the structure from the clipboard"))
 						.OnClicked(this, &SJointNodePointerSlate::OnPasteButtonPressed)
@@ -723,26 +724,26 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 						]
 					]
 					+ SHorizontalBox::Slot()
-				   .FillWidth(1)
-				   .HAlign(HAlign_Center)
-				   .VAlign(VAlign_Center)
-				   [
-					   SNew(SJointOutlineButton)
-					   .NormalColor(FLinearColor::Transparent)
-					   .HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-					   .OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					   .OutlineNormalColor(FLinearColor::Transparent)
-					   .ContentMargin(FJointEditorStyle::Margin_PinGap)
-					   .ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-					   .ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
-					   .OnClicked(this, &SJointNodePointerSlate::OnClearButtonPressed)
-					   [
-						   SNew(SImage)
-						   .DesiredSizeOverride(FVector2D(16, 16))
-						   .ColorAndOpacity(FLinearColor(1,0.5,0.3))
-						   .Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
-					   ]
-				   ]
+					.FillWidth(1)
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SJointOutlineButton)
+						.NormalColor(FLinearColor::Transparent)
+						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.OutlineNormalColor(FLinearColor::Transparent)
+						.ContentPadding(FJointEditorStyle::Margin_Tiny)
+						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+						.ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
+						.OnClicked(this, &SJointNodePointerSlate::OnClearButtonPressed)
+						[
+							SNew(SImage)
+							.DesiredSizeOverride(FVector2D(16, 16))
+							.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
+						]
+					]
 				]
 			]
 		];
@@ -789,7 +790,7 @@ void SJointNodePointerSlate::OnHovered()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
@@ -799,16 +800,15 @@ void SJointNodePointerSlate::OnHovered()
 
 				if (Node->GetCastedNodeInstance() == NodeInstance)
 				{
-
 					Toolkit->StartHighlightingNode(Node.Get(), false);
-					
+
 					// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 					//
 					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
 					// {
 					// 	Toolkit->StartHighlightingNode(Node.Get(), false);
 					// }
-					
+
 					break;
 				}
 			}
@@ -841,7 +841,7 @@ void SJointNodePointerSlate::OnUnhovered()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
@@ -851,16 +851,15 @@ void SJointNodePointerSlate::OnUnhovered()
 
 				if (Node->GetCastedNodeInstance() == NodeInstance)
 				{
-
 					Toolkit->StopHighlightingNode(Node.Get());
-					
+
 					// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 					//
 					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
 					// {
 					// 	Toolkit->StopHighlightingNode(Node.Get());
 					// }
-					
+
 					break;
 				}
 			}
@@ -887,7 +886,7 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
@@ -900,14 +899,14 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 					Toolkit->JumpToNode(Node.Get());
 
 					Toolkit->StartHighlightingNode(Node.Get(), true);
-					
+
 					// if(!Toolkit->GetNodePickingManager().IsValid()) break;
 					//
 					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
 					// {
 					// 	Toolkit->StartHighlightingNode(Node.Get(), true);
 					// }
-					
+
 					break;
 				}
 			}
@@ -932,13 +931,14 @@ FReply SJointNodePointerSlate::OnPickupButtonPressed()
 
 	if (!Toolkit) return FReply::Handled();
 
-	if(!Toolkit->GetNodePickingManager().IsValid()) return FReply::Handled();
+	if (!Toolkit->GetNodePickingManager().IsValid()) return FReply::Handled();
 
 	if (!Toolkit->GetNodePickingManager()->IsInNodePicking())
 	{
 		if (PointerToTargetStructure)
 		{
-			Request = Toolkit->GetNodePickingManager()->StartNodePicking(OwnerJointEdGraphNode->GetCastedNodeInstance(), PointerToTargetStructure);
+			Request = Toolkit->GetNodePickingManager()->StartNodePicking(
+				OwnerJointEdGraphNode->GetCastedNodeInstance(), PointerToTargetStructure);
 		}
 	}
 	else
@@ -952,8 +952,8 @@ FReply SJointNodePointerSlate::OnPickupButtonPressed()
 FReply SJointNodePointerSlate::OnCopyButtonPressed()
 {
 	FString Value;
-	
-	if(PointerToTargetStructure) Value = PointerToTargetStructure->Node.ToString();
+
+	if (PointerToTargetStructure) Value = PointerToTargetStructure->Node.ToString();
 
 	FPlatformApplicationMisc::ClipboardCopy(*Value);
 
@@ -961,7 +961,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 	{
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
-	
+
 	return FReply::Handled();
 }
 
@@ -970,18 +970,20 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 	FString Value;
 
 	FPlatformApplicationMisc::ClipboardPaste(Value);
-	
+
 	GEditor->BeginTransaction(FGenericCommands::Get().Paste->GetDescription());
-	
-	if(OwnerJointEdGraphNode) {
-		
+
+	if (OwnerJointEdGraphNode)
+	{
 		OwnerJointEdGraphNode->Modify();
 
-		if(OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
+		if (OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
 	}
 
 	PointerToTargetStructure->Node = FSoftObjectPath(Value);
-	if(PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
+	if (PointerToTargetStructure->Node.Get())
+		PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.
+			Get()->EdGraphNode.Get();
 
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(OwnerJointEdGraphNode))
@@ -989,33 +991,32 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 		Toolkit->PopulateNodePickerPastedToastMessage();
 	}
 
-	if(OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
+	if (OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
 
 	GEditor->EndTransaction();
-	
+
 
 	return FReply::Handled();
 }
 
 FReply SJointNodePointerSlate::OnClearButtonPressed()
 {
+	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset", "Reset Node Pointer to default"));
 
-	GEditor->BeginTransaction(INVTEXT("Reset to default"));
-
-	if(OwnerJointEdGraphNode) {
-		
+	if (OwnerJointEdGraphNode)
+	{
 		OwnerJointEdGraphNode->Modify();
 
-		if(OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
+		if (OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
 	}
-	
+
 	PointerToTargetStructure->Node.Reset();
 	PointerToTargetStructure->EditorNode.Reset();
 
-	if(OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
+	if (OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
 
 	GEditor->EndTransaction();
-	
+
 	return FReply::Handled();
 }
 
@@ -1036,14 +1037,14 @@ void SJointNodeDescription::PopulateSlate()
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		[
 			SNew(SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.NormalColor(FJointEditorStyle::Color_Normal)
 			.OutlineNormalColor(FJointEditorStyle::Color_Normal)
-			.ContentMargin(FJointEditorStyle::Margin_Border)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.Visibility(EVisibility::Visible)
 			[
 				SNew(SVerticalBox)
@@ -1066,13 +1067,13 @@ void SJointNodeDescription::PopulateSlate()
 						.Visibility(EVisibility::SelfHitTestInvisible)
 						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
 						.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(SBorder)
 							.Visibility(EVisibility::SelfHitTestInvisible)
 							.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 							.BorderBackgroundColor(UJointEditorSettings::Get()->DefaultNodeColor)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1085,7 +1086,7 @@ void SJointNodeDescription::PopulateSlate()
 					.AutoWidth()
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(STextBlock)
 						.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1098,7 +1099,7 @@ void SJointNodeDescription::PopulateSlate()
 					.AutoWidth()
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SJointOutlineButton)
 						.NormalColor(FLinearColor::Transparent)
@@ -1106,7 +1107,7 @@ void SJointNodeDescription::PopulateSlate()
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ContentMargin(FJointEditorStyle::Margin_Border)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.IsEnabled(ClassToDescribe && ClassToDescribe->ClassGeneratedBy)
 						.ToolTipText(ClassToDescribe && ClassToDescribe->ClassGeneratedBy
 							             ? LOCTEXT("OpenEditorTooltip",
@@ -1125,7 +1126,7 @@ void SJointNodeDescription::PopulateSlate()
 				.AutoHeight()
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
 					.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1137,7 +1138,7 @@ void SJointNodeDescription::PopulateSlate()
 				.AutoHeight()
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
 					.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1221,7 +1222,7 @@ void SJointDetailView::PopulateSlate()
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::ENameAreaSettings::HideNameArea;
 	DetailsViewArgs.bHideSelectionTip = true;
 	DetailsViewArgs.bAllowSearch = false;
-	DetailsViewArgs.ViewIdentifier = FName(FGuid::NewGuid().ToString());
+	//DetailsViewArgs.ViewIdentifier = FName(FGuid::NewGuid().ToString());
 
 	DetailViewWidget = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 
@@ -1231,36 +1232,39 @@ void SJointDetailView::PopulateSlate()
 		FIsPropertyVisible::CreateSP(this, &SJointDetailView::GetIsPropertyVisible));
 
 	//For the better control over expanding.
-	DetailViewWidget->SetGenericLayoutDetailsDelegate(FOnGetDetailCustomizationInstance::CreateStatic(&FJointNodeInstanceSimpleDisplayCustomizationBase::MakeInstance));
+	DetailViewWidget->SetGenericLayoutDetailsDelegate(
+		FOnGetDetailCustomizationInstance::CreateStatic(
+			&FJointNodeInstanceSimpleDisplayCustomizationBase::MakeInstance));
 
 	DetailViewWidget->ForceVolatile(true);
 
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
 
-	if(UJointEditorSettings::Get()->bUseLODRenderingForSimplePropertyDisplay)
+	if (UJointEditorSettings::Get()->bUseLODRenderingForSimplePropertyDisplay)
 	{
 		DetailViewWidget->SetObject(Object, false);
 
 		DetailViewWidget->SetCanTick(false);
-	
+
 		this->ChildSlot
 		[
 			SNew(SLevelOfDetailBranchNode)
 			.OnGetActiveDetailSlotContent(this, &SJointDetailView::GetLODContent)
 			.UseLowDetailSlot(this, &SJointDetailView::UseLowDetailedRendering)
 		];
-	}else
+	}
+	else
 	{
 		DetailViewWidget->SetObject(Object, false);
 
 		DetailViewWidget->SetCanTick(true);
-	
+
 		this->ChildSlot
 		[
 			DetailViewWidget.ToSharedRef()
 		];
 	}
-	
+
 #else
 	
 	DetailViewWidget->SetObject(Object, false);
@@ -1303,12 +1307,12 @@ TSharedRef<SWidget> SJointDetailView::GetLODContent(bool bArg)
 {
 	//if(!JointDetailViewRetainerWidget || !DetailViewWidget || !Object || !EdNode || !OwnerGraphNode.IsValid()) return SNullWidget::NullWidget;
 	bTickExpired = false;
-	
+
 	if (bArg || bNeedsUpdate)
 	{
 		DetailViewWidget->SetCanTick(true);
-		
-		if(JointDetailViewRetainerWidget) JointDetailViewRetainerWidget->SetRetainedRendering(false);
+
+		if (JointDetailViewRetainerWidget) JointDetailViewRetainerWidget->SetRetainedRendering(false);
 
 		ClearContentFromRetainer();
 
@@ -1316,23 +1320,22 @@ TSharedRef<SWidget> SJointDetailView::GetLODContent(bool bArg)
 	}
 	else
 	{
-
-		if(!JointDetailViewRetainerWidget)
+		if (!JointDetailViewRetainerWidget)
 		{
-			const int PhaseSize = 30;
-	
+			const int PhaseSize = UJointEditorSettings::Get()->LODRenderingForSimplePropertyDisplayRetainerPeriod;
+
 			SAssignNew(JointDetailViewRetainerWidget, SRetainerWidget)
 			.Phase(static_cast<int>(FMath::FRand() * (PhaseSize - 1)))
 			.PhaseCount(PhaseSize);
 
 			JointDetailViewRetainerWidget->SetCanTick(false);
 		}
-		
+
 		SetContentToRetainer(DetailViewWidget);
 
-		if(DetailViewWidget) DetailViewWidget->SetCanTick(false);
+		if (DetailViewWidget) DetailViewWidget->SetCanTick(false);
 
-		if(JointDetailViewRetainerWidget) JointDetailViewRetainerWidget->SetRetainedRendering(true);
+		if (JointDetailViewRetainerWidget) JointDetailViewRetainerWidget->SetRetainedRendering(true);
 
 		return JointDetailViewRetainerWidget.ToSharedRef();
 	}
@@ -1341,8 +1344,8 @@ TSharedRef<SWidget> SJointDetailView::GetLODContent(bool bArg)
 bool SJointDetailView::UseLowDetailedRendering() const
 {
 	//if tick expires, push it to the low details for once.
-	if(bTickExpired) return false;
-	
+	if (bTickExpired) return false;
+
 	if (OwnerGraphNode.IsValid())
 	{
 		if (const TSharedPtr<SGraphPanel>& MyOwnerPanel = OwnerGraphNode.Pin()->GetOwnerPanel())
@@ -1360,7 +1363,7 @@ bool SJointDetailView::UseLowDetailedRendering() const
 void SJointDetailView::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
 	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
-	
+
 	if (!bNeedsUpdate)
 	{
 		SetCanTick(false);
@@ -1373,15 +1376,15 @@ void SJointDetailView::Tick(const FGeometry& AllottedGeometry, const double InCu
 		DetailViewWidget->Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 	}
 
-	if(TickRequestedCount > 0)
+	if (TickRequestedCount > 0)
 	{
 		TickRequestedCount--;
 
 		return;
 	}
-	
+
 	bTickExpired = true;
-	
+
 	bNeedsUpdate = false;
 }
 

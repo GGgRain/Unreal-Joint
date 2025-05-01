@@ -61,7 +61,7 @@ FGuid SJointToolkitToastMessageHub::AddToasterMessage(const TSharedPtr<SJointToo
 		ToasterDisplayBox.Pin()->AddSlot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_PinGap)
+		.Padding(FJointEditorStyle::Margin_Tiny)
 		.AutoWidth()
 		[
 			Widget.ToSharedRef()

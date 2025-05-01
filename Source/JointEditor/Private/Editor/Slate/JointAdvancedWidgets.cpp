@@ -1,5 +1,4 @@
-﻿
-#include "JointAdvancedWidgets.h"
+﻿#include "JointAdvancedWidgets.h"
 
 #include "VoltDecl.h"
 #include "Module/Volt_ASM_Delay.h"
@@ -12,6 +11,7 @@
 #include "Module/Volt_ASM_Sequence.h"
 #include "Module/Volt_ASM_SetWidgetTransformPivot.h"
 #include "Module/Volt_ASM_Simultaneous.h"
+#include "Widgets/Input/SButton.h"
 
 #define LOCTEXT_NAMESPACE "JointAdvancedWidgets"
 
@@ -33,19 +33,37 @@ void SJointOutlineBorder::Construct(const FArguments& InArgs)
 
 
 	UnhoveredCheckingInterval = InArgs._UnhoveredCheckingInterval;
-
-
 	HoverAnimationSpeed = InArgs._HoverAnimationSpeed;
 	UnHoverAnimationSpeed = InArgs._UnHoverAnimationSpeed;
-	
-	if(InArgs._bUseOutline)
+
+	if (InArgs._OnMouseButtonDown.IsBound())
+	{
+		SetOnMouseButtonDown(InArgs._OnMouseButtonDown);
+	}
+
+	if (InArgs._OnMouseButtonUp.IsBound())
+	{
+		SetOnMouseButtonUp(InArgs._OnMouseButtonUp);
+	}
+
+	if (InArgs._OnMouseMove.IsBound())
+	{
+		SetOnMouseMove(InArgs._OnMouseMove);
+	}
+
+	if (InArgs._OnMouseDoubleClick.IsBound())
+	{
+		SetOnMouseDoubleClick(InArgs._OnMouseDoubleClick);
+	}
+
+	if (InArgs._bUseOutline)
 	{
 		ChildSlot[
 			SAssignNew(OuterBorder, SBorder)
 			.RenderTransformPivot(FVector2D(0.5, 0.5))
 			.BorderBackgroundColor(OutlineNormalColor)
 			.BorderImage(InArgs._OuterBorderImage)
-			.Padding(InArgs._OutlineMargin)
+			.Padding(InArgs._OutlinePadding)
 			.VAlign(VAlign_Fill)
 			.HAlign(HAlign_Fill)
 			.Visibility(EVisibility::SelfHitTestInvisible)
@@ -53,7 +71,7 @@ void SJointOutlineBorder::Construct(const FArguments& InArgs)
 				SAssignNew(InnerBorder, SBorder)
 				.BorderBackgroundColor(NormalColor)
 				.BorderImage(InArgs._InnerBorderImage)
-				.Padding(InArgs._ContentMargin)
+				.Padding(InArgs._ContentPadding)
 				.VAlign(InArgs._VAlign)
 				.HAlign(InArgs._HAlign)
 				.Visibility(EVisibility::SelfHitTestInvisible)
@@ -64,13 +82,14 @@ void SJointOutlineBorder::Construct(const FArguments& InArgs)
 				]
 			]
 		];
-	}else
+	}
+	else
 	{
 		ChildSlot[
 			SAssignNew(InnerBorder, SBorder)
 			.BorderBackgroundColor(NormalColor)
 			.BorderImage(InArgs._InnerBorderImage)
-			.Padding(InArgs._ContentMargin)
+			.Padding(InArgs._ContentPadding)
 			.VAlign(InArgs._VAlign)
 			.HAlign(InArgs._HAlign)
 			.Visibility(EVisibility::SelfHitTestInvisible)
@@ -83,7 +102,6 @@ void SJointOutlineBorder::Construct(const FArguments& InArgs)
 	}
 
 	PlayUnHoverAnimation();
-	
 }
 
 void SJointOutlineBorder::StopAllAnimation()
@@ -91,29 +109,29 @@ void SJointOutlineBorder::StopAllAnimation()
 	VOLT_STOP_ANIM(InnerBorderBackgroundColorTrack);
 
 	VOLT_STOP_ANIM(OuterBorderBackgroundColorTrack);
-		
+
 	VOLT_STOP_ANIM(OuterBorderTransformTrack);
 }
 
 void SJointOutlineBorder::PlayHoverAnimation()
 {
-	if(InnerBorder)
+	if (InnerBorder)
 	{
 		VOLT_STOP_ANIM(InnerBorderBackgroundColorTrack);
-		
+
 		UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.TargetColor(HoverColor)
 			.RateBasedInterpSpeed(HoverAnimationSpeed)
 		);
-		
+
 		InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(InnerBorder->AsShared(), ContentAnim);
 	}
 
-	if(OuterBorder)
+	if (OuterBorder)
 	{
 		VOLT_STOP_ANIM(OuterBorderBackgroundColorTrack);
-		
+
 		VOLT_STOP_ANIM(OuterBorderTransformTrack);
 
 		UVoltAnimation* OutlineAnim = VOLT_MAKE_ANIMATION()(
@@ -138,32 +156,33 @@ void SJointOutlineBorder::OnMouseEnter(const FGeometry& MyGeometry, const FPoint
 {
 	PlayHoverAnimation();
 
-	RegisterActiveTimer(UnhoveredCheckingInterval, 	FWidgetActiveTimerDelegate::CreateSP(this, &SJointOutlineBorder::CheckUnhovered));
+	RegisterActiveTimer(UnhoveredCheckingInterval,
+	                    FWidgetActiveTimerDelegate::CreateSP(this, &SJointOutlineBorder::CheckUnhovered));
 
 	OnHovered.ExecuteIfBound();
-	
+
 	SCompoundWidget::OnMouseEnter(MyGeometry, MouseEvent);
 }
 
 void SJointOutlineBorder::PlayUnHoverAnimation()
 {
-	if(InnerBorder)
+	if (InnerBorder)
 	{
 		VOLT_STOP_ANIM(InnerBorderBackgroundColorTrack);
-		
+
 		UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.TargetColor(NormalColor)
 			.RateBasedInterpSpeed(UnHoverAnimationSpeed)
 		);
-		
+
 		InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(InnerBorder->AsShared(), ContentAnim);
 	}
 
-	if(OuterBorder)
+	if (OuterBorder)
 	{
 		VOLT_STOP_ANIM(OuterBorderBackgroundColorTrack);
-		
+
 		VOLT_STOP_ANIM(OuterBorderTransformTrack);
 
 		UVoltAnimation* OutlineAnim = VOLT_MAKE_ANIMATION()(
@@ -187,11 +206,11 @@ void SJointOutlineBorder::PlayUnHoverAnimation()
 EActiveTimerReturnType SJointOutlineBorder::CheckUnhovered(double InCurrentTime, float InDeltaTime)
 {
 	//If it's still hovered, Continue.
-	if(IsHovered())
+	if (IsHovered())
 	{
 		return EActiveTimerReturnType::Continue;
 	}
-	
+
 	PlayUnHoverAnimation();
 
 	OnUnhovered.ExecuteIfBound();
@@ -200,23 +219,10 @@ EActiveTimerReturnType SJointOutlineBorder::CheckUnhovered(double InCurrentTime,
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 void SJointOutlineButton::Construct(const FArguments& InArgs)
 {
 	Content = InArgs._Content.Widget;
-	
+
 	NormalColor = InArgs._NormalColor;
 	HoverColor = InArgs._HoverColor;
 	PressColor = InArgs._PressColor;
@@ -237,7 +243,7 @@ void SJointOutlineButton::Construct(const FArguments& InArgs)
 		SAssignNew(Border, SBorder)
 		.BorderBackgroundColor(OutlineNormalColor)
 		.BorderImage(InArgs._OutlineBorderImage)
-		.Padding(InArgs._OutlineMargin)
+		.Padding(InArgs._OutlinePadding)
 		.VAlign(VAlign_Fill)
 		.HAlign(HAlign_Fill)
 		.Visibility(EVisibility::SelfHitTestInvisible)
@@ -245,7 +251,7 @@ void SJointOutlineButton::Construct(const FArguments& InArgs)
 			SAssignNew(Button, SButton)
 			.ButtonStyle(InArgs._ButtonStyle)
 			.ButtonColorAndOpacity(NormalColor)
-			.ContentPadding(InArgs._ContentMargin)
+			.ContentPadding(InArgs._ContentPadding)
 			.OnClicked(OnClicked)
 			.OnReleased(OnReleased)
 			.OnPressed(this, &SJointOutlineButton::EventOnPressed)
@@ -340,7 +346,7 @@ void SJointOutlineButton::PlayHoveredAnimation()
 		.TargetColor(OutlineHoverColor)
 		.RateBasedInterpSpeed(25)
 	);
-	
+
 	ColorTrack = VOLT_PLAY_ANIM(Button, Anim);
 	OutlineColorTrack = VOLT_PLAY_ANIM(Border, BorderColorAnim);
 }
@@ -350,8 +356,9 @@ void SJointOutlineButton::EventOnHovered()
 	PlayHoveredAnimation();
 
 	OnHovered.ExecuteIfBound();
-	
-	RegisterActiveTimer(UnhoveredCheckingInterval, 	FWidgetActiveTimerDelegate::CreateSP(this, &SJointOutlineButton::CheckUnhovered));
+
+	RegisterActiveTimer(UnhoveredCheckingInterval,
+	                    FWidgetActiveTimerDelegate::CreateSP(this, &SJointOutlineButton::CheckUnhovered));
 }
 
 void SJointOutlineButton::EventOnUnHovered()
@@ -365,7 +372,7 @@ void SJointOutlineButton::PlayUnhoveredAnimation()
 {
 	VOLT_STOP_ANIM(ColorTrack);
 	VOLT_STOP_ANIM(OutlineColorTrack);
-	
+
 	UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()(
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 		.TargetColor(NormalColor)
@@ -385,7 +392,7 @@ void SJointOutlineButton::PlayUnhoveredAnimation()
 
 EActiveTimerReturnType SJointOutlineButton::CheckUnhovered(double InCurrentTime, float InDeltaTime)
 {
-	if(IsHovered()) return EActiveTimerReturnType::Continue;
+	if (IsHovered()) return EActiveTimerReturnType::Continue;
 
 	EventOnUnHovered();
 
@@ -403,15 +410,21 @@ void SJointOutlineToggleButton::Construct(const FArguments& InArgs)
 	OnUnhovered = InArgs._OnUnhovered;
 
 	ButtonLength = InArgs._ButtonLength;
+	ToggleMovementPercentage = InArgs._ToggleMovementPercentage;
+
+	IsChecked = InArgs._IsChecked;
+	OnCheckStateChanged = InArgs._OnCheckStateChanged;
 
 
 	ChildSlot[
-		SAssignNew(Button, SButton)
+		SAssignNew(Button, SJointOutlineButton)
+		.OutlineBorderImage(InArgs._OutlineBorderImage)
 		.ButtonStyle(InArgs._ButtonStyle)
-		.ButtonColorAndOpacity(OffColor)
+		.NormalColor(OffColor)
+		.HoverColor(OffColor)
 		.OnPressed(this, &SJointOutlineToggleButton::EventOnPressed)
 		.OnHovered(this, &SJointOutlineToggleButton::EventOnHovered)
-		.ContentPadding(FMargin(ButtonLength, 4))
+		.ContentPadding(FMargin(ButtonLength, 2))
 		[
 			SAssignNew(Toggle, SBorder)
 			.BorderImage(InArgs._ToggleImage)
@@ -419,40 +432,55 @@ void SJointOutlineToggleButton::Construct(const FArguments& InArgs)
 		]
 	];
 
-	PlayToggleAnimation(bIsToggled, true);
+	LastState = IsChecked.Get(ECheckBoxState::Undetermined);
+
+	PlayToggleAnimation(LastState, true);
 }
 
-void SJointOutlineToggleButton::PlayToggleAnimation(const bool& bToggled, const bool& bInstant = false)
+void SJointOutlineToggleButton::PlayToggleAnimation(const ECheckBoxState& CheckBoxState, const bool& bInstant = false)
 {
-	VOLT_STOP_ALL_ANIM(Button->AsShared());
 	VOLT_STOP_ALL_ANIM(Toggle->AsShared());
 
-	UVoltAnimation* Color = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-		.TargetColor(bToggled ? OnColor : OffColor)
-		.RateBasedInterpSpeed(20)
-	);
 
 	UVoltAnimation* Transform = VOLT_MAKE_ANIMATION()
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D(bToggled ? ButtonLength * 0.66 : ButtonLength * -0.66, 0),
-		                                        FVector2D(1, 1), FVector2D(0, 0), 0))
+		.TargetWidgetTransform(FWidgetTransform(
+			FVector2D(CheckBoxState == ECheckBoxState::Checked
+				          ? ButtonLength * ToggleMovementPercentage
+				          : ButtonLength * -ToggleMovementPercentage, 0),
+			FVector2D(1, 1), FVector2D(0, 0), 0))
 		.RateBasedInterpSpeed(15)
 	);
 
-	VOLT_PLAY_ANIM(Button, Color);
+	Button->HoverColor = CheckBoxState == ECheckBoxState::Checked ? OnColor : OffColor;
+	Button->NormalColor = CheckBoxState == ECheckBoxState::Checked ? OnColor : OffColor;
+	Button->PressColor = CheckBoxState == ECheckBoxState::Checked ? OnColor : OffColor;
+
+	if (bInstant)
+	{
+		Button->PlayUnhoveredAnimation();
+	}
+	else
+	{
+		Button->PlayPressedAnim();
+	}
+
 	VOLT_PLAY_ANIM(Toggle, Transform);
 }
 
 void SJointOutlineToggleButton::EventOnPressed()
 {
-	bIsToggled = !bIsToggled;
+	OnCheckStateChanged.Execute(LastState);
 
-	PlayToggleAnimation(bIsToggled);
+	const ECheckBoxState& State = IsChecked.Get(ECheckBoxState::Undetermined);
 
-	OnPressed.ExecuteIfBound();
+	if (State != LastState)
+	{
+		LastState = State;
+
+		PlayToggleAnimation(LastState);
+	}
 }
 
 void SJointOutlineToggleButton::EventOnHovered()
@@ -467,7 +495,7 @@ void SJointOutlineToggleButton::EventOnUnHovered()
 
 EActiveTimerReturnType SJointOutlineToggleButton::CheckUnhovered(double InCurrentTime, float InDeltaTime)
 {
-	if(IsHovered()) return EActiveTimerReturnType::Continue;
+	if (IsHovered()) return EActiveTimerReturnType::Continue;
 
 	EventOnUnHovered();
 

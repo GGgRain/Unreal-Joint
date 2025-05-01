@@ -30,6 +30,16 @@ bool UJointEdGraphNode_Manager::CanDuplicateNode() const
 	return false;
 }
 
+bool UJointEdGraphNode_Manager::CanReplaceNodeClass()
+{
+	return false;
+}
+
+bool UJointEdGraphNode_Manager::CanReplaceEditorNodeClass()
+{
+	return false;
+}
+
 FLinearColor UJointEdGraphNode_Manager::GetNodeTitleColor() const
 {
 	return FColor::Turquoise;

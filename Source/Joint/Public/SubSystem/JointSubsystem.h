@@ -13,7 +13,6 @@ class AJointActor;
  * 
  */
 class UJointManager;
-class UJointNodeBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointBegin, AJointActor*, JointInstance, FGuid, JointGuid);
 

@@ -18,6 +18,7 @@
 #include "Framework/Text/RichTextLayoutMarshaller.h"
 #include "Framework/Text/RichTextMarkupProcessing.h"
 #include "Framework/Text/SyntaxHighlighterTextLayoutMarshaller.h"
+#include "Modules/ModuleManager.h"
 #include "Styling/SlateStyle.h"
 #include "TextEditor/SContextTextStyler.h"
 
@@ -103,7 +104,7 @@ void SContextTextEditor::AssignContextTextBox()
 #endif
 	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
 	.AutoWrapText(false)
-	.Margin(FJointEditorStyle::Margin_Border)
+	.Margin(FJointEditorStyle::Margin_Normal)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
 	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
@@ -129,7 +130,7 @@ void SContextTextEditor::AssignRawContextTextBox()
 	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
 	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
 	.AutoWrapText(false)
-	.Margin(FJointEditorStyle::Margin_Border)
+	.Margin(FJointEditorStyle::Margin_Normal)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
 	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
@@ -243,7 +244,7 @@ void SContextTextEditor::RebuildWidget()
 				.VAlign(VAlign_Center)
 				[
 					SAssignNew(SwapButton, SJointOutlineButton)
-					.ContentMargin(FJointEditorStyle::Margin_Button)
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
 					.HAlign(HAlign_Center)
 					.Visibility(VisibilityAttr)
 					.NormalColor(FLinearColor::Transparent)

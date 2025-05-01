@@ -8,6 +8,7 @@
 #include "JointEdGraphNode_Foundation.h"
 #include "JointManager.h"
 #include "EdGraphNode_Comment.h"
+#include "Editor.h"
 #include "GraphEditor.h"
 #include "Node/JointNodeBase.h"
 #include "ScopedTransaction.h"
@@ -48,7 +49,7 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* Paren
 	//Check if we are okay to proceed.
 	if (!NodeTemplate|| !ParentGraph) return nullptr;
 	
-	GEditor->BeginTransaction(NSLOCTEXT("JointEd", "AddNewNode", "Add New Node"));
+	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewSubNode", "Add new sub node (Fragment): {0}"), FText::FromString(NodeTemplate->NodeClassData.GetClass()->GetName())));
 
 	//Notify the modification for the transaction.
 	ParentGraph->Modify();
@@ -82,7 +83,7 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* Paren
 			GraphNode->Rename(nullptr, ParentGraph, REN_NonTransactional);
 
 			UJointNodeBase* NodeData = NewObject<UJointNodeBase>(ParentGraph->GetOuter(),
-																	   NodeTemplate->ClassData.GetClass(), NAME_None,
+																	   NodeTemplate->NodeClassData.GetClass(), NAME_None,
 																	   RF_Transactional);
 			GraphNode->NodeInstance = NodeData;
 			GraphNode->CreateNewGuid();
@@ -141,16 +142,15 @@ void FJointSchemaAction_NewSubNode::AddReferencedObjects(FReferenceCollector& Co
 }
 
 
-void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin,
-                                                                    UJointEdGraphNode* ResultNode)
+void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode)
 {
-	if (FromPin == nullptr) return;
+	if (FromPin == nullptr || ConnectedNode == nullptr) return;
 
 	switch (FromPin->Direction)
 	{
 	case EGPD_Input:
 
-		for (UEdGraphPin* AllPin : ResultNode->GetAllPins())
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
 		{
 			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Output) continue;
 			AllPin->Modify();
@@ -161,7 +161,7 @@ void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* Fr
 
 	case EGPD_Output:
 
-		for (UEdGraphPin* AllPin : ResultNode->GetAllPins())
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
 		{
 			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Input) continue;
 			AllPin->Modify();
@@ -174,6 +174,15 @@ void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* Fr
 
 	default: break;
 	}
+
+	//Force the node to update its connections.
+	if(UEdGraphNode* GraphNode = FromPin->GetOwningNode())
+	{
+		GraphNode->NodeConnectionListChanged();
+	}
+
+	ConnectedNode->NodeConnectionListChanged();
+	
 }
 
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin,
@@ -181,7 +190,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 {
 	UJointEdGraphNode* ResultNode = NodeTemplate;
 
-	if (!ResultNode) return nullptr;
+	if (!ResultNode || !ResultNode->NodeClassData.GetClass()) return nullptr;
 	if (!ParentGraph) return nullptr;
 
 	UJointManager* Manager = Cast<UJointManager>(ParentGraph->GetOuter());
@@ -189,7 +198,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 	if (!Manager) return nullptr;
 
 
-	GEditor->BeginTransaction(NSLOCTEXT("JointEd", "AddNewNode", "Add New Node"));
+	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewNode", "Add new node: {0}"), FText::FromString(ResultNode->NodeClassData.GetClass()->GetName())));
 
 	//Notify the modification for the transaction.
 	ResultNode->Modify();
@@ -202,12 +211,12 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 	ResultNode->Rename(nullptr, ParentGraph, REN_NonTransactional);
 
 	UJointNodeBase* NodeData = NewObject<UJointNodeBase>(ParentGraph->GetOuter(),
-															   ResultNode->ClassData.GetClass(), NAME_None,
+															   ResultNode->NodeClassData.GetClass(), NAME_None,
 															   RF_Transactional);
 
 	ResultNode->NodeInstance = NodeData;
-	ResultNode->ClassData = FGraphNodeClassData(ResultNode->ClassData.GetClass(),
-												FGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
+	ResultNode->NodeClassData = FJointGraphNodeClassData(ResultNode->NodeClassData.GetClass(),
+												FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
 	ResultNode->CreateNewGuid();
 	ResultNode->NodePosX = Location.X;
 	ResultNode->NodePosY = Location.Y;
@@ -232,7 +241,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* Parent
 	bool bSelectNewNode)
 {
 
-	if (!ParentGraph) return nullptr;
+	if (!NodeClass || !ParentGraph || !EdClass) return nullptr;
 
 	UJointEdGraphNode* ResultNode = NewObject<UJointEdGraphNode>(ParentGraph,EdClass);
 	
@@ -240,7 +249,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* Parent
 
 	if (!Manager) return nullptr;
 
-	GEditor->BeginTransaction(NSLOCTEXT("JointEd", "AddNewNode", "Add New Node"));
+	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewNode", "Add new node: {0}"), FText::FromString(NodeClass->GetName())));
 
 	//Notify the modification for the transaction.
 	ResultNode->Modify();
@@ -255,7 +264,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* Parent
 	UJointNodeBase* NodeData = NewObject<UJointNodeBase>(Manager, NodeClass, NAME_None,RF_Transactional);
 
 	ResultNode->NodeInstance = NodeData;
-	ResultNode->ClassData = FGraphNodeClassData(NodeClass, FGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
+	ResultNode->NodeClassData = FJointGraphNodeClassData(NodeClass, FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
 	ResultNode->CreateNewGuid();
 	ResultNode->NodePosX = Location.X;
 	ResultNode->NodePosY = Location.Y;

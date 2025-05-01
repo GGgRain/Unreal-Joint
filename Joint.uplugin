@@ -1,7 +1,7 @@
 {
     "FileVersion": 3,
-    "Version": "50",
-    "VersionName": "2.8.4",
+    "Version": "51",
+    "VersionName": "2.9.0",
     "FriendlyName": "Joint",
     "Description": "An advanced conversation system for projects.",
     "Category": "Conversation",

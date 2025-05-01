@@ -245,8 +245,8 @@ public:
 public:
 #if WITH_EDITORONLY_DATA
 
-	/** Graph for Joint Manager */
-	UPROPERTY()
+	/** Editor Graph Data for Joint Manager. */
+	UPROPERTY(VisibleAnywhere, Category="Editor")
 	class UEdGraph* JointGraph;
 #endif
 
@@ -281,5 +281,9 @@ public:
 	virtual bool IsSupportedForNetworking() const override;
 
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags);
+
+public:
+
+	virtual void Serialize(FArchive& Ar) override;
 	
 };

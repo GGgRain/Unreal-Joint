@@ -19,6 +19,7 @@
 
 #include "ToolMenu.h"
 #include "ToolMenuSection.h"
+#include "Engine/World.h"
 
 #include "Framework/Commands/GenericCommands.h"
 #include "Modules/ModuleManager.h"
@@ -53,11 +54,11 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
 
     UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-    TArray<FGraphNodeClassData> NodeClasses;
+    TArray<FJointGraphNodeClassData> NodeClasses;
 
     FJointEdUtils::GetNodeSubClasses(UJointNodeBase::StaticClass(), NodeClasses);
 
-    for (FGraphNodeClassData& NodeClass : NodeClasses)
+    for (FJointGraphNodeClassData& NodeClass : NodeClasses)
     {
         if (NodeClass.GetClass() == nullptr) continue;
 
@@ -81,7 +82,7 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
         const FText NodeTooltip = NodeClass.GetClass()->GetToolTipText();
 
         UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, EdGraphNodeClass);
-        OpNode->ClassData = NodeClass;
+        OpNode->NodeClassData = NodeClass;
 
         const TSharedPtr<FJointSchemaAction_NewNode> AddNodeAction = CreateNewNodeAction(
             NodeCategory, NodeTypeName, NodeTooltip);
@@ -97,10 +98,10 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
 
     UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-    TArray<FGraphNodeClassData> FragmentClasses;
+    TArray<FJointGraphNodeClassData> FragmentClasses;
     FJointEdUtils::GetNodeSubClasses(UJointFragment::StaticClass(), FragmentClasses);
 
-    for (FGraphNodeClassData& NodeClass : FragmentClasses)
+    for (FJointGraphNodeClassData& NodeClass : FragmentClasses)
     {
         //Make sure we are going to display this action or not.
         if (NodeClass.GetClass() == nullptr) continue;
@@ -124,7 +125,7 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
         const FText NodeTooltip = NodeClass.GetClass()->GetToolTipText();
 
         UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, TargetFragmentEdClass);
-        OpNode->ClassData = NodeClass;
+        OpNode->NodeClassData = NodeClass;
 
         const TSharedPtr<FJointSchemaAction_NewSubNode> AddSubnodeAction = CreateNewSubNodeAction(
             NodeCategory, NodeTypeName, NodeTooltip);

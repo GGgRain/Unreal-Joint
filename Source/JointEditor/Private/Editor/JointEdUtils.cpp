@@ -14,11 +14,11 @@
 
 class FJointEditorModule;
 
-void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FGraphNodeClassData>& ClassData)
+void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData)
 {
 	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<
 		FJointEditorModule>(TEXT("JointEditor"));
-	FGraphNodeClassHelper* ClassCache = EditorModule.GetEdClassCache().Get();
+	FJointGraphNodeClassHelper* ClassCache = EditorModule.GetEdClassCache().Get();
 
 	if(ClassCache)
 	{
@@ -26,12 +26,12 @@ void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FGra
 	}
 }
 
-void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FGraphNodeClassData>& ClassData)
+void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData)
 {
 	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<
 		FJointEditorModule>(TEXT("JointEditor"));
 
-	FGraphNodeClassHelper* ClassCache = EditorModule.GetClassCache().Get();
+	FJointGraphNodeClassHelper* ClassCache = EditorModule.GetClassCache().Get();
 
 	if(ClassCache)
 	{
@@ -39,13 +39,13 @@ void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FGraphNode
 	}
 }
 
-TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FGraphNodeClassData Class)
+TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FJointGraphNodeClassData Class)
 {
-	TArray<FGraphNodeClassData> ClassData;
+	TArray<FJointGraphNodeClassData> ClassData;
 
 	FJointEdUtils::GetEditorNodeSubClasses(UJointEdGraphNode::StaticClass(), ClassData);
 
-	for (FGraphNodeClassData& SubclassData : ClassData)
+	for (FJointGraphNodeClassData& SubclassData : ClassData)
 	{
 		TSubclassOf<UJointEdGraphNode> EdNodeClass = SubclassData.GetClass();
 
@@ -252,9 +252,9 @@ FText FJointEdUtils::GetFriendlyNameOfNode(const UJointNodeBase* Node)
 {
 	if(Node)
 	{
-		if(Node->bUseSimplifiedDisplayClassFriendlyNameText)
+		if(Node->EdNodeSetting.bUseSimplifiedDisplayClassFriendlyNameText)
 		{
-			return Node->SimplifiedClassFriendlyNameText;
+			return Node->EdNodeSetting.SimplifiedClassFriendlyNameText;
 		}else
 		{
 			return GetFriendlyNameFromClass(Node->GetClass());

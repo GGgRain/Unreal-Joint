@@ -64,7 +64,7 @@ public:
 	UJointEdGraphNode* NodeTemplate;
 
 public:
-	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ResultNode);
+	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode);
 	
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;

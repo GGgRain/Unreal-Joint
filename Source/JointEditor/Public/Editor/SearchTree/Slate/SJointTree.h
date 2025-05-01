@@ -49,6 +49,7 @@ public:
 
 	void OnColumnSortModeChanged(EColumnSortPriority::Type SortPriority, const FName& ColumnId,
 	                             EColumnSortMode::Type InSortMode);
+	void AbandonAndJoinWithBuilderThread();
 
 	/** Function to build the skeleton tree widgets from the source skeleton tree */
 	void BuildFromJointManagers();
@@ -62,7 +63,27 @@ public:
 
 public:
 
-	TArray<UJointManager*> JointManagerToShow;
+	TSharedPtr<SWidget> PopulateLoadingStateWidget();
+
+	void ShowLoadingStateWidget();
+
+	void HideLoadingStateWidget();
+	
+public:
+
+	void AsyncLock();
+
+	void AsyncUnlock();
+
+	const bool& IsAsyncLocked() const;
+	
+private:
+
+	bool bIsAsyncLocked = false;
+
+public:
+
+	TArray<TWeakObjectPtr<UJointManager>> JointManagerToShow;
 
 public:
 	
@@ -85,6 +106,10 @@ public:
 	TSharedPtr<class IJointTreeBuilder> Builder;
 
 	TSharedPtr<class FTextFilterExpressionEvaluator> TextFilterPtr;
+
+public:
+
+	TSharedPtr<class SWidget> LoadingStateSlate;
 
 public:
 	

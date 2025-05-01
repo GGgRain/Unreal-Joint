@@ -3,9 +3,9 @@
 #pragma once
 
 #include "ClassViewerFilter.h"
-#include "AIGraphTypes.h"
 #include "JointManager.h"
 #include "STextPropertyEditableTextBox.h"
+#include "Editor/SharedType/JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
 
 class UJointEdGraphNode;
@@ -14,13 +14,13 @@ class JOINTEDITOR_API FJointEdUtils
 {
 public:
 	//Get the editor node's subclasses of the provided class on the ClassCache of the engine instance.
-	static void GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FGraphNodeClassData>& ClassData);
+	static void GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
 
 	//Get the node's subclasses of the provided class on the ClassCache of the engine instance.
-	static void GetNodeSubClasses(const UClass* BaseClass, TArray<FGraphNodeClassData>& ClassData);
+	static void GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
 
 	//Find and return the first EditorGraphNode for the provided Joint node class. If there is no class for the node, returns nullptr;
-	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FGraphNodeClassData Class);
+	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FJointGraphNodeClassData Class);
 	
 
 	template <typename Type>

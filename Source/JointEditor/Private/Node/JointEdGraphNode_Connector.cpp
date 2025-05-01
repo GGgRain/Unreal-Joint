@@ -30,6 +30,18 @@ UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 	ConnectorName = LOCTEXT("ConnectorDefaultName", "New Connector");
 }
 
+
+bool UJointEdGraphNode_Connector::CanReplaceNodeClass()
+{
+	return false;
+}
+
+bool UJointEdGraphNode_Connector::CanReplaceEditorNodeClass()
+{
+	return false;
+}
+
+
 void UJointEdGraphNode_Connector::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	UpdatePins();
@@ -345,7 +357,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 	if (Direction == EEdGraphPinDirection::EGPD_Output)
 	{
 		NodeSlate->CenterContentBox->AddSlot()
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 
 				SNew(SVerticalBox)
@@ -354,7 +366,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot()
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.AutoWidth()
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
@@ -369,7 +381,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 						]
 					]
 					+ SHorizontalBox::Slot()
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.FillWidth(1)
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
@@ -384,13 +396,13 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 					SNew(SJointOutlineButton)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.ContentMargin(FJointEditorStyle::Margin_Button)
-					.OutlineMargin(1.5)
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.OutlinePadding(1.5)
 					.OnPressed_UObject(this, &UJointEdGraphNode_Connector::OnAddInputNodeButtonPressed)
 					[
 						SNew(SHorizontalBox)
 						+ SHorizontalBox::Slot()
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						.AutoWidth()
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
@@ -405,7 +417,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 							]
 						]
 						+ SHorizontalBox::Slot()
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						.FillWidth(1)
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
@@ -421,12 +433,12 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 	else
 	{
 		NodeSlate->CenterContentBox->AddSlot()
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				.AutoWidth()
 				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)
@@ -441,7 +453,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 					]
 				]
 				+ SHorizontalBox::Slot()
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				.FillWidth(1)
 				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)

@@ -109,7 +109,7 @@ public:
 	virtual ~IJointTreeBuilder() {};
 
 	/** Setup this builder with links to the tree and preview scene */
-	virtual void Initialize(const TSharedRef<class SJointTree>& InSkeletonTree, FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem) = 0;
+	virtual void Initialize(const TSharedRef<class SJointTree>& InTree, FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem) = 0;
 
 	/**
 	 * Build an array of skeleton tree items to display in the tree.
@@ -129,7 +129,17 @@ public:
 	virtual bool IsShowingNodes() const = 0;
 	
 	virtual bool IsShowingProperties() const = 0;
+
+public:
+
+	virtual const bool& IsBuilding() const = 0;
+	
+public:
+
+
+	virtual void SetShouldAbandonBuild(bool bInShouldAbandonBuild) = 0;
+
+	virtual const bool GetShouldAbandonBuild() const = 0;
 	
 };
-
 

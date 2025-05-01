@@ -3,8 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Framework/Docking/TabManager.h"
 
+class FTabManager;
 class IJointManagementSubTab;
+class FWorkspaceItem;
+class SDockTab;
 
 class JOINTEDITOR_API FJointManagementTabHandler : public TSharedFromThis<FJointManagementTabHandler>
 {
@@ -30,7 +34,7 @@ public:
 public:
 
 	const TArray<TSharedPtr<IJointManagementSubTab>>& GetSubTabs() const;
-
+	
 protected:
 
 	/**
@@ -39,6 +43,20 @@ protected:
 	 * Add your own sub tab definition on here to implement that as well. (This is useful when you are working on the external modules.
 	 */
 	TArray<TSharedPtr<IJointManagementSubTab>> SubTabs;
+
+public:
+	
+	void AddActiveGroup(FName Name, const TSharedPtr<FWorkspaceItem>& GroupWorkspaceItem);
+	
+	TSharedPtr<FWorkspaceItem> GetActiveGroupFor(const FName Key) const;
+
+
+protected:
+
+	//Grouping & Category - Use this to group your tabs in the management tab.
+
+	TMap<FName, TSharedPtr<FWorkspaceItem>> ActiveGroups;
+
 	
 };
 
@@ -53,8 +71,14 @@ public:
 	virtual ~IJointManagementSubTab() = default;
 
 public:
+
+	void SetParentTabHandler(const TWeakPtr<FJointManagementTabHandler>& InParentTabHandler);
+
+	TWeakPtr<FJointManagementTabHandler> GetParentTabHandler();
+
+public:
 	
-	virtual void RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager) = 0;
+	virtual void RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager);
 
 public:
 
@@ -63,7 +87,15 @@ public:
 	virtual const ETabState::Type GetInitialTabState();
 
 public:
+	
+	virtual const FName GetTabGroup();
+
+public:
+	
+	TWeakPtr<FJointManagementTabHandler> ParentTabHandler;
+	
+public:
 
 	static const FName TAB_ID_INVALID;
-
+	
 };

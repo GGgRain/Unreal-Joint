@@ -507,3 +507,8 @@ bool UJointManager::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch
 
 	return WroteSomething;
 }
+
+void UJointManager::Serialize(FArchive& Ar)
+{
+	UObject::Serialize(Ar);
+}

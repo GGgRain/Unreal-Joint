@@ -40,6 +40,6 @@ protected:
 	
 protected:
 
-	TArray<UJointManager*> Managers;
+	TArray<TWeakObjectPtr<UJointManager>> Managers;
 
 };

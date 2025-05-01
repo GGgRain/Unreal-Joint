@@ -3,14 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIGraphTypes.h"
+
+#if WITH_EDITOR
+#include "AIGraph/Classes/AIGraphTypes.h"
+#endif
 
 #include "Editor/Debug/JointNodeDebugData.h"
-
 #include "EdGraph/EdGraphNode.h"
 #include "Layout/Visibility.h"
 #include "Node/JointNodeBase.h"
 #include "EdGraph/EdGraphSchema.h"
+#include "Editor/SharedType/JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
 #include "JointEdGraphNode.generated.h"
 
@@ -43,25 +46,35 @@ public:
 public:
 	
 	//The instance of the runtime Joint node that this editor graph node represent on the graph.
-	UPROPERTY(BlueprintReadWrite, Category="Editor Node")
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
 	class UObject* NodeInstance;
 
-	//The class data of the instance of the runtime Joint node. It is used to restore the node instance if the instance becomes invalid. 
-	UPROPERTY()
+
+#if WITH_EDITOR
+
+	//The class data of the instance of the runtime Joint node. It is used to restore the node instance if the instance becomes invalid.
+	//Joint 2.9 : deprecated. Use NodeClassData instead.
+	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
 	struct FGraphNodeClassData ClassData;
+
+#endif
+	
+	//The class data of the instance of the runtime Joint node. It is used to restore the node instance if the instance becomes invalid. 
+	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
+	struct FJointGraphNodeClassData NodeClassData;
 
 public:
 	
 	/**
 	 * The parent node that this node is attached at. If this node is the highest node on the hierarchy, It is nullptr.
 	 * */
-	UPROPERTY(BlueprintReadWrite, Category="Editor Node")
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
 	class UJointEdGraphNode* ParentNode;
 
 	/**
 	 * The list of the sub nodes attached on this node.
 	 */
-	UPROPERTY(BlueprintReadWrite, Category="Editor Node")
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
 	TArray<UJointEdGraphNode*> SubNodes;
 
 	//The data of the pins that this graph node has. Modifying this property will affect the pins list of the node.
@@ -95,21 +108,21 @@ public:
 	//Internal properties
 
 	//Guid of the parent node. Used in the copy - paste actions of the tool kit and graph.
-	UPROPERTY(SkipSerialization)
+	UPROPERTY(SkipSerialization, meta=(IgnoreForMemberInitializationTest), VisibleAnywhere, Category="Developer Mode")
 	FGuid CachedParentGuidForCopyPaste;
 
 
 	//Used in the copy - paste actions of the tool kit and graph.
-	UPROPERTY(DuplicateTransient)
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
 	class UJointEdGraphNode* CachedParentNodeForCopyPaste;
 
-	UPROPERTY(DuplicateTransient)
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
 	TArray<UJointEdGraphNode*> CachedSubNodesForCopyPaste;
 
-	UPROPERTY(DuplicateTransient)
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
 	TObjectPtr<UJointNodeBase> CachedNodeInstanceParentNodeForCopyPaste;
 
-	UPROPERTY(DuplicateTransient)
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
 	TArray<TObjectPtr<UJointNodeBase>> CachedNodeInstanceSubNodesForCopyPaste;
 
 	void ClearCachedParentGuid();
@@ -127,19 +140,19 @@ public:
 	/**
 	 * Properties that are hidden for the node on the simple display widget.
 	 */
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
 	TSet<FName> SimpleDisplayHiddenProperties;
 	
 public:
 
 	TWeakPtr<FJointEditorToolkit> OptionalToolkit;
 
-protected:
+public:
 	
 	/**
 	 * TODO : make a synchronization code
 	 */
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
 	bool bFromExternal = true;
 	
 public:
@@ -192,15 +205,37 @@ public:
 	void NotifyDebugDataChangedToGraphNodeWidget(const struct FJointNodeDebugData* Data);
 
 public:
-	
+
+	/**
+	 * Replace current node instance object with the provided node class.
+	 * @param Class The class to replace to
+	 */
+	void ReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class);
+
+	/**
+	 * Return whether the node class can be replaced. If it returns false, it will hide the entry from the context menu.
+	 * @See CanPerformReplaceNodeClassTo for the actual check for each node class type.
+	 * @return whether the node class can be replaced
+	 */
+	virtual bool CanReplaceNodeClass();
+
+	virtual bool CanPerformReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class);
+
 	/**
 	 * Replace current graph node object instance with the provided editor node class.
 	 * It will be applied only when the provided editor node class supports the node instance type.
 	 * @param Class The class to replace to
 	 */
-	void ReplaceEditorNodeClassTo(const UClass* Class);
+	void ReplaceEditorNodeClassTo(TSubclassOf<UJointEdGraphNode> Class);
 
-	bool CheckCanPerformReplaceEditorNodeClassTo(const UClass* Class);
+	/**
+	 * Return whether the editor node class can be replaced. If it returns false, it will hide the entry from the context menu.
+	 * @See CanPerformReplaceNodeClassTo for the actual check for each node class type.
+	 * @return whether the node class can be replaced
+	 */
+	virtual bool CanReplaceEditorNodeClass();
+
+	virtual bool CanPerformReplaceEditorNodeClassTo(TSubclassOf<UJointEdGraphNode> Class);
 
 public:
 
@@ -510,6 +545,7 @@ public:
 	void GrabSlateDetailLevelFromNodeInstance();
 
 public:
+	
 	virtual void PostPlacedNewNode() override;
 	
 	virtual void PrepareForCopying() override;
@@ -575,8 +611,7 @@ protected:
 	 * @param DebugData optional debug data. nullptr if not present ( removed )
 	 */
 	virtual void OnDebugDataChanged(const struct FJointNodeDebugData* DebugData);
-
-
+	
 public:
 
 	//Update node instance to make it has valid data.
@@ -595,7 +630,7 @@ public:
 	virtual void UpdateNodeClassData();
 
 	//Update ClassData from provided UClass.
-	static void UpdateNodeClassDataFrom(UClass* InstanceClass, FGraphNodeClassData& UpdatedData);
+	static void UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGraphNodeClassData& UpdatedData);
 
 protected:
 
@@ -615,6 +650,15 @@ protected:
 	//Set the node instance's outer to the provided object.
 	virtual bool SetNodeInstanceOuterTo(UObject* NewOuter) const;
 
+public:
+
+	virtual void PatchNodeInstanceFromClassData(FArchive& Ar);
+	
+	/**
+	 * Serialize the node instance data. It also tries to patch up the node instance if the node instance is invalid.
+	 */
+	virtual void Serialize(FArchive& Ar) override;
+	
 public:
 
 	//In Joint 2.2, Update Error and UEdGraphNode related error message functions and properties are no longer used, since those are not that useful to display some advanced data for the system.

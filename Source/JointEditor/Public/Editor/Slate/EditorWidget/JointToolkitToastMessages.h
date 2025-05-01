@@ -6,6 +6,7 @@
 #include "VoltAnimationTrack.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SHorizontalBox;
 class UVoltAnimationManager;
 class SJointToolkitToastMessage;
 class SJointToolkitToastMessageHub;

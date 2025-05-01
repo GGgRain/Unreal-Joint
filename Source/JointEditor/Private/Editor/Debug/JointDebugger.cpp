@@ -863,7 +863,7 @@ UJointEdGraphNode* UJointDebugger::GetEditorNodeFor(UJointNodeBase* JointNodeBas
 
 	if (CastedGraph == nullptr) return nullptr;
 
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 	for (TSoftObjectPtr<UJointEdGraphNode> CachedJointGraphNode : GraphNodes)
 	{

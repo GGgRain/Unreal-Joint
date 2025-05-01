@@ -9,12 +9,13 @@
 #include "JointEdUtils.h"
 #include "Filter/JointTreeFilter.h"
 #include "ItemTag/JointTreeItemTag_Type.h"
+#include "UObject/TextProperty.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Text/SInlineEditableTextBlock.h"
 
 #define LOCTEXT_NAMESPACE "FJointTreeItem_Property"
 
-FJointTreeItem_Property::FJointTreeItem_Property(FProperty* InProperty, UObject* InObject,
+FJointTreeItem_Property::FJointTreeItem_Property(FProperty* InProperty, TWeakObjectPtr<UObject> InObject,
                                                        const TSharedRef<SJointTree>& InTree)
 	: FJointTreeItem(InTree),
 	  Property(InProperty),
@@ -60,7 +61,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
                                                                             FIsSelected InIsSelected)
 {
 
-	if (PropertyOuter == nullptr || Property == nullptr) return SNullWidget::NullWidget;
+	if (PropertyOuter.Get() == nullptr || Property == nullptr) return SNullWidget::NullWidget;
 
 	
 	if (DataColumnName == SJointTree::Columns::Value)
@@ -72,7 +73,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 			FString ExportedStringValue;
 
 #if UE_VERSION_OLDER_THAN(5, 1, 0)
-			Property->ExportTextItem(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), NULL,
+			Property->ExportTextItem(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 								 NULL, PPF_PropertyWindow, NULL);
 #else
 			Property->ExportTextItem_Direct(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter),
@@ -84,7 +85,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 			AdditionalRowSearchString = FJointTreeFilter::ReplaceInqueryableCharacters(ExportedStringValue);
 
 			TSharedPtr<SBorder> WrapperBorder = SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center);
@@ -109,13 +110,13 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 		{
 			const TAttribute<FText> ValueText_Attr = TAttribute<FText>::CreateLambda([this]
 				{
-					if (Property && PropertyOuter)
+					if (Property && PropertyOuter.Get())
 					{
 						FString ExportedStringValue;
 
 #if UE_VERSION_OLDER_THAN(5, 1, 0)
 						Property->ExportTextItem(ExportedStringValue,
-					 Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), NULL,
+					 Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 					 NULL, PPF_PropertyWindow, NULL);
 #else
 						Property->ExportTextItem_Direct(ExportedStringValue,
@@ -151,7 +152,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 		Args.NamePlacement = EPropertyNamePlacement::Hidden;
 
 		TSharedPtr<ISinglePropertyView> SinglePropertyViewWidget = PropertyEditorModule.CreateSingleProperty(
-			PropertyOuter,
+			PropertyOuter.Get(),
 			Property->GetFName(),
 			Args);
 
@@ -170,7 +171,7 @@ FName FJointTreeItem_Property::GetRowItemName() const
 
 UObject* FJointTreeItem_Property::GetObject() const
 {
-	return PropertyOuter;
+	return PropertyOuter.Get();
 }
 
 void FJointTreeItem_Property::AllocateItemTags()
@@ -218,7 +219,7 @@ void FJointTreeItem_Property::OnTextCommitted(const FText& Text, ETextCommit::Ty
 	if (CastField<FTextProperty>(Property))
 	{
 		FText CurText = CastField<FTextProperty>(Property)->GetPropertyValue(
-			Property->ContainerPtrToValuePtr<void>(PropertyOuter));
+			Property->ContainerPtrToValuePtr<void>(PropertyOuter.Get()));
 
 		FString OutKey, OutNamespace;
 
@@ -226,7 +227,7 @@ void FJointTreeItem_Property::OnTextCommitted(const FText& Text, ETextCommit::Ty
 		const FString Key = FTextInspector::GetKey(CurText).Get(FString());
 
 		FJointEdUtils::JointText_StaticStableTextIdWithObj(
-			PropertyOuter,
+			PropertyOuter.Get(),
 			IEditableTextProperty::ETextPropertyEditAction::EditedSource,
 			Text.ToString(),
 			Namespace,
@@ -236,7 +237,7 @@ void FJointTreeItem_Property::OnTextCommitted(const FText& Text, ETextCommit::Ty
 
 		CurText = FText::ChangeKey(FTextKey(OutNamespace), FTextKey(OutKey), Text);
 
-		CastField<FTextProperty>(Property)->SetPropertyValue(Property->ContainerPtrToValuePtr<void>(PropertyOuter),
+		CastField<FTextProperty>(Property)->SetPropertyValue(Property->ContainerPtrToValuePtr<void>(PropertyOuter.Get()),
 		                                                     CurText);
 
 		AdditionalRowSearchString = Text.ToString();
@@ -244,8 +245,8 @@ void FJointTreeItem_Property::OnTextCommitted(const FText& Text, ETextCommit::Ty
 	else if (CastField<FNameProperty>(Property) || CastField<FStrProperty>(Property))
 	{
 #if UE_VERSION_OLDER_THAN(5, 1, 0)
-		Property->ImportText(*Text.ToString(), Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), PPF_None,
-							 PropertyOuter);
+		Property->ImportText(*Text.ToString(), Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), PPF_None,
+							 PropertyOuter.Get());
 
 #else
 		
@@ -267,19 +268,19 @@ FReply FJointTreeItem_Property::OnMouseDoubleClick(const FGeometry& Geometry, co
 
 void FJointTreeItem_Property::OnItemDoubleClicked()
 {
-	if(GetJointPropertyTree() && PropertyOuter) GetJointPropertyTree()->JumpToHyperlink(PropertyOuter);
+	if(GetJointPropertyTree() && PropertyOuter.Get()) GetJointPropertyTree()->JumpToHyperlink(PropertyOuter.Get());
 }
 
 
 void FJointTreeItem_Property::CacheAdditionalRowSearchString()
 {
-	if (Property && PropertyOuter)
+	if (Property && PropertyOuter.Get())
 	{
 		FString ExportedStringValue;
 
 
 #if UE_VERSION_OLDER_THAN(5, 1, 0)
-		Property->ExportTextItem(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), NULL,
+		Property->ExportTextItem(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 								 NULL, PPF_PropertyWindow, NULL);
 #else
 		

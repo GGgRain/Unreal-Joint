@@ -6,6 +6,7 @@
 #include "ContentBrowserModule.h"
 #include "JointManager.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Engine/Blueprint.h"
 
 #include "Misc/EngineVersionComparison.h"
 

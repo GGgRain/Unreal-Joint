@@ -21,7 +21,7 @@ public:
 	
 public:
 
-	UPROPERTY(AdvancedDisplay, BlueprintReadWrite, EditAnywhere, Category = "Nodes")
+	UPROPERTY(AdvancedDisplay, BlueprintReadWrite, VisibleAnywhere, Category = "Nodes")
 	TArray<UJointNodeBase*> NextNode;
 
 public:

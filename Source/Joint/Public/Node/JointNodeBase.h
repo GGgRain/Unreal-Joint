@@ -3,8 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "SharedType/JointSharedTypes.h"
 #include "SharedType/JointBuildPreset.h"
+#include "SharedType/JointEdSharedTypes.h"
+
 #include "BlueprintUtilities.h"
 #include "GameplayTagAssetInterface.h"
 #include "GameplayTagContainer.h"
@@ -690,84 +693,53 @@ public:
 #if WITH_EDITORONLY_DATA
 	
 	/**
-     * Whether to use specified graph node body color
-     */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual|Node Body Color")
-	bool bUseSpecifiedGraphNodeBodyColor = false;
-	
-	/**
-	 * Node body's color. Change this to customize the color of the node.
+	 * Joint 2.9 : We moved all the properties that are related to the editor node on here. To update it properly, you must follow this:
+	 * 1. Visit Joint Management, and press "Update BP fragments' Node Editor Setting With Last Value" button, and save your projects.
+	 * 2. For the C++ nodes, you must update the properties manually. Just put "EdNodeSetting->" for your properties related to the editor node settings.
 	 */
-	UPROPERTY(EditAnywhere, Transient, Category="Editor Node|Visual|Node Body Color")
-	FLinearColor NodeBodyColor;
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor", meta=(DisplayName="Editor Node", ShowOnlyInnerProperties))
+	FJointEdNodeSetting EdNodeSetting;
 	
-	/**
-	 * The brush image to display inside the Iconic Node (a little colored block next to the node name) of the graph node slate.
-	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual|Iconic Node")
-	FSlateBrush IconicNodeImageBrush;
-
-	/**
-	 * Whether to display a ClassFriendlyName hint text next to the Iconic node that will be displayed only when SlateDetailLevel is not SlateDetailLevel_Maximum.
-	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual|Name")
-	bool bAllowDisplayClassFriendlyNameText = true;
-
-
-	/**
-	 * Whether to use the simplified display of the class friendly name text instead of original class friendly name text on the graph node.
-	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual|Name")
-	bool bUseSimplifiedDisplayClassFriendlyNameText = false;
-	
-	/**
-	 * The simplified class friendly name text that will be displayed on the graph node.
-	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual|Name")
-	FText SimplifiedClassFriendlyNameText;
-	
-	
-	/**
-	 * The SlateDetailLevel that the graph node of this node instance will use by default.
-	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor Node|Visual")
-	TEnumAsByte<EJointEdSlateDetailLevel::Type> DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
-
-	
-	/**
-	 * The data for the properties that will be displayed on the graph node by automatically generated slate.
-	 * Useful when you want to show some properties on the graph, but don't afford to implement a custom editor node class for the node.
-	 * Also, you can still use this value to implement a simple display for a property on custom editor node class.
-	 */
-	UPROPERTY(EditDefaultsOnly,Transient, Category="Editor Node|Editing")
-	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
-
-public:
-	
-	//The reference to the graph node. It will be feed to the node instance when only the editor is opened.
-	UPROPERTY(transient)
-	TWeakObjectPtr<UEdGraphNode> EdGraphNode;
-
 #endif
 
 public:
-
-
-	//Node Instance Pin Editing
 
 #if WITH_EDITORONLY_DATA
 
-	/**
-	 * If true, The detail tab of the node will show off the editor node's pin data property.
-	 * You can control it to make a new pin, or control the existing pins.
-	 * This works best with the fragments that you created by yourself.
-	 *
-	 * You must check this true to use OnPinConnectionChanged(), OnUpdatePinData() properly.
-	 */
-	UPROPERTY(EditDefaultsOnly, Category="Editor Node")
+	//DON'T USE THESE. USE JointEdNodeSetting INSTEAD.
+	
+	UPROPERTY()
+	bool bUseSpecifiedGraphNodeBodyColor = false;
+	
+	UPROPERTY()
+	FLinearColor NodeBodyColor;
+	
+	UPROPERTY()
+	FSlateBrush IconicNodeImageBrush;
+	
+	UPROPERTY()
+	bool bAllowDisplayClassFriendlyNameText = true;
+	
+	UPROPERTY()
+	bool bUseSimplifiedDisplayClassFriendlyNameText = false;
+	
+	UPROPERTY()
+	FText SimplifiedClassFriendlyNameText;
+	
+	UPROPERTY()
+	TEnumAsByte<EJointEdSlateDetailLevel::Type> DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
+	
+	UPROPERTY()
+	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
+	
+	UPROPERTY()
 	bool bAllowNodeInstancePinControl = false;
 
 #endif
+
+public:
+	
+	//Node Instance Pin Editing
 
 	/**
 	 * A function that will be triggered whenever a connection of the node has been changed on the graph.
@@ -795,6 +767,29 @@ public:
 
 public:
 
+	//Node Instance Node Attachment
+	
+	/**
+	 * A function that will be triggered whenever this node is being attached to this node.
+	 * Return response to allow or disallow the attachment.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category="Editor|Node Attachment")
+	const FJointEdPinConnectionResponse CanAttachThisAtParentNode(const UObject* InParentNode) const; 
+
+	virtual const FJointEdPinConnectionResponse CanAttachThisAtParentNode_Implementation(const UObject* InParentNode) const;
+	
+	/**
+	 * A function that will be triggered whenever this node is being attached to this node.
+	 * Return response to allow or disallow the attachment.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category="Editor|Node Attachment")
+	const FJointEdPinConnectionResponse CanAttachSubNodeOnThis(const UObject* InParentNode) const; 
+
+	virtual const FJointEdPinConnectionResponse CanAttachSubNodeOnThis_Implementation(const UObject* InParentNode) const; 
+
+	
+public:
+
 	bool GetAllowNodeInstancePinControl();
 
 public:
@@ -820,6 +815,16 @@ public:
 	static void IterateAndCollectAllFragmentsUnderNode(UJointNodeBase* NodeToCollect,
 	                                                   TArray<UJointFragment*>& Fragments,
 	                                                   TSubclassOf<UJointFragment> SpecificClassToFind);
+
+public:
+
+#if WITH_EDITORONLY_DATA
+	
+	//The reference to the graph node. It will be feed to the node instance when only the editor is opened.
+	UPROPERTY(transient)
+	TWeakObjectPtr<UEdGraphNode> EdGraphNode;
+
+#endif
 
 public:
 

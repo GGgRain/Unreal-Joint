@@ -13,7 +13,7 @@ public:
 	
 	Joint_PROPERTY_TREE_ITEM_TYPE(FJointTreeItem_Manager, FJointTreeItem)
 
-	FJointTreeItem_Manager(UJointManager* InManagerPtr, const TSharedRef<SJointTree>& InTree);
+	FJointTreeItem_Manager(TWeakObjectPtr<UJointManager> InManagerPtr, const TSharedRef<SJointTree>& InTree);
 
 public:
 
@@ -35,7 +35,6 @@ public:
 
 private:
 	
-	UPROPERTY()
-	UJointManager* JointManagerPtr;
+	TWeakObjectPtr<UJointManager> JointManagerPtr;
 
 };

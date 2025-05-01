@@ -3,8 +3,11 @@
 #include "JointManagement.h"
 
 #include "JointEditorStyle.h"
+#include "Framework/Docking/LayoutService.h"
+#include "Framework/Docking/TabManager.h"
 
 #include "Slate/SJointManagement.h"
+#include "Widgets/Docking/SDockTab.h"
 
 #define LOCTEXT_NAMESPACE "JointManagementTab"
 
@@ -19,12 +22,15 @@ TSharedRef<FJointManagementTabHandler> FJointManagementTabHandler::MakeInstance(
 
 TSharedRef<SDockTab> FJointManagementTabHandler::SpawnJointManagementTab()
 {
-	auto NomadTab = SNew(SDockTab)
-	.TabRole(ETabRole::NomadTab)
-	.Label(LOCTEXT("JointManagementTabTitle", "Joint Management"));
+	//Flush down previous group.
+	ActiveGroups.Empty();
+
+	TSharedRef<SDockTab> NomadTab = SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		.Label(LOCTEXT("JointManagementTabTitle", "Joint Management"));
 
 	const TSharedRef<FTabManager> NewSubTabManager = FGlobalTabmanager::Get()->NewTabManager(NomadTab);
-	
+
 	NewSubTabManager->SetOnPersistLayout(
 		FTabManager::FOnPersistLayout::CreateStatic(
 			[](const TSharedRef<FTabManager::FLayout>& InLayout)
@@ -36,7 +42,7 @@ TSharedRef<SDockTab> FJointManagementTabHandler::SpawnJointManagementTab()
 			}
 		)
 	);
-	
+
 	NomadTab->SetTabIcon(FJointEditorStyle::Get().GetBrush("ClassIcon.JointManager"));
 
 	NomadTab->SetOnTabClosed(
@@ -53,7 +59,7 @@ TSharedRef<SDockTab> FJointManagementTabHandler::SpawnJointManagementTab()
 			, TWeakPtr<FTabManager>(NewSubTabManager)
 		)
 	);
-	
+
 	auto MainWidget = SNew(SJointManagement)
 		.TabManager(NewSubTabManager)
 		.JointManagementTabHandler(SharedThis(this));
@@ -67,9 +73,9 @@ bool FJointManagementTabHandler::ContainsSubTabForId(const FName& TabId)
 {
 	for (TSharedPtr<IJointManagementSubTab> JointManagementSubTab : SubTabs)
 	{
-		if(!JointManagementSubTab.IsValid()) continue;
+		if (!JointManagementSubTab.IsValid()) continue;
 
-		if(JointManagementSubTab->GetTabId() == TabId)
+		if (JointManagementSubTab->GetTabId() == TabId)
 		{
 			return true;
 		}
@@ -82,10 +88,41 @@ const TArray<TSharedPtr<IJointManagementSubTab>>& FJointManagementTabHandler::Ge
 	return SubTabs;
 }
 
+void FJointManagementTabHandler::AddActiveGroup(const FName Name, const TSharedPtr<FWorkspaceItem>& GroupWorkspaceItem)
+{
+	if(!ActiveGroups.Contains(Name))
+	{
+		ActiveGroups.Add(Name, GroupWorkspaceItem);
+	}
+}
+
+TSharedPtr<FWorkspaceItem> FJointManagementTabHandler::GetActiveGroupFor(const FName Key) const
+{
+	if(ActiveGroups.Contains(Key))
+	{
+		return ActiveGroups.FindRef(Key);
+	}
+	
+	return nullptr;
+}
 
 const FName IJointManagementSubTab::TAB_ID_INVALID("TAB_ID_INVALID");
 
-IJointManagementSubTab::IJointManagementSubTab() 
+IJointManagementSubTab::IJointManagementSubTab()
+{
+}
+
+void IJointManagementSubTab::SetParentTabHandler(const TWeakPtr<FJointManagementTabHandler>& InParentTabHandler)
+{
+	ParentTabHandler = InParentTabHandler;
+}
+
+TWeakPtr<FJointManagementTabHandler> IJointManagementSubTab::GetParentTabHandler()
+{
+	return ParentTabHandler;
+}
+
+void IJointManagementSubTab::RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager)
 {
 }
 
@@ -99,21 +136,30 @@ const ETabState::Type IJointManagementSubTab::GetInitialTabState()
 	return ETabState::OpenedTab;
 }
 
+const FName IJointManagementSubTab::GetTabGroup()
+{
+	return ""; // Empty group by default.
+}
+
 void FJointManagementTabHandler::AddSubTab(const TSharedRef<IJointManagementSubTab>& SubTab)
 {
 	const FName& TabId = SubTab->GetTabId();
 
-	if(TabId == IJointManagementSubTab::TAB_ID_INVALID)
+	if (TabId == IJointManagementSubTab::TAB_ID_INVALID)
 	{
-		UE_LOG(LogTemp,Error,TEXT("FJointManagementTabHandler : Detected a sub tab with TAB_ID_INVALID id. You must specify its id to be unique one. This tab will not be added."));
-		
+		UE_LOG(LogTemp, Error,
+		       TEXT(
+			       "FJointManagementTabHandler : Detected a sub tab with TAB_ID_INVALID id. You must specify its id to be unique one. This tab will not be added."
+		       ));
+
 		return;
 	}
-	
+
 	if (ContainsSubTabForId(TabId)) return;
+
+	SubTab->SetParentTabHandler(AsShared());
 
 	SubTabs.Add(SubTab);
 }
 
 #undef LOCTEXT_NAMESPACE
-

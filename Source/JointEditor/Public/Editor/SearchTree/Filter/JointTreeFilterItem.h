@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Input/Reply.h"
 
 enum class ETextFilterExpressionType : uint8;
 class FJointTreeFilter;
