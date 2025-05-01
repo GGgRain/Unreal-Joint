@@ -4,6 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "IJointTreeBuilder.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
+#include "Chaos/AABB.h"
 
 
 class UJointNodeBase;
@@ -31,10 +39,15 @@ struct JOINTEDITOR_API FJointPropertyTreeBuilderArgs
 class JOINTEDITOR_API FJointTreeBuilder : public IJointTreeBuilder
 {
 public:
+	
 	FJointTreeBuilder(const FJointPropertyTreeBuilderArgs& InBuilderArgs);
 
-	/** ISkeletonTreeBuilder interface */
-	virtual void Initialize(const TSharedRef<class SJointTree>& InSkeletonTree, FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem) override;
+	~FJointTreeBuilder();
+
+public:
+
+	virtual void Initialize(const TSharedRef<class SJointTree>& InTree, FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem) override;
+	
 	virtual void Build(FJointTreeBuilderOutput& Output) override;
 	virtual void Filter(const FJointPropertyTreeFilterArgs& InArgs, const TArray<TSharedPtr<class IJointTreeItem>>& InItems, TArray<TSharedPtr<class IJointTreeItem>>& OutFilteredItems) override;
 	virtual EJointTreeFilterResult FilterItem(const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem) override;
@@ -50,12 +63,12 @@ protected:
 	void AddNodes(FJointTreeBuilderOutput& Output);
 
 	void AddProperties(FJointTreeBuilderOutput& Output);
-	
-	TSharedRef<class IJointTreeItem> CreateManagerTreeItem(UJointManager* ManagerPtr);
-	
-	TSharedRef<class IJointTreeItem> CreateNodeTreeItem(UJointNodeBase* NodePtr);
 
-	TSharedRef<class IJointTreeItem> CreatePropertyTreeItem(FProperty* Property ,UObject* InObject);
+	TSharedPtr<IJointTreeItem> CreateManagerTreeItem(TWeakObjectPtr<UJointManager> ManagerPtr);
+
+	TSharedPtr<IJointTreeItem> CreateNodeTreeItem(UJointNodeBase* NodePtr);
+
+	TSharedPtr<IJointTreeItem> CreatePropertyTreeItem(FProperty* Property, UObject* InObject);
 	
 	/** Helper function for filtering */
 	EJointTreeFilterResult FilterRecursive(const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<IJointTreeItem>& InItem, TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems);
@@ -69,5 +82,23 @@ protected:
 
 	/** The tree we will build against */
 	TWeakPtr<class SJointTree> TreePtr;
+
+public:
+
+	virtual const bool& IsBuilding() const override;
+
+public:
+
+	bool bIsBuilding = false;
+
+public:
+
+	virtual void SetShouldAbandonBuild(bool bNewInShouldAbandonBuild) override;
+
+	virtual const bool GetShouldAbandonBuild() const override;
+
+protected:
+
+	bool bShouldAbandonBuild = false;
 	
 };

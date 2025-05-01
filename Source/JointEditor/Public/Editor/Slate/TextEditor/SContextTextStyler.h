@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "SAdvancedMultiLineTextEditor.h"
+#include "Widgets/Input/SComboBox.h"
 
 /**
  * Styler widget for the context text editor.
  * It notifies the text style update request holds all the references related to the style instance and text style. 
  */
 
+class STextBlock;
 class SJointOutlineButton;
 class SContextTextEditor;
 class SDataTablePicker;

@@ -1,7 +1,7 @@
 {
     "FileVersion": 3,
-    "Version": "50",
-    "VersionName": "2.8.4",
+    "Version": "51",
+    "VersionName": "2.9.0",
     "FriendlyName": "Joint",
     "Description": "An advanced conversation system for projects.",
     "Category": "Conversation",
@@ -17,34 +17,22 @@
         {
             "Name": "Joint",
             "Type": "Runtime",
-            "LoadingPhase": "PreDefault",
-            "PlatformAllowList": [
-                "Win64"
-            ]
+            "LoadingPhase": "PreDefault"
         },
         {
             "Name": "JointEditor",
             "Type": "Editor",
-            "LoadingPhase": "Default",
-            "PlatformAllowList": [
-                "Win64"
-            ]
+            "LoadingPhase": "Default"
         },
         {
             "Name": "VoltCore",
             "Type": "Runtime",
-            "LoadingPhase": "PreDefault",
-            "PlatformAllowList": [
-                "Win64"
-            ]
+            "LoadingPhase": "PreDefault"
         },
         {
             "Name": "Volt",
             "Type": "Runtime",
-            "LoadingPhase": "PreDefault",
-            "PlatformAllowList": [
-                "Win64"
-            ]
+            "LoadingPhase": "PreDefault"
         }
     ],
     "Plugins": [

@@ -11,6 +11,7 @@ class UJointEdGraphNode;
 class SGraphPin;
 class SGraphNode;
 class SVerticalBox;
+class SImage;
 class SJointGraphNodeBase;
 
 class JOINTEDITOR_API SJointBreakpointIndicator : public SCompoundWidget

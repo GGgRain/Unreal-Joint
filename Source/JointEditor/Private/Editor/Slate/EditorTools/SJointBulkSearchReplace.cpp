@@ -195,7 +195,7 @@ void SJointBulkSearchReplace::OnJointListAssetDoubleClicked(const FAssetData& As
 {
 	const TArray<FAssetData>& CurrentAssetData = JointList->GetCurrentSelection();
 	
-	TArray<UJointManager*> Managers;
+	TArray<TWeakObjectPtr<UJointManager>> Managers;
 	
 	for (const FAssetData& InAssetData : CurrentAssetData)
 	{
@@ -214,7 +214,7 @@ void SJointBulkSearchReplace::OnJointListAssetActivated(const TArray<FAssetData>
 
 	const TArray<FAssetData>& CurrentAssetData = JointList->GetCurrentSelection();
 	
-	TArray<UJointManager*> Managers;
+	TArray<TWeakObjectPtr<UJointManager>> Managers;
 	
 	for (const FAssetData& InAssetData : CurrentAssetData)
 	{
@@ -231,7 +231,7 @@ void SJointBulkSearchReplace::OnJointListAssetSelected(const FAssetData& AssetDa
 {
 	const TArray<FAssetData>& CurrentAssetData = JointList->GetCurrentSelection();
 	
-	TArray<UJointManager*> Managers;
+	TArray<TWeakObjectPtr<UJointManager>> Managers;
 	
 	for (const FAssetData& InAssetData : CurrentAssetData)
 	{

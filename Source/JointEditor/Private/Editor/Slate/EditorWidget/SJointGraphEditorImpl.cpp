@@ -957,9 +957,9 @@ void SJointGraphEditorImpl::AddContextMenuCommentSection(UToolMenu* InMenu)
             UEdGraphNode* SelectedNode = NodeWeakPtr.Get();
             FString NewString = NewText.ToString();
             if (SelectedNode && !SelectedNode->NodeComment.Equals(NewString, ESearchCase::CaseSensitive))
-            {
+            {	
                 // send property changed events
-                const FScopedTransaction Transaction(LOCTEXT("EditNodeComment", "Change Node Comment"));
+                const FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction","TransactionTitle_EditNodeComment", "Change node comment"));
                 SelectedNode->Modify();
                 FProperty* NodeCommentProperty = FindFProperty<FProperty>(SelectedNode->GetClass(), "NodeComment");
                 if (NodeCommentProperty != nullptr)
@@ -1384,7 +1384,7 @@ void SJointGraphEditorImpl::ReconstructNodes()
     {
         if (const UJointEdGraphSchema* CastedSchema = Cast<UJointEdGraphSchema>(Schema))
         {
-            FScopedTransaction const Transaction(LOCTEXT("ReconstructNodeTransaction", "Refresh Node(s)"));
+            FScopedTransaction const Transaction(NSLOCTEXT("JointEdTransaction","TransactionTitle_ReconstructNode", "Refresh Node(s)"));
 
             for (FGraphPanelSelectionSet::TConstIterator NodeIt(GraphPanel->SelectionManager.GetSelectedNodes()); NodeIt; ++
                  NodeIt)
@@ -1407,7 +1407,7 @@ void SJointGraphEditorImpl::ReconstructNodes()
 
 void SJointGraphEditorImpl::BreakNodeLinks()
 {
-    const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "GraphEd_BreakNodeLinks", "Break Node Links"));
+    const FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_BreakNodeLinks", "Break node links"));
 
     for (FGraphPanelSelectionSet::TConstIterator NodeIt(GraphPanel->SelectionManager.GetSelectedNodes()); NodeIt; ++
          NodeIt)

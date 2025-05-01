@@ -2,9 +2,11 @@
 
 #include "ItemTag/JointTreeItemTag_Type.h"
 
+#include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
 #include "Filter/JointTreeFilter.h"
 #include "Filter/JointTreeFilterItem.h"
+#include "Widgets/Images/SImage.h"
 
 #define LOCTEXT_NAMESPACE "FJointTreeItemTag_Type"
 
@@ -32,10 +34,11 @@ TSharedRef<SWidget> FJointTreeItemTag_Type::MakeTagWidget()
 {
 	if (Icon == nullptr)
 	{
-		return SNew(SButton)
+		return SNew(SJointOutlineButton)
 			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
-			.ButtonColorAndOpacity(FLinearColor(0.02, 0.02, 0.03))
-			.ContentPadding(FJointEditorStyle::Margin_Tag)
+			.NormalColor(FLinearColor(0.02, 0.02, 0.03))
+			.HoverColor(FLinearColor(0.02, 0.02, 0.03) * 2)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.OnClicked(this, &FJointTreeItemTag_Type::AddFilterText)
@@ -59,11 +62,11 @@ TSharedRef<SWidget> FJointTreeItemTag_Type::MakeTagWidget()
 	}
 	else
 	{
-		return
-			SNew(SButton)
+		return SNew(SJointOutlineButton)
 			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
-			.ButtonColorAndOpacity(FLinearColor(0.02, 0.02, 0.03))
-			.ContentPadding(FJointEditorStyle::Margin_Tag)
+			.NormalColor(FLinearColor(0.02, 0.02, 0.03))
+			.HoverColor(FLinearColor(0.02, 0.02, 0.03) * 2)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.OnClicked(this, &FJointTreeItemTag_Type::AddFilterText)

@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointEdGraphSchemaActions.h"
+#include "Widgets/SCompoundWidget.h"
 
 class SScrollBox;
 class UJointEdGraphNode;
@@ -13,8 +15,6 @@ class FJointEditorToolkit;
 
 class JOINTEDITOR_API SJointFragmentPalette : public SCompoundWidget
 {
-	
-public:
 
 public:
 	SLATE_BEGIN_ARGS(SJointFragmentPalette){}

@@ -171,7 +171,9 @@ public:
 	virtual TSharedRef<SWidget> PopulateSimpleDisplayForProperties();
 
 public:
-
+	
+	virtual TSharedRef<SBorder> CreateNodeBody(const bool bSphere = false);
+	
 	virtual TSharedRef<SJointOutlineBorder> CreateNodeBackground(const bool bSphere = false);
 
 public:

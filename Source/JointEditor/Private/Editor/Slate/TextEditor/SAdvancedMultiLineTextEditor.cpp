@@ -21,6 +21,7 @@
 #include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SGridPanel.h"
 #include "Widgets/Text/SRichTextBlock.h"
+#include "Widgets/Input/SComboBox.h"
 
 #define LOCTEXT_NAMESPACE "AdvancedMultiLineTextEditor"
 
@@ -399,7 +400,7 @@ TSharedRef<SWidget> SAdvancedMultiLineTextEditor::BuildColorPickerButton()
 {
 	return SNew(SButton)
 		.ButtonStyle(FJointEditorStyle::Get(), "RichText.Toolbar.Button")
-		.ContentPadding(FJointEditorStyle::Margin_Button)
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
 		.OnClicked(this, &SAdvancedMultiLineTextEditor::OpenFontColorPicker)
 		[
 			SNew(SOverlay)
@@ -538,7 +539,7 @@ TSharedRef<SWidget> SAdvancedMultiLineTextEditor::BuildHyperlinkButton()
 			[
 				SNew(SButton)
 				.ButtonStyle(FJointEditorStyle::Get(), "RichText.Toolbar.Button")
-				.ContentPadding(FJointEditorStyle::Margin_Button)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
 				.OnClicked(
 					this, &SAdvancedMultiLineTextEditor::HandleInsertHyperlinkClicked)
 				[

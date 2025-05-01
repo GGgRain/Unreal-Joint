@@ -16,14 +16,14 @@
 #define LOCTEXT_NAMESPACE "FJointTreeBuilder"
 
 void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
-                                             const FName& InParentName, const FName& InParentType, bool bAddToHead)
+                                  const FName& InParentName, const FName& InParentType, bool bAddToHead)
 {
 	Add(InItem, InParentName, TArray<FName, TInlineAllocator<1>>({InParentType}), bAddToHead);
 }
 
 void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
-                                             const FName& InParentName, TArrayView<const FName> InParentTypes,
-                                             bool bAddToHead)
+                                  const FName& InParentName, TArrayView<const FName> InParentTypes,
+                                  bool bAddToHead)
 {
 	TSharedPtr<IJointTreeItem> ParentItem = Find(InParentName, InParentTypes);
 	if (ParentItem.IsValid())
@@ -53,6 +53,8 @@ TSharedPtr<class IJointTreeItem> FJointTreeBuilderOutput::Find(
 {
 	for (const TSharedPtr<IJointTreeItem>& Item : LinearItems)
 	{
+		if (!Item.IsValid()) continue;
+
 		bool bPassesType = (InTypes.Num() == 0);
 		for (const FName& TypeName : InTypes)
 		{
@@ -74,8 +76,13 @@ FJointTreeBuilder::FJointTreeBuilder(const FJointPropertyTreeBuilderArgs& InBuil
 {
 }
 
+FJointTreeBuilder::~FJointTreeBuilder()
+{
+	FJointTreeBuilder::SetShouldAbandonBuild(true);
+}
+
 void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
-                                              FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem)
+                                   FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem)
 {
 	TreePtr = InTree;
 	OnFilterJointPropertyTreeItem = InOnFilterSkeletonTreeItem;
@@ -83,16 +90,20 @@ void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
 
 void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
 {
-	if (BuilderArgs.bShowJointManagers) { AddJointManagers(Output); }
+	bIsBuilding = true;
 
-	if (BuilderArgs.bShowNodes) { AddNodes(Output); }
+	if (!GetShouldAbandonBuild() && BuilderArgs.bShowJointManagers) { AddJointManagers(Output); }
 
-	if (BuilderArgs.bShowProperties) { AddProperties(Output); }
+	if (!GetShouldAbandonBuild() && BuilderArgs.bShowNodes) { AddNodes(Output); }
+
+	if (!GetShouldAbandonBuild() && BuilderArgs.bShowProperties) { AddProperties(Output); }
+
+	bIsBuilding = false;
 }
 
 void FJointTreeBuilder::Filter(const FJointPropertyTreeFilterArgs& InArgs,
-                                          const TArray<TSharedPtr<IJointTreeItem>>& InItems
-                                          , TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
+                               const TArray<TSharedPtr<IJointTreeItem>>& InItems
+                               , TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
 {
 	OutFilteredItems.Empty();
 
@@ -155,6 +166,21 @@ EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
 	return FilterResult;
 }
 
+const bool& FJointTreeBuilder::IsBuilding() const
+{
+	return bIsBuilding;
+}
+
+void FJointTreeBuilder::SetShouldAbandonBuild(const bool bNewInShouldAbandonBuild)
+{
+	bShouldAbandonBuild = bNewInShouldAbandonBuild;
+}
+
+const bool FJointTreeBuilder::GetShouldAbandonBuild() const
+{
+	return bShouldAbandonBuild || IsEngineExitRequested() || IsRunningCommandlet() || IsGarbageCollecting();
+}
+
 EJointTreeFilterResult FJointTreeBuilder::FilterItem(
 	const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem)
 {
@@ -172,12 +198,12 @@ void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
 {
 	struct FJointManagerInfo
 	{
-		FJointManagerInfo(UJointManager* InManager)
+		FJointManagerInfo(TWeakObjectPtr<UJointManager> InManager)
 			: JointManager(InManager)
 		{
-			if (JointManager)
+			if (JointManager.Get())
 			{
-				SortString = JointManager->GetName();
+				SortString = JointManager.Get()->GetName();
 				SortNumber = 0;
 				SortLength = SortString.Len();
 			}
@@ -188,12 +214,12 @@ void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
 			{
 				SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
 			}
-#if UE_VERSION_OLDER_THAN(5,5,0)
-				SortString.LeftInline(Index + 1, false);
+#if UE_VERSION_OLDER_THAN(5, 5, 0)
+			SortString.LeftInline(Index + 1, false);
 #else
 				SortString.LeftInline(Index + 1, EAllowShrinking::No);
 #endif
-			}
+		}
 
 		bool operator<(const FJointManagerInfo& RHS)
 		{
@@ -207,7 +233,7 @@ void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
 			return (SortNumber == 0) ? SortLength < RHS.SortLength : SortLength > RHS.SortLength;
 		}
 
-		UJointManager* JointManager;
+		TWeakObjectPtr<UJointManager> JointManager;
 
 		FString SortString;
 		int32 SortNumber = 0;
@@ -215,13 +241,16 @@ void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
 	};
 
 	TArray<FJointManagerInfo> Managers;
+	
 	Managers.Reserve(TreePtr.Pin()->JointManagerToShow.Num());
 
 	for (int i = 0; i < TreePtr.Pin()->JointManagerToShow.Num(); ++i)
 	{
+		if (GetShouldAbandonBuild()) break;
+
 		if (!TreePtr.Pin()->JointManagerToShow.IsValidIndex(i)) continue;
 
-		if (!TreePtr.Pin()->JointManagerToShow[i]) continue;
+		if (!TreePtr.Pin()->JointManagerToShow[i].IsValid()) continue;
 
 		Managers.Emplace(FJointManagerInfo(TreePtr.Pin()->JointManagerToShow[i]));
 	}
@@ -231,17 +260,25 @@ void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
 	// Add the sorted bones to the skeleton tree
 	for (const FJointManagerInfo& Manager : Managers)
 	{
-		if (!Manager.JointManager) { continue; }
-		TSharedRef<IJointTreeItem> DisplayNode = CreateManagerTreeItem(Manager.JointManager);
+		if (GetShouldAbandonBuild()) break;
+
+		if (!Manager.JointManager.Get()) { continue; }
+		
+		TSharedPtr<IJointTreeItem> DisplayNode = CreateManagerTreeItem(Manager.JointManager);
+
+		if (!DisplayNode.IsValid()) continue;
+		
 		Output.Add(DisplayNode, NAME_None, FJointTreeItem_Manager::GetTypeId());
 	}
 }
 
 void FJointTreeBuilder::AddNodes(FJointTreeBuilderOutput& Output)
 {
-	for (UJointManager* Manager : TreePtr.Pin()->JointManagerToShow)
+	for (TWeakObjectPtr<UJointManager> Manager : TreePtr.Pin()->JointManagerToShow)
 	{
-		if (!Manager) { return; }
+		if (GetShouldAbandonBuild()) break;
+
+		if (!Manager.Get()) { return; }
 
 		struct FNodeInfo
 		{
@@ -261,7 +298,7 @@ void FJointTreeBuilder::AddNodes(FJointTreeBuilderOutput& Output)
 				{
 					SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
 				}
-#if UE_VERSION_OLDER_THAN(5,5,0)
+#if UE_VERSION_OLDER_THAN(5, 5, 0)
 				SortString.LeftInline(Index + 1, false);
 #else
 				SortString.LeftInline(Index + 1, EAllowShrinking::No);
@@ -291,60 +328,76 @@ void FJointTreeBuilder::AddNodes(FJointTreeBuilderOutput& Output)
 
 		// Gather the nodes.
 
-		for (UJointNodeBase* NodeBase : Manager->ManagerFragments)
+		TArray<UJointNodeBase*> IterNodes = Manager->ManagerFragments;
+
+		for (UJointNodeBase* NodeBase : IterNodes)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!NodeBase) continue;
 
 			Nodes.Add(NodeBase);
 
 			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
 			{
-				if(!Fragment) continue;
-				
+				if (!Fragment) continue;
+
 				Nodes.Add(Fragment);
 			}
 		}
-		
-		for (UJointNodeBase* JointNodeBase : Manager->Nodes)
+
+		IterNodes = Manager->Nodes;
+
+		for (UJointNodeBase* JointNodeBase : IterNodes)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (JointNodeBase == nullptr) continue;
 
 			Nodes.Add(FNodeInfo(JointNodeBase));
 
 			for (UJointFragment* Fragment : JointNodeBase->GetAllFragmentsOnLowerHierarchy())
 			{
+				if (GetShouldAbandonBuild()) break;
+
+				if (!Fragment) continue;
+
 				Nodes.Add(Fragment);
 			}
-
 		}
 
 		for (const FNodeInfo& Node : Nodes)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!Node.NodeInstance) { continue; }
 
-			TSharedRef<IJointTreeItem> DisplayNode = CreateNodeTreeItem(Node.NodeInstance);
+			TSharedPtr<IJointTreeItem> DisplayNode = CreateNodeTreeItem(Node.NodeInstance);
 
-			if (Node.NodeInstance->GetParentNode() == nullptr && Node.NodeInstance->GetJointManager() && Node.NodeInstance->GetJointManager()->ManagerFragments.Contains(Node.NodeInstance))
+			if (!DisplayNode.IsValid()) continue;
+
+			if (Node.NodeInstance->GetParentNode() == nullptr && Node.NodeInstance->GetJointManager() && Node.
+				NodeInstance->GetJointManager()->ManagerFragments.Contains(Node.NodeInstance))
 			{
 				Output.Add(DisplayNode,
-					FName(Node.NodeInstance->GetJointManager()->GetPathName()),
-					FJointTreeItem_Manager::GetTypeId());
+				           FName(Node.NodeInstance->GetJointManager()->GetPathName()),
+				           FJointTreeItem_Manager::GetTypeId());
 			}
 			else if (Node.NodeInstance->GetParentNode())
 			{
 				Output.Add(DisplayNode,
-					FName(Node.NodeInstance->GetParentNode()->GetPathName()),
-					FJointTreeItem_Node::GetTypeId());
-			}else if(Node.NodeInstance->GetJointManager())
+				           FName(Node.NodeInstance->GetParentNode()->GetPathName()),
+				           FJointTreeItem_Node::GetTypeId());
+			}
+			else if (Node.NodeInstance->GetJointManager())
 			{
 				Output.Add(DisplayNode,
-					FName(Node.NodeInstance->GetJointManager()->GetPathName()),
-					FJointTreeItem_Manager::GetTypeId());
+				           FName(Node.NodeInstance->GetJointManager()->GetPathName()),
+				           FJointTreeItem_Manager::GetTypeId());
 			}
 		}
 	}
 }
-
 
 
 struct FPropertyInfo
@@ -365,7 +418,7 @@ struct FPropertyInfo
 		{
 			SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
 		}
-#if UE_VERSION_OLDER_THAN(5,5,0)
+#if UE_VERSION_OLDER_THAN(5, 5, 0)
 		SortString.LeftInline(Index + 1, false);
 #else
 		SortString.LeftInline(Index + 1, EAllowShrinking::No);
@@ -394,7 +447,8 @@ struct FPropertyInfo
 
 bool CheckCanImplementProperty(FProperty* Property)
 {
-	if(Property){
+	if (Property)
+	{
 		if (!Property->HasAnyPropertyFlags(CPF_DisableEditOnInstance)
 			&& !Property->HasAnyPropertyFlags(CPF_AdvancedDisplay)
 			&& Property->HasAnyPropertyFlags(CPF_Edit))
@@ -420,36 +474,50 @@ void AddPropertyInfo(TArray<FPropertyInfo>& Infos, UObject* SearchObj)
 
 void FJointTreeBuilder::AddProperties(FJointTreeBuilderOutput& Output)
 {
-	for (UJointManager* Manager : TreePtr.Pin()->JointManagerToShow)
+	if (!TreePtr.Pin().IsValid()) return;
+
+	TArray<TWeakObjectPtr<UJointManager>> Managers = TreePtr.Pin()->JointManagerToShow;
+
+	for (TWeakObjectPtr<UJointManager> Manager : Managers)
 	{
-		if (!Manager) { return; }
+		if (GetShouldAbandonBuild()) break;
+
+		if (!Manager.Get()) { return; }
 
 		TArray<UObject*> ObjectsToIterate;
 
-		for (UJointNodeBase* NodeBase : Manager->ManagerFragments)
+		TArray<UJointNodeBase*> Nodes = Manager->ManagerFragments;
+
+		for (UJointNodeBase* NodeBase : Nodes)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!NodeBase) continue;
 
 			ObjectsToIterate.Add(NodeBase);
 
 			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
 			{
-				if(!Fragment) continue;
-				
+				if (!Fragment) continue;
+
 				ObjectsToIterate.Add(Cast<UObject>(Fragment));
 			}
 		}
 
-		for (UJointNodeBase* NodeBase : Manager->Nodes)
+		Nodes = Manager->Nodes;
+
+		for (UJointNodeBase* NodeBase : Nodes)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!NodeBase) continue;
 
 			ObjectsToIterate.Add(NodeBase);
 
 			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
 			{
-				if(!Fragment) continue;
-				
+				if (!Fragment) continue;
+
 				ObjectsToIterate.Add(Cast<UObject>(Fragment));
 			}
 		}
@@ -459,6 +527,8 @@ void FJointTreeBuilder::AddProperties(FJointTreeBuilderOutput& Output)
 		// Gather the nodes.
 		for (UObject* Object : ObjectsToIterate)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!Object) continue;
 
 			AddPropertyInfo(Properties, Object);
@@ -467,10 +537,13 @@ void FJointTreeBuilder::AddProperties(FJointTreeBuilderOutput& Output)
 
 		for (FPropertyInfo& PropertyInfo : Properties)
 		{
+			if (GetShouldAbandonBuild()) break;
+
 			if (!PropertyInfo.Object) { continue; }
 
-			TSharedRef<IJointTreeItem> DisplayNode = CreatePropertyTreeItem(
-				PropertyInfo.Property, PropertyInfo.Object);
+			TSharedPtr<IJointTreeItem> DisplayNode = CreatePropertyTreeItem(PropertyInfo.Property, PropertyInfo.Object);
+
+			if (!DisplayNode.IsValid()) continue;
 
 			Output.Add(
 				DisplayNode,
@@ -480,19 +553,25 @@ void FJointTreeBuilder::AddProperties(FJointTreeBuilderOutput& Output)
 	}
 }
 
-TSharedRef<IJointTreeItem> FJointTreeBuilder::CreateManagerTreeItem(UJointManager* ManagerPtr)
+TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateManagerTreeItem(TWeakObjectPtr<UJointManager> ManagerPtr)
 {
+	if (GetShouldAbandonBuild()) return nullptr;
+
 	return MakeShareable(new FJointTreeItem_Manager(ManagerPtr, TreePtr.Pin().ToSharedRef()));
 }
 
-TSharedRef<class IJointTreeItem> FJointTreeBuilder::CreateNodeTreeItem(UJointNodeBase* NodePtr)
+TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateNodeTreeItem(UJointNodeBase* NodePtr)
 {
+	if (GetShouldAbandonBuild()) return nullptr;
+
 	return MakeShareable(new FJointTreeItem_Node(NodePtr, TreePtr.Pin().ToSharedRef()));
 }
 
-TSharedRef<IJointTreeItem> FJointTreeBuilder::CreatePropertyTreeItem(FProperty* Property,
-	UObject* InObject)
+TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreatePropertyTreeItem(FProperty* Property,
+                                                                     UObject* InObject)
 {
+	if (GetShouldAbandonBuild()) return nullptr;
+
 	return MakeShareable(new FJointTreeItem_Property(Property, InObject, TreePtr.Pin().ToSharedRef()));
 }
 

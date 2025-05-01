@@ -22,7 +22,7 @@ public:
 
 	UPROPERTY()
 	class UJointManager* JointManager;
-	
+
 public:
 	
 	/**
@@ -140,6 +140,11 @@ public:
 
 	//Update class data of the provided graph node. Can choose whether to propagate to the children nodes.
 	void UpdateClassDataForNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes = true);
+
+	//Grab Unknown class data from the graph
+	void GrabUnknownClassDataFromGraph();
+
+	void GrabUnknownClassDataFromNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes = true);
 	
 	//Patch node instance from stored node class of the node.
 	void TryReinstancingUnknownNodeClasses();
@@ -204,12 +209,12 @@ public:
 	/**
 	 * Get cached Joint node instances. This action includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
-	TSet<TSoftObjectPtr<UObject>> GetCacheJointNodeInstances(const bool bForce = false);
+	TSet<TSoftObjectPtr<UObject>> GetCachedJointNodeInstances(const bool bForce = false);
 	
 	/**
 	 * Get cached Joint graph nodes. This action includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GetCacheJointGraphNodes(const bool bForce = false);
+	TSet<TSoftObjectPtr<UJointEdGraphNode>> GetCachedJointGraphNodes(const bool bForce = false);
 
 public:
 
@@ -247,7 +252,7 @@ public:
 public:
 	
 	virtual bool CanRemoveNestedObject(UObject* TestObject) const;
-
+	
 	void RemoveOrphanedNodes();
 	
 	virtual void OnNodeInstanceRemoved(UObject* NodeInstance);
@@ -276,6 +281,22 @@ public:
 	 */
 	virtual void BeginCacheForCookedPlatformData( const ITargetPlatform* TargetPlatform ) override;
 	
+#endif
+
+
+public:
+	
+#if WITH_EDITOR
+
+	UPROPERTY(Category="Developer", VisibleAnywhere, Transient, DuplicateTransient, SkipSerialization)
+	TArray<TObjectPtr<class UEdGraphNode>> Nodes_Captured;
+	
+	UPROPERTY(Category="Developer", VisibleAnywhere, Transient, DuplicateTransient, SkipSerialization)
+	TArray<FJointNodeDebugData> DebugData_Captured;
+	
+	UPROPERTY(Category="Developer", VisibleAnywhere, Transient, DuplicateTransient, SkipSerialization)
+	TArray<FJointNodeDebugData> Schema_Captured;
+
 #endif
 	
 };

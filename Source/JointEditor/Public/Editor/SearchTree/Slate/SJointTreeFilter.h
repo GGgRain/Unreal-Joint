@@ -39,4 +39,11 @@ public:
 public:
 
 	TSharedPtr<SWrapBox> FilterWrapBox;
+
+	TSharedPtr<SWidget> FilterAddButton;
+
+public:
+
+	TSharedPtr<SWidget> PopulateAddButtonIfNeeded();
+
 };

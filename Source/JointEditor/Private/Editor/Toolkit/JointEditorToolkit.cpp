@@ -61,12 +61,15 @@
 #include "VoltDecl.h"
 #include "EditorWidget/JointToolkitToastMessages.h"
 #include "EditorWidget/SJointFragmentPalette.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Module/Volt_ASM_Delay.h"
 #include "Module/Volt_ASM_InterpRenderOpacity.h"
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
 #include "Module/Volt_ASM_Sequence.h"
 #include "Module/Volt_ASM_Simultaneous.h"
+#include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
+#include "Widgets/Images/SImage.h"
 #include "Windows/WindowsPlatformApplicationMisc.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolkit"
@@ -1152,7 +1155,7 @@ void FJointEditorToolkit::OnEndPIE(bool bArg)
 {
 	if (GetJointGraph() == nullptr) return;
 
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = GetJointGraph()->GetCacheJointGraphNodes();
+	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = GetJointGraph()->GetCachedJointGraphNodes();
 
 	for (TSoftObjectPtr<UJointEdGraphNode> CachedJointGraphNode : GraphNodes)
 	{
@@ -1184,12 +1187,12 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 				SNew(SJointToolkitToastMessage)
 				[
 					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -1202,7 +1205,7 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(SBox)
 								.WidthOverride(24)
@@ -1216,7 +1219,7 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Text(LOCTEXT("PickingEnabledTitle", "Node Picking Enabled"))
@@ -1227,7 +1230,7 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 						.AutoHeight()
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(STextBlock)
 							.Text(LOCTEXT("PickingEnabled", "Click the node to select. Press ESC to escape."))
@@ -1260,12 +1263,12 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 				SNew(SJointToolkitToastMessage)
 				[
 					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -1278,7 +1281,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(SBox)
 								.WidthOverride(24)
@@ -1292,7 +1295,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Text(LOCTEXT("PickingEnabledTitle",
@@ -1304,7 +1307,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 						.AutoHeight()
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(STextBlock)
 							.Text(LOCTEXT("PickingEnabled",
@@ -1337,20 +1340,20 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 				SNew(SJointToolkitToastMessage)
 				[
 					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SBorder)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						.VAlign(VAlign_Center)
 						.HAlign(HAlign_Center)
 						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(SVerticalBox)
 							+ SVerticalBox::Slot()
@@ -1363,7 +1366,7 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 								.AutoWidth()
 								.HAlign(HAlign_Center)
 								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Border)
+								.Padding(FJointEditorStyle::Margin_Normal)
 								[
 									SNew(SBox)
 									.WidthOverride(24)
@@ -1377,7 +1380,7 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 								.AutoWidth()
 								.HAlign(HAlign_Center)
 								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Border)
+								.Padding(FJointEditorStyle::Margin_Normal)
 								[
 									SNew(STextBlock)
 									.Text(LOCTEXT("PickingEnabledTitle",
@@ -1389,7 +1392,7 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 							.AutoHeight()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Text(LOCTEXT("PickingEnabled",
@@ -1416,20 +1419,20 @@ void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
 			.Duration(0.8)
 			[
 				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				.VAlign(VAlign_Center)
 				.HAlign(HAlign_Center)
 				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -1442,7 +1445,7 @@ void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(SBox)
 								.WidthOverride(24)
@@ -1456,7 +1459,7 @@ void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Text(LOCTEXT("CopyTitle",
@@ -1468,7 +1471,7 @@ void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
 						.AutoHeight()
 						.HAlign(HAlign_Center)
 						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Border)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(STextBlock)
 							.Text(LOCTEXT("CopyTitleEnabled",
@@ -1494,20 +1497,20 @@ void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
 			.Duration(0.8)
 			[
 				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				.VAlign(VAlign_Center)
 				.HAlign(HAlign_Center)
 				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Border)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Border)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -1520,7 +1523,7 @@ void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(SBox)
 								.WidthOverride(24)
@@ -1534,7 +1537,7 @@ void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Border)
+							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
 								.Text(LOCTEXT("PasteTitle",
@@ -2278,6 +2281,12 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 				CastedPastedNode->ParentNode = AttachTargetNode;
 				AttachTargetNode->AddSubNode(CastedPastedNode);
 			}
+		}else
+		{
+			if(CastedPastedNode && Cast<UJointFragment>(CastedPastedNode))
+			{
+				CastedPastedNode->DestroyNode();
+			}
 		}
 	}
 
@@ -2741,7 +2750,7 @@ void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(const TSet<class UOb
 
 	if (UJointEdGraph* CastedGraph = GetJointGraph())
 	{
-		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 		for (TSoftObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
 		{
@@ -2870,8 +2879,7 @@ void FJointEditorToolkit::OnNodeTitleCommitted(const FText& NewText, ETextCommit
 {
 	if (NodeBeingChanged)
 	{
-		static const FText TranscationTitle = FText::FromString(FString(TEXT("Rename Node")));
-		const FScopedTransaction Transaction(TranscationTitle);
+		const FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_RenameNode", "Rename node"));
 		NodeBeingChanged->Modify();
 		NodeBeingChanged->OnRenameNode(NewText.ToString());
 	}
@@ -2882,14 +2890,9 @@ bool FJointEditorToolkit::OnVerifyNodeTitleChanged(const FText& InText, UEdGraph
 {
 	if (NodeBeingEdited)
 	{
-		if (Cast<UJointEdGraphNode>(NodeBeingEdited))
-		{
-			return FName(InText.ToString()).IsValidObjectName(OutErrorMessage);
-		}
-		else
-		{
-			return true;
-		}
+		if (Cast<UJointEdGraphNode>(NodeBeingEdited)) return FName(InText.ToString()).IsValidObjectName(OutErrorMessage);
+		
+		return true;
 	}
 
 	return false;

@@ -2,19 +2,24 @@
 
 #include "SearchTree/Filter/JointTreeFilterItem.h"
 
+#include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
 #include "Filter/JointTreeFilter.h"
+
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SEditableText.h"
 
 void FJointTreeFilterItem::MakeFilterWidget()
 {
 	TAttribute<FSlateColor> EnabledColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
 	{
-		if(this) return GetIsEnabled() ? FLinearColor(0.2,0.2,0.3) : FLinearColor(0.05,0.05,0.08);
+		if (this) return GetIsEnabled() ? FLinearColor(0.2, 0.2, 0.3) : FLinearColor(0.05, 0.05, 0.08);
 
 		return FJointEditorStyle::Color_Hover;
 	});
-	
-	
+
+
 	Widget = SNew(SButton)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
 		.ButtonColorAndOpacity(EnabledColor_Attr)
@@ -27,7 +32,7 @@ void FJointTreeFilterItem::MakeFilterWidget()
 			.AutoWidth()
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(SEditableText)
 				.Text(FText::FromString(FilterString))
@@ -40,14 +45,21 @@ void FJointTreeFilterItem::MakeFilterWidget()
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			[
-				SNew(SButton)
-				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Empty")
+				SNew(SJointOutlineButton)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
 				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)
+				.NormalColor(FLinearColor::Transparent)
+				.OutlineNormalColor(FLinearColor::Transparent)
 				.OnClicked(this, &FJointTreeFilterItem::OnItemRemoveButtonClicked)
 				[
-					SNew(SImage)
-					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.X"))
+					SNew(SBox)
+					.WidthOverride(16)
+					.HeightOverride(16)
+					[
+						SNew(SImage)
+						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.X"))
+					]
 				]
 			]
 		];
@@ -58,13 +70,13 @@ FReply FJointTreeFilterItem::OnItemEnableButtonClicked()
 	bIsEnabled = !bIsEnabled;
 
 	NotifyItemDataChanged();
-	
+
 	return FReply::Handled();
 }
 
 FReply FJointTreeFilterItem::OnItemRemoveButtonClicked()
 {
-	if(GetOwnerTreeFilter().IsValid())
+	if (GetOwnerTreeFilter().IsValid())
 	{
 		GetOwnerTreeFilter().Pin()->RemoveItem(AsShared());
 	}
@@ -73,7 +85,7 @@ FReply FJointTreeFilterItem::OnItemRemoveButtonClicked()
 
 void FJointTreeFilterItem::NotifyItemDataChanged()
 {
-	if(OnJointFilterItemDataChanged.IsBound()) OnJointFilterItemDataChanged.Broadcast();
+	if (OnJointFilterItemDataChanged.IsBound()) OnJointFilterItemDataChanged.Broadcast();
 }
 
 void FJointTreeFilterItem::OnItemFilterTextCommitted(const FText& Text, ETextCommit::Type Arg)
@@ -117,9 +129,9 @@ FJointTreeFilterItem::FJointTreeFilterItem(const FString& FilterString) : Filter
 
 TSharedPtr<SWidget> FJointTreeFilterItem::GetFilterWidget()
 {
-	if(!Widget.IsValid()) MakeFilterWidget();
-	
-	return Widget; 
+	if (!Widget.IsValid()) MakeFilterWidget();
+
+	return Widget;
 }
 
 bool FJointTreeFilterItem::GetIsEnabled() const
@@ -129,7 +141,7 @@ bool FJointTreeFilterItem::GetIsEnabled() const
 
 bool FJointTreeFilterItem::IsEqual(const TSharedPtr<FJointTreeFilterItem>& Other) const
 {
-	if(Other.IsValid()) return this->FilterString == Other->FilterString;
+	if (Other.IsValid()) return this->FilterString == Other->FilterString;
 
 	return false;
 }
@@ -142,4 +154,4 @@ const FString FJointTreeFilterItem::ExtractFilterItem()
 FText FJointTreeFilterItem::ExtractFilterItemText()
 {
 	return GetIsEnabled() ? FText::FromString(FilterString) : FText::GetEmpty();
-} 
+}

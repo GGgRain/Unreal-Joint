@@ -11,7 +11,7 @@ class JOINTEDITOR_API FJointTreeItem_Property : public FJointTreeItem, public FG
 public:
 	Joint_PROPERTY_TREE_ITEM_TYPE(FJointTreeItem_Property, FJointTreeItem)
 
-	FJointTreeItem_Property(FProperty* InProperty, UObject* InObject, const TSharedRef<class SJointTree>& InTree);
+	FJointTreeItem_Property(FProperty* InProperty, TWeakObjectPtr<UObject> InObject, const TSharedRef<class SJointTree>& InTree);
 
 public:
 	virtual void GenerateWidgetForNameColumn(TSharedPtr<SHorizontalBox> Box, const TAttribute<FText>& FilterText,
@@ -50,7 +50,7 @@ public:
 	/**
 	 * The outer object of this item's property.
 	 */
-	UObject* PropertyOuter = nullptr;
+	TWeakObjectPtr<UObject> PropertyOuter = nullptr;
 
 public:
 	/**

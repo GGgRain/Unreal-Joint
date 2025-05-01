@@ -5,10 +5,20 @@
 
 #include "HAL/PlatformFileManager.h"
 
-UJointEditorSettings* UJointEditorSettings::Instance = nullptr;
-
 UJointEditorSettings::UJointEditorSettings(): bUseGrid(false), SmallestGridSize(0)
 {
+}
+
+void UJointEditorSettings::AddCoreRedirect(const FJointCoreRedirect& Redirect)
+{
+	JointCoreRedirects.AddUnique(Redirect);
+	Save();
+}
+
+void UJointEditorSettings::RemoveCoreRedirect(const FJointCoreRedirect& Redirect)
+{
+	JointCoreRedirects.Remove(Redirect);
+	Save();
 }
 
 const float UJointEditorSettings::GetJointGridSnapSize()
@@ -22,14 +32,10 @@ const float UJointEditorSettings::GetJointGridSnapSize()
 
 UJointEditorSettings* UJointEditorSettings::Get()
 {
-	if(!Instance) Instance = CollectEditorSettingInstance();
-
-	return Instance;
+	return GetMutableDefault<UJointEditorSettings>();
 }
 
-UJointEditorSettings* UJointEditorSettings::CollectEditorSettingInstance()
+void UJointEditorSettings::Save()
 {
-	UJointEditorSettings* ProxyDevSettings = CastChecked<UJointEditorSettings>(UJointEditorSettings::StaticClass()->GetDefaultObject());
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	return ProxyDevSettings;
+	Get()->SaveConfig(CPF_Config, *Get()->GetDefaultConfigFilename());
 }

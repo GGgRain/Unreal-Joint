@@ -3,18 +3,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PropertyEditorDelegates.h"
 #include "VoltAnimationTrack.h"
 #include "SharedType/JointSharedTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
-class SLevelOfDetailBranchNode;
-class SJointOutlineBorder;
 class UVoltAnimationManager;
 class UJointEdGraphNode;
+
+class SLevelOfDetailBranchNode;
+class SJointOutlineBorder;
+class SJointGraphNodeBase;
+
 class SGraphPin;
 class SGraphNode;
 class SVerticalBox;
-class SJointGraphNodeBase;
+class SHorizontalBox;
+class STextBlock;
+class SBorder;
+
+class IDetailsView;
 
 class JOINTEDITOR_API SJointMultiNodeIndex : public SCompoundWidget
 {

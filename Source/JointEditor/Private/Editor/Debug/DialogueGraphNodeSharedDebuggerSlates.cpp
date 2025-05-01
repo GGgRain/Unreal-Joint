@@ -11,6 +11,7 @@
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
+#include "Widgets/Images/SImage.h"
 
 #define LOCTEXT_NAMESPACE "SJointBreakpointIndicator"
 
@@ -28,7 +29,7 @@ void SJointBreakpointIndicator::PopulateSlate()
 	UpdateDebugData();
 
 	this->ChildSlot
-		.Padding(FJointEditorStyle::Margin_Frame)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		[
 			SNew(SBox)
 			.WidthOverride(22)

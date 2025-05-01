@@ -25,11 +25,17 @@
 #include "IDetailGroup.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEditorNodePickingManager.h"
+#include "JointEditorSettings.h"
 #include "PropertyCustomizationHelpers.h"
+#include "ScopedTransaction.h"
 
 #include "Styling/CoreStyle.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "GraphNode/JointGraphNodeSharedSlates.h"
+#include "Misc/MessageDialog.h"
+#include "UObject/MetaData.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SScrollBox.h"
 
 #include "Widgets/Notifications/SNotificationList.h"
 
@@ -57,7 +63,8 @@ UJointManager* JointDetailCustomizationHelpers::GetJointManagerFromNodes(TArray<
 	return Manager;
 }
 
-bool JointDetailCustomizationHelpers::CheckBaseClassForDisplay(TArray<UObject*> Objs, IDetailCategoryBuilder& DataCategory)
+bool JointDetailCustomizationHelpers::CheckBaseClassForDisplay(TArray<UObject*> Objs,
+                                                               IDetailCategoryBuilder& DataCategory)
 {
 	UClass* FirstClass = nullptr;
 
@@ -142,7 +149,8 @@ bool JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(TArray<UO
 }
 
 
-TArray<UObject*> JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(TArray<TWeakObjectPtr<UObject>> SelectedObjects)
+TArray<UObject*> JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
+	TArray<TWeakObjectPtr<UObject>> SelectedObjects)
 {
 	TArray<UObject*> Objs;
 
@@ -254,6 +262,29 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 		for (TWeakObjectPtr<UObject> CachedSelectedObject : CachedSelectedObjects)
 		{
 			if (CachedSelectedObject.IsValid() && CachedSelectedObject.Get() != nullptr)
+				if (UJointEdGraphNode* GraphNode = Cast<UJointEdGraphNode>(CachedSelectedObject.Get()))
+				{
+					return GraphNode->GetCastedNodeInstance()
+						       ? GraphNode->GetCastedNodeInstance()->GetClass()
+						       : nullptr;
+				}
+		}
+
+		return OutClass;
+	});
+
+	TAttribute<const UClass*> SelectedEditorClass_Attr = TAttribute<const UClass*>::CreateLambda([this]
+	{
+		UClass* OutClass = nullptr;
+
+		if (CachedSelectedObjects.Num() >= 2)
+		{
+			return OutClass;
+		}
+
+		for (TWeakObjectPtr<UObject> CachedSelectedObject : CachedSelectedObjects)
+		{
+			if (CachedSelectedObject.IsValid() && CachedSelectedObject.Get() != nullptr)
 				return CachedSelectedObject->
 					GetClass();
 		}
@@ -291,63 +322,325 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, PinData));
 	}
 
+
+	bool bCanShowReplaceNodeContext = false;
+	bool bCanShowReplaceEditorNodeContext = false;
+
+	for (TWeakObjectPtr<UObject> CachedSelectedObject : CachedSelectedObjects)
+	{
+		if (CachedSelectedObject.IsValid() && CachedSelectedObject.Get() != nullptr)
+			if (UJointEdGraphNode* GraphNode = Cast<UJointEdGraphNode>(CachedSelectedObject.Get()))
+			{
+				bCanShowReplaceNodeContext |= GraphNode->CanReplaceNodeClass();
+				bCanShowReplaceEditorNodeContext |= GraphNode->CanReplaceEditorNodeClass();
+			}
+
+		if(bCanShowReplaceNodeContext && bCanShowReplaceEditorNodeContext) break;
+	}
+
 	IDetailCategoryBuilder& AdvancedCategory = DetailBuilder.EditCategory("Advanced");
 	AdvancedCategory.InitiallyCollapsed(true);
 	AdvancedCategory.SetShowAdvanced(true);
 
-	AdvancedCategory.AddCustomRow(LOCTEXT("ChangeEditorNodeClassText", "Change Editor Node Class"))
-		.WholeRowWidget
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
+	if(bCanShowReplaceNodeContext)
+	{
+		AdvancedCategory.AddCustomRow(LOCTEXT("ChangeNodeClassText", "Change Node Class"))
+			.WholeRowWidget
 			[
 				SNew(SJointOutlineBorder)
 				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
 				.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-				.ContentMargin(FJointEditorStyle::Margin_Button)
+				.ContentPadding(FJointEditorStyle::Margin_Large)
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("EdNodeClassDataChangeHintText",
-					              "Change the class of the editor node.\nIf multiple nodes are selected, it will show none always, but it will work anyway.\nIt will be applied only when the chosen class supports the node instance."))
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("NodeClassDataChangeHintTextTitle", "Change the node instance's class."))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("NodeClassDataChangeHintText",
+									  "If multiple nodes are selected, it will show none always, but it will work anyway."))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(SClassPropertyEntryBox)
+						.AllowNone(false)
+						.AllowAbstract(false)
+						.MetaClass(UJointNodeBase::StaticClass())
+						.SelectedClass(SelectedClass_Attr)
+						.OnSetClass(this, &FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass)
+					]
 				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.HAlign(HAlign_Center)
-			.VAlign(VAlign_Center)
+			];
+	}
+
+	if(bCanShowReplaceEditorNodeContext)
+	{
+		AdvancedCategory.AddCustomRow(LOCTEXT("ChangeEditorNodeClassText", "Change Editor Node Class"))
+			.WholeRowWidget
 			[
-				SNew(SClassPropertyEntryBox)
-				.AllowNone(false)
-				.AllowAbstract(false)
-				.MetaClass(UJointEdGraphNode::StaticClass())
-				.SelectedClass(SelectedClass_Attr)
-				.OnSetClass(this, &FJointEdGraphNodesCustomizationBase::OnSetClass)
-			]
-		];
+				SNew(SJointOutlineBorder)
+				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+				.OutlineHoverColor(FJointEditorStyle::Color_Selected)
+				.ContentPadding(FJointEditorStyle::Margin_Large)
+				.HAlign(HAlign_Fill)
+				.VAlign(VAlign_Fill)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("EdNodeClassDataChangeHintTextTitle", "Change the class of the editor node."))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("EdNodeClassDataChangeHintText",
+									  "If multiple nodes are selected, it will show none always, but it will work anyway.\nIt will be applied only when the chosen class supports the node instance."))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Tiny)
+					[
+						SNew(SClassPropertyEntryBox)
+						.AllowNone(false)
+						.AllowAbstract(false)
+						.MetaClass(UJointEdGraphNode::StaticClass())
+						.SelectedClass(SelectedEditorClass_Attr)
+						.OnSetClass(this, &FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass)
+					]
+				]
+			];
+	}
+
+	HideDeveloperModeProperties(DetailBuilder);
 }
 
-void FJointEdGraphNodesCustomizationBase::OnSetClass(const UClass* Class)
+
+void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Class)
 {
-	if (Class != nullptr)
+	const TSubclassOf<UJointNodeBase> CastedClass = Class ? Class->StaticClass() : nullptr;
+
+	if (CastedClass == nullptr) return;
+
+
+	
+	FScopedTransaction Transaction(FText::Format(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_ChangeNodeClass", "Change node class: {0}"),
+		FText::FromString(Class->GetName())));
 	{
+		TSet<UObject*> ModifiedObjects;
+
 		for (int i = 0; i < CachedSelectedObjects.Num(); ++i)
 		{
 			if (CachedSelectedObjects[i].Get() == nullptr) continue;
 
 			if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(CachedSelectedObjects[i].Get()))
 			{
-				CastedGraphNode->ReplaceEditorNodeClassTo(Class);
+
+				//Fallback
+				if (!CastedGraphNode->CanReplaceNodeClass())
+				{
+					FText NotificationText = LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed","Replace Node Class Action Has Been Denied");
+					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed","This editor node prohibits this action.");
+
+					FNotificationInfo NotificationInfo(NotificationText);
+					NotificationInfo.SubText = NotificationSubText;
+					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+					NotificationInfo.bFireAndForget = true;
+					NotificationInfo.FadeInDuration = 0.3f;
+					NotificationInfo.FadeOutDuration = 1.3f;
+					NotificationInfo.ExpireDuration = 4.5f;
+
+					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+
+					continue;
+				}
+				
+				if (!CastedGraphNode->CanPerformReplaceNodeClassTo(CastedClass))
+				{
+					FText NotificationText = LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed_Specific","Replace Node Class Action Has Been Denied");
+					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed_Specific","Provided class that is not compatible with the editor node type or it was invalid class.");
+
+					FNotificationInfo NotificationInfo(NotificationText);
+					NotificationInfo.SubText = NotificationSubText;
+					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+					NotificationInfo.bFireAndForget = true;
+					NotificationInfo.FadeInDuration = 0.3f;
+					NotificationInfo.FadeOutDuration = 1.3f;
+					NotificationInfo.ExpireDuration = 4.5f;
+
+					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+
+					continue;
+				}
+				
+
+				if (!ModifiedObjects.Contains(CastedGraphNode))
+				{
+					CastedGraphNode->Modify();
+					ModifiedObjects.Add(CastedGraphNode);
+				}
+
+				if (UJointNodeBase* CastedNode = CastedGraphNode->GetCastedNodeInstance(); CastedNode && !ModifiedObjects.Contains(
+					CastedNode))
+				{
+					CastedNode->Modify();
+					ModifiedObjects.Add(CastedNode);
+				}
+
+				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph &&!ModifiedObjects.Contains(CastedGraph))
+				{
+					CastedGraph->Modify();
+					ModifiedObjects.Add(CastedGraph);
+				}
+
+				CastedGraphNode->ReplaceNodeClassTo(CastedClass);
 			}
 		}
+	}
+}
+
+void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClass* Class)
+{
+	const TSubclassOf<UJointEdGraphNode> CastedClass = Class ? Class->StaticClass() : nullptr;
+
+	if (CastedClass == nullptr) return;
+
+	FScopedTransaction Transaction(
+
+		FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_ChangeEditorNodeClass",
+		                        "Changed editor node class: {0}"),
+		              FText::FromString(Class->GetName())));
+	{
+		TSet<UObject*> ModifiedObjects;
+
+		for (int i = 0; i < CachedSelectedObjects.Num(); ++i)
+		{
+			if (CachedSelectedObjects[i].Get() == nullptr) continue;
+
+			if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(CachedSelectedObjects[i].Get()))
+			{
+				//Fallback
+				if (!CastedGraphNode->CanReplaceEditorNodeClass())
+				{
+					FText NotificationText = LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed","Replace Editor Node Class Action Has Been Denied");
+					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed","This editor node prohibits this action.");
+
+					FNotificationInfo NotificationInfo(NotificationText);
+					NotificationInfo.SubText = NotificationSubText;
+					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+					NotificationInfo.bFireAndForget = true;
+					NotificationInfo.FadeInDuration = 0.3f;
+					NotificationInfo.FadeOutDuration = 1.3f;
+					NotificationInfo.ExpireDuration = 4.5f;
+
+					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+
+					continue;
+				}
+				
+				if (!CastedGraphNode->CanPerformReplaceEditorNodeClassTo(CastedClass))
+				{
+					FText NotificationText = LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed_Specific","Replace Editor Node Class Action Has Been Denied");
+					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed_Specific","Provided class doesn't support the node instance type or it was invalid class.");
+
+					FNotificationInfo NotificationInfo(NotificationText);
+					NotificationInfo.SubText = NotificationSubText;
+					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+					NotificationInfo.bFireAndForget = true;
+					NotificationInfo.FadeInDuration = 0.3f;
+					NotificationInfo.FadeOutDuration = 1.3f;
+					NotificationInfo.ExpireDuration = 4.5f;
+
+					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+
+					continue;
+				}
+
+				if (!ModifiedObjects.Contains(CastedGraphNode))
+				{
+					CastedGraphNode->Modify();
+					ModifiedObjects.Add(CastedGraphNode);
+				}
+
+				if (UJointNodeBase* CastedNode = CastedGraphNode->GetCastedNodeInstance(); CastedNode && !ModifiedObjects.Contains(
+					CastedNode))
+				{
+					CastedNode->Modify();
+					ModifiedObjects.Add(CastedNode);
+				}
+
+				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph &&!ModifiedObjects.Contains(CastedGraph))
+				{
+					CastedGraph->Modify();
+					ModifiedObjects.Add(CastedGraph);
+				}
+
+				CastedGraphNode->ReplaceEditorNodeClassTo(CastedClass);
+			}
+		}
+	}
+}
+
+void FJointEdGraphNodesCustomizationBase::HideDeveloperModeProperties(IDetailLayoutBuilder& DetailBuilder)
+{
+	if (!UJointEditorSettings::Get()->bEnableDeveloperMode)
+	{
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, NodeInstance));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, ClassData));
+
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, NodeClassData));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, ParentNode));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SubNodes));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedParentGuidForCopyPaste));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedParentNodeForCopyPaste));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedSubNodesForCopyPaste));
+		DetailBuilder.
+			HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedNodeInstanceParentNodeForCopyPaste));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedNodeInstanceSubNodesForCopyPaste));
+
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SimpleDisplayHiddenProperties));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, bFromExternal));
 	}
 }
 
@@ -454,7 +747,6 @@ TSharedRef<IDetailCustomization> FJointNodeInstanceSimpleDisplayCustomizationBas
 }
 
 
-
 void FJointNodeInstanceSimpleDisplayCustomizationBase::AddCategoryProperties(
 	UJointEdGraphNode* EdNode, IDetailCategoryBuilder& CategoryBuilder,
 	TArray<TSharedRef<IPropertyHandle>> OutAllProperties)
@@ -463,7 +755,7 @@ void FJointNodeInstanceSimpleDisplayCustomizationBase::AddCategoryProperties(
 	{
 		if (!OutPropertyHandle->IsValidHandle()) continue;
 		if (!OutPropertyHandle->GetProperty()) continue;
-		
+
 		TAttribute<EVisibility> RowVisibility = TAttribute<EVisibility>::CreateLambda([EdNode, OutPropertyHandle, this]
 		{
 			return OutPropertyHandle->IsValidHandle()
@@ -590,6 +882,156 @@ void FJointNodeInstanceCustomizationBase::HideDisableEditOnInstanceProperties(
 	}
 }
 
+TSharedRef<IDetailCustomization> FJointEdGraphCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointEdGraphCustomization());
+}
+
+void FJointEdGraphCustomization::OnRecaptureButtonPressed()
+{
+	for (TWeakObjectPtr<UJointEdGraph> JointEdGraph : CachedGraph)
+	{
+		if (!JointEdGraph.IsValid()) continue;
+
+		JointEdGraph->Nodes_Captured = JointEdGraph->Nodes;
+		JointEdGraph->DebugData_Captured = JointEdGraph->DebugData;
+	}
+}
+
+TSharedRef<IDetailCustomization> FJointManagerCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointManagerCustomization());
+}
+
+void FJointManagerCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	if (UJointEditorSettings::Get()->bEnableDeveloperMode)
+	{
+		IDetailCategoryBuilder& DescriptionCategory = DetailBuilder.EditCategory("Developer Mode - Internal Data");
+		DescriptionCategory.SetCategoryVisibility(true);
+
+		DescriptionCategory.AddCustomRow(LOCTEXT("ClearPackageMetadataRowName", "Clear Package Metadata"))
+			.NameContent()
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("ClearPackageMetadataRowName", "Clear Package Metadata"))
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+			]
+			.ValueContent()
+			[
+				SNew(SJointOutlineButton)
+				.NormalColor(FLinearColor::Transparent)
+				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OutlineNormalColor(FLinearColor::Transparent)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
+				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+				.OnPressed(this, &FJointManagerCustomization::OnClearPackageMetadata)
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("ClearPackageMetadata", "Clear Package Metadata"))
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				]
+			];
+
+		TArray<TWeakObjectPtr<UObject>> Objects = DetailBuilder.GetSelectedObjects();
+
+		for (TWeakObjectPtr<UObject> Object : Objects)
+		{
+			if (!Object.IsValid()) continue;
+
+			if (UJointManager* CastedObject = Cast<UJointManager>(Object))
+			{
+				CachedManager.Add(CastedObject);
+			}
+		}
+	}
+}
+
+void FJointManagerCustomization::OnClearPackageMetadata()
+{
+	FText WarningText = LOCTEXT("ClearPackageMetadataWarning",
+	                            "This action is not revertiable. You must clearly know what this action does.");
+
+	if (EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::OkCancel, WarningText); ReturnType ==
+		EAppReturnType::Cancel)
+		return;
+
+	for (TWeakObjectPtr<UJointManager> JointManager : CachedManager)
+	{
+		if (!JointManager.IsValid()) continue;
+
+		if (UPackage* ManagerPackage = JointManager->GetPackage())
+		{
+			UMetaData* MetaData;
+
+			MetaData = ManagerPackage->GetMetaData();
+
+			ManagerPackage->ClearAllCachedCookedPlatformData();
+
+			if (MetaData)
+			{
+				MetaData->RemoveMetaDataOutsidePackage();
+				MetaData->ClearGarbage();
+			}
+
+			ManagerPackage->MarkPackageDirty();
+		}
+	}
+}
+
+void FJointEdGraphCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	if (UJointEditorSettings::Get()->bEnableDeveloperMode)
+	{
+		IDetailCategoryBuilder& DescriptionCategory = DetailBuilder.EditCategory("Developer Mode - Internal Data");
+		DescriptionCategory.SetCategoryVisibility(true);
+
+		DescriptionCategory.AddCustomRow(LOCTEXT("RecaptureText", "Recapture"))
+			.NameContent()
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("RecaptureTextName", "Recapture Properties"))
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+			]
+			.ValueContent()
+			[
+				SNew(SJointOutlineButton)
+				.NormalColor(FLinearColor::Transparent)
+				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OutlineNormalColor(FLinearColor::Transparent)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
+				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+				.OnPressed(this, &FJointEdGraphCustomization::OnRecaptureButtonPressed)
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("RecaptureText", "Recapture"))
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				]
+			];
+
+		TArray<TWeakObjectPtr<UObject>> Objects = DetailBuilder.GetSelectedObjects();
+
+		for (TWeakObjectPtr<UObject> Object : Objects)
+		{
+			if (!Object.IsValid()) continue;
+
+			if (UJointEdGraph* CastedObject = Cast<UJointEdGraph>(Object))
+			{
+				CachedGraph.Add(CastedObject);
+			}
+		}
+
+		OnRecaptureButtonPressed();
+	}
+	else
+	{
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraph, Nodes_Captured));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraph, DebugData_Captured));
+	}
+}
+
 TSharedRef<IDetailCustomization> FJointBuildPresetCustomization::MakeInstance()
 {
 	return MakeShareable(new FJointBuildPresetCustomization());
@@ -606,21 +1048,23 @@ void FJointBuildPresetCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
 			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-			.ContentMargin(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
 			[
 				SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("FJointBuildPresetCustomization_Explanation", "We supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together.\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset.\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.AutoWrapText(true)
+				.Text(LOCTEXT("FJointBuildPresetCustomization_Explanation",
+				              "We supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together.\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset.\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
 			]
 		];
 }
 
 void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
-	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(DetailBuilder.GetSelectedObjects());
+	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
+		DetailBuilder.GetSelectedObjects());
 
 	//If it was empty, try to grab the node instances by itself.
 	if (NodeInstances.IsEmpty())
@@ -641,24 +1085,29 @@ void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 			}
 		}
 
-		TSharedPtr<SVerticalBox> DescriptionBox;
+		TSharedPtr<SScrollBox> DescriptionBox;
 
 		IDetailCategoryBuilder& Category = DetailBuilder.EditCategory("Description");
 
 		Category.AddCustomRow(LOCTEXT("NodeInstanceDetailDescription", "Description"))
 			.WholeRowWidget
 			[
-				SAssignNew(DescriptionBox, SVerticalBox)
+				SNew(SBox)
+				.MaxDesiredHeight(UJointEditorSettings::Get()->DescriptionCardBoxMaxDesiredHeight)
+				[
+					SAssignNew(DescriptionBox, SScrollBox)
+					.AnimateWheelScrolling(true)
+					.AllowOverscroll(EAllowOverscroll::Yes)
+				]
 			];
 
 		for (UClass* ToDescribe : ClassesToDescribe)
 		{
 			DescriptionBox->AddSlot()
-				.AutoHeight()
-				[
-					SNew(SJointNodeDescription)
-					.ClassToDescribe(ToDescribe)
-				];
+			[
+				SNew(SJointNodeDescription)
+				.ClassToDescribe(ToDescribe)
+			];
 		}
 	}
 	else
@@ -669,7 +1118,7 @@ void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 	//Display class description for the nodes when all the nodes are instanced.
 	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
 	{
-		DetailBuilder.HideCategory("Editor Node");
+		DetailBuilder.HideCategory("Editor");
 	}
 
 	//Hide the properties that are not instance editable.
@@ -680,14 +1129,14 @@ void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 	for (UObject* NodeInstance : NodeInstances)
 	{
-		if(!NodeInstance) continue;
-		
-		AdvancedCategory.AddCustomRow(LOCTEXT("OuterRow","Outer"))
-		.ValueContent()
-		[
-			SNew(STextBlock)
-			.Text(NodeInstance->GetOuter() ? FText::FromString(NodeInstance->GetOuter()->GetName()) : LOCTEXT("OuterNull","Nullptr"))
-		];
+	    if(!NodeInstance) continue;
+	    
+	    AdvancedCategory.AddCustomRow(LOCTEXT("OuterRow","Outer"))
+	    .ValueContent()
+	    [
+	        SNew(STextBlock)
+	        .Text(NodeInstance->GetOuter() ? FText::FromString(NodeInstance->GetOuter()->GetName()) : LOCTEXT("OuterNull","Nullptr"))
+	    ];
 	}
 	*/
 }
@@ -712,7 +1161,7 @@ void FJointNodePointerStructCustomization::CustomizeStructHeader(TSharedRef<IPro
 		GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointNodePointer, AllowedType));
 	DisallowedTypeHandle = StructPropertyHandle->GetChildHandle(
 		GET_MEMBER_NAME_CHECKED(FJointNodePointer, DisallowedType));
-	
+
 	HeaderRow
 		.NameContent()
 		[
@@ -750,8 +1199,9 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 			: LOCTEXT("NodePickUpToolTip", "click to pick-up the node.");
 
 
-	JointDetailCustomizationHelpers::GetParentJointFromNodeInstances(NodeInstanceObjs, bFromMultipleManager, bFromInvalidJointManagerObject,
-	                                bFromJointManagerItself);
+	JointDetailCustomizationHelpers::GetParentJointFromNodeInstances(NodeInstanceObjs, bFromMultipleManager,
+	                                                                 bFromInvalidJointManagerObject,
+	                                                                 bFromJointManagerItself);
 
 
 	//IDetailGroup& Group = StructBuilder.
@@ -767,8 +1217,8 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-			.ContentMargin(FJointEditorStyle::Margin_PinGap)
+			.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
 			.OnHovered(this, &FJointNodePointerStructCustomization::OnMouseHovered)
 			.OnUnhovered(this, &FJointNodePointerStructCustomization::OnMouseUnhovered)
 			.HAlign(HAlign_Fill)
@@ -786,7 +1236,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 					.AutoHeight()
 					.HAlign(HAlign_Left)
 					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Frame * 0.5)
+					.Padding(FJointEditorStyle::Margin_Small)
 					[
 						NodeHandle.Get()->CreatePropertyValueWidget(true)
 					]
@@ -807,7 +1257,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_Button)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(PickingTooltipText)
 						.IsEnabled(!(bFromMultipleManager || bFromInvalidJointManagerObject || bFromJointManagerItself))
@@ -828,7 +1278,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_Button)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.ToolTipText(LOCTEXT("GotoTooltip", "Go to the seleced node on the graph."))
 						.IsEnabled(
 							!(bFromMultipleManager || bFromInvalidJointManagerObject ||
@@ -851,7 +1301,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_Button)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("CopyTooltip", "Copy the structure to the clipboard"))
 						.IsEnabled(
@@ -874,7 +1324,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_Button)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("PasteTooltip", "Paste the structure from the clipboard"))
 						.IsEnabled(
@@ -897,7 +1347,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentMargin(FJointEditorStyle::Margin_Button)
+						.ContentPadding(FJointEditorStyle::Margin_Normal)
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
 						.IsEnabled(
@@ -907,7 +1357,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 						[
 							SNew(SImage)
 							.DesiredSizeOverride(FVector2D(20, 20))
-							.ColorAndOpacity(FLinearColor(1,0.5,0.3))
+							.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
 							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
 						]
 					]
@@ -945,8 +1395,8 @@ void FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(FoundJointManager))
 	{
-		if(!Toolkit->GetNodePickingManager().IsValid()) return;
-		
+		if (!Toolkit->GetNodePickingManager().IsValid()) return;
+
 		if (!Toolkit->GetNodePickingManager()->IsInNodePicking())
 		{
 			Request = Toolkit->GetNodePickingManager()->StartNodePicking(NodeHandle, EditorNodeHandle);
@@ -984,7 +1434,7 @@ void FJointNodePointerStructCustomization::OnGoToButtonPressed()
 		{
 			if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 			{
-				TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+				TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 				for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 				{
@@ -995,14 +1445,14 @@ void FJointNodePointerStructCustomization::OnGoToButtonPressed()
 						Toolkit->JumpToNode(Node.Get());
 
 						Toolkit->StartHighlightingNode(Node.Get(), true);
-						
+
 						// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 						//
 						// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
 						// {
 						// 	Toolkit->StartHighlightingNode(Node.Get(), true);
 						// }
-						
+
 						break;
 					}
 				}
@@ -1042,7 +1492,7 @@ void FJointNodePointerStructCustomization::OnPasteButtonPressed()
 	FPlatformApplicationMisc::ClipboardPaste(Value);
 
 	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
-	
+
 	OnNodeDataChanged();
 
 	bool bFromMultipleManager = false;
@@ -1063,8 +1513,8 @@ void FJointNodePointerStructCustomization::OnPasteButtonPressed()
 
 void FJointNodePointerStructCustomization::OnClearButtonPressed()
 {
-	if(NodeHandle) NodeHandle->ResetToDefault();
-	if(EditorNodeHandle) EditorNodeHandle->ResetToDefault();
+	if (NodeHandle) NodeHandle->ResetToDefault();
+	if (EditorNodeHandle) EditorNodeHandle->ResetToDefault();
 }
 
 void FJointNodePointerStructCustomization::OnNodeDataChanged()
@@ -1156,9 +1606,9 @@ void FJointNodePointerStructCustomization::OnNodeResetToDefault()
 
 void FJointNodePointerStructCustomization::OnMouseHovered()
 {
-	if(BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5);
-	if(ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::SelfHitTestInvisible);
-		
+	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5);
+	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::SelfHitTestInvisible);
+
 	UObject* CurrentNode = nullptr;
 
 	NodeHandle.Get()->GetValue(CurrentNode);
@@ -1199,7 +1649,7 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 
 	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 	{
-		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 		for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 		{
@@ -1207,16 +1657,15 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 
 			if (Node->GetCastedNodeInstance() == CurrentNode)
 			{
-
 				Toolkit->StartHighlightingNode(Node.Get(), false);
-				
+
 				// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 				//
 				// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
 				// {
 				// 	Toolkit->StartHighlightingNode(Node.Get(), false);
 				// }
-				
+
 				break;
 			}
 		}
@@ -1225,9 +1674,9 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 
 void FJointNodePointerStructCustomization::OnMouseUnhovered()
 {
-	if(BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(1);
-	if(ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::Collapsed);
-	
+	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(1);
+	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::Collapsed);
+
 	UObject* CurrentNode = nullptr;
 
 	NodeHandle.Get()->GetValue(CurrentNode);
@@ -1271,7 +1720,7 @@ void FJointNodePointerStructCustomization::OnMouseUnhovered()
 
 	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 	{
-		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCacheJointGraphNodes();
+		TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
 		for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 		{
@@ -1280,7 +1729,7 @@ void FJointNodePointerStructCustomization::OnMouseUnhovered()
 			if (Node->GetCastedNodeInstance() == CurrentNode)
 			{
 				Toolkit->StopHighlightingNode(Node.Get());
-				
+
 				// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 				//
 				// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)

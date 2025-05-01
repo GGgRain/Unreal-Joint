@@ -4,6 +4,7 @@
 
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
+#include "ScopedTransaction.h"
 #include "SGraphPanel.h"
 #include "EditorWidget/JointGraphEditor.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -128,7 +129,7 @@ void FJointEditorNodePickingManager::PerformNodePicking(UJointNodeBase* Node, UJ
 	//Only for the slate picking
 	if (!NodePickingJointNodePointerStructures.IsEmpty())
 	{
-		const FScopedTransaction Transaction(INVTEXT("Node Picking"));
+		const FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_PerformNodePicking", "Perform node picking"));
 
 		for (UJointNodeBase* NodePickingJointNode : NodePickingJointNodes)
 		{

@@ -12,6 +12,8 @@
 #include "JointEditorSettings.h"
 #include "VoltDecl.h"
 #include "Components/RichTextBlock.h"
+#include "Module/Volt_ASM_InterpBackgroundColor.h"
+#include "Modules/ModuleManager.h"
 
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -56,7 +58,7 @@ void SContextTextStyler::PopulateWidget()
 				SAssignNew(TextStyleComboBox, SComboBox<TSharedPtr<FName>>)
 				.ComboBoxStyle(FJointEditorStyle::Get(), "JointUI.ComboBox.Round")
 				.OptionsSource(&TextStyleRows)
-				.ContentPadding(FJointEditorStyle::Margin_Button)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
 				.OnSelectionChanged(this, &SContextTextStyler::OnActiveTextStyleRowNameChanged)
 				.OnGenerateWidget(this, &SContextTextStyler::OnGenerateTextStyleRowComboEntry)
 				.InitiallySelectedItem(ActiveTextStyleRowName)
@@ -77,7 +79,7 @@ void SContextTextStyler::PopulateWidget()
 		.AutoWidth()
 		[
 			SAssignNew(PipetteButton, SJointOutlineButton)
-			.ContentMargin(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.ToolTipText(LOCTEXT("StylePipetteToolTip","click the text to grab the style of the text after activating it."))
 			.OnPressed(this, &SContextTextStyler::OnStylePipettePressed)
 			.NormalColor(FLinearColor::Transparent)
@@ -249,20 +251,15 @@ void SContextTextStyler::OnStylePipettePressed()
 	
 	if(GetIsStylePipetteActivating())
 	{
-		VOLT_STOP_ANIM(PipetteButton->OutlineColorTrack);
-		
 		PipetteButton->OutlineNormalColor = FLinearColor(0.5,0.5,0.6);
 
 		PipetteButton->PlayUnhoveredAnimation();
 		
 	}else
 	{
-		VOLT_STOP_ANIM(PipetteButton->OutlineColorTrack);
-
 		PipetteButton->OutlineNormalColor = FLinearColor::Transparent;
 		
 		PipetteButton->PlayUnhoveredAnimation();
-
 	}
 }
 
@@ -274,6 +271,13 @@ void SContextTextStyler::OnTextBoxCursorMoved(const FTextLocation& NewCursorPosi
 	SetActiveRowForRun(TargetRichEditableTextBox.Pin()->GetRunUnderCursor());
 
 	SetIsStylePipetteActivating(false);
+
+	//Play Animation
+	
+	PipetteButton->OutlineNormalColor = FLinearColor::Transparent;
+		
+	PipetteButton->PlayUnhoveredAnimation();
+	
 }
 
 

@@ -3,6 +3,10 @@
 #include "GraphNode/SJointGraphNodeCompileResult.h"
 
 #include "JointEditorStyle.h"
+#include "Components/HorizontalBox.h"
+#include "Widgets/SToolTip.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 
 #define LOCTEXT_NAMESPACE "SJointGraphNodeCompileResult"
 
@@ -36,7 +40,7 @@ void SJointGraphNodeCompileResult::RebuildWidget()
 			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
 			.Visibility(EVisibility::Collapsed)
 			.ButtonColorAndOpacity(FLinearColor(0.2, 0.05, 0.05, 0.80))
-			.ContentPadding(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.ToolTip(ErrorCountToolTip)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
@@ -70,7 +74,7 @@ void SJointGraphNodeCompileResult::RebuildWidget()
 			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
 			.Visibility(EVisibility::Collapsed)
 			.ButtonColorAndOpacity(FLinearColor(0.2, 0.1, 0.05, 0.80))
-			.ContentPadding(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.ToolTip(WarningCountToolTip)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
@@ -104,7 +108,7 @@ void SJointGraphNodeCompileResult::RebuildWidget()
 			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
 			.Visibility(EVisibility::Collapsed)
 			.ButtonColorAndOpacity(FLinearColor(0.02, 0.02, 0.02, 0.80))
-			.ContentPadding(FJointEditorStyle::Margin_Button)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.ToolTip(InfoCountToolTip)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
@@ -202,7 +206,7 @@ TSharedPtr<SWidget> SJointGraphNodeCompileResult::GetErrorToolTip()
 			.Visibility(EVisibility::HitTestInvisible)
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(STextBlock)
 				.Text(Message.Pin()->ToText())
@@ -226,7 +230,7 @@ TSharedPtr<SWidget> SJointGraphNodeCompileResult::GetWarningToolTip()
 			.Visibility(EVisibility::HitTestInvisible)
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(STextBlock)
 				.Text(Message.Pin()->ToText())
@@ -250,7 +254,7 @@ TSharedPtr<SWidget> SJointGraphNodeCompileResult::GetInfoToolTip()
 			.Visibility(EVisibility::HitTestInvisible)
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(STextBlock)
 				.Text(Message.Pin()->ToText())

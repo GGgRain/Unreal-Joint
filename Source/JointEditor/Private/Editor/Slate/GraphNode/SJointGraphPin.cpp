@@ -20,7 +20,7 @@ void SJointGraphPinBase::PopulateSlate()
 	FLinearColor Color = (GetPinColor().GetSpecifiedColor() * 0.25).GetClamped(0.03,1);
 	Color.A = 1;
 
-	FMargin Margin = FJointEditorStyle::Margin_Pin * 1.2;
+	FMargin Margin = FJointEditorStyle::Margin_Normal * 1.2;
 	FMargin HorizontalOnlyMargin = Margin;
 	HorizontalOnlyMargin.Bottom = 0;
 	HorizontalOnlyMargin.Top = 0;
@@ -45,7 +45,7 @@ void SJointGraphPinBase::PopulateSlate()
 				SNew(SJointOutlineBorder)
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.ContentMargin(Margin)
+				.ContentPadding(Margin)
 				.NormalColor(Color)
 				.HoverColor(Color * 2)
 				.OutlineNormalColor(Color)
@@ -66,7 +66,7 @@ void SJointGraphPinBase::PopulateSlate()
 				SNew(SJointOutlineBorder)
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.ContentMargin(Margin)
+				.ContentPadding(Margin)
 				.NormalColor(Color)
 				.HoverColor(Color * 2)
 				.OutlineNormalColor(Color)

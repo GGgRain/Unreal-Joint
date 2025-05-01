@@ -5,9 +5,12 @@
 #include "Styling/SlateStyleRegistry.h"
 #include "Styling/SlateTypes.h"
 #include "Styling/CoreStyle.h"
+#include "Styling/SlateStyle.h"
+#include "Brushes/SlateImageBrush.h"
+
+#include "Engine/Texture2D.h"
 #include "Interfaces/IPluginManager.h"
 #include "SlateOptMacros.h"
-#include "Styling/SlateStyle.h"
 
 TSharedPtr<ISlateStyle> FJointEditorStyle::Instance = nullptr;
 
@@ -56,17 +59,13 @@ FName FJointEditorStyle::GetStyleSetName()
 }
 
 
-const FMargin FJointEditorStyle::Margin_Button(FMargin(4));
-const FMargin FJointEditorStyle::Margin_Border(FMargin(4));
-const FMargin FJointEditorStyle::Margin_Tag(FMargin(4));
-const FMargin FJointEditorStyle::Margin_Shadow(FMargin(4.5));
-//const FMargin FJointEditorStyle::Margin_Shadow(FMargin(5));
-const FMargin FJointEditorStyle::Margin_Pin(FMargin(4));
-const FMargin FJointEditorStyle::Margin_PinGap(FMargin(1));
-const FMargin FJointEditorStyle::Margin_Frame(FMargin(4));
-const FMargin FJointEditorStyle::Margin_Name(FMargin(6));
+const FMargin FJointEditorStyle::Margin_Large(FMargin(6));
+const FMargin FJointEditorStyle::Margin_Normal(FMargin(4));
+const FMargin FJointEditorStyle::Margin_Small(FMargin(2));
+const FMargin FJointEditorStyle::Margin_Tiny(FMargin(1));
 
-const FMargin FJointEditorStyle::Margin_Subnode(FMargin(1.5));
+const FMargin FJointEditorStyle::Margin_Shadow(FMargin(4.5));
+const FMargin FJointEditorStyle::Margin_SubNode(FMargin(1.5));
 
 
 const FLinearColor FJointEditorStyle::Color_Normal(0.006, 0.006, 0.006);
@@ -78,6 +77,8 @@ const FLinearColor FJointEditorStyle::Color_SolidNormal(1, 1, 1);
 const FLinearColor FJointEditorStyle::Color_SolidHover(1, 1, 1, 0.7);
 const FLinearColor FJointEditorStyle::Color_SolidSelected(1, 1, 1, 0.8);
 
+
+const FLinearColor FJointEditorStyle::Color_Node_TabBackground(0.015, 0.015, 0.02);
 const FLinearColor FJointEditorStyle::Color_Node_Inactive(0.08f, 0.08f, 0.08f);
 const FLinearColor FJointEditorStyle::Color_Node_Selected(0.75f, 0.75f, 1.00f);
 const FLinearColor FJointEditorStyle::Color_Node_Invalid(1.f, 0.f, 0.f);
@@ -162,7 +163,7 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 		                                                            "Texture2D'/Engine/ArtTools/RenderToTexture/Textures/T_EV_BlankWhite_01.T_EV_BlankWhite_01'")))
 	{
 		Style->Set("JointUI.Image.GraphBackground",
-		           new FSlateImageBrush(DynamicTextureLoad, Icon8x8, FColor(1, 1, 1, 255)));
+		           new FSlateImageBrush(DynamicTextureLoad, Icon8x8, FLinearColor(1, 1, 1, 1)));
 	}
 
 	//TextBlock In editor
@@ -240,6 +241,15 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 
 		Style->Set("JointUI.Button.Round.White", JointRoundButton_White);
 
+		const FButtonStyle JointSphereButton_White = FButtonStyle()
+		.SetNormal(FSlateRoundedBoxBrush(FLinearColor::White, 12.f))
+		.SetHovered(FSlateRoundedBoxBrush(FLinearColor::White, 12.f))
+		.SetPressed(FSlateRoundedBoxBrush(FLinearColor::White, 12.f))
+		.SetNormalPadding(FMargin(0))
+		.SetPressedPadding(FMargin(0));
+		Style->Set("JointUI.Button.Sphere.White", JointSphereButton_White);
+
+		
 		const FButtonStyle SimpleButton = FButtonStyle()
 			.SetNormal(FSlateNoResource())
 			.SetHovered(FSlateRoundedBoxBrush(Color_Hover, 4.0f))

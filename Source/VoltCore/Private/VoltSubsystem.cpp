@@ -275,7 +275,6 @@ void UVoltSubsystem::UnbindOnSlateApplicationPreTick()
 
 UVoltSubsystem* UVoltSubsystem::Get()
 {
-
 	if(GEngine)
 	{
 		if(UEngineSubsystem* Subsystem = GEngine->GetEngineSubsystemBase(UVoltSubsystem::StaticClass())) return Cast<UVoltSubsystem>(Subsystem);

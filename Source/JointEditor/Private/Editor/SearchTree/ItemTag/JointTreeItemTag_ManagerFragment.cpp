@@ -1,6 +1,8 @@
 ﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "ItemTag/JointTreeItemTag_ManagerFragment.h"
+
+#include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
 #include "Filter/JointTreeFilter.h"
 #include "Filter/JointTreeFilterItem.h"
@@ -25,10 +27,11 @@ FReply FJointTreeItemTag_ManagerFragment::AddFilterText()
 
 TSharedRef<SWidget> FJointTreeItemTag_ManagerFragment::MakeTagWidget()
 {
-	return SNew(SButton)
+	return SNew(SJointOutlineButton)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
-		.ButtonColorAndOpacity(FLinearColor(0.02, 0.1, 0.1))
-		.ContentPadding(FJointEditorStyle::Margin_Tag)
+		.NormalColor(FLinearColor(0.02, 0.1, 0.1))
+		.HoverColor(FLinearColor(0.02, 0.1, 0.1) * 2)
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
 		.OnClicked(this, &FJointTreeItemTag_ManagerFragment::AddFilterText)

@@ -46,6 +46,7 @@
 #include "VoltAnimation.h"
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
+#include "EdGraph/EdGraph.h"
 
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
 #include "Module/Volt_ASM_InterpChildSlotPadding.h"
@@ -53,6 +54,7 @@
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
 #include "Module/Volt_ASM_Sequence.h"
 #include "Slate/SRetainerWidget.h"
+#include "Widgets/SToolTip.h"
 
 
 TSharedRef<FDragJointGraphNode> FDragJointGraphNode::New(const TSharedRef<SGraphPanel>& InGraphPanel,
@@ -190,15 +192,12 @@ void SJointGraphNodeBase::OnDebugDataChanged(const FJointNodeDebugData* Data)
 
 TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 {
-
-	//return SNullWidget::NullWidget;
-
 	
 	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
 		if (UJointNodeBase* InNodeInstance = InGraphNode->GetCastedNodeInstance())
 		{
-			if(!InNodeInstance->PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
+			if(!InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
 			{
 				//Don't populate again - really bad for the performance.
 				
@@ -208,11 +207,12 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 					.OwnerGraphNode(SharedThis(this))
 					.Object(InNodeInstance)
 					.EditorNodeObject(InGraphNode)
-					.PropertyData(InNodeInstance->PropertyDataForSimpleDisplayOnGraphNode);
+					.PropertyData(InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode);
+				}else
+				{
+					JointDetailView->SetOwnerGraphNode(SharedThis(this));
+					JointDetailView->UpdatePropertyData(InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode);
 				}
-
-				JointDetailView->SetOwnerGraphNode(SharedThis(this));
-				JointDetailView->UpdatePropertyData(InNodeInstance->PropertyDataForSimpleDisplayOnGraphNode);
 				
 				return JointDetailView.ToSharedRef();
 
@@ -244,15 +244,31 @@ void SJointGraphNodeBase::UpdateNodeTagBox() const
 		{
 			NodeTagContentBox->AddSlot()
 				.AutoHeight()
-				.Padding(FJointEditorStyle::Margin_Frame)
+				.Padding(FJointEditorStyle::Margin_Tiny)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(NodeInstanceTags[i].ToString()))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					[
+						SNew(SImage)
+						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MainFrame.OpenIssueTracker"))
+						.DesiredSizeOverride(FVector2D(8,8))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(NodeInstanceTags[i].ToString()))
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")	
+					]
 				];
 		}
 		
-		NodeTagBox->SetVisibility(  Length > 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed);
+		NodeTagBox->SetVisibility(  Length > 0 ? EVisibility::Visible : EVisibility::Collapsed);
 	}
 }
 
@@ -322,6 +338,31 @@ void SJointGraphNodeBase::GetHoveringColor(const bool bIsSelected, FLinearColor&
 	
 }
 
+
+TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
+{
+	const FSlateBrush* InBorderImage = FJointEditorStyle::Get().GetBrush(bSphere ? "JointUI.Border.NodeShadowSphere" : "JointUI.Border.NodeShadow");
+
+	if(GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance())
+	{
+		UJointNodeBase* NodeInstance = GetCastedGraphNode()->GetCastedNodeInstance();
+ 
+		if(NodeInstance->EdNodeSetting.bUseCustomNodeShadowImageBrush) InBorderImage = &NodeInstance->EdNodeSetting.NodeShadowImageBrush;
+	}
+	
+	return SAssignNew(NodeBody, SBorder)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
+		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
+		.RenderTransformPivot(FVector2D(0.5))
+		.Cursor(this, &SJointGraphNodeBase::GetCursor)
+		.BorderImage(InBorderImage)
+		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
+		.Padding(FJointEditorStyle::Margin_Shadow);
+}
+
+
 TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const bool bSphere)
 {
 
@@ -332,6 +373,16 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 	
 	GetHoveringColor(false,NormalColor,HoverColor, OutlineNormalColor,OutlineHoverColor);
 
+	const FSlateBrush* InnerBorderImage = FJointEditorStyle::Get().GetBrush(bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
+	const FSlateBrush* OuterBorderImage = FJointEditorStyle::Get().GetBrush(bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
+
+	if(GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance())
+	{
+		UJointNodeBase* NodeInstance = GetCastedGraphNode()->GetCastedNodeInstance();
+ 
+		if(NodeInstance->EdNodeSetting.bUseCustomInnerNodeBodyImageBrush) InnerBorderImage = &NodeInstance->EdNodeSetting.InnerNodeBodyImageBrush;
+		if(NodeInstance->EdNodeSetting.bUseCustomOuterNodeBodyImageBrush) OuterBorderImage = &NodeInstance->EdNodeSetting.OuterNodeBodyImageBrush;
+	}
 
 	return SAssignNew(NodeBackground, SJointOutlineBorder)
 			.RenderTransformPivot(FVector2D(0.5))
@@ -342,8 +393,8 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 			.OutlineHoverColor(OutlineHoverColor)
 			.UnHoverAnimationSpeed(9)
 			.HoverAnimationSpeed(9)
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush(bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round"))
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush(bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round"));
+			.InnerBorderImage(InnerBorderImage)
+			.OuterBorderImage(OuterBorderImage);
 }
 
 void SJointGraphNodeBase::PopulateNodeSlates()
@@ -391,19 +442,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	.Visibility(EVisibility::SelfHitTestInvisible);
 
 
-	SAssignNew(NodeBody, SBorder)
-	.HAlign(HAlign_Fill)
-	.VAlign(VAlign_Fill)
-	.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
-	.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-	.RenderTransformPivot(FVector2D(0.5))
-	.Cursor(this, &SJointGraphNodeBase::GetCursor)
-	.Visibility(EVisibility::SelfHitTestInvisible)
-	.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
-	//.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-	.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-	.Padding(FJointEditorStyle::Margin_Shadow)
-	[
+	CreateNodeBody();
+	
+	NodeBody->SetContent(
 		SNew(SOverlay)
 		.Visibility(EVisibility::SelfHitTestInvisible)
 		+ SOverlay::Slot()
@@ -420,7 +461,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		[
 			CreateCenterWholeBox()
 		]
-	];
+	);
 
 
 	//Set the color value to the current value.
@@ -874,7 +915,7 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 	{
 		if (!DragNodeOp->IsValidOperation()) { return FReply::Handled(); }
 
-		GEditor->BeginTransaction(LOCTEXT("DragDropNode", "Drag&Drop SubNode"));
+		GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_DragDropNode", "Drag & Drop sub node"));
 
 		bool bReorderOperation = true;
 
@@ -1075,7 +1116,7 @@ FReply SJointGraphNodeBase::OnMouseMove(const FGeometry& SenderGeometry, const F
 		{
 			// Start resize transaction.  The transaction is started here so all MoveTo actions are captured while empty
 			//	transactions are not created
-			ResizeTransactionPtr = MakeShareable(new FScopedTransaction(NSLOCTEXT("GraphEditor", "ResizeNodeAction", "Resize Node")));
+			ResizeTransactionPtr = MakeShareable(new FScopedTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_ResizeNodeAction", "Resize node")));
 		}
 
 		SGraphNode::FNodeSet NodeFilter;
@@ -1824,7 +1865,7 @@ void SJointGraphNodeBase::AddPin(const TSharedRef<SGraphPin>& PinToAdd)
 			.AutoHeight()
 			.HAlign(HAlign_Right)
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_PinGap)
+			.Padding(FJointEditorStyle::Margin_Tiny)
 		[
 			PinToAdd
 		];
@@ -1836,7 +1877,7 @@ void SJointGraphNodeBase::AddPin(const TSharedRef<SGraphPin>& PinToAdd)
 			.AutoHeight()
 			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_PinGap)
+			.Padding(FJointEditorStyle::Margin_Tiny)
 		[
 			PinToAdd
 		];
@@ -1900,7 +1941,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(STextBlock)
 				.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1930,7 +1971,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.AutoWidth()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Name)
+		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SNew(SImage)
 			.Visibility(EVisibility::SelfHitTestInvisible)
@@ -1940,8 +1981,8 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.AutoWidth()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
-		.Padding(FMargin(0, FJointEditorStyle::Margin_Name.Bottom, FJointEditorStyle::Margin_Name.Bottom,
-		                 FJointEditorStyle::Margin_Name.Bottom))
+		.Padding(FMargin(0, FJointEditorStyle::Margin_Large.Bottom, FJointEditorStyle::Margin_Large.Bottom,
+		                 FJointEditorStyle::Margin_Large.Bottom))
 		[
 			SAssignNew(NodeTitleHintTextBlock, STextBlock)
 			.Visibility(NodeHintTextVisibility)
@@ -1953,7 +1994,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.FillWidth(1)
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Name)
+		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
 			.Visibility(NodeTitleVisibility)
@@ -1973,7 +2014,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.AutoWidth()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Name)
+		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SNew(STextBlock)
 			.Visibility(NodeHintTextVisibility)
@@ -1985,7 +2026,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.FillWidth(1)
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Name)
+		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
 			.Visibility(NodeTitleVisibility)
@@ -2091,38 +2132,12 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNodeTagBox()
 {
 	return  SAssignNew(NodeTagBox, SBorder)
 			.Visibility( EVisibility::Collapsed)
+			.ToolTipText(LOCTEXT("TagBoxToolTip", "The tags this node has."))
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-			.Padding(FJointEditorStyle::Margin_Border)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MainFrame.OpenIssueTracker"))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("TagNameText", "Tags"))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
-					]
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SAssignNew(NodeTagContentBox, SVerticalBox)
-				]
+				SAssignNew(NodeTagContentBox, SVerticalBox)
 			];
 }
 
@@ -2200,7 +2215,7 @@ void SJointGraphNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget>& Slat
 		CastedSubNodePanel->AddSlot()
 			.VAlign(VAlign_Fill)
 			.HAlign(HAlign_Fill)
-			.Padding(FJointEditorStyle::Margin_Subnode)
+			.Padding(FJointEditorStyle::Margin_SubNode)
 			[
 				Slate
 			];
@@ -2251,7 +2266,7 @@ const FSlateBrush* SJointGraphNodeBase::GetIconicNodeSlateBrush()
 	{
 		if (UJointNodeBase* CastedNodeInstance = CastedGraphNode->GetCastedNodeInstance())
 		{
-			return &CastedNodeInstance->IconicNodeImageBrush;
+			return &CastedNodeInstance->EdNodeSetting.IconicNodeImageBrush;
 		}
 	}
 
@@ -2278,7 +2293,7 @@ const bool SJointGraphNodeBase::GetWhetherToDisplayIconicNodeText()
 	{
 		if (const UJointNodeBase* CastedNodeInstance = CastedGraphNode->GetCastedNodeInstance())
 		{
-			return CastedNodeInstance->bAllowDisplayClassFriendlyNameText;
+			return CastedNodeInstance->EdNodeSetting.bAllowDisplayClassFriendlyNameText;
 		}
 	}
 

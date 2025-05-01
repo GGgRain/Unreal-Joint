@@ -15,10 +15,10 @@
 
 #include "EdGraphUtilities.h"
 #include "JointBuildPresetActions.h"
+#include "JointEditorSettings.h"
 #include "JointManagement.h"
 #include "JointManagementTabs.h"
-#include "LevelEditor.h"
-
+#include "JointManager.h"
 
 #include "Debug/JointDebugger.h"
 #include "EditorTools/SJointBulkSearchReplace.h"
@@ -27,6 +27,10 @@
 #include "SharedType/JointSharedTypes.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Node/JointNodeBase.h"
+
+#include "WorkspaceMenuStructure.h"
+#include "WorkspaceMenuStructureModule.h"
+#include "UObject/CoreRedirects.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorModule"
 
@@ -40,6 +44,7 @@ TSharedPtr<FExtensibilityManager> FJointEditorModule::GetToolBarExtensibilityMan
 {
 	return ToolBarExtensibilityManager;
 }
+
 
 void FJointEditorModule::StartupModule()
 {
@@ -56,9 +61,14 @@ void FJointEditorModule::StartupModule()
 	UnregisterClassLayout(); // Remove Default Layout;
 	RegisterClassLayout();
 	
+	//Joint 2.9: JointCoreRedirects
+	AppendActiveJointRedirects();
+
 
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();
+
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
+	JointManagementTabHandler->AddSubTab(FJointManagementTab_MissingNodeClassFixTab::MakeInstance());
 
 	JointNodeStyleFactory = MakeShareable(new FJointNodeStyleFactory());
 	JointGraphPinFactory = MakeShareable(new FJointGraphPinFactory());
@@ -72,20 +82,23 @@ void FJointEditorModule::StartupModule()
 	                                                  FOnSpawnTab::CreateRaw(
 		                                                  this, &FJointEditorModule::OnSpawnJointManagementTab))
 		.SetDisplayName(LOCTEXT("JointManagementDisplayName", "Joint Management"))
-		.SetMenuType(ETabSpawnerMenuType::Hidden);
+		.SetMenuType(ETabSpawnerMenuType::Enabled)
+		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
+		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager"));
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(JointToolTabNames::JointBulkSearchReplaceTab,
-												  FOnSpawnTab::CreateRaw(
-													  this, &FJointEditorModule::OnSpawnJointBulkSearchReplaceTab))
-	.SetDisplayName(LOCTEXT("JointBulkSearchReplaceDisplayName", "Joint Bulk Search & Replace"))
-	.SetMenuType(ETabSpawnerMenuType::Hidden);
+	                                                  FOnSpawnTab::CreateRaw(
+		                                                  this, &FJointEditorModule::OnSpawnJointBulkSearchReplaceTab))
+		.SetDisplayName(LOCTEXT("JointBulkSearchReplaceDisplayName", "Joint Bulk Search & Replace"))
+		.SetMenuType(ETabSpawnerMenuType::Enabled)
+		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
+		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager"));
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(JointToolTabNames::JointCompilerTab,
-												  FOnSpawnTab::CreateRaw(
-													  this, &FJointEditorModule::OnSpawnJointCompilerTab))
-	.SetDisplayName(LOCTEXT("JointCompilerDisplayName", "Joint Compiler"))
-	.SetMenuType(ETabSpawnerMenuType::Hidden);
-	
+	                                                  FOnSpawnTab::CreateRaw(
+		                                                  this, &FJointEditorModule::OnSpawnJointCompilerTab))
+		.SetDisplayName(LOCTEXT("JointCompilerDisplayName", "Joint Compiler"))
+		.SetMenuType(ETabSpawnerMenuType::Hidden);
 }
 
 void FJointEditorModule::ShutdownModule()
@@ -105,7 +118,7 @@ void FJointEditorModule::ShutdownModule()
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(JointToolTabNames::JointManagementTab);
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(JointToolTabNames::JointBulkSearchReplaceTab);
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(JointToolTabNames::JointCompilerTab);
-	
+
 	MenuExtensibilityManager.Reset();
 	RegisteredAssetTypeActions.Reset();
 	ToolBarExtensibilityManager.Reset();
@@ -129,7 +142,6 @@ void FJointEditorModule::RegisterAssetTools()
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointManagerActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointFragmentActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointBuildPresetActions(AssetCategory)));
-
 }
 
 void FJointEditorModule::RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
@@ -142,18 +154,38 @@ void FJointEditorModule::RegisterModuleCommand()
 {
 	FJointEditorCommands::Get().PluginCommands->MapAction(
 		FJointEditorCommands::Get().OpenJointManagementTab
-		, FExecuteAction::CreateRaw(this, &FJointEditorModule::OpenJointManagementTab)
+		, FExecuteAction::CreateStatic(&FJointEditorModule::OpenJointManagementTab)
 	);
 
 	FJointEditorCommands::Get().PluginCommands->MapAction(
 		FJointEditorCommands::Get().OpenJointBulkSearchReplaceTab
-		, FExecuteAction::CreateRaw(this, &FJointEditorModule::OpenJointBulkSearchReplaceTab)
+		, FExecuteAction::CreateStatic(&FJointEditorModule::OpenJointBulkSearchReplaceTab)
 	);
 
 	FJointEditorCommands::Get().PluginCommands->MapAction(
 		FJointEditorCommands::Get().OpenJointCompilerTab
-		, FExecuteAction::CreateRaw(this, &FJointEditorModule::OpenJointCompilerTab)
+		, FExecuteAction::CreateStatic(&FJointEditorModule::OpenJointCompilerTab)
 	);
+}
+
+void FJointEditorModule::AppendActiveJointRedirects()
+{
+	if (UJointEditorSettings* Settings = UJointEditorSettings::Get())
+	{
+		TArray<FCoreRedirect> Redirects;
+
+		for (const FJointCoreRedirect& CoreRedirect : Settings->JointCoreRedirects)
+		{
+			FCoreRedirect RawCoreRedirect(
+				ECoreRedirectFlags::Type_Class,
+				FJointCoreRedirectObjectName::ConvertToCoreRedirectObjectName(CoreRedirect.OldName),
+				FJointCoreRedirectObjectName::ConvertToCoreRedirectObjectName(CoreRedirect.NewName));
+
+			Redirects.Add(RawCoreRedirect);
+		}
+
+		FCoreRedirects::AddRedirectList(TArrayView<FCoreRedirect>(Redirects), "JointCoreRedirect");
+	}
 }
 
 void FJointEditorModule::OpenJointManagementTab()
@@ -291,10 +323,20 @@ void FJointEditorModule::RegisterClassLayout()
 	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
 		                                         &FJointEdGraphNodesCustomizationBase::MakeInstance));
 
+	PropertyModule.RegisterCustomClassLayout(FName(*UJointEdGraph::StaticClass()->GetName())
+	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
+		                                         &FJointEdGraphCustomization::MakeInstance));
+
+	PropertyModule.RegisterCustomClassLayout(FName(*UJointManager::StaticClass()->GetName())
+	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
+		                                         &FJointManagerCustomization::MakeInstance));
+
+
 	PropertyModule.RegisterCustomClassLayout(FName(*UJointBuildPreset::StaticClass()->GetName())
-										 , FOnGetDetailCustomizationInstance::CreateStatic(
-											 &FJointBuildPresetCustomization::MakeInstance));
-	
+	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
+		                                         &FJointBuildPresetCustomization::MakeInstance));
+
+
 	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointNodePointer::StaticStruct()->GetName()),
 	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
 		                                                &FJointNodePointerStructCustomization::MakeInstance));
@@ -309,6 +351,10 @@ void FJointEditorModule::UnregisterClassLayout()
 
 	PropertyModule.UnregisterCustomClassLayout(FName(*UJointEdGraphNode::StaticClass()->GetName()));
 
+	PropertyModule.UnregisterCustomClassLayout(FName(*UJointEdGraph::StaticClass()->GetName()));
+
+	PropertyModule.UnregisterCustomClassLayout(FName(*UJointManager::StaticClass()->GetName()));
+
 	PropertyModule.UnregisterCustomClassLayout(FName(*UJointBuildPreset::StaticClass()->GetName()));
 
 	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointNodePointer::StaticStruct()->GetName()));
@@ -319,16 +365,16 @@ void FJointEditorModule::StoreClassCaches()
 {
 	if (!ClassCache.IsValid())
 	{
-		ClassCache = MakeShareable(new FGraphNodeClassHelper(UJointNodeBase::StaticClass()));
-		FGraphNodeClassHelper::AddObservedBlueprintClasses(UJointFragment::StaticClass());
+		ClassCache = MakeShareable(new FJointGraphNodeClassHelper(UJointNodeBase::StaticClass()));
+		FJointGraphNodeClassHelper::AddObservedBlueprintClasses(UJointFragment::StaticClass());
 		ClassCache->UpdateAvailableBlueprintClasses();
 	}
 
 
 	if (!EdClassCache.IsValid())
 	{
-		EdClassCache = MakeShareable(new FGraphNodeClassHelper(UJointEdGraphNode::StaticClass()));
-		FGraphNodeClassHelper::AddObservedBlueprintClasses(UJointEdGraphNode::StaticClass());
+		EdClassCache = MakeShareable(new FJointGraphNodeClassHelper(UJointEdGraphNode::StaticClass()));
+		FJointGraphNodeClassHelper::AddObservedBlueprintClasses(UJointEdGraphNode::StaticClass());
 		EdClassCache->UpdateAvailableBlueprintClasses();
 	}
 }
@@ -354,7 +400,7 @@ void FJointEditorModule::UnregisterMenuExtensions()
 void FJointEditorModule::RegisterDebugger()
 {
 	UnregisterDebugger();
-	
+
 	JointDebugger = NewObject<UJointDebugger>();
 
 	JointDebugger->AddToRoot();
@@ -362,7 +408,7 @@ void FJointEditorModule::RegisterDebugger()
 
 void FJointEditorModule::UnregisterDebugger()
 {
-	if(JointDebugger != nullptr && JointDebugger->IsValidLowLevel())
+	if (JointDebugger != nullptr && JointDebugger->IsValidLowLevel())
 	{
 		JointDebugger->RemoveFromRoot();
 
@@ -370,14 +416,23 @@ void FJointEditorModule::UnregisterDebugger()
 	}
 }
 
-TSharedPtr<FGraphNodeClassHelper> FJointEditorModule::GetEdClassCache()
+TSharedPtr<FJointGraphNodeClassHelper> FJointEditorModule::GetEdClassCache()
 {
 	return EdClassCache;
 }
 
-TSharedPtr<FGraphNodeClassHelper> FJointEditorModule::GetClassCache()
+TSharedPtr<FJointGraphNodeClassHelper> FJointEditorModule::GetClassCache()
 {
 	return ClassCache;
+}
+
+FJointEditorModule* FJointEditorModule::Get()
+{
+	IModuleInterface& EditorModule = FModuleManager::Get().LoadModuleChecked("JointEditor");
+
+	FJointEditorModule* CastedModule = static_cast<FJointEditorModule*>(&EditorModule);
+
+	return CastedModule;
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -165,7 +165,7 @@ TSharedRef<SWidget> FJointTreeItem::MakeItemTagContainerWidget()
 			.AutoWidth()
 			.HAlign(HAlign_Left)
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Frame)
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				JointTreeItemTag.Get()->MakeTagWidget()
 			];

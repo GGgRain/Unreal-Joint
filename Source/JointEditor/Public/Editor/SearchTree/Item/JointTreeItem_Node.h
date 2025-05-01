@@ -13,7 +13,7 @@ public:
 	
 	Joint_PROPERTY_TREE_ITEM_TYPE(FJointTreeItem_Node, FJointTreeItem)
 
-	FJointTreeItem_Node(UJointNodeBase* InNodePtr, const TSharedRef<SJointTree>& InTree);
+	FJointTreeItem_Node(TWeakObjectPtr<UJointNodeBase> InNodePtr, const TSharedRef<SJointTree>& InTree);
 	
 public:
 
@@ -40,7 +40,7 @@ public:
 private:
 	
 	UPROPERTY()
-	UJointNodeBase* NodePtr;
+	TWeakObjectPtr<UJointNodeBase> NodePtr;
 
 	TSet<TSharedPtr<IJointTreeItemTag>> ItemTags;
 

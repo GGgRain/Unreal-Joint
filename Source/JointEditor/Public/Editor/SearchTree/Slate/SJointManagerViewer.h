@@ -8,13 +8,14 @@
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Widgets/SCompoundWidget.h"
 
+enum class ECheckBoxState : uint8;
 class FJointEditorToolkit;
-struct FJointPropertyTreeFilterArgs;
-struct FJointPropertyTreeBuilderArgs;
+
 class IJointTreeItem;
 class UTexture2D;
-class SCheckBox;
 
+class SCheckBox;
+class SSearchBox;
 
 
 /** Enum which tells us what type of bones we should be showing */
@@ -32,7 +33,7 @@ public:
 	{
 	}
 	SLATE_ARGUMENT(TWeakPtr<FJointEditorToolkit>, ToolKitPtr)
-	SLATE_ARGUMENT(TArray<UJointManager*>, JointManagers)
+	SLATE_ARGUMENT(TArray<TWeakObjectPtr<UJointManager>>, JointManagers)
 	SLATE_ARGUMENT(FJointPropertyTreeBuilderArgs, BuilderArgs)
 	SLATE_END_ARGS()
 	
@@ -54,7 +55,7 @@ public:
 	
 	void SetMode(EJointManagerViewerMode Mode);
 
-	void SetTargetManager(TArray<UJointManager*> NewManagers);
+	void SetTargetManager(TArray<TWeakObjectPtr<UJointManager>> NewManagers);
 
 public:
 
@@ -89,7 +90,7 @@ private:
 	
 	TWeakPtr<FJointEditorToolkit> ToolKitPtr;
 
-	TArray<UJointManager*> JointManagers;
+	TArray<TWeakObjectPtr<UJointManager>> JointManagers;
 
 	FJointPropertyTreeBuilderArgs BuilderArgs;
 

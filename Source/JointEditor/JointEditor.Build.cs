@@ -29,6 +29,7 @@ public class JointEditor : ModuleRules
 			"JointEditor/Public/Editor/Setting",
 			"JointEditor/Public/Editor/Slate",
 			"JointEditor/Public/Editor/Style",
+			"JointEditor/Public/Editor/SharedType",
 			"JointEditor/Public/Editor/Toolkit",
 			
 
@@ -71,8 +72,7 @@ public class JointEditor : ModuleRules
 
 			"KismetWidgets",
 			"Kismet",
-
-			"AIGraph",
+			
 			"GraphEditor",
 
 			"ApplicationCore",
@@ -85,6 +85,9 @@ public class JointEditor : ModuleRules
 			"DeveloperSettings",
 			"AppFramework",
 
+			//For restarting the editor
+			"SettingsEditor",
+			
 			// Gameplay abilities related
 			"GameplayTags",
 			"GameplayTasks",
@@ -92,7 +95,11 @@ public class JointEditor : ModuleRules
 			
 			//Test
 			"SessionServices",
-			"MessageLog",
+			"MessageLog", 
+			"WorkspaceMenuStructure",
+			
+			//Deprecated: Can be removed in future updates.
+			"AIGraph", 
 			
 			//"SceneOutliner",
 			//"ConfigEditor"

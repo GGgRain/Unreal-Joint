@@ -3,6 +3,7 @@
 
 #include "GraphNode/SJointGraphNodeSubNodeBase.h"
 
+#include "Editor.h"
 #include "JointAdvancedWidgets.h"
 #include "Node/SubNode/JointEdGraphNode_Fragment.h"
 #include "Widgets/Images/SImage.h"
@@ -141,14 +142,10 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 	switch (GetSlateDetailLevel())
 	{
 	case EJointEdSlateDetailLevel::SlateDetailLevel_Stow:
-		SAssignNew(NodeBody, SBorder)
-		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
-		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-		.RenderTransformPivot(FVector2D(0.5))
-		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadowSphere"))
-		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-		.Padding(FJointEditorStyle::Margin_Shadow)
-		[
+
+		CreateNodeBody(true);
+	
+		NodeBody->SetContent(
 			SNew(SOverlay)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SOverlay::Slot()
@@ -196,17 +193,13 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					CreateNodeTagBox()
 				]
 			]
-		];
+		);
 		break;
 	case EJointEdSlateDetailLevel::SlateDetailLevel_Minimal_Content:
-		SAssignNew(NodeBody, SBorder)
-		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
-		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-		.RenderTransformPivot(FVector2D(0.5))
-		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
-		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-		.Padding(FJointEditorStyle::Margin_Shadow)
-		[
+		
+		CreateNodeBody();
+	
+		NodeBody->SetContent(
 			SNew(SOverlay)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SOverlay::Slot()
@@ -272,19 +265,14 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					CreateNodeTagBox()
 				]
 			]
-		];
+		);
 		
 		break;
 	case EJointEdSlateDetailLevel::SlateDetailLevel_Maximum:
-		SAssignNew(NodeBody, SBorder)
-		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
-		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-		.RenderTransformPivot(FVector2D(0.5))
-		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
-		//.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-		.Padding(FJointEditorStyle::Margin_Shadow)
-		[
+		
+		CreateNodeBody();
+	
+		NodeBody->SetContent(
 			SNew(SOverlay)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SOverlay::Slot()
@@ -351,7 +339,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 				]
 			]
 
-		];
+		);
 		
 		break;
 	}
@@ -483,7 +471,7 @@ void SJointGraphNodeSubNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget
 					.AutoWidth()
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Subnode)
+					.Padding(FJointEditorStyle::Margin_SubNode)
 					[
 						Slate
 					];
@@ -498,7 +486,7 @@ void SJointGraphNodeSubNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget
 					.AutoHeight()
 					.VAlign(VAlign_Center)
 					.HAlign(HAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Subnode)
+					.Padding(FJointEditorStyle::Margin_SubNode)
 					[
 						Slate
 					];

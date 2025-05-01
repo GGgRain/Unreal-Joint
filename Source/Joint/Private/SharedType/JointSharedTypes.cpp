@@ -19,6 +19,66 @@ FJointGraphNodePropertyData::FJointGraphNodePropertyData(const FName& InProperty
 {
 }
 
+FJointNodePointer::FJointNodePointer()
+#if WITH_EDITORONLY_DATA
+	:
+	Node(nullptr),
+	EditorNode(nullptr)
+#endif
+{
+}
+
+FJointNodePointer::~FJointNodePointer()
+{
+}
+
+bool FJointNodePointer::operator==(const FJointNodePointer& Other) const
+{
+	return GetTypeHash(this) == GetTypeHash(&Other);
+}
+
+bool FJointNodePointer::IsValid() const
+{
+	return Node.IsValid();
+}
+
+FJointNodes::FJointNodes()
+{
+}
+
+FJointNodes::FJointNodes(const TArray<UJointNodeBase*>& InNodes): Nodes(InNodes)
+{
+}
+
+bool FJointEdPinData::HasSameSignature(const FJointEdPinData& Other) const
+{
+	return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type;
+}
+
+void FJointEdPinData::CopyPropertiesFrom(const FJointEdPinData& Other)
+{
+	PinName = Other.PinName;
+	Direction = Other.Direction;
+	Type = Other.Type;
+	Settings = Other.Settings;
+}
+
+bool FJointEdPinData::operator==(const FJointEdPinData& Other) const
+{
+	return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type && ImplementedPinId ==
+		Other.ImplementedPinId;
+}
+
+bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B)
+{
+	return A == B;
+}
+
+
+IJointEdNodeInterface::IJointEdNodeInterface()
+{
+}
+
 #if WITH_EDITOR
 
 
@@ -250,6 +310,39 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 }
 
 #endif
+
+FJointEdNodeSetting::FJointEdNodeSetting()
+{
+	
+#if WITH_EDITORONLY_DATA
+
+	IconicNodeImageBrush = FSlateBrush();
+	IconicNodeImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+	IconicNodeImageBrush.ImageSize = FVector2D(2,2);
+
+#endif
+
+}
+
+
+void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
+{
+	if(!Node) return;
+
+#if WITH_EDITORONLY_DATA
+	
+	IconicNodeImageBrush = Node->IconicNodeImageBrush;
+	bUseSpecifiedGraphNodeBodyColor = Node->bUseSpecifiedGraphNodeBodyColor;
+	NodeBodyColor = Node->NodeBodyColor;
+	bAllowDisplayClassFriendlyNameText = Node->bAllowDisplayClassFriendlyNameText;
+	bUseSimplifiedDisplayClassFriendlyNameText = Node->bUseSimplifiedDisplayClassFriendlyNameText;
+	SimplifiedClassFriendlyNameText = Node->SimplifiedClassFriendlyNameText;
+	DefaultEdSlateDetailLevel = Node->DefaultEdSlateDetailLevel;
+	PropertyDataForSimpleDisplayOnGraphNode = Node->PropertyDataForSimpleDisplayOnGraphNode;
+	bAllowNodeInstancePinControl = Node->bAllowNodeInstancePinControl;
+	
+#endif
+}
 
 FJointEdPinDataSetting::FJointEdPinDataSetting()
 {

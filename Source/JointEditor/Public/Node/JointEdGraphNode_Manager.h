@@ -27,6 +27,12 @@ public:
 
 public:
 	
+	virtual bool CanReplaceNodeClass() override;
+
+	virtual bool CanReplaceEditorNodeClass() override;
+
+public:
+	
 	virtual FLinearColor GetNodeTitleColor() const override;
 
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;

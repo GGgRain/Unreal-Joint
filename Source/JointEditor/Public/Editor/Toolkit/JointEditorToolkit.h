@@ -5,6 +5,7 @@
 #include "Editor/Graph/JointEdGraph.h"
 #include "EditorUndoClient.h"
 #include "VoltAnimationTrack.h"
+#include "EditorWidget/SJointGraphPanel.h"
 #include "WorkflowOrientedApp/WorkflowCentricApplication.h"
 #include "Misc/NotifyHook.h"
 

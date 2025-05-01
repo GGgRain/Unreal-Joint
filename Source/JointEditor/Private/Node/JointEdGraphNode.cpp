@@ -8,8 +8,11 @@
 #include "JointManager.h"
 
 #include "IMessageLogListing.h"
+#include "JointAdvancedWidgets.h"
+#include "JointEditor.h"
 #include "JointEditorSettings.h"
 #include "JointEdUtils.h"
+#include "ScopedTransaction.h"
 
 #include "Node/JointNodeBase.h"
 
@@ -20,6 +23,7 @@
 #include "GraphNode/SJointGraphNodeBase.h"
 
 #include "EdGraph/EdGraph.h"
+#include "EditorTools/SJointNotificationWidget.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
@@ -28,6 +32,8 @@
 
 #include "Logging/TokenizedMessage.h"
 #include "Misc/EngineVersionComparison.h"
+#include "Modules/ModuleManager.h"
+#include "SharedType/JointEdSharedTypes.h"
 
 
 #define LOCTEXT_NAMESPACE "JointGraphNode"
@@ -49,13 +55,16 @@ FText UJointEdGraphNode::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
 	return (NodeInstance)
 		       ? FText::FromName(NodeInstance->GetFName())
+		       : !NodeClassData.GetClassName().IsEmpty()
+		       ? FText::FromString(
+			       FString("ERROR: NO NODE INSTANCE.\nLASTLY KNOWN CLASSNAME: ") + NodeClassData.GetClassName())
 		       : FText::FromName(FName("ERROR: NO NODE INSTANCE"));
 }
 
 FLinearColor UJointEdGraphNode::GetNodeTitleColor() const
 {
 	return CheckShouldUseNodeInstanceSpecifiedBodyColor()
-		       ? GetCastedNodeInstance()->NodeBodyColor
+		       ? GetCastedNodeInstance()->EdNodeSetting.NodeBodyColor
 		       : UJointEditorSettings::Get()->DefaultNodeColor;
 }
 
@@ -63,7 +72,7 @@ bool UJointEdGraphNode::CheckShouldUseNodeInstanceSpecifiedBodyColor() const
 {
 	if (GetCastedNodeInstance())
 	{
-		return GetCastedNodeInstance()->bUseSpecifiedGraphNodeBodyColor;
+		return GetCastedNodeInstance()->EdNodeSetting.bUseSpecifiedGraphNodeBodyColor;
 	}
 
 	return false;
@@ -75,7 +84,7 @@ FText UJointEdGraphNode::GetTooltipText() const
 	//If this graph node doesn't have valid node instance, show the error message for it.
 	if (!NodeInstance)
 	{
-		FString StoredClassName = ClassData.GetClassName();
+		FString StoredClassName = NodeClassData.GetClassName();
 		StoredClassName.RemoveFromEnd(TEXT("_C"));
 
 		return FText::Format(
@@ -246,9 +255,9 @@ FJointEdPinData* UJointEdGraphNode::FindPinDataFromChildren(const UEdGraphPin* P
 
 	for (FJointEdPinData* InPinData : SubNodePinData)
 	{
-		if(InPinData == nullptr) continue;
+		if (InPinData == nullptr) continue;
 
-		if(InPinData->ImplementedPinId == Pin->PinId) return InPinData;
+		if (InPinData->ImplementedPinId == Pin->PinId) return InPinData;
 	}
 
 	return nullptr;
@@ -288,7 +297,7 @@ TArray<UEdGraphPin*> UJointEdGraphNode::GetAllPinsFromThis()
 	{
 		if (CheckProvidedPinIsOnPinData(Pin)) CollectedPins.Add(Pin);
 	}
-	
+
 	return CollectedPins;
 }
 
@@ -300,19 +309,19 @@ TArray<FJointEdPinData>& UJointEdGraphNode::GetPinData()
 TArray<FJointEdPinData*> UJointEdGraphNode::GetAllPinDataFromChildren() const
 {
 	TArray<FJointEdPinData*> OutData;
-	
+
 	TArray<UJointEdGraphNode*> InSubNodes = GetAllSubNodesInHierarchy();
-	
+
 	for (UJointEdGraphNode* SubNode : InSubNodes)
 	{
-		if(!SubNode) continue;
+		if (!SubNode) continue;
 
 		TArray<FJointEdPinData>* Array = &SubNode->GetPinData();
 
-		if(Array == nullptr) continue;
-		
+		if (Array == nullptr) continue;
+
 		OutData.Reserve(OutData.Num() + Array->Num());
-		
+
 		for (FJointEdPinData& JointEdPinData : *Array)
 		{
 			OutData.Emplace(&JointEdPinData);
@@ -332,13 +341,56 @@ TArray<FJointEdPinData> UJointEdGraphNode::JointEdNodeInterface_GetPinData()
 	return GetPinData();
 }
 
+
+inline ECanCreateConnectionResponse ConvertToECanCreateConnectionResponse(
+	const EJointEdCanCreateConnectionResponse::Type InResponse)
+{
+	switch (InResponse)
+	{
+	case CONNECT_RESPONSE_MAKE:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE;
+	case CONNECT_RESPONSE_DISALLOW:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW;
+	case CONNECT_RESPONSE_BREAK_OTHERS_A:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_A;
+	case CONNECT_RESPONSE_BREAK_OTHERS_B:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_B;
+	case CONNECT_RESPONSE_BREAK_OTHERS_AB:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_AB;
+	case CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE;
+	case CONNECT_RESPONSE_MAKE_WITH_PROMOTION:
+		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_PROMOTION;
+	}
+
+	return ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW;
+}
+
+FPinConnectionResponse ConvertToPinConnectionResponse(const FJointEdPinConnectionResponse& InResponse)
+{
+	return FPinConnectionResponse(ConvertToECanCreateConnectionResponse(InResponse.Response),
+	                              InResponse.Message.ToString());
+}
+
+
 FPinConnectionResponse UJointEdGraphNode::CanAttachThisAtParentNode(const UJointEdGraphNode* InParentNode) const
 {
+	if (const UJointNodeBase* CastedNode = GetCastedNodeInstance())
+	{
+		return ConvertToPinConnectionResponse(CastedNode->CanAttachThisAtParentNode(InParentNode));
+	}
+
+
 	return FPinConnectionResponse(CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
 }
 
 FPinConnectionResponse UJointEdGraphNode::CanAttachSubNodeOnThis(const UJointEdGraphNode* InSubNode) const
 {
+	if (const UJointNodeBase* CastedNode = GetCastedNodeInstance())
+	{
+		return ConvertToPinConnectionResponse(CastedNode->CanAttachSubNodeOnThis(InSubNode));
+	}
+
 	return FPinConnectionResponse(CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
 }
 
@@ -394,7 +446,8 @@ void UJointEdGraphNode::ReplicateSubNodePins()
 		}
 		else
 		{
-			UEdGraphPin* NewPin = CreatePin(SubNodePin->Direction,FJointEdPinData::PinType_Joint_Normal, SubNodePin->PinName);
+			UEdGraphPin* NewPin = CreatePin(SubNodePin->Direction, FJointEdPinData::PinType_Joint_Normal,
+			                                SubNodePin->PinName);
 
 			NewPin->PinId = SubNodePin->PinId;
 
@@ -462,7 +515,8 @@ void UJointEdGraphNode::RequestPopulationOfPinWidgets()
 	}
 }
 
-void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName)
+void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(
+	const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName)
 {
 	if (!GetGraphNodeSlate().IsValid()) return;
 
@@ -470,7 +524,7 @@ void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(const 
 
 	if (NodeSlate.IsValid())
 	{
-		NodeSlate->OnNodeInstancePropertyChanged(PropertyChangedEvent,PropertyName);
+		NodeSlate->OnNodeInstancePropertyChanged(PropertyChangedEvent, PropertyName);
 	}
 }
 
@@ -499,7 +553,54 @@ void UJointEdGraphNode::NotifyDebugDataChangedToGraphNodeWidget(const FJointNode
 	}
 }
 
-bool UJointEdGraphNode::CheckCanPerformReplaceEditorNodeClassTo(const UClass* Class)
+void UJointEdGraphNode::ReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class)
+{
+	if (CanReplaceNodeClass() && CanPerformReplaceNodeClassTo(Class))
+	{
+		UObject* OldObject = NodeInstance;
+
+		NodeInstance = NewObject<UJointNodeBase>(GetJointManager(), Class, NAME_None, RF_Transactional);
+
+		if (OldObject && NodeInstance) UEngine::CopyPropertiesForUnrelatedObjects(OldObject, NodeInstance);
+
+		Update();
+	}
+}
+
+bool UJointEdGraphNode::CanReplaceNodeClass()
+{
+	return true;
+}
+
+bool UJointEdGraphNode::CanPerformReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class)
+{
+	return true;
+}
+
+void UJointEdGraphNode::ReplaceEditorNodeClassTo(TSubclassOf<UJointEdGraphNode> Class)
+{
+	if (CanReplaceEditorNodeClass() && CanPerformReplaceEditorNodeClassTo(Class))
+	{
+		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(GetGraph(), Class, NAME_None, RF_Transactional);
+
+		OpNode->NodeClassData = NodeClassData;
+
+		OpNode->NodeInstance = NodeInstance;
+
+		if (OpNode) UEngine::CopyPropertiesForUnrelatedObjects(this, OpNode);
+
+		ParentNode->AddSubNode(OpNode);
+
+		ParentNode->RemoveSubNode(this);
+	}
+}
+
+bool UJointEdGraphNode::CanReplaceEditorNodeClass()
+{
+	return true;
+}
+
+bool UJointEdGraphNode::CanPerformReplaceEditorNodeClassTo(TSubclassOf<UJointEdGraphNode> Class)
 {
 	//If the node instance is nullptr, Don't perform the action.
 
@@ -520,37 +621,6 @@ bool UJointEdGraphNode::CheckCanPerformReplaceEditorNodeClassTo(const UClass* Cl
 	return false;
 }
 
-void UJointEdGraphNode::ReplaceEditorNodeClassTo(const UClass* Class)
-{
-	if (CheckCanPerformReplaceEditorNodeClassTo(Class))
-	{
-		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(GetGraph(), Class);
-
-		OpNode->ClassData = ClassData;
-
-		OpNode->NodeInstance = NodeInstance;
-
-		ParentNode->AddSubNode(OpNode);
-
-		ParentNode->RemoveSubNode(this);
-	}
-	else
-	{
-		FText NotificationText = FText::FromString("Replace Editor Node Class Action Has Been Denied");
-		FText NotificationSubText = FText::FromString(
-			"Provided class doesn't support the node instance type or it was invalid class.");
-
-		FNotificationInfo NotificationInfo(NotificationText);
-		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
-
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
-	}
-}
 
 void UJointEdGraphNode::NotifyGraphChanged()
 {
@@ -584,14 +654,14 @@ UJointManager* UJointEdGraphNode::GetJointManager() const
 	UJointManager* Manager = nullptr;
 
 	if (GetGraph() && GetGraph()->GetOuter()) Manager = Cast<UJointManager>(GetGraph()->GetOuter());
-	
+
 	return Manager;
 }
 
 void UJointEdGraphNode::DestroyNode()
 {
 	UnbindNodeInstance();
-	
+
 	//Notify the removal of this sub node to the parent node.
 	if (this->IsSubNode())
 	{
@@ -618,11 +688,11 @@ void UJointEdGraphNode::DestroyNode()
 
 	//Propagate the action to the children nodes as well.
 	TArray<UJointEdGraphNode*> CachedSubNodes = SubNodes;
-	
+
 	for (UJointEdGraphNode* SubNode : CachedSubNodes)
 	{
-		if(!SubNode) continue;
-		
+		if (!SubNode) continue;
+
 		SubNode->DestroyNode();
 	}
 
@@ -637,15 +707,15 @@ void UJointEdGraphNode::ImportCustomProperties(const TCHAR* SourceText, FFeedbac
 void UJointEdGraphNode::ReconstructNodeInHierarchy()
 {
 	Lock();
-	
+
 	ReconstructNode();
 
 	Unlock();
 
 	for (UJointEdGraphNode* SubNode : SubNodes)
 	{
-		if(!SubNode) continue;
-		
+		if (!SubNode) continue;
+
 		SubNode->ReconstructNodeInHierarchy();
 	}
 }
@@ -725,7 +795,7 @@ void UJointEdGraphNode::OnRenameNode(const FString& NewName)
 
 	//Start rename action.
 
-	FScopedTransaction Transaction(LOCTEXT("RenameNodeTransaction", "Rename Node"));
+	FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_RenameNode", "Rename node"));
 	{
 		GetCastedNodeInstance()->Modify();
 
@@ -774,7 +844,7 @@ void UJointEdGraphNode::FeedEditorNodeToNodeInstance()
 void UJointEdGraphNode::BindNodeInstance()
 {
 	FeedEditorNodeToNodeInstance();
-	
+
 	BindNodeInstancePropertyChangeEvents();
 }
 
@@ -1170,6 +1240,68 @@ bool UJointEdGraphNode::SetNodeInstanceOuterTo(UObject* NewOuter) const
 	return true;
 }
 
+void UJointEdGraphNode::PatchNodeInstanceFromClassData(FArchive& Ar)
+{
+	// If the node instance is not nullptr, then we don't need to patch it.
+	if (NodeInstance) return;
+
+	// Check if the class data is valid. if not, abort.
+	if (NodeClassData.GetClassName().IsEmpty()) return;
+
+	//If the node class data is unknown, revert the patch action and notify that we have invalid class data.
+
+	if (NodeClassData.GetClass() != nullptr)
+	{
+		PatchNodeInstanceFromClassDataIfNeeded();
+	}
+	else
+	{
+		NotifyClassDataUnknown();
+
+		FNotificationInfo NotificationInfo(LOCTEXT("InvalidNode","Detected a missing node class!"));
+		NotificationInfo.SubText = FText::Format(LOCTEXT("InvalidNode","{0}\nVisit Joint Management tab to handle the missing class"), FText::FromString(NodeClassData.GetClassName()) );
+		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+		NotificationInfo.bFireAndForget = true;
+		NotificationInfo.ExpireDuration = 10.f;
+		NotificationInfo.FadeInDuration = 2.0f;
+		NotificationInfo.FadeOutDuration = 4.f;
+		
+		const FNotificationButtonInfo Button1(LOCTEXT("InvalidNode_JointManagement","Open Joint Management"),
+			FText::GetEmpty(),
+			FSimpleDelegate::CreateLambda([]
+			{
+				FJointEditorModule::OpenJointManagementTab();
+			}),
+			SNotificationItem::ECompletionState::CS_None);
+		
+		NotificationInfo.ButtonDetails.Add(Button1);
+
+		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		
+	}
+
+	// If we found any matching classes, ask the user to select one
+
+	/*
+	UClass* SelectedClass = nullptr;
+	
+	// Assuming we have a function to ask the user to select a class from the list
+	if (ConfirmPatchWithIdentifiedClasses(AvailableClasses, SelectedClass) && SelectedClass)
+	{
+		NodeInstance = NewObject<UJointNodeBase>(GetOuter(), SelectedClass);
+
+		// Deserialize the old property field data into the new NodeInstance
+		NodeInstance->Serialize(Ar);
+
+		UpdateNodeInstance();
+	}*/
+}
+
+void UJointEdGraphNode::Serialize(FArchive& Ar)
+{
+	UEdGraphNode::Serialize(Ar);
+}
+
 
 void UJointEdGraphNode::ReconstructNode()
 {
@@ -1184,7 +1316,7 @@ void UJointEdGraphNode::ReconstructNode()
 	RequestUpdateSlate();
 
 	NodeConnectionListChanged();
-	
+
 	//if(!IsLocked()) NotifyGraphRequestUpdate();
 }
 
@@ -1208,7 +1340,7 @@ void UJointEdGraphNode::CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Grap
 
 
 void UJointEdGraphNode::AddContextMenuActionsFragments(UToolMenu* Menu, const FName SectionName,
-                                                          UGraphNodeContextMenuContext* Context) const
+                                                       UGraphNodeContextMenuContext* Context) const
 {
 	FToolMenuSection& Section = Menu->FindOrAddSection(SectionName);
 	Section.AddSeparator("Fragment");
@@ -1236,7 +1368,7 @@ void UJointEdGraphNode::RecalculateNodeDepth()
 
 	for (UJointEdGraphNode* SubNode : SubNodes)
 	{
-		if(!SubNode) continue;
+		if (!SubNode) continue;
 
 		SubNode->RecalculateNodeDepth();
 	}
@@ -1358,8 +1490,8 @@ void UJointEdGraphNode::AddSubNode(UJointEdGraphNode* SubNode, const bool bIsUpd
 
 	SubNode->UpdatePins();
 	SubNode->AutowireNewNode(nullptr);
-	
-	if(!bIsUpdateLocked)
+
+	if (!bIsUpdateLocked)
 	{
 		Update();
 	}
@@ -1440,8 +1572,7 @@ void UJointEdGraphNode::RearrangeSubNodeAt(UJointEdGraphNode* SubNode, int32 Dro
 
 	SubNode->SetParentNodeTo(this);
 
-	if(!bIsUpdateLocked) Update();
-
+	if (!bIsUpdateLocked) Update();
 }
 
 
@@ -1455,15 +1586,14 @@ void UJointEdGraphNode::RemoveSubNode(UJointEdGraphNode* SubNode, const bool bIs
 
 	SubNode->SetParentNodeTo(nullptr);
 
-	if(!bIsUpdateLocked) Update();
-	
+	if (!bIsUpdateLocked) Update();
 }
 
 void UJointEdGraphNode::RemoveAllSubNodes(bool bIsUpdateLocked = true)
 {
 	SubNodes.Reset();
 
-	if(!bIsUpdateLocked) Update();
+	if (!bIsUpdateLocked) Update();
 }
 
 void UJointEdGraphNode::SyncNodeInstanceSubNodeListFromGraphNode()
@@ -1535,18 +1665,19 @@ void UJointEdGraphNode::UpdateNodeInstance()
 	AllocateNodeInstanceGuidIfNeeded();
 
 	BindNodeInstance();
-	
+
 	UpdateNodeInstanceOuter();
 
 	SyncNodeInstanceSubNodeListFromGraphNode();
 }
 
 
-void UJointEdGraphNode::OnNodeInstancePropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName)
+void UJointEdGraphNode::OnNodeInstancePropertyChanged(const FPropertyChangedEvent& PropertyChangedEvent,
+                                                      const FString& PropertyName)
 {
 	UpdatePins();
 
-	NotifyNodeInstancePropertyChangeToGraphNodeWidget(PropertyChangedEvent,PropertyName);
+	NotifyNodeInstancePropertyChangeToGraphNodeWidget(PropertyChangedEvent, PropertyName);
 
 	NodeConnectionListChanged();
 }
@@ -1554,7 +1685,7 @@ void UJointEdGraphNode::OnNodeInstancePropertyChanged(const FPropertyChangedEven
 void UJointEdGraphNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	NotifyGraphNodePropertyChangeToGraphNodeWidget(PropertyChangedEvent);
-	
+
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 
@@ -1562,9 +1693,11 @@ void UJointEdGraphNode::OnDebugDataChanged(const FJointNodeDebugData* DebugData)
 {
 }
 
+
 void UJointEdGraphNode::GrabSlateDetailLevelFromNodeInstance()
 {
-	if(UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance()) SlateDetailLevel = CastedNodeInstance->DefaultEdSlateDetailLevel;
+	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance()) SlateDetailLevel = CastedNodeInstance->
+		EdNodeSetting.DefaultEdSlateDetailLevel;
 }
 
 
@@ -1641,7 +1774,7 @@ void UJointEdGraphNode::CompileNode(const TSharedPtr<class IMessageLogListing>& 
 
 void UJointEdGraphNode::AttachDeprecationCompilerMessage()
 {
-	const FString& DeprecationMessage = FGraphNodeClassHelper::GetDeprecationMessage(NodeInstance->GetClass());
+	const FString& DeprecationMessage = FJointGraphNodeClassHelper::GetDeprecationMessage(NodeInstance->GetClass());
 
 	if (!DeprecationMessage.IsEmpty())
 	{
@@ -1651,6 +1784,21 @@ void UJointEdGraphNode::AttachDeprecationCompilerMessage()
 		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 		TokenizedMessage->AddToken(FUObjectToken::Create(this));
 		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(DeprecationMessage)));
+		TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(this));
+
+		CompileMessages.Add(TokenizedMessage);
+	}
+	
+	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<FJointEditorModule>(TEXT("JointEditor"));
+	
+	if (!EditorModule.GetClassCache().Get()->IsClassKnown(NodeClassData))
+	{
+		TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(EMessageSeverity::Error);
+		TokenizedMessage->AddToken(
+			FAssetNameToken::Create(GetJointManager() ? GetJointManager()->GetName() : "HAS UNKNOWN CLASS"));
+		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
+		TokenizedMessage->AddToken(FUObjectToken::Create(this));
+		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(NodeClassData.ToString())));
 		TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(this));
 
 		CompileMessages.Add(TokenizedMessage);
@@ -1670,24 +1818,25 @@ void UJointEdGraphNode::AttachPropertyCompilerMessage()
 
 		if (!ArrayProp) continue;
 
-		if(FStructProperty* StructureProp = CastField<FStructProperty>(ArrayProp->Inner))
+		if (FStructProperty* StructureProp = CastField<FStructProperty>(ArrayProp->Inner))
 		{
 			if (StructureProp->Struct != FJointNodePointer::StaticStruct()) continue;
 
 			FScriptArrayHelper ArrayHelper(ArrayProp, ArrayProp->ContainerPtrToValuePtr<void>(NodeInstance));
-			
+
 			for (int32 Index = 0; Index < ArrayHelper.Num(); ++Index)
 			{
-				FJointNodePointer* Struct = StructureProp->ContainerPtrToValuePtr<FJointNodePointer>(ArrayHelper.GetRawPtr(Index));
-				
-				const TArray<TSharedPtr<FTokenizedMessage>>& Messages = FJointNodePointer::GetCompilerMessage(*Struct, GetCastedNodeInstance(), ArrayProp->GetName());
+				FJointNodePointer* Struct = StructureProp->ContainerPtrToValuePtr<FJointNodePointer>(
+					ArrayHelper.GetRawPtr(Index));
+
+				const TArray<TSharedPtr<FTokenizedMessage>>& Messages = FJointNodePointer::GetCompilerMessage(
+					*Struct, GetCastedNodeInstance(), ArrayProp->GetName());
 
 				for (TWeakPtr<FTokenizedMessage> Message : Messages)
 				{
 					CompileMessages.Add(Message.Pin());
 				}
 			}
-			
 		}
 	}
 
@@ -1785,13 +1934,14 @@ void UJointEdGraphNode::CompileAndAttachNodeInstanceCompilationMessages()
 {
 	TArray<FJointEdLogMessage> NodeInstanceCompilationMessages;
 
-	if(!GetCastedNodeInstance()) return;
-		
+	if (!GetCastedNodeInstance()) return;
+
 	GetCastedNodeInstance()->OnCompileNode(NodeInstanceCompilationMessages);
 
 	for (const FJointEdLogMessage& NodeInstanceCompilationMessage : NodeInstanceCompilationMessages)
 	{
-		TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(FJointEdUtils::ResolveJointEdMessageSeverityToEMessageSeverity(NodeInstanceCompilationMessage.Severity));
+		TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(
+			FJointEdUtils::ResolveJointEdMessageSeverityToEMessageSeverity(NodeInstanceCompilationMessage.Severity));
 		TokenizedMessage->AddToken(FAssetNameToken::Create(GetJointManager() ? GetJointManager()->GetName() : "NONE"));
 		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 		TokenizedMessage->AddToken(FUObjectToken::Create(this));
@@ -1811,13 +1961,13 @@ void UJointEdGraphNode::OnCompileNode()
 		AttachDeprecationCompilerMessage();
 
 		AttachPropertyCompilerMessage();
-		
+
 		CompileAndAttachNodeInstanceCompilationMessages();
 	}
 	else
 	{
 		// Null instance. Do we have any meaningful class data?
-		FString StoredClassName = ClassData.GetClassName();
+		FString StoredClassName = NodeClassData.GetClassName();
 		StoredClassName.RemoveFromEnd(TEXT("_C"));
 
 		if (!StoredClassName.IsEmpty())
@@ -1852,12 +2002,12 @@ bool UJointEdGraphNode::HasCompileIssues() const
 
 void UJointEdGraphNode::NotifyClassDataUnknown()
 {
-	FGraphNodeClassHelper::AddUnknownClass(ClassData);
+	FJointGraphNodeClassHelper::AddUnknownClass(NodeClassData);
 }
 
 bool UJointEdGraphNode::CheckClassDataIsKnown()
 {
-	return FGraphNodeClassHelper::IsClassKnown(ClassData);
+	return FJointGraphNodeClassHelper::IsClassKnown(NodeClassData);
 }
 
 bool UJointEdGraphNode::PatchNodeInstanceFromClassDataIfNeeded()
@@ -1866,26 +2016,18 @@ bool UJointEdGraphNode::PatchNodeInstanceFromClassDataIfNeeded()
 
 	if (NodeInstance == nullptr)
 	{
-		//If the node class data is unknown, revert the patch action and notify the we have invalid class data.
-		if (!CheckClassDataIsKnown())
-		{
-			NotifyClassDataUnknown();
-
-			return false;
-		}
 		//Try to patch up the data.
 
 		//Check if we can and have to spawn a new node instance.
 		// * NodeInstance can be already spawned by paste operation, so check that here. don't override it * 
-		if (const UClass* NodeClass = ClassData.GetClass(true); NodeClass && NodeInstance == nullptr)
+		if (const UClass* NodeClass = NodeClassData.GetClass(true); NodeClass && NodeInstance == nullptr)
 		{
 			UEdGraph* MyGraph = GetGraph();
 
 			if (UObject* GraphOwner = MyGraph ? MyGraph->GetOuter() : nullptr)
 			{
 				//Create new node instance.
-				NodeInstance = NewObject<UObject>(GraphOwner, NodeClass);
-				NodeInstance->SetFlags(RF_Transactional);
+				NodeInstance = NewObject<UObject>(GraphOwner, NodeClass, NAME_None, RF_Transactional);
 
 				NotifyGraphChanged();
 			}
@@ -1902,16 +2044,16 @@ void UJointEdGraphNode::UpdateNodeClassData()
 {
 	if (!NodeInstance) return;
 
-	UpdateNodeClassDataFrom(NodeInstance->GetClass(), ClassData);
+	UpdateNodeClassDataFrom(NodeInstance->GetClass(), NodeClassData);
 }
 
-void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FGraphNodeClassData& UpdatedData)
+void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGraphNodeClassData& UpdatedData)
 {
 	if (!InstanceClass) return;
 
 	if (const UBlueprint* BPOwner = Cast<UBlueprint>(InstanceClass->ClassGeneratedBy))
 	{
-		UpdatedData = FGraphNodeClassData(
+		UpdatedData = FJointGraphNodeClassData(
 			BPOwner->GetName(),
 			BPOwner->GetOutermost()->GetName(),
 			InstanceClass->GetName(),
@@ -1920,9 +2062,9 @@ void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FGraphNod
 	}
 	else
 	{
-		UpdatedData = FGraphNodeClassData(
+		UpdatedData = FJointGraphNodeClassData(
 			InstanceClass,
-			FGraphNodeClassHelper::GetDeprecationMessage(InstanceClass)
+			FJointGraphNodeClassHelper::GetDeprecationMessage(InstanceClass)
 		);
 	}
 }
@@ -1947,15 +2089,15 @@ FLinearColor UJointEdGraphNode::GetNodeBodyTintColor() const
 {
 	const UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance();
 
-	if(UJointEditorSettings* EdSettings = UJointEditorSettings::Get())
+	if (UJointEditorSettings* EdSettings = UJointEditorSettings::Get())
 	{
-		return CastedNodeInstance && CastedNodeInstance->bUseSpecifiedGraphNodeBodyColor
-			? CastedNodeInstance->NodeBodyColor + GetNodeDepth() * EdSettings->NodeDepthAdditiveColor // NodeInstance specified Color
-			: EdSettings->DefaultNodeColor + GetNodeDepth() * EdSettings->NodeDepthAdditiveColor; //Defa
+		return CastedNodeInstance && CastedNodeInstance->EdNodeSetting.bUseSpecifiedGraphNodeBodyColor
+			       ? CastedNodeInstance->EdNodeSetting.NodeBodyColor + GetNodeDepth() * EdSettings->
+			       NodeDepthAdditiveColor // NodeInstance specified Color
+			       : EdSettings->DefaultNodeColor + GetNodeDepth() * EdSettings->NodeDepthAdditiveColor; //Defa
 	}
 
 	return FLinearColor::Transparent;
-	
 }
 
 void UJointEdGraphNode::ClearCachedParentGuid()

@@ -45,15 +45,13 @@ private:
 
 public:
 	
-	static const FMargin Margin_Button;
-	static const FMargin Margin_Border;
-	static const FMargin Margin_Tag;
+	static const FMargin Margin_Large;
+	static const FMargin Margin_Normal;
+	static const FMargin Margin_Small;
+	static const FMargin Margin_Tiny;
+
 	static const FMargin Margin_Shadow;
-	static const FMargin Margin_Frame;
-	static const FMargin Margin_Name;
-	static const FMargin Margin_Pin;
-	static const FMargin Margin_PinGap;
-	static const FMargin Margin_Subnode;
+	static const FMargin Margin_SubNode;
 
 public:
 	static const FLinearColor Color_Normal;
@@ -65,7 +63,7 @@ public:
 	static const FLinearColor Color_SolidHover;
 	static const FLinearColor Color_SolidSelected;
 
-
+	static const FLinearColor Color_Node_TabBackground;
 	static const FLinearColor Color_Node_Inactive;
 	static const FLinearColor Color_Node_Selected;
 	static const FLinearColor Color_Node_Invalid;
