@@ -1,8 +1,19 @@
 ﻿#include "Editor/SharedType/JointEditorSharedTypes.h"
 
-#include "ARFilter.h"
-#include "AssetData.h"
+#include "Misc/EngineVersionComparison.h"
+#if UE_VERSION_OLDER_THAN(5, 1, 0)
+
 #include "AssetRegistryModule.h"
+#include "ARFilter.h"
+
+#else
+
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/ARFilter.h"
+
+#endif
+
+
 #include "Editor.h"
 #include "ObjectEditorUtils.h"
 #include "Engine/Blueprint.h"
@@ -97,7 +108,11 @@ FString FJointGraphNodeClassData::ToString() const
 		const int32 ShortNameIdx = ClassDesc.Find(TEXT("_"), ESearchCase::CaseSensitive);
 		if (ShortNameIdx != INDEX_NONE)
 		{
+#if UE_VERSION_OLDER_THAN(5, 5, 0)
 			ClassDesc.MidInline(ShortNameIdx + 1, MAX_int32, false);
+#else
+			ClassDesc.MidInline(ShortNameIdx + 1, MAX_int32, EAllowShrinking::No);
+#endif
 		}
 
 		return ClassDesc;
@@ -512,7 +527,16 @@ void FJointGraphNodeClassHelper::BuildClassGraph()
 	TArray<FAssetData> BlueprintList;
 
 	FARFilter Filter;
+#if UE_VERSION_OLDER_THAN(5,1,0)
+
 	Filter.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+	
+#else
+
+	Filter.ClassPaths.Add(UBlueprint::StaticClass()->GetClassPathName());
+	
+#endif
+
 	AssetRegistryModule.Get().GetAssets(Filter, BlueprintList);
 
 	for (int32 i = 0; i < BlueprintList.Num(); i++)
@@ -567,6 +591,8 @@ void FJointGraphNodeClassHelper::UpdateAvailableBlueprintClasses()
 			TEXT("AssetRegistry"));
 		const bool bSearchSubClasses = true;
 
+#if UE_VERSION_OLDER_THAN(5,1,0)
+	
 		TArray<FName> ClassNames;
 		TSet<FName> DerivedClassNames;
 
@@ -581,6 +607,25 @@ void FJointGraphNodeClassHelper::UpdateAvailableBlueprintClasses()
 			int32& Count = It.Value();
 			Count = DerivedClassNames.Num();
 		}
+	
+#else
+		
+		TArray<FTopLevelAssetPath> ClassNames;
+		TSet<FTopLevelAssetPath> DerivedClassNames;
+
+		for (TMap<UClass*, int32>::TIterator It(BlueprintClassCount); It; ++It)
+		{
+			ClassNames.Reset();
+			ClassNames.Add(It.Key()->GetClassPathName());
+
+			DerivedClassNames.Empty(DerivedClassNames.Num());
+			AssetRegistryModule.Get().GetDerivedClassNames(ClassNames, TSet<FTopLevelAssetPath>(), DerivedClassNames);
+
+			int32& Count = It.Value();
+			Count = DerivedClassNames.Num();
+		}
+	
+#endif
 	}
 }
 

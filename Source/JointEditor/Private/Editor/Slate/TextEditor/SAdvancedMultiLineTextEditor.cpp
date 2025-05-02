@@ -318,7 +318,6 @@ FTextBlockStyle FTextStyles::CreateTextBlockStyle(const FRunInfo& InRunInfo) con
 	uint16 FontSize;
 	EFontStyle::Flags FontStyle;
 	FLinearColor FontColor;
-	FName Name;
 	ExplodeRunInfo(InRunInfo, FontFamily, FontSize, FontStyle, FontColor);
 	return CreateTextBlockStyle(FontFamily, FontSize, FontStyle, FontColor);
 }
@@ -705,7 +704,11 @@ void SAdvancedMultiLineTextEditor::HandleHyperlinkComboOpened()
 	{
 		if (FChar::IsLinebreak(SelectedText[SelectedTextIndex]))
 		{
+#if UE_VERSION_OLDER_THAN(5, 5, 0)
 			SelectedText.LeftInline(SelectedTextIndex, false);
+#else
+			SelectedText.LeftInline(SelectedTextIndex, EAllowShrinking::No);
+#endif
 			break;
 		}
 	}

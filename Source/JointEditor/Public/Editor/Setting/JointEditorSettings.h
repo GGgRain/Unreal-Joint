@@ -318,7 +318,7 @@ public:
 	 * This is useful for debugging and development purposes, especially good to see how internal data is working.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Debugging", meta = (DisplayName = "Enable Developer Mode"))
-	bool bEnableDeveloperMode = true;
+	bool bEnableDeveloperMode = false;
 
 public:
 

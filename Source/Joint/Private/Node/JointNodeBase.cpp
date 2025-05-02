@@ -280,10 +280,11 @@ const FJointEdPinConnectionResponse UJointNodeBase::CanAttachThisAtParentNode_Im
 	if (InParentNode == this) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage_SameNode", "Can not attach a node to the same node. How are you even doing this?"));
 
 	//Allow the connection.
-	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
+	if(GEngine->IsEditor()) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
 
 #endif
-
+	
+	//Runtime Fallback
 	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, INVTEXT("CANNOT CHANGE ATTACHMENT ON RUNTIME"));
 	
 }
@@ -304,10 +305,12 @@ const FJointEdPinConnectionResponse UJointNodeBase::CanAttachSubNodeOnThis_Imple
 	if (InSubNode == this) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, LOCTEXT("DisallowedAttachmentMessage_SameNode", "Can not attach a node to the same node. How are you even doing this?"));
 
 	//Allow the connection.
-	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
+	if(GEngine->IsEditor()) return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
 
+	
 #endif
 
+	//Runtime Fallback
 	return FJointEdPinConnectionResponse(EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, INVTEXT("CANNOT CHANGE ATTACHMENT ON RUNTIME"));
 	
 }

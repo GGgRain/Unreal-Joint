@@ -4,10 +4,6 @@
 
 #include "CoreMinimal.h"
 
-#if WITH_EDITOR
-#include "AIGraph/Classes/AIGraphTypes.h"
-#endif
-
 #include "Editor/Debug/JointNodeDebugData.h"
 #include "EdGraph/EdGraphNode.h"
 #include "Layout/Visibility.h"
@@ -15,6 +11,14 @@
 #include "EdGraph/EdGraphSchema.h"
 #include "Editor/SharedType/JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
+
+#include "Misc/EngineVersionComparison.h"
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
+#include "AIGraph/Classes/AIGraphTypes.h"
+#else
+#include "Editor/AIGraph/Classes/AIGraphTypes.h"
+#endif
+
 #include "JointEdGraphNode.generated.h"
 
 

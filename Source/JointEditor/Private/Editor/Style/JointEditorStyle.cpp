@@ -78,7 +78,7 @@ const FLinearColor FJointEditorStyle::Color_SolidHover(1, 1, 1, 0.7);
 const FLinearColor FJointEditorStyle::Color_SolidSelected(1, 1, 1, 0.8);
 
 
-const FLinearColor FJointEditorStyle::Color_Node_TabBackground(0.015, 0.015, 0.02);
+const FLinearColor FJointEditorStyle::Color_Node_TabBackground(0.009, 0.009, 0.012);
 const FLinearColor FJointEditorStyle::Color_Node_Inactive(0.08f, 0.08f, 0.08f);
 const FLinearColor FJointEditorStyle::Color_Node_Selected(0.75f, 0.75f, 1.00f);
 const FLinearColor FJointEditorStyle::Color_Node_Invalid(1.f, 0.f, 0.f);
