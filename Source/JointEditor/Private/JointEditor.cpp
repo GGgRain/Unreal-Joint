@@ -68,7 +68,7 @@ void FJointEditorModule::StartupModule()
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();
 
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
-	JointManagementTabHandler->AddSubTab(FJointManagementTab_MissingNodeClassFixTab::MakeInstance());
+	JointManagementTabHandler->AddSubTab(FJointManagementTab_NodeClassManagementTab::MakeInstance());
 
 	JointNodeStyleFactory = MakeShareable(new FJointNodeStyleFactory());
 	JointGraphPinFactory = MakeShareable(new FJointGraphPinFactory());

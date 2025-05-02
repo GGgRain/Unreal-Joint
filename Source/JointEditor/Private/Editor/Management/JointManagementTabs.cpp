@@ -912,20 +912,20 @@ FReply SJointEditorUtilityTab::ResetNodeEditorStyle()
 }
 
 
-FJointManagementTab_MissingNodeClassFixTab::FJointManagementTab_MissingNodeClassFixTab()
+FJointManagementTab_NodeClassManagementTab::FJointManagementTab_NodeClassManagementTab()
 {
 }
 
-FJointManagementTab_MissingNodeClassFixTab::~FJointManagementTab_MissingNodeClassFixTab()
+FJointManagementTab_NodeClassManagementTab::~FJointManagementTab_NodeClassManagementTab()
 {
 }
 
-TSharedRef<IJointManagementSubTab> FJointManagementTab_MissingNodeClassFixTab::MakeInstance()
+TSharedRef<IJointManagementSubTab> FJointManagementTab_NodeClassManagementTab::MakeInstance()
 {
-	return MakeShareable(new FJointManagementTab_MissingNodeClassFixTab);
+	return MakeShareable(new FJointManagementTab_NodeClassManagementTab);
 }
 
-void FJointManagementTab_MissingNodeClassFixTab::RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager)
+void FJointManagementTab_NodeClassManagementTab::RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager)
 {
 	TSharedPtr<FWorkspaceItem> JointEditorGroup = GetParentTabHandler().Pin()->GetActiveGroupFor("JointEditor");
 
@@ -943,42 +943,42 @@ void FJointManagementTab_MissingNodeClassFixTab::RegisterTabSpawner(const TShare
 				{
 					return SNew(SDockTab)
 						.TabRole(ETabRole::PanelTab)
-						.Label(LOCTEXT("MissingClassFixTab", "Missing Node Class Fix"))
+						.Label(LOCTEXT("NodeClassManagementTab", "Node Class Management"))
 						[
-							SNew(SJointEditorMissingNodeClassFixTab)
+							SNew(SJointEditorNodeClassManagementTab)
 						];
 				}
 			)
 		)
-		.SetDisplayName(LOCTEXT("MissingClassFixTabTitle", "Missing Node Class Fix"))
-		.SetTooltipText(LOCTEXT("MissingClassFixTabText", "Open the Missing Node Class Fix tab."))
+		.SetDisplayName(LOCTEXT("NodeClassManagementTabTitle", "Node Class Management"))
+		.SetTooltipText(LOCTEXT("NodeClassManagementTabText", "Open the Node Class Management tab."))
 		.SetGroup(JointEditorGroup.ToSharedRef())
 		.SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
 		                    "ExternalImagePicker.GenerateImageButton"));
 }
 
-const FName FJointManagementTab_MissingNodeClassFixTab::GetTabId()
+const FName FJointManagementTab_NodeClassManagementTab::GetTabId()
 {
-	return "TAB_MissingClassFixTab";
+	return "TAB_NodeClassManagementTab";
 }
 
-const ETabState::Type FJointManagementTab_MissingNodeClassFixTab::GetInitialTabState()
+const ETabState::Type FJointManagementTab_NodeClassManagementTab::GetInitialTabState()
 {
 	return IJointManagementSubTab::GetInitialTabState();
 }
 
 
-namespace JointEditorMissingNodeClassFixTabs
+namespace JointEditorNodeClassManagementTabs
 {
-	static const FName MissingClassesMap("MissingClassesMapID");
+	static const FName JointListTab("JointListID");
 }
 
 
-void SJointEditorMissingNodeClassFixTab::Construct(const FArguments& InArgs)
+void SJointEditorNodeClassManagementTab::Construct(const FArguments& InArgs)
 {
 	auto NomadTab = SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
-		.Label(LOCTEXT("SJointEditorMissingNodeClassFixTabTitle", "Joint Missing Node Class Fix"));
+		.Label(LOCTEXT("SJointEditorNodeClassManagementTabTitle", "Node Class Management"));
 
 	TabManager = FGlobalTabmanager::Get()->NewTabManager(NomadTab);
 
@@ -990,13 +990,13 @@ void SJointEditorMissingNodeClassFixTab::Construct(const FArguments& InArgs)
 	RegisterTabSpawners(TabManager.ToSharedRef());
 
 
-	TSharedPtr<FTabManager::FLayout> DebuggerLayout = FTabManager::NewLayout("JointEditorMissingNodeClassFixTab_V1")
+	TSharedPtr<FTabManager::FLayout> DebuggerLayout = FTabManager::NewLayout("JointNodeClassManagementTab_V1.1")
 		->AddArea(FTabManager::NewPrimaryArea()
 			->SetOrientation(Orient_Horizontal)
 			->Split(
 				FTabManager::NewStack()
 				->SetSizeCoefficient(0.25f)
-				->AddTab(JointEditorMissingNodeClassFixTabs::MissingClassesMap, ETabState::OpenedTab)
+				->AddTab(JointEditorNodeClassManagementTabs::JointListTab, ETabState::OpenedTab)
 			)
 			// ->Split(
 			// 	FTabManager::NewStack()
@@ -1016,7 +1016,7 @@ void SJointEditorMissingNodeClassFixTab::Construct(const FArguments& InArgs)
 	MenuBarBuilder.AddPullDownMenu(
 		LOCTEXT("SubTabsMenuLabel", "Sub Tabs")
 		, FText::GetEmpty()
-		, FNewMenuDelegate::CreateSP(this, &SJointEditorMissingNodeClassFixTab::FillWindowMenu)
+		, FNewMenuDelegate::CreateSP(this, &SJointEditorNodeClassManagementTab::FillWindowMenu)
 		, "Sub Tabs"
 	);
 
@@ -1046,7 +1046,7 @@ void SJointEditorMissingNodeClassFixTab::Construct(const FArguments& InArgs)
 	];
 }
 
-void SJointEditorMissingNodeClassFixTab::FillWindowMenu(FMenuBuilder& MenuBuilder)
+void SJointEditorNodeClassManagementTab::FillWindowMenu(FMenuBuilder& MenuBuilder)
 {
 	if (!TabManager.IsValid()) { return; }
 
@@ -1057,25 +1057,25 @@ void SJointEditorMissingNodeClassFixTab::FillWindowMenu(FMenuBuilder& MenuBuilde
 	TabManager->PopulateLocalTabSpawnerMenu(MenuBuilder);
 }
 
-void SJointEditorMissingNodeClassFixTab::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
+void SJointEditorNodeClassManagementTab::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
 {
 	//Unregister first
-	TabManager->UnregisterTabSpawner(JointEditorMissingNodeClassFixTabs::MissingClassesMap);
+	TabManager->UnregisterTabSpawner(JointEditorNodeClassManagementTabs::JointListTab);
 
-	TabManager->RegisterTabSpawner(JointEditorMissingNodeClassFixTabs::MissingClassesMap,
+	TabManager->RegisterTabSpawner(JointEditorNodeClassManagementTabs::JointListTab,
 	                               FOnSpawnTab::CreateSP(
-		                               this, &SJointEditorMissingNodeClassFixTab::SpawnMissingClassesMapTab))
+		                               this, &SJointEditorNodeClassManagementTab::SpawnMissingClassesMapTab))
 		.SetDisplayName(LOCTEXT("JointListTabTitle", "Joint List"))
 		.SetTooltipText(LOCTEXT("JointListTabTooltipText", "Open Joint list tab."))
 		.SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), "ContentBrowser.ShowSourcesView"));
 }
 
-void SJointEditorMissingNodeClassFixTab::InitializeMissingClassesMapTab()
+void SJointEditorNodeClassManagementTab::InitializeMissingClassesMapTab()
 {
 	MissingClassesMapWidget = SNew(SJointEditorTap_MissingClassesMap);
 }
 
-TSharedRef<SDockTab> SJointEditorMissingNodeClassFixTab::SpawnMissingClassesMapTab(const FSpawnTabArgs& Args)
+TSharedRef<SDockTab> SJointEditorNodeClassManagementTab::SpawnMissingClassesMapTab(const FSpawnTabArgs& Args)
 {
 	TSharedRef<SDockTab> TabPtr = SNew(SDockTab)
 		.TabRole(ETabRole::PanelTab)
@@ -1801,6 +1801,7 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 void FJointEditorTap_RedirectionInstance::Construct(const FArguments& InArgs)
 {
 	Redirection = InArgs._Redirection;
+	Owner = InArgs._Owner;
 
 	ChildSlot[
 		SNew(SJointOutlineBorder)
@@ -1978,7 +1979,7 @@ FReply FJointEditorTap_MissingClassInstance::Apply()
 		FMessageDialog::Open(EAppMsgType::OkCancel,
 		                     FText::Format(
 			                     LOCTEXT("NodeClassChangeWarning",
-			                             "You are about to feed {0} to lastly known \'{1}\' class in the whole Joint Manager Assets. Be careful! This action is not revertible, you must backup your project before proceed."),
+			                             "You are about to feed {0} to lastly known \'{1}\' class in the whole Joint Manager Assets. This action is revertible but we recommend you to backup your project before proceed."),
 			                     FText::FromName(SelectedClass->GetFName()),
 			                     FText::FromString(ClassData.GetPackageName()))))
 	{

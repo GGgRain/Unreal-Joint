@@ -86,12 +86,12 @@ public:
 };
 
 
-class JOINTEDITOR_API FJointManagementTab_MissingNodeClassFixTab : public IJointManagementSubTab
+class JOINTEDITOR_API FJointManagementTab_NodeClassManagementTab : public IJointManagementSubTab
 {
 public:
-	FJointManagementTab_MissingNodeClassFixTab();
+	FJointManagementTab_NodeClassManagementTab();
 
-	virtual ~FJointManagementTab_MissingNodeClassFixTab() override;
+	virtual ~FJointManagementTab_NodeClassManagementTab() override;
 
 public:
 	static TSharedRef<IJointManagementSubTab> MakeInstance();
@@ -109,10 +109,10 @@ public:
 /**
  * Content widget for the FJointManagementTab_JointEditorUtilityTab. it's just a pure slate. make something like this for your own extension.
  */
-class JOINTEDITOR_API SJointEditorMissingNodeClassFixTab : public SCompoundWidget
+class JOINTEDITOR_API SJointEditorNodeClassManagementTab : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SJointEditorMissingNodeClassFixTab)
+	SLATE_BEGIN_ARGS(SJointEditorNodeClassManagementTab)
 		{
 		}
 
