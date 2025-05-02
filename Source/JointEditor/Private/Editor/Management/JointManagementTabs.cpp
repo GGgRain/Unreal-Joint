@@ -1094,300 +1094,318 @@ void SJointEditorTap_MissingClassesMap::Construct(const FArguments& InArgs)
 {
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
+		SNew(SBorder)
+		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Image.GraphBackground"))
+		.BorderBackgroundColor(FJointEditorStyle::Color_Node_TabBackground)
+		.Padding(FJointEditorStyle::Margin_Normal)
 		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Center)
+		.VAlign(VAlign_Top)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.FillWidth(1)
-			.HAlign(HAlign_Left)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(STextBlock)
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-				.Text(LOCTEXT("EditorTitle_ReallocateMissingNodeClasses", "Reallocate missing node classes (BETA)"))
-			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.HAlign(HAlign_Right)
-			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Normal)
-			[
-				SNew(SJointOutlineButton)
-				.ContentPadding(FJointEditorStyle::Margin_Normal)
-				.OnClicked(this, &SJointEditorTap_MissingClassesMap::MissingClassRefresh)
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.FillWidth(1)
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
-					.Text(LOCTEXT("RefreshButton", "Refresh List"))
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+					.Text(LOCTEXT("EditorTitle_ReallocateMissingNodeClasses", "Reallocate missing node classes (BETA)"))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Right)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(SJointOutlineButton)
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.OnClicked(this, &SJointEditorTap_MissingClassesMap::MissingClassRefresh)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("RefreshButton", "Refresh List"))
+					]
 				]
 			]
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		[
-			SAssignNew(MissingClassScrollBox, SScrollBox)
-			+ SScrollBox::Slot()
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
+			[
+				SAssignNew(MissingClassScrollBox, SScrollBox)
+				+ SScrollBox::Slot()
+				.HAlign(HAlign_Fill)
+				.VAlign(VAlign_Fill)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(SJointOutlineBorder)
+					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.Text(LOCTEXT("MissingNodeClassRefreshDescription",
+						              "Please press refresh button to audit all assets."))
+					]
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			.Padding(FJointEditorStyle::Margin_Normal)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+				.AutoWrapText(true)
+				.Text(LOCTEXT("RedirectionTitle", "Allocated Redirections"))
+			]
+			+ SVerticalBox::Slot()
+			.FillHeight(1)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				SAssignNew(RedirectionScrollBox, SScrollBox)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
+				.AutoWrapText(true)
+				.ColorAndOpacity(FLinearColor::Red)
+				.Text(LOCTEXT("DangerZoneTitle", "Danger Zone (BETA)"))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
 			[
 				SNew(SJointOutlineBorder)
-				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.Text(LOCTEXT("MissingNodeClassRefreshDescription",
-					              "Please press refresh button to audit all assets."))
-				]
-			]
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FJointEditorStyle::Margin_Normal)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Center)
-		[
-			SNew(STextBlock)
-			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
-			.AutoWrapText(true)
-			.Text(LOCTEXT("RedirectionTitle", "Allocated Redirections"))
-		]
-		+ SVerticalBox::Slot()
-		.FillHeight(1)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		[
-			SAssignNew(RedirectionScrollBox, SScrollBox)
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FJointEditorStyle::Margin_Normal)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Center)
-		[
-			SNew(STextBlock)
-			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
-			.AutoWrapText(true)
-			.ColorAndOpacity(FLinearColor::Red)
-			.Text(LOCTEXT("DangerZoneTitle", "Danger Zone (BETA)"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FJointEditorStyle::Margin_Normal)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Center)
-		[
-			SNew(SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-			.ContentPadding(FJointEditorStyle::Margin_Large)
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
-				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("NodeClassSwapHintTextTitle", "Swap Node Instances' Class"))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
-				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("NodeClassSwapHintTextTitle", "Swap Node Instances' Class"))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
 
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("NodeClassDataSwapHintText",
-					              "Swap the existing node's class on the assets on the system into the other one. Be careful! This action is not revertiable, you must backup your project before proceed."))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SClassPropertyEntryBox)
-						.AllowNone(false)
-						.AllowAbstract(false)
-						.MetaClass(UJointNodeBase::StaticClass())
-						.OnSetClass(this, &SJointEditorTap_MissingClassesMap::OnSetClass_NodeClassLeftSelectedClass)
-						.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
-						{
-							return NodeClassLeftSelectedClass;
-						}))
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("NodeClassDataSwapHintText",
+						              "Swap the existing node's class on the assets on the system into the other one. Be careful! This action is not revertiable, you must backup your project before proceed."))
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
-					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MeshPaint.NextTexture"))
-						.DesiredSizeOverride(FVector2D(18, 18))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
 					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
 					[
-						SNew(SClassPropertyEntryBox)
-						.AllowNone(false)
-						.AllowAbstract(false)
-						.MetaClass(UJointNodeBase::StaticClass())
-						.OnSetClass(this, &SJointEditorTap_MissingClassesMap::OnSetClass_NodeClassRightSelectedClass)
-						.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
-						{
-							return NodeClassRightSelectedClass;
-						}))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.ContentPadding(FJointEditorStyle::Margin_Large)
-						.OnClicked(this, &SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked)
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
 						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("ReconstructButton", "Apply"))
+							SNew(SClassPropertyEntryBox)
+							.AllowNone(false)
+							.AllowAbstract(false)
+							.MetaClass(UJointNodeBase::StaticClass())
+							.OnSetClass(this, &SJointEditorTap_MissingClassesMap::OnSetClass_NodeClassLeftSelectedClass)
+							.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
+							{
+								return NodeClassLeftSelectedClass;
+							}))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MeshPaint.NextTexture"))
+							.DesiredSizeOverride(FVector2D(18, 18))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SClassPropertyEntryBox)
+							.AllowNone(false)
+							.AllowAbstract(false)
+							.MetaClass(UJointNodeBase::StaticClass())
+							.OnSetClass(
+								this, &SJointEditorTap_MissingClassesMap::OnSetClass_NodeClassRightSelectedClass)
+							.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
+							{
+								return NodeClassRightSelectedClass;
+							}))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SJointOutlineButton)
+							.ContentPadding(FJointEditorStyle::Margin_Large)
+							.OnClicked(this, &SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ReconstructButton", "Apply"))
+							]
 						]
 					]
 				]
 			]
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(FJointEditorStyle::Margin_Normal)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Center)
-		[
-			SNew(SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-			.ContentPadding(FJointEditorStyle::Margin_Large)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
+			.VAlign(VAlign_Center)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
+				SNew(SJointOutlineBorder)
+				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
 				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
+				.VAlign(VAlign_Fill)
 				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("EditorNodeClassSwapHintTextTitle", "Swap Editor Node Instances' Class"))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
-				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.AutoWrapText(true)
-					.Text(LOCTEXT("EditorNodeClassDataSwapHintText",
-					              "Swap the existing editor node's class on the assets on the system into the other one. Be careful! This action is not revertiable, you must backup your project before proceed."))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Tiny)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SClassPropertyEntryBox)
-						.AllowNone(false)
-						.AllowAbstract(false)
-						.MetaClass(UJointEdGraphNode::StaticClass())
-						.OnSetClass(
-							this, &SJointEditorTap_MissingClassesMap::OnSetClass_EditorNodeClassLeftSelectedClass)
-						.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
-						{
-							return EditorNodeClassLeftSelectedClass;
-						}))
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("EditorNodeClassSwapHintTextTitle", "Swap Editor Node Instances' Class"))
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MeshPaint.NextTexture"))
-						.DesiredSizeOverride(FVector2D(18, 18))
+						SNew(STextBlock)
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.AutoWrapText(true)
+						.Text(LOCTEXT("EditorNodeClassDataSwapHintText",
+						              "Swap the existing editor node's class on the assets on the system into the other one. Be careful! This action is not revertiable, you must backup your project before proceed."))
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(FJointEditorStyle::Margin_Normal)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					.HAlign(HAlign_Center)
 					.VAlign(VAlign_Center)
-					[
-						SNew(SClassPropertyEntryBox)
-						.AllowNone(false)
-						.AllowAbstract(false)
-						.MetaClass(UJointEdGraphNode::StaticClass())
-						.OnSetClass(
-							this, &SJointEditorTap_MissingClassesMap::OnSetClass_EditorNodeClassRightSelectedClass)
-						.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
-						{
-							return EditorNodeClassRightSelectedClass;
-						}))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
 					.Padding(FJointEditorStyle::Margin_Normal)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
 					[
-						SNew(SJointOutlineButton)
-						.ContentPadding(FJointEditorStyle::Margin_Large)
-						.OnClicked(this, &SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked)
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
 						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("ReconstructButton", "Apply"))
+							SNew(SClassPropertyEntryBox)
+							.AllowNone(false)
+							.AllowAbstract(false)
+							.MetaClass(UJointEdGraphNode::StaticClass())
+							.OnSetClass(
+								this, &SJointEditorTap_MissingClassesMap::OnSetClass_EditorNodeClassLeftSelectedClass)
+							.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
+							{
+								return EditorNodeClassLeftSelectedClass;
+							}))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("MeshPaint.NextTexture"))
+							.DesiredSizeOverride(FVector2D(18, 18))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SClassPropertyEntryBox)
+							.AllowNone(false)
+							.AllowAbstract(false)
+							.MetaClass(UJointEdGraphNode::StaticClass())
+							.OnSetClass(
+								this, &SJointEditorTap_MissingClassesMap::OnSetClass_EditorNodeClassRightSelectedClass)
+							.SelectedClass(TAttribute<const UClass*>::CreateLambda([this]
+							{
+								return EditorNodeClassRightSelectedClass;
+							}))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SJointOutlineButton)
+							.ContentPadding(FJointEditorStyle::Margin_Large)
+							.OnClicked(this, &SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ReconstructButton", "Apply"))
+							]
 						]
 					]
 				]
@@ -1431,8 +1449,13 @@ FReply SJointEditorTap_MissingClassesMap::AllocatedRedirectionRefresh()
 			.Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(SJointOutlineBorder)
-				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+				.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
@@ -1509,8 +1532,13 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SJointOutlineBorder)
-					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Fill)
 					[
@@ -1528,8 +1556,13 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 			.VAlign(VAlign_Fill)
 			[
 				SNew(SJointOutlineBorder)
-				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+				.ContentPadding(FJointEditorStyle::Margin_Normal* 2)
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
@@ -1771,8 +1804,13 @@ void FJointEditorTap_RedirectionInstance::Construct(const FArguments& InArgs)
 
 	ChildSlot[
 		SNew(SJointOutlineBorder)
-		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+		.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+		.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+		.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+		.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		[
@@ -1859,8 +1897,13 @@ void FJointEditorTap_MissingClassInstance::Construct(const FArguments& InArgs)
 
 	ChildSlot[
 		SNew(SJointOutlineBorder)
-		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+		.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+		.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+		.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+		.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		[

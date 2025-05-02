@@ -76,7 +76,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 			Property->ExportTextItem(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 								 NULL, PPF_PropertyWindow, NULL);
 #else
-			Property->ExportTextItem_Direct(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter),
+			Property->ExportTextItem_Direct(ExportedStringValue, Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()),
 													NULL,
 													NULL, PPF_PropertyWindow, NULL);		
 #endif
@@ -120,7 +120,7 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 					 NULL, PPF_PropertyWindow, NULL);
 #else
 						Property->ExportTextItem_Direct(ExportedStringValue,
-																			Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), NULL,
+																			Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 																			NULL, PPF_PropertyWindow, NULL);				
 #endif
 
@@ -250,7 +250,7 @@ void FJointTreeItem_Property::OnTextCommitted(const FText& Text, ETextCommit::Ty
 
 #else
 		
-		Property->ImportText_Direct(*Text.ToString(), Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), PropertyOuter, PPF_None);
+		Property->ImportText_Direct(*Text.ToString(), Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), PropertyOuter.Get(), PPF_None);
 
 
 #endif
@@ -285,7 +285,7 @@ void FJointTreeItem_Property::CacheAdditionalRowSearchString()
 #else
 		
 		Property->ExportTextItem_Direct(ExportedStringValue,
-										Property->ContainerPtrToValuePtr<uint8>(PropertyOuter), NULL,
+										Property->ContainerPtrToValuePtr<uint8>(PropertyOuter.Get()), NULL,
 										NULL, PPF_PropertyWindow, NULL);
 #endif
 
