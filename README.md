@@ -37,6 +37,25 @@
   <h3>(This readme page is still WIP, I'm having really busy days recently..)</h3>
 </div>
 
+## :sparkles: Official Videos - Please click the images to watch! ##
+
+<p align="center">
+  <br>
+  <a href="https://youtu.be/EWzKk1lRJZc?si=m3lL9y3-pzlVfOyW">
+     <img src="https://github.com/user-attachments/assets/e373e450-d34b-4442-80f4-f2e85acc9887", width="640", height="360", alt="Showcase Video">
+  </a>
+  <br>
+  <br>
+  <a>Showcase Video (I regret that I made this too fast to read - please slow it down as you need, unless you're not flash!)</a>
+  <br>
+  <br>
+  <a href="https://youtu.be/hODzi1OK3wg?si=MGgwjsejwLdwmr2E">
+     <img src="https://github.com/user-attachments/assets/98a7bcdd-1dc8-43d0-a5d8-7351c8b654b4",  width="640", height="360",  alt="Tutorial Video">
+  </a>
+  <br>
+  <br>
+  <a>Quick-Start Tutorial Video (Please read the pinned comments!)</a>
+</p>
 
 ## :mag: About ##
 
@@ -56,19 +75,21 @@ There are some derivative projects that can be worked with Joint!
 
 Currently We provide **Joint Native**, an completely-free-open-source project (apache-2.0) that provides built-in fragment and asset sets for basic and common dialogue productions.
 
-<p align="center">
-  <a href="https://github.com/GGgRain/Unreal-Joint-Native" target="_blank">
-    <img src="https://github.com/user-attachments/assets/30601e49-3fe1-48d9-ac61-f5b3818c0eff" height="150" alt="Joint-Native Logo">
-  </a>
-</p>
-
 Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture Animation Framework, that was originally developed as a part of Joint to provide cool editor animation and interactions. If you have interest, please take a look into it.
 
 <p align="center">
+  <a href="https://github.com/GGgRain/Unreal-Joint-Native" target="_blank">
+    <img src="https://github.com/user-attachments/assets/3044feb1-722c-47c9-9c8f-d582427aa5a6" height="350" alt="Joint-Native Logo">
+  </a>
   <a href="https://github.com/GGgRain/Unreal-Volt" target="_blank">
-    <img src="https://github.com/user-attachments/assets/6e5eecb0-836b-4c47-a80f-970acdc6c828" height="150" alt="Volt Logo">
+    <img src="https://github.com/user-attachments/assets/4246bd04-175f-4f7a-b971-e9a6f9a61a20" height="350" alt="Volt Logo">
   </a>
 </p>
+
+<p align="center">
+  <i>Please click the images above to visit each repository!</i>
+</p>
+
 
 ## :memo: Joint Plugin License & Changes After It Became Open Source ##
 
