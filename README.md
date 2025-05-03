@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" height="200" alt="Joint Logo">
+  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" width="400", height="200", alt="Joint Logo">
 </div>
 
 <div align="center">
@@ -144,7 +144,7 @@ Joint is designed to be fully multiplayer compatible. Fragments in Joint can be 
 
 For example, watch how Vote fragment from Joint Native make between players select the next branch to move in a dialogue in the networked game!
 
-https://github.com/user-attachments/assets/3d595634-1e4b-4953-8919-c82d172082e8
+https://github.com/user-attachments/assets/e45556a9-fa5d-49de-a74c-f591be52beb5
 
 > [!NOTE]
 > You can check out the full blueprint logic for each of the nodes in [Joint Native](https://github.com/GGgRain/Unreal-Joint-Native). It's also free, So take a look!
