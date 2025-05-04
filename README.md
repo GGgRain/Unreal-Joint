@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/bc821943-7b90-46c7-b215-856214b775e9" width="400", height="200", alt="Joint Logo">
+  <img src="https://github.com/user-attachments/assets/8ddd48a4-8adb-4ff9-8b2b-83b3bac28acd" width="300", height="300", alt="Joint Logo">
 </div>
 
 <div align="center">
@@ -79,10 +79,13 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
 
 <p align="center">
   <a href="https://github.com/GGgRain/Unreal-Joint-Native" target="_blank">
-    <img src="https://github.com/user-attachments/assets/3044feb1-722c-47c9-9c8f-d582427aa5a6" height="350" alt="Joint-Native Logo">
+    <img src="https://github.com/user-attachments/assets/c74d912b-29c5-4394-b58c-751acd32b3f5" height="300" alt="Joint-Native Logo">
   </a>
   <a href="https://github.com/GGgRain/Unreal-Volt" target="_blank">
-    <img src="https://github.com/user-attachments/assets/4246bd04-175f-4f7a-b971-e9a6f9a61a20" height="350" alt="Volt Logo">
+    <img src="https://github.com/user-attachments/assets/4246bd04-175f-4f7a-b971-e9a6f9a61a20" height="300" alt="Volt Logo">
+  </a>
+  <a href="https://discord.gg/DzNFax2aBS" target="_blank">
+    <img src="https://github.com/user-attachments/assets/5ef181ae-c491-4403-a864-7dbb7d16740f" height="300" alt="More">
   </a>
 </p>
 
@@ -94,6 +97,13 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
 ## :memo: Joint Plugin License & Changes After It Became Open Source ##
 
 ### 🎉 Now Joint is an Open-Source Project!
+
+
+<p align="center">
+  <a target="_blank">
+    <img src="https://github.com/user-attachments/assets/ec1bae6f-5642-4786-9189-922953aec4d1" height="200" alt="Open Source">
+  </a>
+</p>
 
 All content is available on our official GitHub repository, and you can download it and start using Joint in a second!
 
@@ -223,7 +233,29 @@ Come along to find further details for the lastest updates and how to use the sy
 
 ## Contributions ##
 
-사용자 권리 명시
+> [!NOTE]
+> Please refer to the [LICENSE](LICENSE.md) file for further details.
+
+<h3 align="center">💡 What’s a Contribution?</h3>
+A Contribution means any improvement, bug fix, feature, or idea you share to help improve this Software — whether through GitHub, Discord, or elsewhere.
+
+<h3 align="center">🛡️ Your Rights on The Contributions</h3>
+Contributors, so you will retain the copyright to your contributions! Thus, you can reuse your contribution in other projects — just don’t break this agreement or conflict with our license. 
+<br>
+<br>
+But by submitting your contribution, you give the Licensor (DevGrain, at the moment) a non-exclusive, worldwide, royalty-free license to use, modify, sublicense, and distribute your contribution — but only within this Software.
+<br>
+<br>
+You promise your work doesn’t infringe on copyrights, patents, or trade secrets. You’re responsible if any legal issue comes up.
+<br>
+<br>
+You can ask to change or remove your contribution within 2 months of submitting. We’ll try to honor that — unless it’s core to the Software and hard to take out.
+
+<h3 align="center">🎁 Extra Contributions, Extra Perks</h3>
+We love to take your help to make the system grow, for the good of all of us! And this is one of the give-back we can directly do :D
+<br>
+<br>
+If you make a big technical or promotional impact, you may get extra benefits (like lower royalty rates) — with our approval!
 
 ## :loudspeaker: Supports ##
 
