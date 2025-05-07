@@ -79,13 +79,13 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
 
 <p align="center">
   <a href="https://github.com/GGgRain/Unreal-Joint-Native" target="_blank">
-    <img src="https://github.com/user-attachments/assets/c74d912b-29c5-4394-b58c-751acd32b3f5" height="300" alt="Joint-Native Logo">
+    <img src="https://github.com/user-attachments/assets/c74d912b-29c5-4394-b58c-751acd32b3f5" width="auto" height="300" alt="Joint-Native Logo">
   </a>
   <a href="https://github.com/GGgRain/Unreal-Volt" target="_blank">
-    <img src="https://github.com/user-attachments/assets/4246bd04-175f-4f7a-b971-e9a6f9a61a20" height="300" alt="Volt Logo">
+    <img src="https://github.com/user-attachments/assets/4246bd04-175f-4f7a-b971-e9a6f9a61a20" width="auto" height="300" alt="Volt Logo">
   </a>
   <a href="https://discord.gg/DzNFax2aBS" target="_blank">
-    <img src="https://github.com/user-attachments/assets/5ef181ae-c491-4403-a864-7dbb7d16740f" height="300" alt="More">
+    <img src="https://github.com/user-attachments/assets/5ef181ae-c491-4403-a864-7dbb7d16740f" width="auto" height="300" alt="More">
   </a>
 </p>
 
@@ -101,7 +101,7 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
 
 <p align="center">
   <a target="_blank">
-    <img src="https://github.com/user-attachments/assets/ec1bae6f-5642-4786-9189-922953aec4d1" height="200" alt="Open Source">
+    <img src="https://github.com/user-attachments/assets/ec1bae6f-5642-4786-9189-922953aec4d1" width="auto" height="200" alt="Open Source">
   </a>
 </p>
 
