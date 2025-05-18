@@ -190,9 +190,13 @@ https://github.com/user-attachments/assets/5d861681-26c1-4696-95d7-25dbf227d936
 
 ### 5. PERFECT QOL Features
 
-Joint provides a bunch of cool editor features that provides the perfect editing experiences that can boost your productivity and stoping you from banging your head against a wall.
+Joint provides a bunch of cool editor features that provides the perfect editing experiences that can boost your productivity and stoping you from banging your head against a wall!
 
-검색, 변경, 벌크 검색, 컴파일러, 매니지먼트, 디버거 등
+See what major editor features Joint provides!
+
+https://github.com/user-attachments/assets/a9bfbe19-2f20-4156-89ad-6dbbc52b0b67
+
+https://github.com/user-attachments/assets/518d5277-c973-4d04-b099-d87d0d3e97f2
 
 ## :inbox_tray: Installation ##
 
