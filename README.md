@@ -182,9 +182,15 @@ https://github.com/user-attachments/assets/e45556a9-fa5d-49de-a74c-f591be52beb5
 
 ### 4. Reactive & Dynamic Dialogue - Even in Multiplayer, Even After Localization, Even Between Clients with Different Languages
 
-모듈러 시스템의 특징 설명
+Joint uses nodes(modules) to build up whole dialogue scripts - and using modules and modular playback system has really cool advantages over time-based playback systems!
+
+It allows you to dynamically control the total playback length and timing of elements in your dialogue—such as sounds and animations—enabling perfectly timed dialogue delivery for your players, regardless of their client's language or cultural context. This works seamlessly **even in multiplayer session** and **after localization**, **across clients using different languages**, delivering **a perfectly synchronized dialogue experience tailored to each client**.
+
+https://github.com/user-attachments/assets/5d861681-26c1-4696-95d7-25dbf227d936
 
 ### 5. PERFECT QOL Features
+
+Joint provides a bunch of cool editor features that provides the perfect editing experiences that can boost your productivity and stoping you from banging your head against a wall.
 
 검색, 변경, 벌크 검색, 컴파일러, 매니지먼트, 디버거 등
 
