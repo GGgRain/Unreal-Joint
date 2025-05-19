@@ -458,7 +458,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Class)
 {
-	const TSubclassOf<UJointNodeBase> CastedClass = Class ? Class->StaticClass() : nullptr;
+	TSubclassOf<UJointNodeBase> CastedClass = Class ? TSubclassOf<UJointNodeBase>(const_cast<UClass*>(Class)) : nullptr;
 
 	if (CastedClass == nullptr) return;
 
@@ -542,7 +542,7 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 
 void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClass* Class)
 {
-	const TSubclassOf<UJointEdGraphNode> CastedClass = Class ? Class->StaticClass() : nullptr;
+	TSubclassOf<UJointEdGraphNode> CastedClass = Class ? TSubclassOf<UJointEdGraphNode>(const_cast<UClass*>(Class)) : nullptr;
 
 	if (CastedClass == nullptr) return;
 

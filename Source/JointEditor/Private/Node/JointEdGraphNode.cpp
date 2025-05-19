@@ -1050,8 +1050,7 @@ void UJointEdGraphNode::GetPinDataToConnectionMap(TMap<FJointEdPinData, FJointNo
 void UJointEdGraphNode::NodeConnectionListChanged()
 {
 	//Notify that the connection has been changed to the node instance.
-	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance(); CastedNodeInstance && CastedNodeInstance->
-		GetAllowNodeInstancePinControl())
+	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance(); CastedNodeInstance)
 	{
 		TMap<FJointEdPinData, FJointNodes> PinToConnection;
 
@@ -1126,8 +1125,7 @@ void UJointEdGraphNode::FeedChangedSubNodeConnectionList()
 
 void UJointEdGraphNode::ReallocatePins()
 {
-	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance(); CastedNodeInstance && CastedNodeInstance->
-		GetAllowNodeInstancePinControl())
+	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance(); CastedNodeInstance)
 	{
 		CastedNodeInstance->OnUpdatePinData(PinData);
 	}

@@ -88,4 +88,7 @@ FORCEINLINE bool operator==(const FVoltInterfaceElement& A, const FVoltInterface
 	return A.VoltInterface == B.VoltInterface;
 }
 
-
+FORCEINLINE bool operator!=(const FVoltInterfaceElement& A, const FVoltInterfaceElement& B)
+{
+	return !(A == B);
+}

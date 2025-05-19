@@ -130,7 +130,7 @@ void SJointTree::BuildFromJointManagers()
 	LinearItems.Empty();
 	FilteredItems.Empty();
 
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [&]()
+	AsyncTask(ENamedThreads::GameThread, [&]()
 	{
 		AsyncLock();
 

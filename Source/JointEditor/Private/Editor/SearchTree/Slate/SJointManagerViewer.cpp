@@ -330,10 +330,10 @@ void SJointManagerViewer::RequestTreeRebuild()
 }
 
 void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, TSharedPtr<IJointTreeItem>& ItemRef,
-                          int& OccurrenceCount, bool bShouldStopOnFirstOccurrence)
+                          int& OccurrenceCount, bool bShouldStopOnFirstOccurrence, TSet<UObject*>& VisitedObjects)
 {
 	//UE_LOG(LogTemp, Log, TEXT("%s"), *ItemRef->GetRowItemName().ToString());
-
+	
 	if (bShouldStopOnFirstOccurrence && OccurrenceCount > 0)
 	{
 		return;
@@ -342,7 +342,7 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 	for (TSharedPtr<IJointTreeItem> JointPropertyTreeItem : ItemRef->GetChildren())
 	{
 		PerformReplaceAction(ReplaceFrom, ReplaceTo, JointPropertyTreeItem, OccurrenceCount,
-		                     bShouldStopOnFirstOccurrence);
+		                     bShouldStopOnFirstOccurrence, VisitedObjects);
 	}
 
 	//Check it again since it can be changed when the children iteration has been finished. 
@@ -357,6 +357,12 @@ void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, 
 
 		if (CastedPtr.Pin()->Property != nullptr)
 		{
+			if(CastedPtr.Pin()->PropertyOuter.Get() != nullptr && !VisitedObjects.Contains(CastedPtr.Pin()->PropertyOuter.Get()))
+			{
+				VisitedObjects.Add(CastedPtr.Pin()->PropertyOuter.Get());
+				CastedPtr.Pin()->PropertyOuter.Get()->Modify();
+			}
+			
 			if (FStrProperty* StrProperty = CastField<FStrProperty>(CastedPtr.Pin()->Property))
 			{
 				const FString String = StrProperty->GetPropertyValue(
@@ -441,15 +447,28 @@ void SJointManagerViewer::ReplaceNextSrc()
 {
 	int OccurrenceCount = 0;
 
+	int32 TransactionID = GEditor->BeginTransaction(
+		FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_ReplaceNext", "Replace Next Text From \'{0}\' To \'{1}\'"),
+			FText::FromString(ReplaceFromText.ToString()),
+			FText::FromString(ReplaceToText.ToString())));
+
+	TSet<UObject*> VisitedObjects;
+	
 	for (TSharedPtr<IJointTreeItem> JointPropertyTreeItem : Tree->FilteredItems)
 	{
 		PerformReplaceAction(ReplaceFromText.ToString(), ReplaceToText.ToString(), JointPropertyTreeItem,
-		                     OccurrenceCount, true);
+		                     OccurrenceCount, true ,VisitedObjects);
 	}
-
+	
 	if (OccurrenceCount == 0)
 	{
+		GEditor->CancelTransaction(TransactionID);
+
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No occurrence founded."));
+
+	}else
+	{
+		GEditor->EndTransaction();
 	}
 }
 
@@ -457,18 +476,30 @@ void SJointManagerViewer::ReplaceAllSrc()
 {
 	int OccurrenceCount = 0;
 
+	int32 TransactionID = GEditor->BeginTransaction(
+	FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_ReplaceAll", "Replace All Text From \'{0}\' To \'{1}\'"),
+		FText::FromString(ReplaceFromText.ToString()),
+		FText::FromString(ReplaceToText.ToString())));
+
+	TSet<UObject*> VisitedObjects;
+
 	for (TSharedPtr<IJointTreeItem> JointPropertyTreeItem : Tree->FilteredItems)
 	{
 		PerformReplaceAction(ReplaceFromText.ToString(), ReplaceToText.ToString(), JointPropertyTreeItem,
-		                     OccurrenceCount, false);
+		                     OccurrenceCount, false,VisitedObjects);
 	}
 
 	if (OccurrenceCount == 0)
 	{
+
+		GEditor->CancelTransaction(TransactionID);
+		
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No occurrence founded."));
 	}
 	else
 	{
+		GEditor->EndTransaction();
+		
 		FMessageDialog::Open(EAppMsgType::Ok,
 		                     FText::FromString(
 			                     "Total " + FString::FromInt(OccurrenceCount) + " occurrences has been replaced."));
