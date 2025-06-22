@@ -1319,9 +1319,14 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 
 	FPlatformApplicationMisc::ClipboardPaste(Value);
 
-	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
+	if (Value.IsEmpty() || Value.Equals(TEXT("None"), ESearchCase::CaseSensitive) || !
+		FPackageName::IsShortPackageName(Value))
+	{
+		NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
 
-	OnNodeDataChanged();
+		OnNodeDataChanged();
+	}
+	
 
 	bool bFromMultipleManager = false;
 	bool bFromInvalidJointManagerObject = false;
