@@ -4,7 +4,7 @@
 #include "SharedType/JointSharedTypes.h"
 
 #include "JointManager.h"
-#include "JointNodeBase.h"
+#include "Node/JointNodeBase.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/UObjectToken.h"
 

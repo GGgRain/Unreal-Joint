@@ -94,7 +94,7 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* Paren
 
 			if(UJointEdGraph* CastedGraph = ParentJointEdGraphNode->GetCastedGraph())
 			{
-				GraphNode->OptionalToolkit = CastedGraph->Toolkit;
+				GraphNode->OptionalToolkit = CastedGraph->GetToolkit();
 
 				ParentJointEdGraphNode->GetCastedGraph()->CacheJointGraphNodes();
 			}

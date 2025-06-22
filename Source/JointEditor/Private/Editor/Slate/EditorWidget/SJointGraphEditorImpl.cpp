@@ -686,7 +686,13 @@ void SJointGraphEditorImpl::Construct(const FArguments& InArgs)
     EdGraphObj = InArgs._GraphToEdit;
 
     OnFocused = InArgs._GraphEvents.OnFocused;
+
+#if UE_VERSION_OLDER_THAN(5,6,0)
     OnCreateActionMenu = InArgs._GraphEvents.OnCreateActionMenu;
+#else
+    OnCreateActionMenu = InArgs._GraphEvents.OnCreateActionMenuAtLocation;
+#endif
+    
     OnCreateNodeOrPinMenu = InArgs._GraphEvents.OnCreateNodeOrPinMenu;
 
     struct Local

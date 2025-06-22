@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JointSharedTypes.h"
+#include "SharedType/JointSharedTypes.h"
 #include "UObject/NoExportTypes.h"
 #include "JointBuildPreset.generated.h"
 

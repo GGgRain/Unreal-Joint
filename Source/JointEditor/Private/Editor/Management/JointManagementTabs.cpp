@@ -794,7 +794,16 @@ FReply SJointEditorUtilityTab::ResetAllEditorStyle()
 			JointEditorDefaultSettings::SelfSplineTangentFromHorizontalDelta;
 		Settings->SelfSplineTangentFromVerticalDelta = JointEditorDefaultSettings::SelfSplineTangentFromVerticalDelta;
 
+		Settings->bUseWiggleWireForNormalConnection = JointEditorDefaultSettings::bUseWiggleWireForNormalConnection;
+		Settings->bUseWiggleWireForRecursiveConnection = JointEditorDefaultSettings::bUseWiggleWireForRecursiveConnection;
+		Settings->bUseWiggleWireForSelfConnection = JointEditorDefaultSettings::bUseWiggleWireForSelfConnection;
+		Settings->bUseWiggleWireForPreviewConnection = JointEditorDefaultSettings::bUseWiggleWireForPreviewConnection;
 
+		Settings->NormalConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
+		Settings->RecursiveConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
+		Settings->SelfConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
+		Settings->PreviewConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
+		
 		Settings->DebuggerPlayingNodeColor = JointEditorDefaultSettings::DebuggerPlayingNodeColor;
 		Settings->DebuggerPlayingNodeColor = JointEditorDefaultSettings::DebuggerPlayingNodeColor;
 		Settings->DebuggerEndedNodeColor = JointEditorDefaultSettings::DebuggerEndedNodeColor;

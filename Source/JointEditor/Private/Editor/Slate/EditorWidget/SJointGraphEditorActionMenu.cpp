@@ -72,6 +72,7 @@ void SJointGraphEditorActionMenu::OnActionSelected(const TArray<TSharedPtr<FEdGr
 					if ( CurrentAction.IsValid() )
 					{
 						CurrentAction->PerformAction(GraphObj, DraggedFromPins, NewNodePosition);
+						
 						bDoDismissMenus = true;
 					}
 				}

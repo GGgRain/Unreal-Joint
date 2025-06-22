@@ -8,6 +8,9 @@
 #include "SGraphActionMenu.h"
 #include "Widgets/Layout/SBorder.h"
 
+#include "Misc/EngineVersionComparison.h"
+
+
 class SEditableTextBox;
 class SGraphActionMenu;
 class UJointEdGraphNode;
@@ -27,7 +30,12 @@ public:
 
 	SLATE_ARGUMENT( UEdGraph*, GraphObj )
 	SLATE_ARGUMENT(TArray<UJointEdGraphNode*>, GraphNodes)
+
+#if UE_VERSION_OLDER_THAN(5,6,0)
 	SLATE_ARGUMENT( FVector2D, NewNodePosition )
+#else
+	SLATE_ARGUMENT( FVector2f, NewNodePosition )
+#endif
 		
 		SLATE_EVENT( SGraphActionMenu::FOnActionSelected, OnActionSelected )
 		SLATE_ARGUMENT( bool, bUseCustomActionSelected )
@@ -49,7 +57,13 @@ protected:
 	UEdGraph* GraphObj;
 	TArray<UJointEdGraphNode*> GraphNodes;
 	TArray<UEdGraphPin*> DraggedFromPins;
+
+#if UE_VERSION_OLDER_THAN(5,6,0)
 	FVector2D NewNodePosition;
+#else
+	FVector2f NewNodePosition;
+#endif
+	
 	bool bUseCustomActionSelected;
 	bool AutoExpandActionMenu;
 

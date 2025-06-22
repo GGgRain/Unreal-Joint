@@ -192,13 +192,13 @@ void SJointGraphPinOwnerNodeBox::AddPin(const TSharedRef<SGraphPin>& TargetPin)
 	TargetPin->SetOwner(StaticCastSharedRef<SGraphNode>(this->OwnerGraphNode.Pin().ToSharedRef()));
 
 	PinBox.Pin()->AddSlot()
-		.Padding(FJointEditorStyle::Margin_Tiny)
-		.AutoHeight()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		[
-			TargetPin
-		];
+	      .Padding(FJointEditorStyle::Margin_Tiny)
+	      .AutoHeight()
+	      .HAlign(HAlign_Left)
+	      .VAlign(VAlign_Center)
+	[
+		TargetPin
+	];
 }
 
 TSharedPtr<SVerticalBox> SJointGraphPinOwnerNodeBox::GetPinBox() const
@@ -486,7 +486,8 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 
 	if (DragConnectionOp.IsValid())
 	{
-		GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_DragDropNode", "Drag & Drop a sub node"));
+		GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_DragDropNode",
+		                                    "Drag & Drop a sub node"));
 
 		TArray<UEdGraphNode*> ModifiedNodes;
 
@@ -507,7 +508,8 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 			//If the connection is not allowed, continue.
 			if (AddedTo->CanAttachSubNodeOnThis(GettingDroppedNode).Response ==
 				ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW && GettingDroppedNode->
-				CanAttachThisAtParentNode(AddedTo).Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
+				                                                           CanAttachThisAtParentNode(AddedTo).Response
+				== ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
 				continue;
 
 			//If current GettingDroppedNode is not seen before, newly modify it on this transaction before begin editing.
@@ -543,7 +545,7 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 
 				if (RemoveFrom->GetGraphNodeSlate().IsValid())
 					RemoveFrom->GetGraphNodeSlate().Pin()->
-						PopulateSubNodeSlates();
+					            PopulateSubNodeSlates();
 
 				//Add Sub node to the AddedTo node.
 
@@ -566,7 +568,7 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 			{
 				if (SubSubNode && SubSubNode->GetGraphNodeSlate().IsValid())
 					SubSubNode->GetGraphNodeSlate().Pin()->
-						PlayNodeBackgroundColorResetAnimationIfPossible();
+					            PlayNodeBackgroundColorResetAnimationIfPossible();
 			}
 		}
 
@@ -593,160 +595,63 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-		.Padding(FJointEditorStyle::Margin_Normal)
+	    .Padding(FJointEditorStyle::Margin_Normal)
+	[
+		SNew(SJointOutlineBorder)
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+		.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.OnHovered(this, &SJointNodePointerSlate::OnHovered)
+		.OnUnhovered(this, &SJointNodePointerSlate::OnUnhovered)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Center)
 		[
-			SNew(SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			.OnHovered(this, &SJointNodePointerSlate::OnHovered)
-			.OnUnhovered(this, &SJointNodePointerSlate::OnUnhovered)
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Center)
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.HAlign(HAlign_Center)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				.HAlign(HAlign_Center)
+				SAssignNew(BackgroundBox, SVerticalBox)
+				.RenderOpacity(1)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Small)
 				[
-					SAssignNew(BackgroundBox, SVerticalBox)
-					.RenderOpacity(1)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Small)
-					[
-						SAssignNew(DisplayNameBlock, STextBlock)
-						.Text(InArgs._DisplayName)
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-						.Visibility(bShouldShowDisplayName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Small)
-					[
-						SAssignNew(RawNameBlock, STextBlock)
-						.Text(GetRawName())
-						.ColorAndOpacity(FJointEditorStyle::Color_SolidHover)
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-						.Visibility(bShouldShowNodeName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
-					]
+					SAssignNew(DisplayNameBlock, STextBlock)
+					.Text(InArgs._DisplayName)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+					.Visibility(bShouldShowDisplayName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
 				]
-				+ SOverlay::Slot()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Small)
 				[
-					SAssignNew(ButtonHorizontalBox, SHorizontalBox)
-					.Visibility(EVisibility::Collapsed)
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Tiny)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("PickupButtonTooltip", "Pick up a new node for the property."))
-						.OnClicked(this, &SJointNodePointerSlate::OnPickupButtonPressed)
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-							.DesiredSizeOverride(FVector2D(16, 16))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Tiny)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("GoButtonTooltip", "Go to the node selected"))
-						.OnClicked(this, &SJointNodePointerSlate::OnGoButtonPressed)
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.ArrowRight"))
-							.DesiredSizeOverride(FVector2D(16, 16))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Tiny)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("CopyButtonTooltip", "Copy the structure to the clipboard"))
-						.OnClicked(this, &SJointNodePointerSlate::OnCopyButtonPressed)
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Copy"))
-							.DesiredSizeOverride(FVector2D(16, 16))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Tiny)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("PasteTooltip", "Paste the structure from the clipboard"))
-						.OnClicked(this, &SJointNodePointerSlate::OnPasteButtonPressed)
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Paste"))
-							.DesiredSizeOverride(FVector2D(16, 16))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Tiny)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
-						.OnClicked(this, &SJointNodePointerSlate::OnClearButtonPressed)
-						[
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(16, 16))
-							.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
-						]
-					]
+					SAssignNew(RawNameBlock, STextBlock)
+					.Text(GetRawName())
+					.ColorAndOpacity(FJointEditorStyle::Color_SolidHover)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
+					.Visibility(bShouldShowNodeName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
 				]
 			]
-		];
+			+ SOverlay::Slot()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				SAssignNew(FeatureButtonsSlate, SJointNodePointerSlateFeatureButtons)
+				.OnClearButtonPressed(this, &SJointNodePointerSlate::OnClearButtonPressed)
+				.OnGotoButtonPressed(this, &SJointNodePointerSlate::OnGoButtonPressed)
+				.OnPickupButtonPressed(this, &SJointNodePointerSlate::OnPickupButtonPressed)
+				.OnCopyButtonPressed(this, &SJointNodePointerSlate::OnCopyButtonPressed)
+				.OnPasteButtonPressed(this, &SJointNodePointerSlate::OnPasteButtonPressed)
+			]
+		]
+	];
 }
 
 
@@ -767,8 +672,8 @@ void SJointNodePointerSlate::OnHovered()
 {
 	//Overlay Show
 	BackgroundBox->SetRenderOpacity(0.5);
-	ButtonHorizontalBox->SetVisibility(EVisibility::SelfHitTestInvisible);
 
+	FeatureButtonsSlate->UpdateVisualOnHovered();
 
 	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
 
@@ -802,13 +707,6 @@ void SJointNodePointerSlate::OnHovered()
 				{
 					Toolkit->StartHighlightingNode(Node.Get(), false);
 
-					// if(!Toolkit->GetNodePickingManager().IsValid()) return;
-					//
-					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
-					// {
-					// 	Toolkit->StartHighlightingNode(Node.Get(), false);
-					// }
-
 					break;
 				}
 			}
@@ -819,7 +717,8 @@ void SJointNodePointerSlate::OnHovered()
 void SJointNodePointerSlate::OnUnhovered()
 {
 	BackgroundBox->SetRenderOpacity(1);
-	ButtonHorizontalBox->SetVisibility(EVisibility::Collapsed);
+
+	FeatureButtonsSlate->UpdateVisualOnUnhovered();
 
 	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
 
@@ -980,11 +879,14 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 		if (OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
 	}
 
-	PointerToTargetStructure->Node = FSoftObjectPath(Value);
-	if (PointerToTargetStructure->Node.Get())
-		PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.
-			Get()->EdGraphNode.Get();
+	if (Value.IsEmpty() || Value.Equals(TEXT("None"), ESearchCase::CaseSensitive) || !
+		FPackageName::IsShortPackageName(Value))
+	{
+		PointerToTargetStructure->Node = FSoftObjectPath(Value);
 
+		if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.
+			Get()->EdGraphNode.Get();
+	}
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(OwnerJointEdGraphNode))
 	{
@@ -1001,7 +903,8 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 
 FReply SJointNodePointerSlate::OnClearButtonPressed()
 {
-	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset", "Reset Node Pointer to default"));
+	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset",
+	                                    "Reset Node Pointer to default"));
 
 	if (OwnerJointEdGraphNode)
 	{
@@ -1021,6 +924,230 @@ FReply SJointNodePointerSlate::OnClearButtonPressed()
 }
 
 
+void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
+{
+	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+
+	SetCanTick(false);
+
+	this->ChildSlot.DetachWidget();
+
+	this->ChildSlot
+	    .Padding(FJointEditorStyle::Margin_Normal)
+	[
+		SAssignNew(ButtonHorizontalBox, SHorizontalBox)
+		.Visibility(EVisibility::Visible)
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SJointOutlineButton)
+			.NormalColor(FLinearColor::Transparent)
+			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor::Transparent)
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
+			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+			.ToolTipText(LOCTEXT("PickupButtonTooltip", "Pick up a new node for the property."))
+			.OnClicked(InArgs._OnPickupButtonPressed)
+			.RenderOpacity(BUTTON_INITIAL_OPACITY)
+			.RenderTransform(BUTTON_INITIAL_TRANSFORM)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+			]
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SJointOutlineButton)
+			.NormalColor(FLinearColor::Transparent)
+			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor::Transparent)
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
+			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+			.ToolTipText(LOCTEXT("GoButtonTooltip", "Go to the node selected"))
+			.OnClicked(InArgs._OnGotoButtonPressed)
+			.RenderOpacity(BUTTON_INITIAL_OPACITY)
+			.RenderTransform(BUTTON_INITIAL_TRANSFORM)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.ArrowRight"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+			]
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SJointOutlineButton)
+			.NormalColor(FLinearColor::Transparent)
+			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor::Transparent)
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
+			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+			.ToolTipText(LOCTEXT("CopyButtonTooltip", "Copy the structure to the clipboard"))
+			.OnClicked(InArgs._OnCopyButtonPressed)
+			.RenderOpacity(BUTTON_INITIAL_OPACITY)
+			.RenderTransform(BUTTON_INITIAL_TRANSFORM)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Copy"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+			]
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SJointOutlineButton)
+			.NormalColor(FLinearColor::Transparent)
+			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor::Transparent)
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
+			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+			.ToolTipText(LOCTEXT("PasteTooltip", "Paste the structure from the clipboard"))
+			.OnClicked(InArgs._OnPasteButtonPressed)
+			.RenderOpacity(BUTTON_INITIAL_OPACITY)
+			.RenderTransform(BUTTON_INITIAL_TRANSFORM)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Paste"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+			]
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SJointOutlineButton)
+			.NormalColor(FLinearColor::Transparent)
+			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor::Transparent)
+			.ContentPadding(FJointEditorStyle::Margin_Tiny)
+			.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+			.ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
+			.OnClicked(InArgs._OnClearButtonPressed)
+			.RenderOpacity(BUTTON_INITIAL_OPACITY)
+			.RenderTransform(BUTTON_INITIAL_TRANSFORM)
+			[
+				SNew(SImage)
+				.DesiredSizeOverride(FVector2D(16, 16))
+				.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
+			]
+		]
+	];
+
+	// Initialize the button animations ( TODO: Fix this bs )
+	UpdateVisualOnUnhovered();
+}
+
+void SJointNodePointerSlateFeatureButtons::UpdateVisualOnHovered()
+{
+	// Clean up old anim tracks
+	for (const FVoltAnimationTrack& ButtonAnimTrack : ButtonAnimTracks)
+	{
+		VOLT_STOP_ANIM(ButtonAnimTrack);
+	}
+
+	ButtonAnimTracks.Empty();
+
+	// Play animation
+	for (int i = 0; i < ButtonHorizontalBox->GetChildren()->Num(); i++)
+	{
+		TSharedPtr<SWidget> ChildWidget = ButtonHorizontalBox->GetChildren()->GetChildAt(i);
+
+		UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_Delay)
+				.Duration(i * BUTTON_ANIM_DELAY_PER_ICON),
+				VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.3)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetOpacity(1),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.25)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetWidgetTransform(FWidgetTransform(
+						                                                 FVector2D::ZeroVector,
+						                                                 FVector2D(1.0, 1.0),
+						                                                 FVector2D::ZeroVector,
+						                                                 0))
+				)
+			)
+		);
+
+		ButtonAnimTracks.Add(VOLT_PLAY_ANIM(ChildWidget, Anim));
+	}
+}
+
+void SJointNodePointerSlateFeatureButtons::UpdateVisualOnUnhovered()
+{
+	// Clean up old anim tracks
+	for (const FVoltAnimationTrack& ButtonAnimTrack : ButtonAnimTracks)
+	{
+		VOLT_STOP_ANIM(ButtonAnimTrack);
+	}
+
+	ButtonAnimTracks.Empty();
+
+	// Play animation
+	for (int i = 0; i < ButtonHorizontalBox->GetChildren()->Num(); i++)
+	{
+		TSharedPtr<SWidget> ChildWidget = ButtonHorizontalBox->GetChildren()->GetChildAt(i);
+
+		UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_Delay)
+				.Duration(i * BUTTON_ANIM_DELAY_PER_ICON),
+				VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.3)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetOpacity(0),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.25)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetWidgetTransform(FWidgetTransform(
+						                                                 FVector2D(0, 10),
+						                                                 FVector2D(1.0, 1.0),
+						                                                 FVector2D::ZeroVector,
+						                                                 0))
+				)
+			)
+		);
+
+		ButtonAnimTracks.Add(VOLT_PLAY_ANIM(ChildWidget, Anim));
+	}
+}
+
 void SJointNodeDescription::Construct(const FArguments& InArgs)
 {
 	this->ClassToDescribe = InArgs._ClassToDescribe;
@@ -1037,116 +1164,116 @@ void SJointNodeDescription::PopulateSlate()
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-		.Padding(FJointEditorStyle::Margin_Normal)
+	    .Padding(FJointEditorStyle::Margin_Normal)
+	[
+		SNew(SJointOutlineBorder)
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.NormalColor(FJointEditorStyle::Color_Normal)
+		.OutlineNormalColor(FJointEditorStyle::Color_Normal)
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.Visibility(EVisibility::Visible)
 		[
-			SNew(SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.NormalColor(FJointEditorStyle::Color_Normal)
-			.OutlineNormalColor(FJointEditorStyle::Color_Normal)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			.Visibility(EVisibility::Visible)
+			SNew(SVerticalBox)
+			.Visibility(EVisibility::SelfHitTestInvisible)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
 			[
-				SNew(SVerticalBox)
+				SNew(SHorizontalBox)
 				.Visibility(EVisibility::SelfHitTestInvisible)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Left)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)
 				[
-					SNew(SHorizontalBox)
+					SNew(SBorder)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
 					.Visibility(EVisibility::SelfHitTestInvisible)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
+					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
+					.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
 						SNew(SBorder)
-						.HAlign(HAlign_Fill)
-						.VAlign(VAlign_Fill)
 						.Visibility(EVisibility::SelfHitTestInvisible)
-						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.NodeShadow"))
-						.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
+						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.BorderBackgroundColor(UJointEditorSettings::Get()->DefaultNodeColor)
 						.Padding(FJointEditorStyle::Margin_Normal)
 						[
-							SNew(SBorder)
+							SNew(STextBlock)
 							.Visibility(EVisibility::SelfHitTestInvisible)
-							.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-							.BorderBackgroundColor(UJointEditorSettings::Get()->DefaultNodeColor)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Visibility(EVisibility::SelfHitTestInvisible)
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
-								.Text(FJointEdUtils::GetFriendlyNameFromClass(ClassToDescribe))
-							]
+							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h2")
+							.Text(FJointEdUtils::GetFriendlyNameFromClass(ClassToDescribe))
 						]
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(STextBlock)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
+					.ColorAndOpacity(FLinearColor(1, 1, 1, 0.7))
+					.Justification(ETextJustify::Center)
+					.Text(FText::FromString(ClassToDescribe->GetDesc()))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.IsEnabled(ClassToDescribe && ClassToDescribe->ClassGeneratedBy)
+					.ToolTipText(ClassToDescribe && ClassToDescribe->ClassGeneratedBy
+						             ? LOCTEXT("OpenEditorTooltip",
+						                       "Open Blueprint Editor for the node class asset.")
+						             : LOCTEXT("CantOpenEditorOnNative",
+						                       "Cannot open an editor for a native node class."))
+					.OnClicked(this, &SJointNodeDescription::OnOpenEditorButtonPressed)
 					[
-						SNew(STextBlock)
+						SNew(SImage)
 						.Visibility(EVisibility::SelfHitTestInvisible)
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						.ColorAndOpacity(FLinearColor(1, 1, 1, 0.7))
-						.Justification(ETextJustify::Center)
-						.Text(FText::FromString(ClassToDescribe->GetDesc()))
+						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.OpenInExternalEditor"))
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.IsEnabled(ClassToDescribe && ClassToDescribe->ClassGeneratedBy)
-						.ToolTipText(ClassToDescribe && ClassToDescribe->ClassGeneratedBy
-							             ? LOCTEXT("OpenEditorTooltip",
-							                       "Open Blueprint Editor for the node class asset.")
-							             : LOCTEXT("CantOpenEditorOnNative",
-							                       "Cannot open an editor for a native node class."))
-						.OnClicked(this, &SJointNodeDescription::OnOpenEditorButtonPressed)
-						[
-							SNew(SImage)
-							.Visibility(EVisibility::SelfHitTestInvisible)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.OpenInExternalEditor"))
-						]
-					]
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(STextBlock)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Italic.h5")
-					.ColorAndOpacity(FLinearColor(0.7, 0.7, 0.7, 1))
-					.Text(FText::FromString(ClassToDescribe->GetPathName()))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(STextBlock)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					.Text(ClassToDescribe->GetToolTipText())
-					.AutoWrapText(true)
 				]
 			]
-		];
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(STextBlock)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Italic.h5")
+				.ColorAndOpacity(FLinearColor(0.7, 0.7, 0.7, 1))
+				.Text(FText::FromString(ClassToDescribe->GetPathName()))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(STextBlock)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				.Text(ClassToDescribe->GetToolTipText())
+				.AutoWrapText(true)
+			]
+		]
+	];
 }
 
 FReply SJointNodeDescription::OnOpenEditorButtonPressed()

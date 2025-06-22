@@ -20,15 +20,18 @@ void SJointToolkitToastMessageHub::ReleaseVoltAnimationManager()
 
 void SJointToolkitToastMessageHub::ImplementVoltAnimationManager()
 {
-	VOLT_IMPLEMENT_MANAGER(&ToastMessageAnimationManager,SharedThis(this));
+	VOLT_IMPLEMENT_MANAGER(&ToastMessageAnimationManager, SharedThis(this));
 }
 
 void SJointToolkitToastMessageHub::Construct(const FArguments& InArgs)
 {
+	SetCanTick(false);
+
 	ImplementVoltAnimationManager();
 
-	if(ToastMessageAnimationManager) ToastMessageAnimationManager->OnAnimationEnded_NonDynamic.AddSP(this, &SJointToolkitToastMessageHub::OnAnimationEnded);
-	
+	if (ToastMessageAnimationManager) ToastMessageAnimationManager->OnAnimationEnded_NonDynamic.AddSP(
+		this, &SJointToolkitToastMessageHub::OnAnimationEnded);
+
 	PopulateSlate();
 }
 
@@ -37,8 +40,8 @@ void SJointToolkitToastMessageHub::PopulateSlate()
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-	.HAlign(HAlign_Fill)
-	.VAlign(VAlign_Fill)
+	    .HAlign(HAlign_Fill)
+	    .VAlign(VAlign_Fill)
 	[
 		SNew(SBorder)
 		.BorderBackgroundColor(FLinearColor::Transparent)
@@ -52,21 +55,23 @@ void SJointToolkitToastMessageHub::PopulateSlate()
 
 FGuid SJointToolkitToastMessageHub::AddToasterMessage(const TSharedPtr<SJointToolkitToastMessage>& Widget)
 {
+	if (HasToasterMessage(Widget->MessageGuid)) return FGuid();
+	
 	if (ToasterDisplayBox.IsValid() && Widget.IsValid())
 	{
 		Widget->SetRenderOpacity(0);
-		
+
 		Widget->SetMessageHub(SharedThis(this));
-		
+
 		ToasterDisplayBox.Pin()->AddSlot()
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Tiny)
-		.AutoWidth()
+		                 .HAlign(HAlign_Center)
+		                 .VAlign(VAlign_Center)
+		                 .Padding(FJointEditorStyle::Margin_Tiny)
+		                 .AutoWidth()
 		[
 			Widget.ToSharedRef()
 		];
-		
+
 		Messages.Add(Widget->MessageGuid, Widget);
 
 		Widget->PlayAppearAnimation();
@@ -79,9 +84,11 @@ FGuid SJointToolkitToastMessageHub::AddToasterMessage(const TSharedPtr<SJointToo
 
 void SJointToolkitToastMessageHub::RemoveToasterMessage(const FGuid& ToasterGuid, const bool bInstant)
 {
+	if (!HasToasterMessage(ToasterGuid)) return;
+
 	if (ToasterDisplayBox.IsValid())
 	{
-		if (TWeakPtr<SJointToolkitToastMessage>* FoundMessage = Messages.Find(ToasterGuid))
+		if (const TWeakPtr<SJointToolkitToastMessage>* FoundMessage = Messages.Find(ToasterGuid))
 		{
 			if (bInstant)
 			{
@@ -107,62 +114,105 @@ TWeakPtr<SJointToolkitToastMessage> SJointToolkitToastMessageHub::FindToasterMes
 	return nullptr;
 }
 
+const bool SJointToolkitToastMessageHub::HasToasterMessage(const FGuid& ToasterGuid)
+{
+	return Messages.Contains(ToasterGuid);
+}
+
 UVoltAnimationManager* SJointToolkitToastMessageHub::GetAnimationManager()
 {
 	return ToastMessageAnimationManager;
 }
 
-void SJointToolkitToastMessageHub::OnAnimationEnded(UVoltAnimationManager* VoltAnimationManager, const FVoltAnimationTrack& VoltAnimationTrack, const UVoltAnimation* VoltAnimation)
+void SJointToolkitToastMessageHub::OnAnimationEnded(UVoltAnimationManager* VoltAnimationManager,
+                                                    const FVoltAnimationTrack& VoltAnimationTrack,
+                                                    const UVoltAnimation* VoltAnimation)
 {
-	if(VoltAnimationTrack.TargetSlateInterface)
+	if (VoltAnimationTrack.TargetSlateInterface)
 	{
-		if(TSharedPtr<SWidget> Slate = VoltAnimationTrack.TargetSlateInterface->GetTargetSlate().Pin(); Slate.IsValid())
+		if (TSharedPtr<SWidget> Slate = VoltAnimationTrack.TargetSlateInterface->GetTargetSlate().Pin(); Slate.
+			IsValid())
 		{
 			TSharedPtr<SJointToolkitToastMessage> CastedSlate = StaticCastSharedPtr<SJointToolkitToastMessage>(Slate);
 
-			if(CastedSlate->bMarkedKilled && CastedSlate->RemoveTrack == VoltAnimationTrack)
+			if (CastedSlate->bMarkedKilled && CastedSlate->RemoveTrack == VoltAnimationTrack)
 			{
-				RemoveToasterMessage(CastedSlate->MessageGuid,true);
+				RemoveToasterMessage(CastedSlate->MessageGuid, true);
 			}
 		}
 	}
 }
 
 
-
-
-
-
-
 void SJointToolkitToastMessage::Construct(const FArguments& InArgs)
 {
 	SetRenderOpacity(0);
-	SetRenderTransformPivot(FVector2D(0.5,0.5));
-	SetCanTick(false);
-	
+	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetCanTick(true);
+
 	MessageGuid = FGuid::NewGuid();
-	
+
 	Duration = InArgs._Duration;
-	
+
+	SizeIncreaseInterpolationSpeed = InArgs._SizeIncreaseInterpolationSpeed;
+	SizeDecreaseInterpolationSpeed = InArgs._SizeDecreaseInterpolationSpeed;
+
 	AppearAnimationDuration = InArgs._AppearAnimationDuration;
 	RemoveAnimationDuration = InArgs._RemoveAnimationDuration;
+	
 	AppearAnimationExp = InArgs._AppearAnimationExp;
 	RemoveAnimationExp = InArgs._RemoveAnimationExp;
 
 	this->ChildSlot.DetachWidget();
-	
+
+	SlotWidget = InArgs._Content.Widget;
+
 	this->ChildSlot
-	.HAlign(HAlign_Center)
-	.VAlign(VAlign_Center)
-	[
-		InArgs._Content.Widget
+	    .HAlign(HAlign_Center)
+	    .VAlign(VAlign_Center)
+		[
+			SAssignNew(SizeBox, SBox)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			.WidthOverride_Lambda([this]()
+			{
+				return SizeOverride.X;
+			})
+			.HeightOverride_Lambda([this]()
+			{
+				return SizeOverride.Y;
+			})
+			[
+				SlotWidget.Pin().ToSharedRef()
+			]
 	];
 
-	if(Duration > 0)
+	if (Duration > 0)
 	{
-		RegisterActiveTimer(Duration, FWidgetActiveTimerDelegate::CreateSP(this, &SJointToolkitToastMessage::OnExpired));
+		RegisterActiveTimer(
+			Duration, FWidgetActiveTimerDelegate::CreateSP(this, &SJointToolkitToastMessage::OnExpired));
+	}
+}
+
+void SJointToolkitToastMessage::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime,
+	const float InDeltaTime)
+{
+	if (SlotWidget.IsValid())
+	{
+		const FVector2D& Size = SlotWidget.Pin()->GetDesiredSize();
+
+		if (bMarkedKilled)
+		{
+			SizeOverride.X = FMath::FInterpTo<float>(SizeOverride.X, 0, InDeltaTime, SizeDecreaseInterpolationSpeed);
+			SizeOverride.Y = FMath::FInterpTo<float>(SizeOverride.Y, 0, InDeltaTime, SizeDecreaseInterpolationSpeed);
+		}else
+		{
+			SizeOverride.X = FMath::FInterpTo<float>(SizeOverride.X, Size.X, InDeltaTime, SizeIncreaseInterpolationSpeed);
+			SizeOverride.Y = FMath::FInterpTo<float>(SizeOverride.Y, Size.Y, InDeltaTime, SizeIncreaseInterpolationSpeed);
+		}
 	}
 	
+	SCompoundWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
 }
 
 void SJointToolkitToastMessage::SetMessageHub(const TSharedPtr<SJointToolkitToastMessageHub>& Hub)
@@ -172,10 +222,10 @@ void SJointToolkitToastMessage::SetMessageHub(const TSharedPtr<SJointToolkitToas
 
 void SJointToolkitToastMessage::PlayAppearAnimation()
 {
-	if(!MessageHub.IsValid()) return;
+	if (!MessageHub.IsValid()) return;
 
 	bMarkedKilled = false;
-	
+
 	VOLT_STOP_ANIM(MessageHub.Pin()->GetAnimationManager(), AppearTrack);
 	VOLT_STOP_ANIM(MessageHub.Pin()->GetAnimationManager(), RemoveTrack);
 
@@ -184,15 +234,15 @@ void SJointToolkitToastMessage::PlayAppearAnimation()
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 		.InterpolationMode(EVoltInterpMode::AlphaBased)
 		.AlphaBasedEasingFunction(EEasingFunc::EaseOut)
-		.AlphaBasedDuration(0.2)
+		.AlphaBasedDuration(AppearAnimationDuration)
 		.AlphaBasedBlendExp(6)
 		.bUseStartWidgetTransform(true)
-		.StartWidgetTransform(FWidgetTransform(FVector2D(0, 50), FVector2D(1, 1), FVector2D(0, 0), 0))
+		.StartWidgetTransform(FWidgetTransform(FVector2D(0, 200), FVector2D(1, 1), FVector2D(0, 0), 0))
 		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D(0, 0), 0)),
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 		.InterpolationMode(EVoltInterpMode::AlphaBased)
 		.AlphaBasedEasingFunction(EEasingFunc::EaseOut)
-		.AlphaBasedDuration(0.2)
+		.AlphaBasedDuration(AppearAnimationDuration)
 		.AlphaBasedBlendExp(6)
 		.bUseStartOpacity(true)
 		.StartOpacity(0)
@@ -204,14 +254,14 @@ void SJointToolkitToastMessage::PlayAppearAnimation()
 
 void SJointToolkitToastMessage::PlayRemoveAnimation()
 {
-	if(!MessageHub.IsValid()) return;
+	if (!MessageHub.IsValid()) return;
 
 	bMarkedKilled = true;
-	
+
 	VOLT_STOP_ANIM(MessageHub.Pin()->GetAnimationManager(), AppearTrack);
 
 	VOLT_STOP_ANIM(MessageHub.Pin()->GetAnimationManager(), RemoveTrack);
-	
+
 	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)

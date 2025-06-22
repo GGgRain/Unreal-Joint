@@ -4,7 +4,7 @@
 #include "JointManager.h"
 
 #include "JointActor.h"
-#include "JointFragment.h"
+#include "Node/JointFragment.h"
 #include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
 #include "Node/JointNodeBase.h"

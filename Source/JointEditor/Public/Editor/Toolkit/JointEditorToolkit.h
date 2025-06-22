@@ -281,6 +281,8 @@ public:
 	
 	void PopulateNodePickerPastedToastMessage();
 
+	void PopulateNeedReopeningToastMessage();
+	
 	
 	void ClearNodePickingToastMessage() const;
 
@@ -304,6 +306,9 @@ public:
 	FGuid NodePickerCopyToastMessageGuid;
 
 	FGuid NodePickerPasteToastMessageGuid;
+	
+	FGuid RequestReopenToastMessageGuid;
+
 
 public:
 

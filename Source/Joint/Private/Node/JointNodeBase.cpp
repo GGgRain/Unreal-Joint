@@ -5,7 +5,7 @@
 #include "UObject/ConstructorHelpers.h"
 
 #include "JointActor.h"
-#include "JointFragment.h"
+#include "Node/JointFragment.h"
 #include "JointManager.h"
 
 #include "Engine/NetDriver.h"
@@ -856,16 +856,11 @@ AJointActor* UJointNodeBase::GetHostingJointInstance() const
 
 void UJointNodeBase::ReloadNode()
 {
+	if (!CanReloadNode()) return;
+	
 	bIsNodeBegunPlay = false;
 	bIsNodeEndedPlay = false;
 	bIsNodePending = false;
-
-	for (UJointNodeBase* SubNode : SubNodes)
-	{
-		if(!SubNode) continue;
-		
-		SubNode->ReloadNode();
-	}
 }
 
 void UJointNodeBase::NodeBeginPlay()
@@ -932,6 +927,11 @@ void UJointNodeBase::MarkNodePending()
 	if (ParentNode) ParentNode->MarkNodePendingIfNeeded();
 }
 
+const bool& UJointNodeBase::CanReloadNode() const
+{
+	return bCanReloadNode;
+}
+
 void UJointNodeBase::SubNodesBeginPlay()
 {
 	//TODO: Change it to work without iteration since it is quite messy when the debugger comes in.
@@ -979,6 +979,15 @@ void UJointNodeBase::RequestNodeEndPlay()
 	if (!Instance.IsValid()) return;
 
 	Instance->RequestNodeEndPlay(this);
+}
+
+void UJointNodeBase::RequestReloadNode(const bool bPropagateToSubNodes)
+{
+	AJointActor* Instance = GetHostingJointInstance();
+
+	if (!Instance) return;
+
+	Instance->RequestReloadNode(this, bPropagateToSubNodes);
 }
 
 void UJointNodeBase::PreNodeBeginPlay_Implementation()

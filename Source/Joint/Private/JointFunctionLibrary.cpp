@@ -3,7 +3,7 @@
 
 #include "JointFunctionLibrary.h"
 
-#include "JointSharedTypes.h"
+#include "SharedType/JointSharedTypes.h"
 #include "Components/RichTextBlock.h"
 #include "Components/Widget.h"
 #include "Engine/DataTable.h"

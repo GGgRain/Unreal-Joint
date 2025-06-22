@@ -349,16 +349,17 @@ public:
 	virtual TArray<UJointNodeBase*> SelectNextNodes_Implementation(class AJointActor* InHostingJointInstance);
 
 private:
+
+
 	/**
-	 * Reload the node to make it able to be played again.
-	 * This function will be triggered only by the Joint instance, and only by when it revisited the node in the graph flow.
-	 * This is IMPORTANT to notice that you can not call this function as you want, because we don't want to make you able to implement some kind of 'GOTO' action on your own fragments.
+	 * Reload the node's state to make it able to be played again.
 	 * 
-	 * The Joint flow can not jump to somewhere else in the middle of the playback of some specific node.
-	 * But, please notice that you can still use that specific node on the graph in other ways!
+	 * Joint 2.10.0 : Now this function is marked to be public and can be called from the outside.
+	 * Please notice that it is not able to call it directly from the other class object.
+	 * Use the Joint instance (AJointActor) for this node instead to call the other node's being play action, or execute RequestReloadNode() instead.
 	 */
 	void ReloadNode();
-
+	
 	/**
 	 * Play this node's playback. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's being play action, or execute RequestNodeBeginPlay() instead.
@@ -379,6 +380,22 @@ private:
 
 
 	friend AJointActor;
+
+public:
+
+	UFUNCTION(BlueprintPure, Category = "Lifecycle")
+	const bool& CanReloadNode() const;
+
+private:
+
+	/**
+	 * Whether this node can be reloaded.
+	 * This will never be changed on the runtime. You must make sure that this is set to true if you want to reload the node.
+	 * We intended this to be used for the nodes that are not intended to be played multiple times, especially for security reasons.
+	 * So make sure to understand the possible issues and concerns before using this feature.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Lifecycle")
+	bool bCanReloadNode = false;
 
 public:
 	/**
@@ -405,6 +422,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Node")
 	void RequestNodeEndPlay();
+
+	/**
+	 * Reload the node's state to make it able to be played again.
+	 * 
+	 * Joint 2.10.0 : Now this function is marked to be public and can be called from the outside.
+	 * But please understand that this function is not intended to be used in the normal flow of the Joint.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Node")
+	void RequestReloadNode(const bool bPropagateToSubNodes = true);
 
 protected:
 

@@ -105,8 +105,13 @@ struct FJointAlignmentHelper
 					
 						for (FJointAlignmentData& Entry : AlignmentData)
 						{
-							int32 TargetProperty = Target - Entry.TargetOffset; 
+							int32 TargetProperty = Target - Entry.TargetOffset;
+
+#if UE_VERSION_OLDER_THAN(5,6,0)
 							FVector2D TargetPosition(Entry.Node->NodePosX, Entry.Node->NodePosY);
+#else
+							FVector2f TargetPosition(Entry.Node->NodePosX, Entry.Node->NodePosY);
+#endif
 
 							if (Orientation == EOrientation::Orient_Horizontal)
 							{
@@ -238,7 +243,13 @@ private:
 	TAttribute<FGraphAppearanceInfo> Appearance;
 
 	SGraphEditor::FOnFocused OnFocused;
+	
+#if UE_VERSION_OLDER_THAN(5,6,0)
 	SGraphEditor::FOnCreateActionMenu OnCreateActionMenu;
+#else
+	SGraphEditor::FOnCreateActionMenuAtLocation OnCreateActionMenu;
+#endif
+	
 	SGraphEditor::FOnCreateNodeOrPinMenu OnCreateNodeOrPinMenu;
 
 	TAttribute<bool> IsEditable;

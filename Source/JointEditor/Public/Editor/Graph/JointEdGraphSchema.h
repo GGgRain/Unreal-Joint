@@ -5,10 +5,12 @@
 #include "CoreMinimal.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "JointEdGraphSchemaActions.h"
+#include "JointWiggleWireSimulator.h"
 #include "JointEdGraphSchema.generated.h"
 
 class FJointGraphConnectionDrawingPolicy;
 class UJointEdGraphNode;
+
 
 UCLASS()
 class JOINTEDITOR_API UJointEdGraphSchema : public UEdGraphSchema
@@ -93,9 +95,7 @@ public:
 	virtual void BreakSinglePinLink(UEdGraphPin* SourcePin, UEdGraphPin* TargetPin) const override;
 
 	virtual void BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const;
-
-	virtual void SetNodePosition(UEdGraphNode* Node, const FVector2D& Position) const override;
-
+	
 	virtual bool FadeNodeWhenDraggingOffPin(const UEdGraphNode* Node, const UEdGraphPin* Pin) const override;
 
 	virtual void BreakNodeLinks(UEdGraphNode& TargetNode) const override;
@@ -109,4 +109,5 @@ public:
 public:
 	
 	int32 GetNodeSelectionCount(const UEdGraph* Graph) const override;
+	
 };

@@ -28,6 +28,9 @@
 
 #define LOCTEXT_NAMESPACE "JointEdGraphSchema"
 
+
+
+
 UJointEdGraphSchema::UJointEdGraphSchema(const class FObjectInitializer&)
 {
 }
@@ -194,11 +197,6 @@ bool UJointEdGraphSchema::ShouldAlwaysPurgeOnModification() const
 void UJointEdGraphSchema::BreakSinglePinLink(UEdGraphPin* SourcePin, UEdGraphPin* TargetPin) const
 {
     Super::BreakSinglePinLink(SourcePin, TargetPin);
-}
-
-void UJointEdGraphSchema::SetNodePosition(UEdGraphNode* Node, const FVector2D& Position) const
-{
-    Super::SetNodePosition(Node, Position);
 }
 
 bool UJointEdGraphSchema::FadeNodeWhenDraggingOffPin(const UEdGraphNode* Node, const UEdGraphPin* Pin) const
@@ -413,8 +411,7 @@ FConnectionDrawingPolicy* UJointEdGraphSchema::CreateConnectionDrawingPolicy(
     int32 InBackLayerID, int32 InFrontLayerID, float InZoomFactor, const FSlateRect& InClippingRect,
     class FSlateWindowElementList& InDrawElements, class UEdGraph* InGraphObj) const
 {
-    return new FJointGraphConnectionDrawingPolicy(InBackLayerID, InFrontLayerID, InZoomFactor, InClippingRect,
-                                                  InDrawElements, InGraphObj);
+    return new FJointGraphConnectionDrawingPolicy(InBackLayerID, InFrontLayerID, InZoomFactor, InClippingRect, InDrawElements, InGraphObj);
 }
 
 

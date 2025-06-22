@@ -57,6 +57,7 @@
 //and in ue5, the codes related with the hololens has been deprecicated, and it's features had been merged into the "GenericPlatform/GenericPlatformApplicationMisc.h"
 
 #include "JointEdGraphNode_Foundation.h"
+#include "JointEdGraphNode_Fragment.h"
 #include "JointEditorNodePickingManager.h"
 #include "VoltDecl.h"
 #include "EditorWidget/JointToolkitToastMessages.h"
@@ -1013,7 +1014,7 @@ void FJointEditorToolkit::InitializeGraph()
 
 	if (UJointEdGraph* NewGraph = GetJointGraph())
 	{
-		NewGraph->Toolkit = SharedThis(this);
+		NewGraph->SetToolkit(SharedThis(this));
 		NewGraph->Initialize();
 	}
 }
@@ -1043,7 +1044,7 @@ void FJointEditorToolkit::InitializeGraphEditor()
 	//Feed the toolkit to the graph.
 	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(GetJointManager()->JointGraph))
 	{
-		CastedGraph->Toolkit = SharedThis(this);
+		CastedGraph->SetToolkit(SharedThis(this));
 	}
 
 	GraphEditorPtr = SNew(SJointGraphEditor)
@@ -1192,9 +1193,10 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
+					.Padding(FJointEditorStyle::Margin_Normal * 2)
 					[
 						SNew(SVerticalBox)
+						.Clipping(EWidgetClipping::ClipToBounds)
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.HAlign(HAlign_Center)
@@ -1222,6 +1224,7 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
+								.Clipping(EWidgetClipping::ClipToBounds)
 								.Text(LOCTEXT("PickingEnabledTitle", "Node Picking Enabled"))
 								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
 							]
@@ -1233,6 +1236,7 @@ void FJointEditorToolkit::PopulateNodePickingToastMessage()
 						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(STextBlock)
+							.Clipping(EWidgetClipping::ClipToBounds)
 							.Text(LOCTEXT("PickingEnabled", "Click the node to select. Press ESC to escape."))
 							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
 						]
@@ -1268,7 +1272,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 					.HAlign(HAlign_Center)
 					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
+					.Padding(FJointEditorStyle::Margin_Normal * 2)
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -1277,6 +1281,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 						.VAlign(VAlign_Center)
 						[
 							SNew(SHorizontalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
 							.HAlign(HAlign_Center)
@@ -1298,6 +1303,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
+								.Clipping(EWidgetClipping::ClipToBounds)
 								.Text(LOCTEXT("PickingEnabledTitle",
 								              "You are editing a transient & PIE duplicated object."))
 								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
@@ -1310,6 +1316,7 @@ void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
 						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(STextBlock)
+							.Clipping(EWidgetClipping::ClipToBounds)
 							.Text(LOCTEXT("PickingEnabled",
 							              "Any modification on this graph will not be applied to the original asset."))
 							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
@@ -1356,6 +1363,100 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 						.Padding(FJointEditorStyle::Margin_Normal)
 						[
 							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SHorizontalBox)
+								.Clipping(EWidgetClipping::ClipToBounds)
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
+								[
+									SNew(SBox)
+									.WidthOverride(24)
+									.HeightOverride(24)
+									[
+										SNew(SImage)
+										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
+									]
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
+								[
+									SNew(STextBlock)
+									.Clipping(EWidgetClipping::ClipToBounds)
+									.Text(LOCTEXT("PickingEnabledTitle",
+									              "Modifying Simple Display Property Visibility"))
+									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
+								]
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(STextBlock)
+								.Clipping(EWidgetClipping::ClipToBounds)
+								.Text(LOCTEXT("PickingEnabled",
+								              "Press the eye buttons to change their visibility. Press \'X\' to end."))
+								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
+							]
+						]
+					]
+				]
+			);
+		}
+	}
+}
+
+void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
+{
+	ClearNodePickerCopyToastMessage();
+
+	if (GraphToastMessageHub.IsValid())
+	{
+		TWeakPtr<SJointToolkitToastMessage> Message = GraphToastMessageHub->FindToasterMessage(
+			NodePickerCopyToastMessageGuid);
+
+		if (Message.IsValid())
+		{
+			Message.Pin()->PlayAppearAnimation();
+		}
+		else
+		{
+			NodePickerCopyToastMessageGuid = GraphToastMessageHub->AddToasterMessage(
+				SNew(SJointToolkitToastMessage)
+				.SizeDecreaseInterpolationSpeed(2)
+				.RemoveAnimationDuration(0.5)
+				.Duration(1.5)
+				[
+					SNew(SBorder)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					.VAlign(VAlign_Center)
+					.HAlign(HAlign_Center)
+					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(SBorder)
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.VAlign(VAlign_Center)
+						.HAlign(HAlign_Center)
+						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
 							+ SVerticalBox::Slot()
 							.AutoHeight()
 							.HAlign(HAlign_Center)
@@ -1383,8 +1484,9 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 								.Padding(FJointEditorStyle::Margin_Normal)
 								[
 									SNew(STextBlock)
-									.Text(LOCTEXT("PickingEnabledTitle",
-									              "Modifying Simple Display Property Visibility"))
+									.Clipping(EWidgetClipping::ClipToBounds)
+									.Text(LOCTEXT("CopyTitle",
+												  "Node Pointer Copied!"))
 									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
 								]
 							]
@@ -1395,8 +1497,9 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 							.Padding(FJointEditorStyle::Margin_Normal)
 							[
 								SNew(STextBlock)
-								.Text(LOCTEXT("PickingEnabled",
-								              "Press the eye buttons to change their visibility. Press \'X\' to end."))
+								.Clipping(EWidgetClipping::ClipToBounds)
+								.Text(LOCTEXT("CopyTitleEnabled",
+											  "Press paste button on others to put this there"))
 								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
 							]
 						]
@@ -1407,102 +1510,25 @@ void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyTo
 	}
 }
 
-void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
-{
-	ClearNodePickerCopyToastMessage();
-
-	if (GraphToastMessageHub.IsValid())
-	{
-		NodePickerCopyToastMessageGuid = GraphToastMessageHub->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.RemoveAnimationDuration(1.6)
-			.Duration(0.8)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("CopyTitle",
-								              "Node Pointer Copied!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("CopyTitleEnabled",
-							              "Press paste button on others to put this there"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
 void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
 {
 	ClearNodePickerPastedToastMessage();
 
 	if (GraphToastMessageHub.IsValid())
 	{
-		NodePickerPasteToastMessageGuid = GraphToastMessageHub->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.RemoveAnimationDuration(1.6)
-			.Duration(0.8)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
+		TWeakPtr<SJointToolkitToastMessage> Message = GraphToastMessageHub->FindToasterMessage(NodePickerPasteToastMessageGuid);
+
+		if (Message.IsValid())
+		{
+			Message.Pin()->PlayAppearAnimation();
+		}
+		else
+		{
+			NodePickerPasteToastMessageGuid = GraphToastMessageHub->AddToasterMessage(
+				SNew(SJointToolkitToastMessage)
+				.SizeDecreaseInterpolationSpeed(2)
+				.RemoveAnimationDuration(0.5)
+				.Duration(1.5)
 				[
 					SNew(SBorder)
 					.Padding(FJointEditorStyle::Margin_Normal)
@@ -1512,43 +1538,130 @@ void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
 					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
 					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
+						SNew(SBorder)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						.VAlign(VAlign_Center)
+						.HAlign(HAlign_Center)
+						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
+							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
 							.HAlign(HAlign_Center)
 							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
 							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
 								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
+									SNew(SBox)
+									.WidthOverride(24)
+									.HeightOverride(24)
+									[
+										SNew(SImage)
+										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
+									]
 								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("PasteTitle",
-								              "Node Pointer Pasted!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
+								[
+									SNew(STextBlock)
+									.Clipping(EWidgetClipping::ClipToBounds)
+									.Text(LOCTEXT("PasteTitle",
+												  "Node Pointer Pasted!"))
+									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
+								]
 							]
 						]
 					]
 				]
-			]
-		);
+			);
+		}
+	}
+}
+
+void FJointEditorToolkit::PopulateNeedReopeningToastMessage()
+{
+	//You can only show this message once, so if the message is already shown, do not show it again.
+	if (GraphToastMessageHub.IsValid() && !GraphToastMessageHub->HasToasterMessage(RequestReopenToastMessageGuid))
+	{
+		TWeakPtr<SJointToolkitToastMessage> Message = GraphToastMessageHub->FindToasterMessage(RequestReopenToastMessageGuid);
+
+		if (Message.IsValid())
+		{
+			Message.Pin()->PlayAppearAnimation();
+		}
+		else
+		{
+			RequestReopenToastMessageGuid = GraphToastMessageHub->AddToasterMessage(
+				SNew(SJointToolkitToastMessage)
+				.Duration(-1)
+				[
+					SNew(SBorder)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					.VAlign(VAlign_Center)
+					.HAlign(HAlign_Center)
+					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(SBorder)
+						.Padding(FJointEditorStyle::Margin_Normal)
+						.VAlign(VAlign_Center)
+						.HAlign(HAlign_Center)
+						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.BorderBackgroundColor(FJointEditorStyle::Color_Node_Invalid)
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SVerticalBox)
+							.Clipping(EWidgetClipping::ClipToBounds)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
+								[
+									SNew(SBox)
+									.WidthOverride(24)
+									.HeightOverride(24)
+									[
+										SNew(SImage)
+										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
+									]
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								.Padding(FJointEditorStyle::Margin_Normal)
+								[
+									SNew(STextBlock)
+									.Clipping(EWidgetClipping::ClipToBounds)
+									.Text(LOCTEXT("ReopeningRequest",
+												  "Graph Editor Reported Invalidated Slate Reference Error.\nPlease reopen the editor to solve the issue."))
+									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
+								]
+							]
+						]
+					]
+				]
+			);
+		}
 	}
 }
 
@@ -2283,7 +2396,7 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 			}
 		}else
 		{
-			if(CastedPastedNode && Cast<UJointFragment>(CastedPastedNode))
+			if(CastedPastedNode && Cast<UJointEdGraphNode_Fragment>(CastedPastedNode))
 			{
 				CastedPastedNode->DestroyNode();
 			}

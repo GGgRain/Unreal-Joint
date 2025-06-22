@@ -343,7 +343,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Joint Playback")
 	void RequestMarkNodeAsPending(UJointNodeBase* InNode);
-	
+
+	UFUNCTION(BlueprintCallable, Category="Joint Playback")
+	void RequestReloadNode(UJointNodeBase* InNode, const bool bPropagateToSubNodes = true, const bool bAllowPropagationEvenParentFails = true);
+
 public:
 
 	void NotifyNodeBeginPlay(UJointNodeBase* InNode);

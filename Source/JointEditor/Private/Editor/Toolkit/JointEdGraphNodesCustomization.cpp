@@ -33,7 +33,7 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "GraphNode/JointGraphNodeSharedSlates.h"
 #include "Misc/MessageDialog.h"
-#include "UObject/MetaData.h"
+
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SScrollBox.h"
 
@@ -907,76 +907,7 @@ void FJointManagerCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 {
 	if (UJointEditorSettings::Get()->bEnableDeveloperMode)
 	{
-		IDetailCategoryBuilder& DescriptionCategory = DetailBuilder.EditCategory("Developer Mode - Internal Data");
-		DescriptionCategory.SetCategoryVisibility(true);
-
-		DescriptionCategory.AddCustomRow(LOCTEXT("ClearPackageMetadataRowName", "Clear Package Metadata"))
-			.NameContent()
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("ClearPackageMetadataRowName", "Clear Package Metadata"))
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-			]
-			.ValueContent()
-			[
-				SNew(SJointOutlineButton)
-				.NormalColor(FLinearColor::Transparent)
-				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.OutlineNormalColor(FLinearColor::Transparent)
-				.ContentPadding(FJointEditorStyle::Margin_Normal)
-				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-				.OnPressed(this, &FJointManagerCustomization::OnClearPackageMetadata)
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("ClearPackageMetadata", "Clear Package Metadata"))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-				]
-			];
-
-		TArray<TWeakObjectPtr<UObject>> Objects = DetailBuilder.GetSelectedObjects();
-
-		for (TWeakObjectPtr<UObject> Object : Objects)
-		{
-			if (!Object.IsValid()) continue;
-
-			if (UJointManager* CastedObject = Cast<UJointManager>(Object))
-			{
-				CachedManager.Add(CastedObject);
-			}
-		}
-	}
-}
-
-void FJointManagerCustomization::OnClearPackageMetadata()
-{
-	FText WarningText = LOCTEXT("ClearPackageMetadataWarning",
-	                            "This action is not revertiable. You must clearly know what this action does.");
-
-	if (EAppReturnType::Type ReturnType = FMessageDialog::Open(EAppMsgType::OkCancel, WarningText); ReturnType ==
-		EAppReturnType::Cancel)
-		return;
-
-	for (TWeakObjectPtr<UJointManager> JointManager : CachedManager)
-	{
-		if (!JointManager.IsValid()) continue;
-
-		if (UPackage* ManagerPackage = JointManager->GetPackage())
-		{
-			UMetaData* MetaData;
-
-			MetaData = ManagerPackage->GetMetaData();
-
-			ManagerPackage->ClearAllCachedCookedPlatformData();
-
-			if (MetaData)
-			{
-				MetaData->RemoveMetaDataOutsidePackage();
-				MetaData->ClearGarbage();
-			}
-
-			ManagerPackage->MarkPackageDirty();
-		}
+		//Removed in 2.10
 	}
 }
 
@@ -1245,122 +1176,12 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
-					SAssignNew(ButtonBox, SHorizontalBox)
-					.Visibility(EVisibility::Collapsed)
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(PickingTooltipText)
-						.IsEnabled(!(bFromMultipleManager || bFromInvalidJointManagerObject || bFromJointManagerItself))
-						.OnPressed(this, &FJointNodePointerStructCustomization::OnNodePickUpButtonPressed)
-						[
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(20, 20))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.ToolTipText(LOCTEXT("GotoTooltip", "Go to the seleced node on the graph."))
-						.IsEnabled(
-							!(bFromMultipleManager || bFromInvalidJointManagerObject ||
-								bFromJointManagerItself))
-						.OnPressed(this, &FJointNodePointerStructCustomization::OnGoToButtonPressed)
-						[
-
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(20, 20))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.ArrowRight"))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("CopyTooltip", "Copy the structure to the clipboard"))
-						.IsEnabled(
-							!(bFromMultipleManager || bFromInvalidJointManagerObject ||
-								bFromJointManagerItself))
-						.OnPressed(this, &FJointNodePointerStructCustomization::OnCopyButtonPressed)
-						[
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(20, 20))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Copy"))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("PasteTooltip", "Paste the structure from the clipboard"))
-						.IsEnabled(
-							!(bFromMultipleManager || bFromInvalidJointManagerObject ||
-								bFromJointManagerItself))
-						.OnPressed(this, &FJointNodePointerStructCustomization::OnPasteButtonPressed)
-						[
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(20, 20))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GenericCommands.Paste"))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.FillWidth(1)
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SJointOutlineButton)
-						.NormalColor(FLinearColor::Transparent)
-						.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
-						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.OutlineNormalColor(FLinearColor::Transparent)
-						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
-						.ToolTipText(LOCTEXT("ResetTooltip", "Reset the structure"))
-						.IsEnabled(
-							!(bFromMultipleManager || bFromInvalidJointManagerObject ||
-								bFromJointManagerItself))
-						.OnPressed(this, &FJointNodePointerStructCustomization::OnClearButtonPressed)
-						[
-							SNew(SImage)
-							.DesiredSizeOverride(FVector2D(20, 20))
-							.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
-						]
-					]
+					SAssignNew(FeatureButtonsSlate, SJointNodePointerSlateFeatureButtons)
+					.OnPickupButtonPressed(this, &FJointNodePointerStructCustomization::OnNodePickUpButtonPressed)
+					.OnGotoButtonPressed(this, &FJointNodePointerStructCustomization::OnGoToButtonPressed)
+					.OnCopyButtonPressed(this, &FJointNodePointerStructCustomization::OnCopyButtonPressed)
+					.OnPasteButtonPressed(this, &FJointNodePointerStructCustomization::OnPasteButtonPressed)
+					.OnClearButtonPressed(this, &FJointNodePointerStructCustomization::OnClearButtonPressed)
 				]
 			]
 		];
@@ -1381,7 +1202,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 	NodeHandle.Get()->SetOnPropertyResetToDefault(OnNodeResetTo);
 }
 
-void FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
+FReply FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
 {
 	bool bFromMultipleManager = false;
 	bool bFromInvalidJointManagerObject = false;
@@ -1391,11 +1212,11 @@ void FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
 		NodeInstanceObjs, bFromMultipleManager, bFromInvalidJointManagerObject, bFromJointManagerItself);
 
 	//Halt if the Joint manager is not valid.
-	if (FoundJointManager == nullptr) return;
+	if (FoundJointManager == nullptr) return FReply::Handled();
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(FoundJointManager))
 	{
-		if (!Toolkit->GetNodePickingManager().IsValid()) return;
+		if (!Toolkit->GetNodePickingManager().IsValid()) return FReply::Handled();
 
 		if (!Toolkit->GetNodePickingManager()->IsInNodePicking())
 		{
@@ -1406,17 +1227,20 @@ void FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
 			Toolkit->GetNodePickingManager()->EndNodePicking();
 		}
 	}
+
+	return FReply::Handled();
+
 }
 
 
-void FJointNodePointerStructCustomization::OnGoToButtonPressed()
+FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 {
 	UObject* CurrentNode = nullptr;
 
 	NodeHandle.Get()->GetValue(CurrentNode);
 
 	//Revert
-	if (CurrentNode == nullptr) return;
+	if (CurrentNode == nullptr) return FReply::Handled();;
 
 	bool bFromMultipleManager = false;
 	bool bFromInvalidJointManagerObject = false;
@@ -1426,7 +1250,7 @@ void FJointNodePointerStructCustomization::OnGoToButtonPressed()
 		NodeInstanceObjs, bFromMultipleManager, bFromInvalidJointManagerObject, bFromJointManagerItself);
 
 	//Halt if the Joint manager is not valid.
-	if (FoundJointManager == nullptr) return;
+	if (FoundJointManager == nullptr) return FReply::Handled();
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(FoundJointManager))
 	{
@@ -1459,9 +1283,11 @@ void FJointNodePointerStructCustomization::OnGoToButtonPressed()
 			}
 		}
 	}
+
+	return FReply::Handled();
 }
 
-void FJointNodePointerStructCustomization::OnCopyButtonPressed()
+FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 {
 	FString Value;
 	if (NodeHandle->GetValueAsFormattedString(Value, PPF_Copy) == FPropertyAccess::Success)
@@ -1477,15 +1303,17 @@ void FJointNodePointerStructCustomization::OnCopyButtonPressed()
 		NodeInstanceObjs, bFromMultipleManager, bFromInvalidJointManagerObject, bFromJointManagerItself);
 
 	//Halt if the Joint manager is not valid.
-	if (FoundJointManager == nullptr) return;
+	if (FoundJointManager == nullptr) return FReply::Handled();
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(FoundJointManager))
 	{
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
+
+	return FReply::Handled();
 }
 
-void FJointNodePointerStructCustomization::OnPasteButtonPressed()
+FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 {
 	FString Value;
 
@@ -1503,18 +1331,22 @@ void FJointNodePointerStructCustomization::OnPasteButtonPressed()
 		NodeInstanceObjs, bFromMultipleManager, bFromInvalidJointManagerObject, bFromJointManagerItself);
 
 	//Halt if the Joint manager is not valid.
-	if (FoundJointManager == nullptr) return;
+	if (FoundJointManager == nullptr) return FReply::Handled();
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(FoundJointManager))
 	{
 		Toolkit->PopulateNodePickerPastedToastMessage();
 	}
+	
+	return FReply::Handled();
 }
 
-void FJointNodePointerStructCustomization::OnClearButtonPressed()
+FReply FJointNodePointerStructCustomization::OnClearButtonPressed()
 {
 	if (NodeHandle) NodeHandle->ResetToDefault();
 	if (EditorNodeHandle) EditorNodeHandle->ResetToDefault();
+
+	return FReply::Handled();
 }
 
 void FJointNodePointerStructCustomization::OnNodeDataChanged()
@@ -1606,6 +1438,9 @@ void FJointNodePointerStructCustomization::OnNodeResetToDefault()
 
 void FJointNodePointerStructCustomization::OnMouseHovered()
 {
+
+	FeatureButtonsSlate->UpdateVisualOnHovered();
+	
 	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5);
 	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::SelfHitTestInvisible);
 
@@ -1674,6 +1509,9 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 
 void FJointNodePointerStructCustomization::OnMouseUnhovered()
 {
+
+	FeatureButtonsSlate->UpdateVisualOnUnhovered();
+	
 	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(1);
 	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::Collapsed);
 

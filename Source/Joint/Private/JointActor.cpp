@@ -3,11 +3,11 @@
 
 #include "JointActor.h"
 
-#include "JointFragment.h"
+#include "Node/JointFragment.h"
 #include "JointManager.h"
-#include "JointNodeBase.h"
+#include "Node/JointNodeBase.h"
 #include "Joint.h"
-#include "JointSubsystem.h"
+#include "Subsystem/JointSubsystem.h"
 
 #include "Engine/ActorChannel.h"
 #include "Engine/World.h"
@@ -243,7 +243,7 @@ void AJointActor::SetPlayingJointNode_Implementation(UJointNodeBase* NewPlayingJ
 	PlayingJointNode = NewPlayingJointNode;
 
 	//Reload the node's activity related flags.
-	if (PlayingJointNode) PlayingJointNode->ReloadNode();
+	if (PlayingJointNode) RequestReloadNode(PlayingJointNode, true);
 
 #if DEBUG_ShowJointEvent_SetPlayingNode
 	if (GEngine)
@@ -606,14 +606,12 @@ void AJointActor::MarkAsEnded()
 
 void AJointActor::NotifyStartJoint()
 {
-	if (!IsJointStarted())
-		if (UJointSubsystem* SubSystem = UJointSubsystem::Get(this)) SubSystem->OnJointStarted(this);
+	if (UJointSubsystem* SubSystem = UJointSubsystem::Get(this)) SubSystem->OnJointStarted(this);
 }
 
 void AJointActor::NotifyEndJoint()
 {
-	if (!IsJointEnded())
-		if (UJointSubsystem* SubSystem = UJointSubsystem::Get(this)) SubSystem->OnJointEnded(this);
+	if (UJointSubsystem* SubSystem = UJointSubsystem::Get(this)) SubSystem->OnJointEnded(this);
 }
 
 
@@ -800,6 +798,24 @@ void AJointActor::RequestMarkNodeAsPending(UJointNodeBase* InNode)
 
 	InNode->MarkNodePending();
 }
+
+void AJointActor::RequestReloadNode(UJointNodeBase* InNode, const bool bPropagateToSubNodes, const bool bAllowPropagationEvenParentFails)
+{
+	if (!InNode) return;
+
+	const bool& bCanReloadNode = InNode->CanReloadNode();
+	
+	if (bCanReloadNode) InNode->ReloadNode();
+	
+	if (bPropagateToSubNodes && (bCanReloadNode || bAllowPropagationEvenParentFails)) {
+		
+		for (UJointNodeBase* SubNode : InNode->SubNodes)
+		{
+			RequestReloadNode(SubNode, bPropagateToSubNodes);
+		}
+	}
+}
+
 
 void AJointActor::RequestNodeEndPlay(UJointNodeBase* InNode)
 {

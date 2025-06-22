@@ -1,7 +1,6 @@
 //Copyright 2022~2024 DevGrain. All Rights Reserved.
 
-
-#include "Derived/JN_Foundation.h"
+#include "Node/Derived/JN_Foundation.h"
 
 UJN_Foundation::UJN_Foundation()
 {

@@ -11,44 +11,7 @@
 #include "Engine/GameInstance.h"
 
 #include "EngineUtils.h"
-#include "GameplayTagContainer.h"
-#include "Joint.h"
-
 #include "TimerManager.h"
-
-
-/*
-AJointActor* UJointSubsystem::CreateJoint(
-	UObject* WorldContextObject,
-	UJointManager* JointAssetToPlay,
-	TSubclassOf<AJointActor> JointInstanceSubclass)
-{
-	AJointActor* JointInstanceActor = nullptr;
-
-	if (JointAssetToPlay)
-	{
-		JointInstanceActor = WorldContextObject->GetWorld()->SpawnActor<AJointActor>(JointInstanceSubclass.Get() ? JointInstanceSubclass : AJointActor::StaticClass());
-
-		UJointManager* TransientJointManager = nullptr;
-
-		TransientJointManager = DuplicateObject<UJointManager>(JointAssetToPlay, JointInstanceActor);
-
-		if (JointInstanceActor)
-		{
-			JointInstanceActor->SetJointManager(TransientJointManager);
-
-#if WITH_EDITOR
-			//For debugging purpose.
-
-			JointInstanceActor->OriginalJointManager = JointAssetToPlay;
-#endif
-		}
-	}
-
-	return JointInstanceActor;
-}
-*/
-
 
 AJointActor* UJointSubsystem::CreateJoint(
 	UObject* WorldContextObject,
@@ -134,12 +97,8 @@ TArray<FGuid> UJointSubsystem::GetJointsGuidEndedOnThisFrame(UObject* WorldConte
 
 void UJointSubsystem::OnJointStarted(AJointActor* Actor)
 {
-	if (Actor == nullptr) return;
-
-	if (!Actor->IsValidLowLevel()) return;
-
-	if (Actor->IsJointStarted()) return;
-
+	if (Actor == nullptr && !Actor->IsValidLowLevel()) return;
+	
 	AddStartedJointToCaches(Actor);
 
 	BroadcastOnJointStarted(Actor, Actor->JointGuid);
@@ -151,12 +110,8 @@ void UJointSubsystem::OnJointStarted(AJointActor* Actor)
 
 void UJointSubsystem::OnJointEnded(AJointActor* Actor)
 {
-	if (Actor == nullptr) return;
-
-	if (!Actor->IsValidLowLevel()) return;
-
-	if (Actor->IsJointEnded()) return;
-
+	if (Actor == nullptr && !Actor->IsValidLowLevel()) return;
+	
 	AddEndedJointToCaches(Actor);
 
 	BroadcastOnJointEnded(Actor, Actor->JointGuid);
@@ -219,31 +174,11 @@ void UJointSubsystem::ClearCachedJointFrameData()
 void UJointSubsystem::BroadcastOnJointStarted(AJointActor* Actor, FGuid JointGuid)
 {
 	if (OnJointBeginDelegate.IsBound()) OnJointBeginDelegate.Broadcast(Actor, JointGuid);
-
-#if WITH_EDITOR
-
-	if (FJointModule* Module = &FModuleManager::GetModuleChecked<FJointModule>("Joint"); Module != nullptr && Module->
-		OnJointDebuggerMentionJointBeginPlay.IsBound())
-	{
-		Module->OnJointDebuggerMentionJointBeginPlay.ExecuteIfBound(Actor, JointGuid);
-	}
-
-#endif
 }
 
 void UJointSubsystem::BroadcastOnJointEnded(AJointActor* Actor, FGuid JointGuid)
 {
 	if (OnJointEndDelegate.IsBound()) OnJointEndDelegate.Broadcast(Actor, JointGuid);
-
-#if WITH_EDITOR
-
-	if (FJointModule* Module = &FModuleManager::GetModuleChecked<FJointModule>("Joint"); Module != nullptr && Module->
-		OnJointDebuggerMentionJointEndPlay.IsBound())
-	{
-		Module->OnJointDebuggerMentionJointEndPlay.ExecuteIfBound(Actor, JointGuid);
-	}
-
-#endif
 }
 
 UWorld* UJointSubsystem::GetWorld() const { return GetGameInstance()->GetWorld(); }

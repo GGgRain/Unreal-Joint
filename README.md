@@ -5,6 +5,7 @@
 <div align="center">
   <h1>Joint</h1>
   <h3>Visual Modular Dialogue & Gameplay Scripting Framework For Unreal 4 & 5</h3>
+  <h4>( Supported Unreal Engine Versions: UE 4.27.x ~ Latest (5.6.x, UP-TO-DATE!) )</h4>
 </div>
 
 <p align="center">

@@ -337,6 +337,12 @@ public:
 
 public:
 
+	const FSlateBrush* NodeBodyBorderImage = nullptr;
+	const FSlateBrush* NodeBackgroundInBorderImage = nullptr;
+	const FSlateBrush* NodeBackgroundOutBorderImage = nullptr;
+
+public:
+
 	void ClearSlates();
 
 public:
@@ -392,12 +398,11 @@ public:
 
 public:
 	
-	const FSlateBrush* GetIconicNodeSlateBrush();
+	const FSlateBrush* GetIconicNodeSlateBrush() const;
 
-	const FText GetIconicNodeText();
+	const FText GetIconicNodeText() const;
 
-	const bool GetWhetherToDisplayIconicNodeText();
-
+	const bool GetWhetherToDisplayIconicNodeText() const;
 	
 public:
 
@@ -584,3 +589,4 @@ TSharedPtr<SlateClass> SJointGraphNodeBase::INLINE_GetCastedSubNodePanel()
 	
 	return nullptr;
 }
+

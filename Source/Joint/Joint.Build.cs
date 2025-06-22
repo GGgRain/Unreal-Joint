@@ -19,22 +19,6 @@ public class Joint : ModuleRules
 
 			}
 			);
-				
-		
-		PrivateIncludePaths.AddRange(
-			new string[] {
-				// ... add other private include paths required here ...
-				
-				"Joint",
-			
-				"Joint/Public",
-				"Joint/Public/Node",
-				"Joint/Public/SharedType",
-				"Joint/Public/SubSystem",
-				
-			}
-			);
-			
 		
 		PublicDependencyModuleNames.AddRange(
 			new string[]

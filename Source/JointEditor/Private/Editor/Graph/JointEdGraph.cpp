@@ -156,6 +156,13 @@ void UJointEdGraph::OnLoaded()
 	ResetNodeDepth();
 }
 
+void UJointEdGraph::SetToolkit(const TSharedPtr<FJointEditorToolkit>& InToolkit)
+{
+	if (!InToolkit.IsValid()) return;
+
+	Toolkit = InToolkit;
+}
+
 void UJointEdGraph::UpdateDebugData()
 {
 	//Remove all unnecessary data in the array.

@@ -8,6 +8,7 @@
 #include "SharedType/JointSharedTypes.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SJointNodePointerSlateFeatureButtons;
 class UVoltAnimationManager;
 class UJointEdGraphNode;
 
@@ -199,6 +200,7 @@ public:
 
 };
 
+
 /**
  * A slate that help editing the FJointNodePointer property in the graph.
  * JOINT 2.8 : not maintained anymore.
@@ -238,8 +240,8 @@ public:
 public:
 
 	TSharedPtr<SVerticalBox> BackgroundBox;
-
-	TSharedPtr<SHorizontalBox> ButtonHorizontalBox;
+	
+	TSharedPtr<SJointNodePointerSlateFeatureButtons> FeatureButtonsSlate;
 
 private:
 
@@ -272,7 +274,47 @@ public:
 	FReply OnPasteButtonPressed();
 
 	FReply OnClearButtonPressed();
+	
+};
 
+
+/**
+ * A slate for the button overlay of the SJointNodePointerSlate.
+ */
+
+class JOINTEDITOR_API SJointNodePointerSlateFeatureButtons : public SCompoundWidget
+{
+public:
+
+	SLATE_BEGIN_ARGS(SJointNodePointerSlateFeatureButtons) {}
+		SLATE_EVENT(FOnClicked, OnPickupButtonPressed)
+		SLATE_EVENT(FOnClicked, OnGotoButtonPressed)
+		SLATE_EVENT(FOnClicked, OnCopyButtonPressed)
+		SLATE_EVENT(FOnClicked, OnPasteButtonPressed)
+		SLATE_EVENT(FOnClicked, OnClearButtonPressed)
+	SLATE_END_ARGS()
+	
+public:
+
+	void Construct(const FArguments& InArgs);
+
+public:
+
+	void UpdateVisualOnHovered();
+	
+	void UpdateVisualOnUnhovered();
+
+public:
+
+	TArray<FVoltAnimationTrack> ButtonAnimTracks;
+
+	TSharedPtr<SHorizontalBox> ButtonHorizontalBox;
+
+public:
+
+	const float BUTTON_INITIAL_OPACITY = 0.f;
+	const float BUTTON_ANIM_DELAY_PER_ICON = 0.04f;
+	const FSlateRenderTransform BUTTON_INITIAL_TRANSFORM = FSlateRenderTransform(FVector2D(0.f, 50.f));
 };
 
 

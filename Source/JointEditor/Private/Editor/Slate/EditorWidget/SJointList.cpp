@@ -157,7 +157,7 @@ void SJointList::Construct(const FArguments& InArgs)
 #endif
 
 
-#if UE_VERSION_OLDER_THAN(5,1,0)
+#if UE_VERSION_OLDER_THAN(5,0,0)
 			Subclasses.Add(TAssetSubclassOf< UObject >(FStringAssetReference(ClassObjectPath)));
 #else
 			Subclasses.Add(TSoftClassPtr<UObject>(FSoftObjectPath(ClassObjectPath)));

@@ -28,7 +28,7 @@ public:
 public:
 
 	void Construct(const FArguments& InArgs);
-
+	
 	void PopulateSlate();
 
 public:
@@ -53,6 +53,8 @@ public:
 	 */
 	TWeakPtr<SJointToolkitToastMessage> FindToasterMessage(const FGuid& ToasterGuid);
 
+	const bool HasToasterMessage(const FGuid& ToasterGuid);
+
 
 public:
 	
@@ -63,7 +65,7 @@ public:
 public:
 
 	TWeakPtr<SHorizontalBox> ToasterDisplayBox;
-
+	
 public:
 	
 	TMap<FGuid, TWeakPtr<SJointToolkitToastMessage>> Messages;
@@ -85,16 +87,22 @@ public:
 
 	SLATE_BEGIN_ARGS(SJointToolkitToastMessage) :
 		_Duration(-1),
-		_AppearAnimationDuration(0.2),
-		_RemoveAnimationDuration(0.2),
-		_AppearAnimationExp(6),
-		_RemoveAnimationExp(6)
+		_SizeIncreaseInterpolationSpeed(8.5f),
+		_SizeDecreaseInterpolationSpeed(5.5f),
+		_AppearAnimationDuration(0.5),
+		_RemoveAnimationDuration(0.25),
+		_AppearAnimationExp(5),
+		_RemoveAnimationExp(5)
 		{}
 		SLATE_DEFAULT_SLOT(FArguments, Content)
 		SLATE_ARGUMENT(float, Duration)
+
+		SLATE_ARGUMENT(float, SizeIncreaseInterpolationSpeed)
+		SLATE_ARGUMENT(float, SizeDecreaseInterpolationSpeed)
 		
 		SLATE_ARGUMENT(float, AppearAnimationDuration)
 		SLATE_ARGUMENT(float, RemoveAnimationDuration)
+		
 		SLATE_ARGUMENT(float, AppearAnimationExp)
 		SLATE_ARGUMENT(float, RemoveAnimationExp)
 
@@ -103,6 +111,8 @@ public:
 public:
 
 	void Construct(const FArguments& InArgs);
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 public:
 
@@ -124,10 +134,24 @@ public:
 
 public:
 
+	TWeakPtr<SBox> SizeBox;
+
+	TWeakPtr<SWidget> SlotWidget;
+
+public:
+
+	float SizeIncreaseInterpolationSpeed = 8.5f;
+	float SizeDecreaseInterpolationSpeed = 5.5f;
+
+	FVector2D SizeOverride;
+
+public:
+
 	//Animations
 
-	float AppearAnimationDuration = 0.2;
-	float RemoveAnimationDuration = 0.2;
+	float AppearAnimationDuration = 0.3;
+	float RemoveAnimationDuration = 0.3;
+	
 	float AppearAnimationExp = 6;
 	float RemoveAnimationExp = 6;
 

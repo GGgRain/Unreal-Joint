@@ -269,7 +269,13 @@ FReply SJointGraphPanel::OnMouseMove(const FGeometry& MyGeometry, const FPointer
 
 									if (bStoreOriginalNodePositions)
 									{
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
 										OriginalNodePositions.FindOrAdd(*pWidget) = Widget.GetPosition();
+
+#else
+										OriginalNodePositions.FindOrAdd(*pWidget) = Widget.GetPosition2f();
+
+#endif
 									}
 								}
 							}
@@ -342,8 +348,12 @@ void SJointGraphPanel::PaintBackground(const FSlateBrush* BackgroundImage, const
 	float ImageOffsetX = GraphSpaceGridX0 * -ZoomFactor;
 	float ImageOffsetY = GraphSpaceGridY0 * -ZoomFactor;
 
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
 	const FVector2D ZeroSpace = GraphCoordToPanelCoord(FVector2D::ZeroVector);
-
+#else
+	const FVector2f ZeroSpace = GraphCoordToPanelCoord(FVector2f::ZeroVector);
+#endif
+	
 	// Fill the background
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,

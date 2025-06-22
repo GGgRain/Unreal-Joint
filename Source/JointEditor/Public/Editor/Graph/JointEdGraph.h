@@ -33,12 +33,26 @@ public:
 	UPROPERTY(DuplicateTransient)
 	TArray<FJointNodeDebugData> DebugData;
 
-public:
+private:
 
 	/**
 	 * Optional toolkit of the graph that is currently editing the graph.
 	 */
 	TWeakPtr<FJointEditorToolkit> Toolkit;
+
+public:
+
+	/**
+	 * Set the toolkit of the graph.
+	 * @param InToolkit Toolkit to set
+	 */
+	void SetToolkit(const TSharedPtr<FJointEditorToolkit>& InToolkit);
+	
+	/**
+	 * Get the toolkit of the graph.
+	 * @return Toolkit of the graph
+	 */
+	const TWeakPtr<FJointEditorToolkit>& GetToolkit() const { return Toolkit; }
 
 public:
 

@@ -9,6 +9,7 @@
 #include "JointEditorToolkit.h"
 
 
+class SJointNodePointerSlateFeatureButtons;
 class UJointEdGraphNode;
 class UJointNodeBase;
 class SContextTextEditor;
@@ -174,11 +175,6 @@ public:
 	// IDetailCustomization interface
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
 	// End of IDetailCustomization interface
-
-public:
-
-	void OnClearPackageMetadata();
-
 public:
 
 	TArray<TWeakObjectPtr<UJointManager>> CachedManager;
@@ -232,11 +228,11 @@ private:
 
 private:
 	
-	void OnNodePickUpButtonPressed();
-	void OnGoToButtonPressed();
-	void OnCopyButtonPressed();
-	void OnPasteButtonPressed();
-	void OnClearButtonPressed();
+	FReply OnNodePickUpButtonPressed();
+	FReply OnGoToButtonPressed();
+	FReply OnCopyButtonPressed();
+	FReply OnPasteButtonPressed();
+	FReply OnClearButtonPressed();
 
 	
 	void OnNodeDataChanged();
@@ -251,5 +247,6 @@ private:
 
 	TSharedPtr<SVerticalBox> BackgroundBox;
 	TSharedPtr<SHorizontalBox> ButtonBox;
+	TSharedPtr<SJointNodePointerSlateFeatureButtons> FeatureButtonsSlate;
 	
 };

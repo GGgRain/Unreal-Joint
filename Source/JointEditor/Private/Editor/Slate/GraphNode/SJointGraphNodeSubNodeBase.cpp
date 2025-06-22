@@ -5,6 +5,7 @@
 
 #include "Editor.h"
 #include "JointAdvancedWidgets.h"
+#include "JointEdGraph.h"
 #include "Node/SubNode/JointEdGraphNode_Fragment.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SEditableTextBox.h"
@@ -13,6 +14,7 @@
 #include "ScopedTransaction.h"
 
 #include "JointEditorStyle.h"
+#include "JointEditorToolkit.h"
 #include "SGraphPanel.h"
 
 #include "Engine/Engine.h"
@@ -51,6 +53,31 @@ int32 SJointGraphNodeSubNodeBase::OnPaint(const FPaintArgs& Args, const FGeometr
                                           int32 LayerId,
                                           const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
 {
+
+	const class UObject* Brush1ResourceObj = NodeBodyBorderImage ? NodeBodyBorderImage->GetResourceObject() : nullptr;
+	const class UObject* Brush2ResourceObj = NodeBackgroundInBorderImage ? NodeBackgroundInBorderImage->GetResourceObject() : nullptr;
+	const class UObject* Brush3ResourceObj = NodeBackgroundOutBorderImage ? NodeBackgroundOutBorderImage->GetResourceObject() : nullptr;
+	const class UObject* Brush4ResourceObj = GetIconicNodeSlateBrush() ? GetIconicNodeSlateBrush()->GetResourceObject() : nullptr;
+
+	// Fallback if any brush resource pointer is non-null but not a valid UObject
+	if ((Brush1ResourceObj != nullptr && !Brush1ResourceObj->IsValidLowLevelFast()) ||
+		(Brush2ResourceObj != nullptr && !Brush2ResourceObj->IsValidLowLevelFast()) ||
+		(Brush3ResourceObj != nullptr && !Brush3ResourceObj->IsValidLowLevelFast()) ||
+		(Brush4ResourceObj != nullptr && !Brush4ResourceObj->IsValidLowLevelFast()))
+	{
+		// If the border image is not set or invalidated, we should not paint the node body.
+		// TODO : Do we need to paint the fallback node body? Or even can we paint the fallback node body instead???
+		// -> possibly, but probably will not worth. maybe just try to notify the editor toolkit to handle this.
+
+		if (GetCastedGraphNode()
+			&& GetCastedGraphNode()->GetCastedGraph()
+			&& GetCastedGraphNode()->GetCastedGraph()
+			&& GetCastedGraphNode()->GetCastedGraph()->GetToolkit().IsValid())
+			GetCastedGraphNode()->GetCastedGraph()->GetToolkit().Pin()->PopulateNeedReopeningToastMessage();
+		
+		return LayerId;
+	}
+
 	int CurLayerId = SJointGraphNodeBase::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId,
 	                                              InWidgetStyle, bParentEnabled);
 
