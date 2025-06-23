@@ -167,6 +167,8 @@ public:
 	virtual void HandleRichEditableTextCommitted(const FText& Text, ETextCommit::Type Type);
 
 	virtual void HandleRichEditableTextCursorMoved(const FTextLocation& NewCursorPosition);
+	
+	virtual bool IsReadOnly() const;
 
 	
 

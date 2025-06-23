@@ -94,6 +94,7 @@ void SContextTextEditor::AssignContextTextBox()
 	.Font(ContextTextStyler->GetDefaultTextStyle()->Font)
 	.Text(TextAttr)
 	.HintText(HintTextAttr)
+	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
 	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
 	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
 	.OnCursorMoved(this, &SContextTextEditor::HandleRichEditableTextCursorMoved)
@@ -126,6 +127,7 @@ void SContextTextEditor::AssignRawContextTextBox()
 	.Visibility(EVisibility::SelfHitTestInvisible)
 	.Font(SContextTextStyler::GetSystemDefaultTextStyle()->Font)
 	.Text(TextAttr)
+	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
 	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
 	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
 	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
@@ -143,46 +145,11 @@ void SContextTextEditor::RebuildWidget()
 {
 	TAttribute<FSlateColor> EditorBackgroundColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
 		{
-			return (UJointEditorSettings::Get())
-				       ? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor
-				       : FLinearColor::Black;
-		});
+			const FLinearColor& Color = (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
 
-	TAttribute<FSlateColor> BackgroundColorByMode_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-		{
-			return FSlateColor(FLinearColor::Transparent);
-		});
-
-
-	TAttribute<FSlateColor> SwapCheckBoxColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-		{
-			FLinearColor Color;
-			switch (RawContextEditorSwapVisibility)
-			{
-			case ERawContextEditorSwapVisibility::Show_RawContextTextEditor:
-				{
-					Color = FLinearColor(0.7, 0.4, 0.02);
-					break;
-				}
-
-			case ERawContextEditorSwapVisibility::Show_MainContextTextEditor:
-				{
-					Color = FLinearColor(0.02, 0.7, 0.4);
-
-					break;
-				}
-			}
-			return Color;
+			return (IsReadOnly() ? Color + FLinearColor(0.03,0.03,0.03,0.03) : Color); 
 		});
 	
-
-	TAttribute<FSlateColor> ButtonColorAndOpacity_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-		{
-			return RawContextEditorSwapVisibility == ERawContextEditorSwapVisibility::Show_RawContextTextEditor
-				       ? FColor::Orange
-				       : FLinearColor::Transparent;
-		});
-
 	const TAttribute<EVisibility> VisibilityAttr = TAttribute<EVisibility>::CreateLambda([this]
 		{
 			return bUseStylingAttr.Get() ? EVisibility::Visible : EVisibility::Collapsed;
@@ -223,7 +190,7 @@ void SContextTextEditor::RebuildWidget()
 		SNew(SBorder)
 		.Visibility(EVisibility::SelfHitTestInvisible)
 		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.BorderBackgroundColor(BackgroundColorByMode_Attr)
+		.BorderBackgroundColor(FLinearColor::Transparent)
 		[
 			// Rich-text editor toolbar
 			SNew(SVerticalBox)
@@ -384,11 +351,15 @@ FReply SContextTextEditor::OnSwapButtonDown()
 
 void SContextTextEditor::HandleRichEditableTextChanged(const FText& Text)
 {
+	if (IsReadOnly()) return;
+
 	SAdvancedMultiLineTextEditor::HandleRichEditableTextChanged(Text);
 }
 
 void SContextTextEditor::HandleRichEditableTextCommitted(const FText& Text, ETextCommit::Type Type)
 {
+	if (IsReadOnly()) return;
+
 	SAdvancedMultiLineTextEditor::HandleRichEditableTextCommitted(Text, Type);
 }
 
@@ -396,6 +367,8 @@ void SContextTextEditor::HandleRichEditableTextCursorMoved(const FTextLocation& 
 {
 	// We can use GetRunUnderCursor to query the style of the text under the cursor
 	// We can then use this to update the toolbar
+	
+	if (IsReadOnly()) return;
 
 	SAdvancedMultiLineTextEditor::HandleRichEditableTextCursorMoved(NewCursorPosition);
 
@@ -417,5 +390,15 @@ void SContextTextEditor::OnFocusLost(const FFocusEvent& InFocusEvent)
 	SAdvancedMultiLineTextEditor::OnFocusLost(InFocusEvent);
 }
 
+bool SContextTextEditor::IsReadOnly() const
+{
+	const FText TextValue = TextAttr.Get();
+	if (TextValue.IsFromStringTable())
+	{
+		return true;
+	}
+
+	return false;
+}
 
 #undef LOCTEXT_NAMESPACE

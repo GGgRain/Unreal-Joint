@@ -578,6 +578,11 @@ void SAdvancedMultiLineTextEditor::HandleRichEditableTextCursorMoved(const FText
 	OnCursorMoved.ExecuteIfBound(NewCursorPosition);
 }
 
+bool SAdvancedMultiLineTextEditor::IsReadOnly() const
+{
+	return false;
+}
+
 FText SAdvancedMultiLineTextEditor::GetActiveFontFamilyName() const
 {
 	if (ActiveFontFamily)

@@ -228,5 +228,8 @@ public:
 	FReply HandleContextTextBoxKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent);
 
 	virtual void OnFocusLost(const FFocusEvent& InFocusEvent) override;
+
+	virtual bool IsReadOnly() const override;
+
 	
 };
