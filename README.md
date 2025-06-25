@@ -35,7 +35,6 @@
 
 <div align="center">
   <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
-  <h3>(This readme page is still WIP, I'm having really busy days recently..)</h3>
 </div>
 
 ## :sparkles: Official Videos - Please click the images to watch! ##
@@ -145,9 +144,9 @@ Joint allows you to bring any gameplay mechanics or data you need on the script 
 
 Playing sounds, triggering animations, spawning actors, granting items or quests... Whatever it is, if Unreal Engine Can do it, you can make it a fragment and attach it to your dialogue.
 
+https://github.com/user-attachments/assets/6d58287d-cfa9-414e-9eaa-391d9436c781
 
-(wait 스킵, 시퀀서, 캐릭터 애니메이션, 캐릭터 파티클 재생, 오디오 재생, 미니게임 재생 장면 하나하나 빌드)
-
+https://github.com/user-attachments/assets/cc160e72-b8fd-4f14-aa55-3c0495c0fa4a
 
 Joint also provides built-in fragment and asset sets for basic and common dialogue productions in Joint Native, apache 2.0 open-source Sub Plugin for Joint, to let you starts off right away!
 
