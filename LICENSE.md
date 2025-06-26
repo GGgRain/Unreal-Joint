@@ -1,8 +1,8 @@
-Effective Date: 2024-04-18
+Effective Date: 2025-07-04
 
-Initial Revision Date: 2024-04-05 
+Initial Revision Date: 2025-04-05 
 
-Last Revised Date: 2025-04-11
+Last Revised Date: 2025-06-27
 
 # **Joint Plugin License Agreement**
 
@@ -24,7 +24,7 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 1. Users are free to modify and improve this Software.
     
-2. However, **distributing the modified Software as an independent project or separate software in any public manner is prohibited**. This restriction prevents license circumvention and the release of competing products derived from this Software.
+2. However, **distributing the modified Software itself (a modified version of Joint) as an independent or separate project in any public manner is prohibited**. This restriction prevents license circumvention and the release of competing products derived from this Software.
 
 3. Modifications may be shared within an organization or with written approval from the Licensor.
 
@@ -54,32 +54,32 @@ By downloading, installing, executing, using, or modifying this Software, you ar
 
 7. **Contributors who make significant technical contributions to the project’s development or business contributions such as promotion may receive additional benefits, such as reduced royalty rates, with the approval of the Licensor.**
         
-## **Article 4 (Usage and Royalty Provisions)**
+## Article 4 (Usage and Royalty Provisions)
 
-1. Users must use this software in accordance with the terms of this agreement, **regardless of whether the purpose is commercial or non-commercial**.
+1. Users must use this Software in accordance with the terms of this agreement, regardless of whether the purpose is commercial or non-commercial.
 
-2. If the annual total revenue of a project utilizing this software **does not exceed the royalty threshold**, **the royalty program does not apply to that project.** In this case, users are not required to make any payments, and they are also not obligated to submit revenue-related information for the royalty program.
+2. If the annual net profit of a project utilizing this Software does not exceed the royalty threshold, the royalty program does not apply to that project. In such cases, users are not required to make any royalty payments or submit profit-related information by default. However, **if requested by the Licensor for verification purposes**, users may be required to provide **limited and reasonable documentation demonstrating that the project did not generate a net profit**. Acceptable documentation may include summarized financial statements, expense reports, or comparable materials sufficient to verify the absence of profit. The scope of such requests shall remain proportionate and respect the confidentiality of the user's business operations.
 
-3. If the annual total revenue of a project utilizing this software **exceeds the royalty threshold ($15,000 USD, last updated on April 4, 2025)**, **the royalty program will apply to that specific project**.
-    
+3. If the annual net profit of a project utilizing this Software is positive and exceeds the royalty threshold ($15,000 USD, last updated on April 4, 2025), the royalty program will apply to that specific project.
+
 4. The details of the royalty program are as follows:
-    
-    - **If the annual revenue of a project using this software exceeds the royalty threshold, the Licensor must be paid a royalty percentage (1%, last updated on April 4, 2025) on the excess amount.**
-        
-    - **Annual revenue** refers to the total revenue generated during the applicable year (January 1 – December 31).
-        
-    - A "project" subject to royalties includes all revenue-generating software or media in which this Software is directly integrated, executed, or utilized as a core component. This includes but is not limited to **plugins, sub-plugins, frameworks, games, platforms, and game engines** where this Software is actively running as part of the final product. **Additionally, if this Software is used as a core element in datasets, movies, animations, or similar media—such that its functionality or output is essential to the final product—those projects are also subject to royalties.** 
-    
+
+    - If the annual net profit of a project using this Software exceeds the royalty threshold, the Licensor must be paid a royalty percentage (1%, last updated on April 4, 2025) on the portion of net profit exceeding the threshold.
+
+    - **"Annual net profit"** refers to the total revenue generated during the applicable year (January 1 – December 31), minus all applicable business expenses directly related to the project. These may include, but are not limited to, sales taxes, platform or transaction fees, refunds, chargebacks, marketing expenses, development costs, and operational expenditures.
+
+    - A **"project"** subject to royalties includes all revenue-generating software or media in which this Software is directly integrated, executed, or utilized as a core component. This includes but is not limited to plugins, sub-plugins, frameworks, games, platforms, and game engines where this Software is actively running as part of the final product. Additionally, if this Software is used as a core element in datasets, movies, animations, or similar media—such that its functionality or output is essential to the final product—those projects are also subject to royalties.
+
     - However, passive usage such as inspiration, references, or indirect influence without direct integration does not fall under royalty obligations.
-        
-    - Even if multiple derivative software solutions are used, **royalties for this software are only charged once per project.** (e.g., if a project uses both Joint Native and Joint Yggdrasil simultaneously, royalties are charged only once.)
-        
-    - If separate projects each use Joint, then each project is subject to a separate Joint royalty program. This means the calculation of amounts and payment obligations occur separately for each project.
-        
-    - The royalty payment process requires filling out a form provided in Joint's official GitHub repository, attaching the necessary information for revenue calculation and payment, and sending the completed form to the Licensor (typically via email: devgrain13@gmail.com). Payment must be completed according to an invoice issued by the Licensor, within the specified deadline. The exact process may be updated and announced later.
-        
-    - After submitting the required information for royalty calculation, the Licensor will issue an invoice and send it to the contact information provided during submission (typically via email). Users must pay the exact amount specified in the invoice by the stated deadline.
-    
+
+    - Even if multiple derivative software components are used, royalties for this Software are only charged once per project. (e.g., if a project uses both Joint Native and Joint Yggdrasil simultaneously, royalties are charged only once.)
+
+    - If separate projects each use Joint, then each project is subject to a separate royalty program. This means the threshold and royalty payment obligations are calculated independently for each project.
+
+    - The royalty payment process requires completing a form provided in Joint’s official GitHub repository. Users must submit sufficient information to calculate the project's annual net profit and send the completed form to the Licensor (typically via email: devgrain13@gmail.com). Payment must be completed according to the invoice issued by the Licensor, within the specified deadline. The process may be updated and publicly announced by the Licensor at a later date.
+
+    - After receiving the submitted information, the Licensor will issue an invoice and send it to the contact details provided by the user. Users must pay the exact amount specified in the invoice by the stated deadline.
+
 5. **Modification and Limitations of Royalty Terms**
 
     - The applicable figures for the royalty percentage and royalty threshold may change upon revision. The Licensor is obligated to notify users of such changes and will announce each revision and its details via the official Discord and GitHub repository.
