@@ -1,4 +1,4 @@
-<h3>Hey there, you're late. Go visit Fab(not ready yet), it's free for personal users (if you're enterprise user, it will cost 299 USD but it's one time buy and you CAN afford that hahaha). Have fun with it and if you like it just please consider buying me buy some beer with sponsor.</h3>
+<h3>Hey there, you're late. Go visit Fab(not ready yet), it's free for personal users (if you're enterprise user, it will cost 299 USD but it's one time buy and you CAN afford that hahaha). Have fun with it and if you like it just please consider buying me some beer with sponsor.</h3>
 
 <h3>Oh right, and I still update its contents so if you like that, also consider leaving some tip for me. Love ya all</h3>
 
