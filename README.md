@@ -94,10 +94,9 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
 </p>
 
 
-## :memo: Joint Plugin License & Changes After It Became Open Source ##
+## :memo: Joint Plugin License & Changes After It Became Source Available ##
 
-### 🎉 Now Joint is an Open-Source Project!
-
+### 🎉 Now You Can Download The Source of Joint Here!
 
 <p align="center">
   <a target="_blank">
@@ -114,21 +113,17 @@ This project is licensed under our **Joint Plugin License**, Here are the import
 <h3 align="center">💸 Don't Pay Anything Until Your Project Settles Down!</h3>
 <p>
 We aim to empower indie and small-scale developers to use Joint in a practical and proactive way, without financial pressure,<br/>
-As of April 5, 2025, <b>if your project using Joint earns more than $15,000 USD in annual gross revenue, a 1% royalty fee will apply only to the portion exceeding that amount.</b><br/>
-<b>Have you purchased Joint via Fab or Unreal Marketplace before May 20, 2025? You are exempt from this royalty program!</b>
-</p>
-
-<h3 align="center">🤝 Contribute and Support Our Projects – To Earn Rewards!</h3>
-<p>
-We plan to offer substantial royalty discounts to users who provide meaningful support – <b>whether technical, financial, business, or promotional.</b><br/>
-Contributions, especially in the form of promotion or business partnerships, are extremely valuable to our team. In return, we plan to provide reasonable rewards for those who support us.
+As of April 5, 2025, <b>if your project using Joint earns more than $15,000 USD in net profit, USD 299 fee will apply for one time - if you have to pay this fee, congraturation! because that means your project has settled down!</b><br/>
+<b>Have you purchased Joint via Fab or Unreal Marketplace before May 20, 2025? You are exempt from this fee!</b>
 </p>
 
 <h3 align="center">🎁 Make Your Derivative Software With Joint</h3>
 <p>
 Got a brilliant idea for a plugin or tool based on Joint – like <b>Joint Native</b> or our secret upcoming project <b>Joint Yggdrasil?</b><br/>
 You are welcome to build and monetize your own Derivative Software based on Joint. You will retain full ownership and revenue rights for your derivative product.<br/>
-You can also receive active technical support via our official GitHub and Discord channels to bring your ideas to life.
+If your derivative software (for example, sub-plugin) using Joint earns more than $15,000 USD in annual gross revenue, a 1% royalty fee will apply only to the portion exceeding that amount. (It's more like "Hey, you're working on my world - and making money with it! share it a bit!!!!" vibe - but we're not a monster. If this rule is harsh to you, we can always offer a significant discount for it.)<br/>
+You can also receive active technical support via our official GitHub and Discord channels to bring your ideas to life.<br/>
+We also offer significant discounts or even exampt of the royalty for the team who made the contribution to the ecosystem - whatever it is technical, promotional, or just making a good product with it and making a good sale - so please consider this on your service!
 </p>
 
 <hr/>
@@ -260,12 +255,6 @@ You promise your work doesn’t infringe on copyrights, patents, or trade secret
 <br>
 <br>
 You can ask to change or remove your contribution within 2 months of submitting. We’ll try to honor that — unless it’s core to the Software and hard to take out.
-
-<h3 align="center">🎁 Extra Contributions, Extra Perks</h3>
-We love to take your help to make the system grow, for the good of all of us! And this is one of the give-back we can directly do :D
-<br>
-<br>
-If you make a big technical or promotional impact, you may get extra benefits (like lower royalty rates) — with our approval!
 
 ## :loudspeaker: Supports ##
 
