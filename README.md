@@ -4,7 +4,7 @@
 
 <div align="center">
   <h1>Joint</h1>
-  <h3>Visual Modular Dialogue & Gameplay Scripting Framework For Unreal 4 & 5</h3>
+  <h3>Visual Modular Gameplay Scripting Framework For Unreal 4 & 5</h3>
   <h4>( Supported Unreal Engine Versions: UE 4.27.x ~ Latest (5.6.x, UP-TO-DATE!) )</h4>
 </div>
 
@@ -59,11 +59,13 @@
 
 ## :mag: About ##
 
-Joint is Unreal Engine 4 & 5's strongest modular dialogue & gameplay scripting framework for every type of projects.
+Joint is Unreal Engine 4 & 5's strongest modular gameplay scripting framework for every type of projects.
 
-Joint is a powerful tool for game developers, designers, and writers alike. You can create complex dialogue productions with whatever gameplay mechanics you want to use with Joint, using very intuitive, the state-of-the-art visual scripting interface.
+Joint is a powerful tool for game developers, designers. You can create complex productions where your needs a power of modularity with whatever gameplay mechanics you want to use with Joint, using very intuitive, the state-of-the-art visual scripting interface.
 
-Do you like the dialogue production of Animal Crossing, or the dialogue system of The Witcher 3? Or do you want to create your own unique dialogue system? Joint is the perfect tool for you.
+Do you like the dialogue production of Animal Crossing, or the dialogue system of The Witcher 3? Or do you want to create your own unique dialogue system? Check out **Joint Native**.
+
+Do you need a replacement for level sequencer for better after-localization synchoronization? Use Joint for such action! 
 
 <p align="center">
   <i>Please consider leaving a star if you loved this project! </i>⭐
@@ -73,7 +75,7 @@ Do you like the dialogue production of Animal Crossing, or the dialogue system o
 
 There are some derivative projects that can be worked with Joint!
 
-Currently We provide **Joint Native**, an completely-free-open-source project (apache-2.0) that provides built-in fragment and asset sets for basic and common dialogue productions.
+Currently We provide **Joint Native** that provides built-in fragment and asset sets for basic and common dialogue productions.
 
 Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture Animation Framework, that was originally developed as a part of Joint to provide cool editor animation and interactions. If you have interest, please take a look into it.
 
@@ -137,13 +139,11 @@ We also offer significant discounts or even exampt of the royalty for the team w
 
 Joint allows you to bring any gameplay mechanics or data you need on the script graph in the form of a module called **Fragment**.
 
-Playing sounds, triggering animations, spawning actors, granting items or quests... Whatever it is, if Unreal Engine Can do it, you can make it a fragment and attach it to your dialogue.
+Playing sounds, triggering animations, spawning actors, granting items or quests... Whatever it is, if Unreal Engine Can do it, you can make it a fragment and attach it to your playback chain.
 
 https://github.com/user-attachments/assets/6d58287d-cfa9-414e-9eaa-391d9436c781
 
 https://github.com/user-attachments/assets/cc160e72-b8fd-4f14-aa55-3c0495c0fa4a
-
-Joint also provides built-in fragment and asset sets for basic and common dialogue productions in Joint Native, apache 2.0 open-source Sub Plugin for Joint, to let you starts off right away!
 
 > [!NOTE]
 > In Joint Native 1.12.2, you can find 39 fragments and assets for:
@@ -160,7 +160,7 @@ Joint also provides built-in fragment and asset sets for basic and common dialog
 
 ### 2. Powerful & Intuitive, Thus Easy Scripting With Joint Graph Editor
 
-Joint is deeply considered to be easy and intuitive to use, even for those who are not familiar with programming or scripting.
+Joint is deeply considered to be easy and intuitive to use, even for those who are not familiar with programming.
 
 https://github.com/user-attachments/assets/e836a7af-840b-4466-ad5b-3c277b21e8e3
 
@@ -177,7 +177,7 @@ https://github.com/user-attachments/assets/e45556a9-fa5d-49de-a74c-f591be52beb5
 
 ### 4. Reactive & Dynamic Dialogue - Even in Multiplayer, Even After Localization, Even Between Clients with Different Languages
 
-Joint uses nodes(modules) to build up whole dialogue scripts - and using modules and modular playback system has really cool advantages over time-based playback systems!
+Joint uses nodes(modules) to build up whole scripts - and using modules and modular playback system has really cool advantages over time-based playback systems!
 
 It allows you to dynamically control the total playback length and timing of elements in your dialogue—such as sounds and animations—enabling perfectly timed dialogue delivery for your players, regardless of their client's language or cultural context. This works seamlessly **even in multiplayer session** and **after localization**, **across clients using different languages**, delivering **a perfectly synchronized dialogue experience tailored to each client**.
 
