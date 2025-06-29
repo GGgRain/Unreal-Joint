@@ -2,7 +2,7 @@
 > **Joint** provided in this repository is the core framework of a **General Purpose Modular Playback System**, and does not include any built-in content such as dialogue system.
 > To use dialogue or other extended features, you can install and integrate sub-plugins based on Joint into your project.
 > 
-> You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **Derivative Software section of this repository.**
+> You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **"Related & Derivative Projects" section of this repository.**
 > And if you don’t find what you need, creating your own sub plugin is always a great option!
 
 
