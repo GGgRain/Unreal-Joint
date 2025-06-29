@@ -5,6 +5,8 @@
 > 
 > You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **"Related & Derivative Projects" section of this repository.**
 > And if you don’t find what you need, creating your own sub plugin is always a great option!
+> [!INFO]
+> > We used to call Joint itself as a dialogue system before - but THIS is what it actually is. calling it as a dialogue system was a dumb decision.
 
 
 <div align="center">
