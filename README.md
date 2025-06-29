@@ -63,6 +63,10 @@ Joint is Unreal Engine 4 & 5's strongest modular gameplay scripting framework fo
 
 Joint is a powerful tool for game developers, designers. You can create complex productions where your needs a power of modularity with whatever gameplay mechanics you want to use with Joint, using very intuitive, the state-of-the-art visual scripting interface.
 
+> [!NOTE]
+> Joint is a "General Purpose Modular Playback System" that can be used on the many range and system, so we expand its range with sub-plugins for each category.
+> And currently we support "Advanced Narrative System" expansion in the form of **Joint Native**, and many others can come along, or you can make your own usage with the framework.
+
 Do you like the dialogue production of Animal Crossing, or the dialogue system of The Witcher 3? Or do you want to create your own unique dialogue system? Check out **Joint Native**.
 
 Do you need a replacement for level sequencer for better after-localization synchoronization? Use Joint for such action! 
@@ -75,7 +79,12 @@ Do you need a replacement for level sequencer for better after-localization sync
 
 There are some derivative projects that can be worked with Joint!
 
-Currently We provide **Joint Native** that provides built-in fragment and asset sets for basic and common dialogue productions.
+> [!NOTE]
+> Joint is a "General Purpose Modular Playback System" that can be used on the many range and system, so we expand its range with sub-plugins for each category.
+> And currently we support "Advanced Narrative System" expansion in the form of **Joint Native**, and many others can come along, or you can make your own usage with the framework.
+
+
+Currently We provide **Joint Native**, an advanced tool designed to empower developers and storytellers to create highly customizable and dynamic narrative experiences. It supports a wide range of applications, from simple dialogues to complex, interactive storytelling systems inspired by games like Hogwarts Legacy or The Witcher 3. The system offers maximum control over participants, events, and the surrounding world, enabling intricate narrative designs.
 
 Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture Animation Framework, that was originally developed as a part of Joint to provide cool editor animation and interactions. If you have interest, please take a look into it.
 
