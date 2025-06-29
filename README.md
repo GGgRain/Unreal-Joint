@@ -1,6 +1,7 @@
 > [!WARNING]
-> **Joint** provided in this repository is the core framework of a **General Purpose Modular Playback System**, and does not include any built-in content such as dialogue system.
-> To use dialogue or other extended features, you can install and integrate sub-plugins based on Joint into your project.
+> **Joint** provided in this repository is the core framework of a **General Purpose Modular Playback System** that has been designed to run modularized playback of certain contents that works better with modular design - such as dialogue, or advanced level sequener playback that is dynamically adjusted with localization.
+>
+> So, the module in this repository itself does not include any built-in content such as dialogue system. To use dialogue or other extended features, you can install and integrate extension-plugins (Derivative plugins) based on Joint into your project.
 > 
 > You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **"Related & Derivative Projects" section of this repository.**
 > And if you don’t find what you need, creating your own sub plugin is always a great option!
