@@ -1,3 +1,11 @@
+> [!WARNING]
+> **Joint** provided in this repository is the core framework of a **General Purpose Modular Playback System**, and does not include any built-in content such as dialogue system.
+> To use dialogue or other extended features, you can install and integrate sub-plugins based on Joint into your project.
+> 
+> You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **Derivative Software section of this repository.**
+> And if you don’t find what you need, creating your own sub plugin is always a great option!
+
+
 <div align="center">
   <img src="https://github.com/user-attachments/assets/8ddd48a4-8adb-4ff9-8b2b-83b3bac28acd" width="300", height="300", alt="Joint Logo">
 </div>
@@ -65,7 +73,7 @@ Joint is a powerful tool for game developers, designers. You can create complex 
 
 > [!NOTE]
 > Joint is a "General Purpose Modular Playback System" that can be used on the many range and system, so we expand its range with sub-plugins for each category.
-> And currently we support "Advanced Narrative System" expansion in the form of **Joint Native**, and many others can come along, or you can make your own usage with the framework.
+> And currently we support "Advanced Narrative System" extension in the form of **Joint Native**, and many others can come along, or you can make your own usage with the framework.
 
 Do you like the dialogue production of Animal Crossing, or the dialogue system of The Witcher 3? Or do you want to create your own unique dialogue system? Check out **Joint Native**.
 
@@ -78,11 +86,6 @@ Do you need a replacement for level sequencer for better after-localization sync
 ## :inbox_tray: Related Projects & Derivative Projects ##
 
 There are some derivative projects that can be worked with Joint!
-
-> [!NOTE]
-> Joint is a "General Purpose Modular Playback System" that can be used on the many range and system, so we expand its range with sub-plugins for each category.
-> And currently we support "Advanced Narrative System" expansion in the form of **Joint Native**, and many others can come along, or you can make your own usage with the framework.
-
 
 Currently We provide **Joint Native**, an advanced tool designed to empower developers and storytellers to create highly customizable and dynamic narrative experiences. It supports a wide range of applications, from simple dialogues to complex, interactive storytelling systems inspired by games like Hogwarts Legacy or The Witcher 3. The system offers maximum control over participants, events, and the surrounding world, enabling intricate narrative designs.
 
