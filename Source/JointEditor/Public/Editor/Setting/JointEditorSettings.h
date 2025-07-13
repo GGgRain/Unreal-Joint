@@ -17,7 +17,8 @@ class UJointEdGraphPin;
 namespace JointEditorDefaultSettings
 {
 	static const bool bUseLODRenderingForSimplePropertyDisplay(true);
-	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(35);
+	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(32);
+	static const int SimplePropertyDisplayInitializationDelayStandard(60);
 
 	//Graph Editor
 	static const bool bUseGrid(false);
@@ -113,9 +114,8 @@ public:
 	/** 
 	 * Enables or disables the LOD rendering of the Simple Property Display section.
 	 * This option is still in BETA, if your editor crashes for no reason, try to turn it off.
-	 * Unfortunately, this feature doesn't work above Unreal 5.3 yet - due to the system changes on the slates.
 	 */
-	UPROPERTY(EditAnywhere, config, Category = "Experiment",
+	UPROPERTY(EditAnywhere, config, Category = "Experimental",
 		meta = (DisplayName = "Use LOD Rendering For Simple Property Display (BETA)"))
 	bool bUseLODRenderingForSimplePropertyDisplay =
 		JointEditorDefaultSettings::bUseLODRenderingForSimplePropertyDisplay;
@@ -124,10 +124,21 @@ public:
 	 * LOD retainer Period for the SimplePropertyDisplay.
 	 * Higher value means higher frequency of the update.
 	 */
-	UPROPERTY(EditAnywhere, config, Category = "Experiment",
+	UPROPERTY(EditAnywhere, config, Category = "Experimental",
 		meta = (DisplayName = "LOD Rendering For Simple Property Display Retainer Period (BETA)"))
 	int LODRenderingForSimplePropertyDisplayRetainerPeriod =
 		JointEditorDefaultSettings::LODRenderingForSimplePropertyDisplayRetainerPeriod;
+
+	/** 
+	 * The count of the nodes that will initialize the Simple Property Display section per second.
+	 * Graph's node count / this value = the time in seconds it takes to initialize the Simple Property Display section.
+	 * Shorter value means faster initialization, but more performance cost - can lead to stuttering or freezing of the editor.
+	 * we recommend to use the default value of 60.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "Experimental",
+		meta = (DisplayName = "Simple Property Display Initialization Delay Standard (BETA)"))
+	int SimplePropertyDisplayInitializationDelayStandard =
+		JointEditorDefaultSettings::SimplePropertyDisplayInitializationDelayStandard;
 
 public:
 	/** Enables or disables the display of a background grid in the material and blueprint editors. */

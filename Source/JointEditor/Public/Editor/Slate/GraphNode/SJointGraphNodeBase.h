@@ -15,7 +15,7 @@
 
 class SJointOutlineBorder;
 class SJointBuildPreset;
-class SJointDetailView;
+class SJointDetailsView;
 class SJointGraphNodeInsertPoint;
 class UJointEdGraphNode_Fragment;
 class UVoltAnimationManager;
@@ -173,7 +173,7 @@ public:
 public:
 	
 	virtual TSharedRef<SBorder> CreateNodeBody(const bool bSphere = false);
-	
+
 	virtual TSharedRef<SJointOutlineBorder> CreateNodeBackground(const bool bSphere = false);
 
 public:
@@ -284,7 +284,7 @@ public:
 	void GetHoveringColor(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor, FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const;
 
 public:
-
+	
 	//Overlay Related
 	virtual void UpdateErrorInfo() override;
 	virtual void UpdateBreakpoint();
@@ -303,7 +303,7 @@ public:
 
 public:
 
-	TSharedPtr<SJointDetailView> JointDetailView = nullptr;
+	TSharedPtr<SJointDetailsView> JointDetailView = nullptr;
 
 public:
 	

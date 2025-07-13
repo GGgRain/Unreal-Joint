@@ -47,6 +47,7 @@
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
 #include "EdGraph/EdGraph.h"
+#include "GraphNode/SJointDetailsView.h"
 
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
 #include "Module/Volt_ASM_InterpChildSlotPadding.h"
@@ -199,10 +200,10 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 			if (!InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
 			{
 				//Don't populate again - really bad for the performance.
-
+				
 				if (!JointDetailView)
 				{
-					SAssignNew(JointDetailView, SJointDetailView)
+					SAssignNew(JointDetailView, SJointDetailsView)
 					.OwnerGraphNode(SharedThis(this))
 					.Object(InNodeInstance)
 					.EditorNodeObject(InGraphNode)
@@ -338,7 +339,6 @@ void SJointGraphNodeBase::GetHoveringColor(const bool bIsSelected, FLinearColor&
 		OutlineHoverColor = Color * 3 + OffsetColor * 15;
 	}
 }
-
 
 TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 {
@@ -543,7 +543,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		return RightNodeBox->GetDesiredSize();
 	});
 #endif
-	
+
 
 	this->GetOrAddSlot(ENodeZone::Left)
 	    .Padding(FMargin(0))
@@ -556,9 +556,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		.SlotOffset2f(LeftBoxOffset_Attr)
 		.SlotSize2f(LeftBoxSize_Attr)
 #endif
-	[
-		LeftNodeBox.ToSharedRef()
-	];
+		[
+			LeftNodeBox.ToSharedRef()
+		];
 
 	this->GetOrAddSlot(ENodeZone::Right)
 	    .Padding(FMargin(0))
@@ -571,9 +571,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		.SlotOffset2f(RightBoxOffset_Attr)
 		.SlotSize2f(RightBoxSize_Attr)
 #endif
-	[
-		RightNodeBox.ToSharedRef()
-	];
+		[
+			RightNodeBox.ToSharedRef()
+		];
 
 	this->GetOrAddSlot(ENodeZone::Center)
 	    .Padding(FMargin(0))
