@@ -31,6 +31,8 @@ void UVoltSubsystem::Deinitialize()
 
 	//We do not start the tick with it
 	UnbindOnSlateApplicationPreTick();
+
+	ReleaseSharedAnimationManager();
 }
 
 void UVoltSubsystem::RegisterAnimationManager(UVoltAnimationManager* AnimationManager)
@@ -127,6 +129,8 @@ void UVoltSubsystem::ReleaseModuleUpdateThread()
 
 	// Stop the thread.
 	ModuleUpdateThread->Stop();
+
+	ModuleUpdateThread = nullptr;
 }
 
 const bool UVoltSubsystem::IsUtilizingMultithreading() const
@@ -292,4 +296,14 @@ UVoltAnimationManager* UVoltSubsystem::GetSharedAnimationManager()
 	}
 
 	return nullptr;
+}
+
+void UVoltSubsystem::ReleaseSharedAnimationManager()
+{
+	if (SharedAnimationManager)
+	{
+		SharedAnimationManager->RemoveFromRoot();
+		SharedAnimationManager->ReleaseAll();
+		SharedAnimationManager = nullptr;
+	}
 }

@@ -240,6 +240,10 @@ public:
 	 */
 	static UVoltAnimationManager* GetSharedAnimationManager();
 
+public:
+
+	void ReleaseSharedAnimationManager();
+
 private:
 
 	/**
