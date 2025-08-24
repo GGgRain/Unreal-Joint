@@ -613,9 +613,16 @@ FLinearColor SJointGraphNodeSubNodeBase::GetNodeBodyBackgroundColor() const
 {
 	if (GetSlateDetailLevel() == EJointEdSlateDetailLevel::SlateDetailLevel_Stow)
 	{
-		if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode)
-			return CastedGraphNode->
-				GetNodeTitleColor();
+		if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode){
+
+			if ( CastedGraphNode->GetCastedNodeInstance() && CastedGraphNode->GetCastedNodeInstance()->EdNodeSetting.bUseIconicColorForNodeBodyOnStow)
+			{
+				return CastedGraphNode->GetNodeTitleColor();
+			}else
+			{
+				return CastedGraphNode->GetNodeBodyTintColor();
+			}
+		}
 	}
 
 	return SJointGraphNodeBase::GetNodeBodyBackgroundColor();

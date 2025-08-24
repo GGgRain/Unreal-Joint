@@ -99,7 +99,7 @@ namespace JointEditorDefaultSettings
 
 	//Detail Panel
 	static const float DescriptionCardBoxMaxDesiredHeight(400.0f);
-}
+};
 
 
 UCLASS(config = JointEditorSettings, defaultconfig)

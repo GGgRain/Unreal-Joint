@@ -36,13 +36,13 @@ class SGraphNode;
 namespace JointGraphNodeResizableDefs
 {
 	/** Minimum size for node */
-	static const FVector2D MinNodeSize( 130.f,100.f);
+	static const FVector2D MinNodeSize( 100.f,100.f);
 
 	/** Maximum size for node */
 	static const FVector2D MaxNodeSize( 5000.0f, 5000.0f );
 
 	/** Minimum size for node */
-	static const FVector2D MinFragmentSize( 25.f,25.f);
+	static const FVector2D MinFragmentSize( 4.f,4.f);
 
 	/** Maximum size for node */
 	static const FVector2D MaxFragmentSize( 5000.0f, 5000.0f );
@@ -173,7 +173,7 @@ public:
 public:
 	
 	virtual TSharedRef<SBorder> CreateNodeBody(const bool bSphere = false);
-
+	
 	virtual TSharedRef<SJointOutlineBorder> CreateNodeBackground(const bool bSphere = false);
 
 public:
@@ -281,10 +281,10 @@ protected:
 
 public:
 	
-	void GetHoveringColor(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor, FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const;
+	void GetNodeColorScheme(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor, FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const;
 
 public:
-	
+
 	//Overlay Related
 	virtual void UpdateErrorInfo() override;
 	virtual void UpdateBreakpoint();
@@ -303,7 +303,7 @@ public:
 
 public:
 
-	TSharedPtr<SJointDetailsView> JointDetailView = nullptr;
+	TSharedPtr<SJointDetailsView> JointDetailsView = nullptr;
 
 public:
 	

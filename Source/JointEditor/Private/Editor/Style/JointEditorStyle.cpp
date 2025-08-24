@@ -86,12 +86,6 @@ const FLinearColor FJointEditorStyle::Color_Node_Shadow(FColor(0, 0, 0, 90));
 
 const FLinearColor FJointEditorStyle::Color_Node_DragMarker(1.0f, 1.0f, 0.2f);
 
-
-#define Joint_IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
-#define Joint_BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
-#define Joint_BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
-#define Joint_DEFAULT_FONT(...) FCoreStyle::GetDefaultFontStyle(__VA_ARGS__)
-
 const FVector2D Icon128x128(128.f, 128.f);
 const FVector2D Icon64x64(64.f, 64.f);
 const FVector2D Icon48x48(48.0f, 48.0f);
@@ -101,16 +95,6 @@ const FVector2D Icon20x20(20.0f, 20.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
 const FVector2D Icon12x12(12.0f, 12.0f);
 const FVector2D Icon8x8(8.f, 8.f);
-
-
-#define Joint_AssignTextBlockStyle(Signifier, StyleName, FontName, Size, Color)\
-	const FTextBlockStyle Signifier = FTextBlockStyle()\
-	.SetFont(Joint_DEFAULT_FONT(FontName, Size))\
-	.SetColorAndOpacity(Color)\
-	.SetShadowOffset(FVector2D::ZeroVector)\
-	.SetShadowColorAndOpacity(FLinearColor::Black)\
-	.SetHighlightColor(FLinearColor(1.f, 1.f, 1.f));\
-	Style->Set(StyleName, Signifier);
 
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -172,18 +156,21 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	Joint_AssignTextBlockStyle(Regular_h3, "JointUI.TextBlock.Regular.h3", "Regular", 9, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Regular_h4, "JointUI.TextBlock.Regular.h4", "Regular", 8, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Regular_h5, "JointUI.TextBlock.Regular.h5", "Regular", 7, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Regular_h6, "JointUI.TextBlock.Regular.h6", "Regular", 5, FLinearColor(0.9,0.9,0.9,1))
 
 	Joint_AssignTextBlockStyle(Black_h1, "JointUI.TextBlock.Black.h1", "Black", 13, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Black_h2, "JointUI.TextBlock.Black.h2", "Black", 11, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Black_h3, "JointUI.TextBlock.Black.h3", "Black", 9, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Black_h4, "JointUI.TextBlock.Black.h4", "Black", 8, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Black_h5, "JointUI.TextBlock.Black.h5", "Black", 7, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Black_h6, "JointUI.TextBlock.Black.h6", "Black", 5, FLinearColor(0.9,0.9,0.9,1))
 
 	Joint_AssignTextBlockStyle(Italic_h1, "JointUI.TextBlock.Italic.h1", "Italic", 13, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Italic_h2, "JointUI.TextBlock.Italic.h2", "Italic", 11, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Italic_h3, "JointUI.TextBlock.Italic.h3", "Italic", 9, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Italic_h4, "JointUI.TextBlock.Italic.h4", "Italic", 8, FLinearColor(0.9,0.9,0.9,1))
 	Joint_AssignTextBlockStyle(Italic_h5, "JointUI.TextBlock.Italic.h5", "Italic", 7, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Italic_h6, "JointUI.TextBlock.Italic.h6", "Italic", 5, FLinearColor(0.9,0.9,0.9,1))
 
 
 	FTextBlockStyle NodeRenameTextBlockStyle = Regular_h4;
@@ -200,6 +187,12 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 
 	Style->Set("JointUI.EditableText.Tag", EditableTextStyle);
 
+	// FEditableTextBoxStyle
+
+	FEditableTextBoxStyle EditableTextBoxStyle = FEditableTextBoxStyle()
+		.SetPadding(0);
+
+	Style->Set("JointUI.EditableTextBoxStyle.ZeroPadding", EditableTextStyle);
 
 	//Buttons
 	{
@@ -292,7 +285,4 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 #undef Joint_IMAGE_BRUSH
 #undef Joint_BOX_BRUSH
 #undef Joint_BORDER_BRUSH
-
 #undef Joint_DEFAULT_FONT
-
-#undef Joint_AssignFont

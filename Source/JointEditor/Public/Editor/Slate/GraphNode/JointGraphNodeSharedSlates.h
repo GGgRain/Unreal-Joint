@@ -343,7 +343,3 @@ public:
 	
 	TSubclassOf<UJointNodeBase> ClassToDescribe;
 };
-
-
-class FJointRetainerWidgetRenderingResources;
-

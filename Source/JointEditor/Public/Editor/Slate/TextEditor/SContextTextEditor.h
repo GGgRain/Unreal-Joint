@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Editor/Style/JointEditorStyle.h"
 #include "SAdvancedMultiLineTextEditor.h"
 #include "STextPropertyEditableTextBox.h"
 #include "PropertyHandle.h"
@@ -150,8 +151,19 @@ class JOINTEDITOR_API SContextTextEditor : public SAdvancedMultiLineTextEditor
 public:
 	SLATE_BEGIN_ARGS(SContextTextEditor)
 			:
-			_Text()
-			, _HintText()
+			_Text(),
+			_HintText(),
+			_bUseStyling(false),
+			_TableToEdit(nullptr),
+			_TextBoxStyle(&FCoreStyle::Get().GetWidgetStyle<FEditableTextBoxStyle>("NormalEditableTextBox")),
+			_BorderMargin(FMargin(2.f)),
+			_InnerBorderMargin(FMargin(2.f)),
+			_TextblockMargin(FJointEditorStyle::Margin_Normal),
+			_TextblockPadding(FMargin(2.f)),
+			_bUseCustomBorderColor(false),
+			_CustomBorderColor(FLinearColor::Transparent),
+			_OnTextChanged(),
+			_OnTextCommitted()
 		{
 		}
 
@@ -161,11 +173,20 @@ public:
 		SLATE_ATTRIBUTE(FText, HintText)
 		/** Whether to use the styling feature.*/
 		SLATE_ATTRIBUTE(bool, bUseStyling)
-
-	
 		//Override target table assets that will be applied to the text when the bShouldOverrideTable is true 
 		SLATE_ATTRIBUTE(class UDataTable*, TableToEdit)
-	
+
+
+		SLATE_STYLE_ARGUMENT(FEditableTextBoxStyle, TextBoxStyle)
+		/** The margin around the border of the text box */
+		SLATE_ARGUMENT(FMargin, BorderMargin)
+		SLATE_ARGUMENT(FMargin, InnerBorderMargin)
+		/** The margin around the text block inside the text box */
+		SLATE_ARGUMENT(FMargin, TextblockMargin)
+		SLATE_ARGUMENT(FMargin, TextblockPadding)
+
+		SLATE_ARGUMENT(bool, bUseCustomBorderColor)
+		SLATE_ARGUMENT(FLinearColor, CustomBorderColor)
 
 		/** Called whenever the text is changed programmatically or interactively by the user */
 		SLATE_EVENT(FOnTextChanged, OnTextChanged)
@@ -183,9 +204,23 @@ public:
 	TAttribute<FText> HintTextAttr;
 
 	TAttribute<bool> bUseStylingAttr;
-
 	
 	TAttribute<UDataTable*> TextDataTableAttr;
+
+public:
+	
+	const FEditableTextBoxStyle* TextBoxStyle;
+	
+	FMargin BorderMargin;
+	
+	FMargin InnerBorderMargin;
+
+	FMargin TextblockMargin;
+	FMargin TextblockPadding;
+	
+	bool bUseCustomBorderColor = false;
+	
+	FLinearColor CustomBorderColor = FLinearColor::Transparent;
 
 public:
 

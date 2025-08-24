@@ -21,7 +21,7 @@ FJointEditorNodePickingManagerRequest::FJointEditorNodePickingManagerRequest()
 
 TSharedRef<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManagerRequest::MakeInstance()
 {
-	return MakeShareable(new FJointEditorNodePickingManagerRequest());
+	return MakeShareable(new FJointEditorNodePickingManagerRequest);
 }
 
 FJointEditorNodePickingManager::FJointEditorNodePickingManager(TWeakPtr<FJointEditorToolkit> InJointEditorToolkitPtr)

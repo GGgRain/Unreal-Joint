@@ -18,6 +18,22 @@
 	#include "Styling/AppStyle.h"
 #endif
 
+
+#define Joint_IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
+#define Joint_BOX_BRUSH( RelativePath, ... ) FSlateBoxBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
+#define Joint_BORDER_BRUSH( RelativePath, ... ) FSlateBorderBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
+#define Joint_DEFAULT_FONT(...) FCoreStyle::GetDefaultFontStyle(__VA_ARGS__)
+
+#define Joint_AssignTextBlockStyle(Signifier, StyleName, FontName, Size, Color)\
+	const FTextBlockStyle Signifier = FTextBlockStyle()\
+	.SetFont(Joint_DEFAULT_FONT(FontName, Size))\
+	.SetColorAndOpacity(Color)\
+	.SetShadowOffset(FVector2D::ZeroVector)\
+	.SetShadowColorAndOpacity(FLinearColor::Black)\
+	.SetHighlightColor(FLinearColor(1.f, 1.f, 1.f));\
+	Style->Set(StyleName, Signifier);
+
+
 class JOINTEDITOR_API FJointEditorStyle
 {
 public:

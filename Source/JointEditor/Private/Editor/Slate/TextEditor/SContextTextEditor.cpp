@@ -53,8 +53,20 @@ void SContextTextEditor::Construct(const FArguments& InArgs)
 
 	bUseStylingAttr = InArgs._bUseStyling;
 
-	OnTextChanged = InArgs._OnTextChanged;
+	TextBoxStyle = InArgs._TextBoxStyle;
 
+	InnerBorderMargin = InArgs._InnerBorderMargin;
+	
+	BorderMargin = InArgs._BorderMargin;
+
+	TextblockPadding = InArgs._TextblockPadding;
+	TextblockMargin = InArgs._TextblockMargin;
+	
+	bUseCustomBorderColor = InArgs._bUseCustomBorderColor;
+	CustomBorderColor = InArgs._CustomBorderColor;
+	
+	
+	OnTextChanged = InArgs._OnTextChanged;
 	OnTextCommitted = InArgs._OnTextCommitted;
 
 	// The syntax highlighter marshaller is self contained, so doesn't need any extra configuration
@@ -91,7 +103,7 @@ void SContextTextEditor::AssignContextTextBox()
 
 	SAssignNew(ContextTextBox, SMultiLineEditableTextBox)
 	.Visibility(EVisibility::SelfHitTestInvisible)
-	.Font(ContextTextStyler->GetDefaultTextStyle()->Font)
+	//.Font(ContextTextStyler->GetDefaultTextStyle()->Font)
 	.Text(TextAttr)
 	.HintText(HintTextAttr)
 	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
@@ -105,10 +117,12 @@ void SContextTextEditor::AssignContextTextBox()
 #endif
 	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
 	.AutoWrapText(false)
-	.Margin(FJointEditorStyle::Margin_Normal)
+	.Margin(TextblockMargin)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
 	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.Padding(TextblockPadding)
+	.Style(TextBoxStyle)
 	.ToolTipText(LOCTEXT("TextEditor_ToolTip",
 	                     "It displays the final visual result of this node's context text."));
 }
@@ -125,17 +139,19 @@ void SContextTextEditor::AssignRawContextTextBox()
 
 	SAssignNew(RawContextTextBox, SMultiLineEditableTextBox)
 	.Visibility(EVisibility::SelfHitTestInvisible)
-	.Font(SContextTextStyler::GetSystemDefaultTextStyle()->Font)
+	//.Font(SContextTextStyler::GetSystemDefaultTextStyle()->Font)
 	.Text(TextAttr)
 	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
 	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
 	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
 	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
 	.AutoWrapText(false)
-	.Margin(FJointEditorStyle::Margin_Normal)
+	.Margin(TextblockMargin)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
 	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.Style(TextBoxStyle)
+	.Padding(TextblockPadding)
 	.ToolTipText(LOCTEXT("RawEditor_ToolTip"
 	                     , "It displays the raw text without the styles and decoration. You can hide this editor on the visibility section on the toolbar."));
 	//+ SRichTextBlock::WidgetDecorator( TEXT("RichText.WidgetDecorator"), this, &SRichTextTest::OnCreateWidgetDecoratorWidget )
@@ -145,7 +161,7 @@ void SContextTextEditor::RebuildWidget()
 {
 	TAttribute<FSlateColor> EditorBackgroundColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
 		{
-			const FLinearColor& Color = (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
+			const FLinearColor& Color = bUseCustomBorderColor ? CustomBorderColor : (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
 
 			return (IsReadOnly() ? Color + FLinearColor(0.03,0.03,0.03,0.03) : Color); 
 		});
@@ -159,7 +175,6 @@ void SContextTextEditor::RebuildWidget()
 	{
 		return RawContextEditorSwapVisibility == ERawContextEditorSwapVisibility::Show_MainContextTextEditor ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
 	});
-	
 	
 	TAttribute<EVisibility> RawBoxVisibility_Attr = TAttribute<EVisibility>::CreateLambda([this]
 		{
@@ -191,6 +206,7 @@ void SContextTextEditor::RebuildWidget()
 		.Visibility(EVisibility::SelfHitTestInvisible)
 		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.BorderBackgroundColor(FLinearColor::Transparent)
+		.Padding(BorderMargin)
 		[
 			// Rich-text editor toolbar
 			SNew(SVerticalBox)
@@ -241,6 +257,7 @@ void SContextTextEditor::RebuildWidget()
 				.Visibility(MainBoxVisibility_Attr)
 				.VAlign(VAlign_Fill)
 				.HAlign(HAlign_Fill)
+				.Padding(InnerBorderMargin)
 				[
 					ContextTextBox.ToSharedRef()
 				]
@@ -255,6 +272,7 @@ void SContextTextEditor::RebuildWidget()
 				.Visibility(RawBoxVisibility_Attr)
 				.VAlign(VAlign_Fill)
 				.HAlign(HAlign_Fill)
+				.Padding(InnerBorderMargin)
 				[
 					RawContextTextBox.ToSharedRef()
 				]

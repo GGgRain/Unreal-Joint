@@ -70,8 +70,8 @@ void FJointEditorModule::StartupModule()
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_NodeClassManagementTab::MakeInstance());
 
-	JointNodeStyleFactory = MakeShareable(new FJointNodeStyleFactory());
-	JointGraphPinFactory = MakeShareable(new FJointGraphPinFactory());
+	JointNodeStyleFactory = MakeShareable(new FJointNodeStyleFactory);
+	JointGraphPinFactory = MakeShareable(new FJointGraphPinFactory);
 
 	FEdGraphUtilities::RegisterVisualNodeFactory(JointNodeStyleFactory);
 	FEdGraphUtilities::RegisterVisualPinFactory(JointGraphPinFactory);

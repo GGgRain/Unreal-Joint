@@ -39,7 +39,7 @@
 #include "Debug/JointGraphNodeSharedDebuggerSlates.h"
 #include "GraphNode/SJointGraphNodeCompileResult.h"
 #include "GraphNode/SJointGraphNodeSubNodeBase.h"
-
+#include "GraphNode/SJointDetailsView.h"
 //VOLT
 
 #include "JointAdvancedWidgets.h"
@@ -47,7 +47,6 @@
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
 #include "EdGraph/EdGraph.h"
-#include "GraphNode/SJointDetailsView.h"
 
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
 #include "Module/Volt_ASM_InterpChildSlotPadding.h"
@@ -200,10 +199,10 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 			if (!InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
 			{
 				//Don't populate again - really bad for the performance.
-				
-				if (!JointDetailView)
+
+				if (!JointDetailsView)
 				{
-					SAssignNew(JointDetailView, SJointDetailsView)
+					SAssignNew(JointDetailsView, SJointDetailsView)
 					.OwnerGraphNode(SharedThis(this))
 					.Object(InNodeInstance)
 					.EditorNodeObject(InGraphNode)
@@ -211,12 +210,12 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 				}
 				else
 				{
-					JointDetailView->SetOwnerGraphNode(SharedThis(this));
-					JointDetailView->UpdatePropertyData(
+					JointDetailsView->SetOwnerGraphNode(SharedThis(this));
+					JointDetailsView->UpdatePropertyData(
 						InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode);
 				}
 
-				return JointDetailView.ToSharedRef();
+				return JointDetailsView.ToSharedRef();
 
 				//return SNullWidget::NullWidget;
 			}
@@ -310,11 +309,10 @@ void SJointGraphNodeBase::RemoveCompileResultOverlay()
 	CompileResultOverlay.Reset();
 }
 
-void SJointGraphNodeBase::GetHoveringColor(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor,
+void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor,
                                            FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const
 {
 	FLinearColor Color = GetNodeBodyBackgroundColor();
-	Color.A = 255;
 
 	const FLinearColor HSV = Color.LinearRGBToHSV();
 
@@ -339,6 +337,7 @@ void SJointGraphNodeBase::GetHoveringColor(const bool bIsSelected, FLinearColor&
 		OutlineHoverColor = Color * 3 + OffsetColor * 15;
 	}
 }
+
 
 TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 {
@@ -376,7 +375,7 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 	FLinearColor OutlineNormalColor;
 	FLinearColor OutlineHoverColor;
 
-	GetHoveringColor(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+	GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
 	const FSlateBrush* InnerBorderImage = FJointEditorStyle::Get().GetBrush(
 		bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
@@ -543,7 +542,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		return RightNodeBox->GetDesiredSize();
 	});
 #endif
-
+	
 
 	this->GetOrAddSlot(ENodeZone::Left)
 	    .Padding(FMargin(0))
@@ -556,9 +555,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		.SlotOffset2f(LeftBoxOffset_Attr)
 		.SlotSize2f(LeftBoxSize_Attr)
 #endif
-		[
-			LeftNodeBox.ToSharedRef()
-		];
+	[
+		LeftNodeBox.ToSharedRef()
+	];
 
 	this->GetOrAddSlot(ENodeZone::Right)
 	    .Padding(FMargin(0))
@@ -571,9 +570,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		.SlotOffset2f(RightBoxOffset_Attr)
 		.SlotSize2f(RightBoxSize_Attr)
 #endif
-		[
-			RightNodeBox.ToSharedRef()
-		];
+	[
+		RightNodeBox.ToSharedRef()
+	];
 
 	this->GetOrAddSlot(ENodeZone::Center)
 	    .Padding(FMargin(0))
@@ -674,7 +673,7 @@ void SJointGraphNodeBase::ClearSlates()
 	NodeBody.Reset();
 	NameBox.Reset();
 
-	JointDetailView.Reset();
+	JointDetailsView.Reset();
 	BuildPresetOverlay.Reset();
 	SubNodes.Reset();
 }
@@ -1336,7 +1335,7 @@ void SJointGraphNodeBase::PlaySelectionAnimation()
 		FLinearColor OutlineNormalColor;
 		FLinearColor OutlineHoverColor;
 
-		GetHoveringColor(true, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+		GetNodeColorScheme(true, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
 		NodeBackground->NormalColor = NormalColor;
 		NodeBackground->HoverColor = HoverColor;
@@ -1352,7 +1351,7 @@ void SJointGraphNodeBase::PlaySelectionAnimation()
 		FLinearColor OutlineNormalColor;
 		FLinearColor OutlineHoverColor;
 
-		GetHoveringColor(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+		GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
 		NodeBackground->NormalColor = NormalColor;
 		NodeBackground->HoverColor = HoverColor;
@@ -1520,7 +1519,7 @@ void SJointGraphNodeBase::InitializeVoltVariables()
 		FLinearColor OutlineNormalColor;
 		FLinearColor OutlineHoverColor;
 
-		GetHoveringColor(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+		GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
 		if (NodeBackground->InnerBorder)
 		{
@@ -2248,9 +2247,7 @@ bool SJointGraphNodeBase::CheckRenameNodeInstance() const
 
 FLinearColor SJointGraphNodeBase::GetNodeBodyBackgroundColor() const
 {
-	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode)
-		return CastedGraphNode->
-			GetNodeBodyTintColor();
+	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode) return CastedGraphNode->GetNodeBodyTintColor();
 
 	return FLinearColor::Transparent;
 }

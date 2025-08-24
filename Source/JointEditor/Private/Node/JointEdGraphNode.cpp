@@ -63,9 +63,7 @@ FText UJointEdGraphNode::GetNodeTitle(ENodeTitleType::Type TitleType) const
 
 FLinearColor UJointEdGraphNode::GetNodeTitleColor() const
 {
-	return CheckShouldUseNodeInstanceSpecifiedBodyColor()
-		       ? GetCastedNodeInstance()->EdNodeSetting.NodeBodyColor
-		       : UJointEditorSettings::Get()->DefaultNodeColor;
+	return GetCastedNodeInstance()->EdNodeSetting.NodeIconicColor;
 }
 
 bool UJointEdGraphNode::CheckShouldUseNodeInstanceSpecifiedBodyColor() const
@@ -2089,9 +2087,8 @@ FLinearColor UJointEdGraphNode::GetNodeBodyTintColor() const
 
 	if (UJointEditorSettings* EdSettings = UJointEditorSettings::Get())
 	{
-		return CastedNodeInstance && CastedNodeInstance->EdNodeSetting.bUseSpecifiedGraphNodeBodyColor
-			       ? CastedNodeInstance->EdNodeSetting.NodeBodyColor + GetNodeDepth() * EdSettings->
-			       NodeDepthAdditiveColor // NodeInstance specified Color
+		return CastedNodeInstance && CheckShouldUseNodeInstanceSpecifiedBodyColor()
+			       ? CastedNodeInstance->EdNodeSetting.NodeBodyColor + GetNodeDepth() * EdSettings->NodeDepthAdditiveColor // NodeInstance specified Color
 			       : EdSettings->DefaultNodeColor + GetNodeDepth() * EdSettings->NodeDepthAdditiveColor; //Defa
 	}
 

@@ -148,38 +148,15 @@ FReply SJointGraphEditorImpl::OnKeyDown(const FGeometry& MyGeometry, const FKeyE
 
 void SJointGraphEditorImpl::NotifyGraphChanged()
 {
-    FEdGraphEditAction DefaultAction;
-    OnGraphChanged(DefaultAction);
+    GetCurrentGraph()->NotifyGraphChanged();
 }
 
 void SJointGraphEditorImpl::OnGraphChanged(const FEdGraphEditAction& InAction)
 {
-    if (!bIsActiveTimerRegistered)
+    const bool bWasAddAction = (InAction.Action & GRAPHACTION_AddNode) != 0;
+    if (bWasAddAction)
     {
-        const UJointEdGraphSchema* Schema = Cast<UJointEdGraphSchema>(EdGraphObj->GetSchema());
-        const bool bSchemaRequiresFullRefresh = Schema->ShouldAlwaysPurgeOnModification();
-
-        const bool bWasAddAction = (InAction.Action & GRAPHACTION_AddNode) != 0;
-        const bool bWasSelectAction = (InAction.Action & GRAPHACTION_SelectNode) != 0;
-        const bool bWasRemoveAction = (InAction.Action & GRAPHACTION_RemoveNode) != 0;
-
-        // If we did a 'default action' (or some other action not handled by SGraphPanel::OnGraphChanged
-        // or if we're using a schema that always needs a full refresh, then purge the current nodes
-        // and queue an update:
-        if (bSchemaRequiresFullRefresh ||
-            (!bWasAddAction && !bWasSelectAction && !bWasRemoveAction))
-        {
-            GraphPanel->PurgeVisualRepresentation();
-            // Trigger the refresh
-            bIsActiveTimerRegistered = true;
-            RegisterActiveTimer(
-                0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SJointGraphEditorImpl::TriggerRefresh));
-        }
-
-        if (bWasAddAction)
-        {
-            NumNodesAddedSinceLastPointerPosition++;
-        }
+        NumNodesAddedSinceLastPointerPosition++;
     }
 }
 
@@ -913,9 +890,14 @@ void SJointGraphEditorImpl::Tick(const FGeometry& AllottedGeometry, const double
 
 EActiveTimerReturnType SJointGraphEditorImpl::TriggerRefresh(double InCurrentTime, float InDeltaTime)
 {
-    GraphPanel->Update();
+    if (bIsActiveTimerRegistered)
+    {
+        GraphPanel->PurgeVisualRepresentation();
+        
+        GraphPanel->Update();
 
-    bIsActiveTimerRegistered = false;
+        bIsActiveTimerRegistered = false;
+    }
     return EActiveTimerReturnType::Stop;
 }
 

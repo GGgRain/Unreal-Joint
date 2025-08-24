@@ -21,7 +21,7 @@ FJointEditorCommands::FJointEditorCommands()
 void FJointEditorCommands::RegisterCommands()
 {
 	//Initializing a new command list.
-	PluginCommands = MakeShareable(new FUICommandList());
+	PluginCommands = MakeShareable(new FUICommandList);
 
 	UI_COMMAND(CompileJoint, "Compile", "Compile the Joint manager to check out whether the Joint has any issues.", EUserInterfaceActionType::Button, FInputChord(EKeys::F7) );
 	

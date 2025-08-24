@@ -14,10 +14,6 @@ public class JointEditor : ModuleRules
 		//The path for the source files
 		PrivateIncludePaths.AddRange(new[]
 		{
-			"JointEditor",
-
-			"JointEditor/Public",
-
 			"JointEditor/Public/Asset",
 			"JointEditor/Public/Asset/Action",
 			"JointEditor/Public/Asset/Factory",
@@ -32,7 +28,6 @@ public class JointEditor : ModuleRules
 			"JointEditor/Public/Editor/SharedType",
 			"JointEditor/Public/Editor/Toolkit",
 			
-
 			"JointEditor/Public/Node",
 			"JointEditor/Public/Node/SubNode",
 		});

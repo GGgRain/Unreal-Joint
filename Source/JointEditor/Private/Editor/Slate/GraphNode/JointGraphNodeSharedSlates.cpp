@@ -28,7 +28,6 @@
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
 #include "Async/Async.h"
-#include "Engine/TextureRenderTarget2D.h"
 #include "Framework/Commands/GenericCommands.h"
 
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -885,9 +884,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 	{
 		PointerToTargetStructure->Node = FSoftObjectPath(Value);
 
-		if (PointerToTargetStructure->Node.Get())
-			PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.
-			                                                                 Get()->EdGraphNode.Get();
+		if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
 	}
 
 	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(OwnerJointEdGraphNode))
@@ -1288,8 +1285,8 @@ FReply SJointNodeDescription::OnOpenEditorButtonPressed()
 		}
 	}
 
+
 	return FReply::Handled();
 }
-
 
 #undef LOCTEXT_NAMESPACE

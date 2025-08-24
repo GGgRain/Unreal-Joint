@@ -432,6 +432,7 @@ void SJointGraphPanel::PaintBackground(const FSlateBrush* BackgroundImage, const
 }
 
 
+
 int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
                                 const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements,
                                 int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const

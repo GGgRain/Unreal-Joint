@@ -179,6 +179,14 @@ public:
 	FJointEdNodeSetting();
 
 public:
+	
+	/**
+	 * Node's iconic color. This color will be used for the color scheme of the node for the identification on search tab and other purposes.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FLinearColor NodeIconicColor = FLinearColor(0.026715, 0.025900, 0.035, 1);
+
+public:
 	/**
 	 * The brush image to display inside the Iconic Node (a little colored block next to the node name) of the graph node slate.
 	 */
@@ -186,32 +194,47 @@ public:
 	FSlateBrush IconicNodeImageBrush;
 
 public:
+	
 	/**
-	 * Whether to use specified graph node body color
+	 * Whether to use specified graph node body color.
+	 * If it is false, the node body will use the common color scheme of the node body on the graph
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
 	bool bUseSpecifiedGraphNodeBodyColor = false;
 
 	/**
+	 * Whether to use the Iconic color for the node body on the stow node mode.
+	 * by default, when the node is stowed, the body will use NodeIconicColor instead of NodeBodyColor - for the better identification of the node.
+	 * But if you want to use NodeBodyColor instead of NodeIconicColor, set this to false.
+	 */
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseIconicColorForNodeBodyOnStow = true;
+
+	/**
 	 * Node body's color. Change this to customize the color of the node.
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
-	FLinearColor NodeBodyColor = FLinearColor::Green;
+	FLinearColor NodeBodyColor = FLinearColor::White;
 
+public:
+	
 	/**
 	 * Whether to use NodeShadowImageBrush instead of the default brush.
+	 * Tip: if you want to hide the node's shadow, you can set this to true and set NodeShadowImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
 	bool bUseCustomNodeShadowImageBrush = false;
 
 	/**
 	 * Whether to use InnerNodeBodyImageBrush instead of the default brush.
+	 * Tip: if you want to hide the node's InnerNodeBody, you can set this to true and set InnerNodeBodyImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
 	bool bUseCustomInnerNodeBodyImageBrush = false;
 
 	/**
 	 * Whether to use bUseCustomOuterNodeBodyImageBrush instead of the default brush.
+	 * Tip: if you want to hide the node's OuterNodeBody, you can set this to true and set OuterNodeBodyImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
 	bool bUseCustomOuterNodeBodyImageBrush = false;
