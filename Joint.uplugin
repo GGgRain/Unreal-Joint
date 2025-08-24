@@ -1,7 +1,7 @@
 {
     "FileVersion": 3,
-    "Version": "54",
-    "VersionName": "2.9.3",
+    "Version": "56",
+    "VersionName": "2.9.5",
     "FriendlyName": "Joint",
     "Description": "An advanced conversation system for projects.",
     "Category": "Conversation",
@@ -26,12 +26,12 @@
         },
         {
             "Name": "VoltCore",
-            "Type": "Runtime",
+            "Type": "Editor",
             "LoadingPhase": "PreDefault"
         },
         {
             "Name": "Volt",
-            "Type": "Runtime",
+            "Type": "Editor",
             "LoadingPhase": "PreDefault"
         }
     ],

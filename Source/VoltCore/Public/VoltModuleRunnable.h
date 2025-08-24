@@ -43,79 +43,73 @@ public:
 	virtual void Exit() override;
 	virtual bool Init() override;
 
-
 public:
 	
-	void ProcessAnimationManagerTrackQueue();
-	
+	/**
+	 * Trigger the update task (Unlock Semaphore) with the provided delta time.
+	 * Use this to trigger the thread to work if it's waiting for the next trigger.
+	 */
 	void TriggerTask(float DeltaTime);
+	
+	void AddAnimationManager(UVoltAnimationManager* AnimationManagersArr);
+	
+	void AddAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr);
+	
+	void RemoveAnimationManager(UVoltAnimationManager* AnimationManagersArr);
+	
+	void RemoveAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr);
+	
+	const bool IsWorking() const;
+	
+	FORCEINLINE void MarkAsPendingKill();
 
+	FORCEINLINE const bool IsPendingKill() const;
+
+private:
+
+	void ProcessAnimationManagerTrackQueue();
+
+	void ProcessBufferedAnimationManagersRequest();
+	
+	// (blocking call) Stop the thread run and wait until it's fully stopped.
+	void StopRunBlocking();
+
+	// unlock the semaphore to let the thread run.
+	void UnlockSemaphore();
+
+	FORCEINLINE void MarkAsWorking();
+
+	FORCEINLINE void UnmarkAsWorking();
+
+public:
+
+	TArray<UVoltAnimationManager*> AnimationManagers;
+	
 private:
 
 	/**
 	 * Animation managers that are queued to be handled on the thread.
 	 */
-	TArray<UVoltAnimationManager*> AdditionQueueAnimationManagers;
+	TArray<UVoltAnimationManager*> AssignBufferAnimationManagers;
 	
 	/**
 	 * Animation managers that are queued to be excluded on the thread.
 	 */
-	TArray<UVoltAnimationManager*> DeletionQueueAnimationManagers;
-
-public:
-
-
-	void AddAnimationManager(UVoltAnimationManager* AnimationManagersArr);
-
-	void RemoveAnimationManager(UVoltAnimationManager* AnimationManagersArr);
+	TArray<UVoltAnimationManager*> DeletionBufferAnimationManagers;
 	
-
-	void AddAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr);
-
-	void RemoveAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr);
-
-private:
-	
-	void ProcessQueuedAnimationManagersRequest();
-
-public:
-
-	TArray<UVoltAnimationManager*> AnimationManagers;
-
-public:
-
-	FORCEINLINE void MarkAsWorking();
-
-	FORCEINLINE void UnmarkAsWorking();
-	
-	const bool IsWorking() const;
-
-private:
-
-	bool bWorking = false;
-
-public:
-
-	FORCEINLINE void MarkAsPendingKill();
-
-	FORCEINLINE const bool IsPendingKill() const;
-	
-private:
+	// Whether the thread is currently processing tasks - when Run() is executing.
+	bool bIsWorking = false;
 	
 	bool bPendingKill = false;
-
-private:
-
+	
 	FEvent* ThreadRunEvent_Semaphore;
 	
 	FRunnableThread* Thread = nullptr;
 
+	float ThreadWorkDeltaTime = 0;
+
 public:
 
 	FORCEINLINE const float& GetThreadWorkDeltaTime() const;
-
-private:
-
-	float ThreadWorkDeltaTime = 0;
 	
 };

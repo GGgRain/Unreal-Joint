@@ -15,20 +15,20 @@ UVoltSubsystem::UVoltSubsystem() {}
 
 void UVoltSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
+	SetUtilizingMultithreading(UVoltSettings::Get() ? UVoltSettings::Get()->bUseMultithreadingOnModuleUpdate : false);
+
 	CacheCleanUpInterval();
 	
 	PopulateModuleUpdateThreadIfNeeded();
 
 	//We do not start the tick with it
 	BindOnSlateApplicationPreTick();
-
-	SetUtilizingMultithreading(UVoltSettings::Get() ? UVoltSettings::Get()->bUseMultithreadingOnModuleUpdate : false);
 }
 
 void UVoltSubsystem::Deinitialize()
 {
 	ReleaseModuleUpdateThread();
-
+	
 	//We do not start the tick with it
 	UnbindOnSlateApplicationPreTick();
 
@@ -129,7 +129,7 @@ void UVoltSubsystem::ReleaseModuleUpdateThread()
 
 	// Stop the thread.
 	ModuleUpdateThread->Stop();
-
+	
 	ModuleUpdateThread = nullptr;
 }
 

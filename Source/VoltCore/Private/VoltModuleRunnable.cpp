@@ -13,113 +13,161 @@ FVoltModuleRunnable::FVoltModuleRunnable()
 
 FVoltModuleRunnable::~FVoltModuleRunnable()
 {
-	if (ThreadRunEvent_Semaphore)
+	StopRunBlocking();
+
+	// Kill the running thread.
+	if (Thread != nullptr)
 	{
-		//Cleanup the FEvent
+		Thread->Kill(true);
+
+		delete Thread;
+		Thread = nullptr;
+	}
+
+	//clean up the semaphore
+	if(ThreadRunEvent_Semaphore)
+	{
 		FGenericPlatformProcess::ReturnSynchEventToPool(ThreadRunEvent_Semaphore);
 		ThreadRunEvent_Semaphore = nullptr;
 	}
-
-	if (Thread)
-	{
-		// Kill() is a blocking call, it waits for the thread to finish.
-		Thread->Kill();
-		delete Thread;
-	}
+	
 }
 
 uint32 FVoltModuleRunnable::Run()
 {
 	while (!IsPendingKill())
 	{
-		if(IsWorking() || IsRunningCommandlet()) return 0;
+		// If we are already working, or if we are in commandlet mode, do nothing.
+		// This is to prevent re-entrance and processing during commandlet runs - it seems like the packaging process want all the existing threads to be joined to finish the process.
+		// if the semaphore is null, we are probably shutting down - exit.
+		if(IsWorking() || IsRunningCommandlet() || !ThreadRunEvent_Semaphore) return 0;
 		
-		if(AnimationManagers.IsEmpty()) ThreadRunEvent_Semaphore->Wait();
-		
-		MarkAsWorking();
-		
-		for (UVoltAnimationManager* AnimationManager : AnimationManagers)
+		// Work only if we have something to do.
+		if (!AnimationManagers.IsEmpty())
 		{
-			if (AnimationManager == nullptr) continue;
+			MarkAsWorking();
+
+			// Critical section - we are now working.
 			
-			AnimationManager->ProcessModuleUpdate(GetThreadWorkDeltaTime());
+			for (UVoltAnimationManager* AnimationManager : AnimationManagers)
+			{
+				if (AnimationManager == nullptr) continue;
+			
+				AnimationManager->ProcessModuleUpdate(GetThreadWorkDeltaTime());
+			}
 
+			// End of critical section - we are done working.
+
+			UnmarkAsWorking();
 		}
-
-		UnmarkAsWorking();
-
-		if(ThreadRunEvent_Semaphore) ThreadRunEvent_Semaphore->Wait();
+			
+		// wait for the next trigger ( for the next frame - FVoltModuleRunnable::Run() can be triggered only one time per frame. )
+		if (ThreadRunEvent_Semaphore) ThreadRunEvent_Semaphore->Wait();
 	}
 	
 	return 0;
 }
 
+void FVoltModuleRunnable::StopRunBlocking()
+{
+	// Mark it for kill - we will exit the thread loop now.
+	Stop();
+
+	// blocking call; ensure we wait for the thread to finish - wait for the Run() to exit.
+	UnlockSemaphore();
+	
+	if (Thread) Thread->WaitForCompletion();
+}
+
 void FVoltModuleRunnable::Stop()
 {
 	MarkAsPendingKill();
-	
+}
+
+void FVoltModuleRunnable::Exit()
+{
+	// This function will be called when Run is finished (returned 0) - we don't need to do anything special here.
+	FRunnable::Exit();
+}
+
+bool FVoltModuleRunnable::Init()
+{
+	return FRunnable::Init();
+}
+
+void FVoltModuleRunnable::UnlockSemaphore()
+{
 	if(ThreadRunEvent_Semaphore) ThreadRunEvent_Semaphore->Trigger();
 }
 
 void FVoltModuleRunnable::TriggerTask(float DeltaTime)
 {
-	//If thread is already working, it will simply pile up the delta time, and do nothing.
 	if(IsWorking())
 	{
+		//If thread is already working, it will simply pile up the delta time, and do nothing.
+
 		ThreadWorkDeltaTime = ThreadWorkDeltaTime + DeltaTime;
+	}else
+	{
+		//If thread is not working, we can trigger it to work.
+		
+		//Synchronize the list.
+		ProcessBufferedAnimationManagersRequest();
 
-		return;
-	}
-
-	//Synchronize the list.
-	ProcessQueuedAnimationManagersRequest();
-
-	ProcessAnimationManagerTrackQueue();
+		ProcessAnimationManagerTrackQueue();
 	
-	ThreadWorkDeltaTime = DeltaTime;
+		ThreadWorkDeltaTime = DeltaTime;
 
-	//Unlock the thread
-	if(ThreadRunEvent_Semaphore) ThreadRunEvent_Semaphore->Trigger();
+		// Only unlock if we have something to do.
+		if (!AnimationManagers.IsEmpty())
+		{
+			//Unlock the thread
+			UnlockSemaphore();
+		}
+	}
 }
 
 void FVoltModuleRunnable::AddAnimationManager(UVoltAnimationManager* AnimationManager)
 {
-	AdditionQueueAnimationManagers.Add(AnimationManager);
-}
-
-void FVoltModuleRunnable::RemoveAnimationManager(UVoltAnimationManager* AnimationManager)
-{
-	DeletionQueueAnimationManagers.Add(AnimationManager);
+	AssignBufferAnimationManagers.Add(AnimationManager);
 }
 
 void FVoltModuleRunnable::AddAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr)
 {
-	AdditionQueueAnimationManagers.Append(AnimationManagersArr);
+	AssignBufferAnimationManagers.Append(AnimationManagersArr);
+}
+
+void FVoltModuleRunnable::RemoveAnimationManager(UVoltAnimationManager* AnimationManager)
+{
+	DeletionBufferAnimationManagers.Add(AnimationManager);
 }
 
 void FVoltModuleRunnable::RemoveAnimationManagers(const TArray<UVoltAnimationManager*>& AnimationManagersArr)
 {
-	DeletionQueueAnimationManagers.Append(AnimationManagersArr);
+	DeletionBufferAnimationManagers.Append(AnimationManagersArr);
 }
 
-void FVoltModuleRunnable::ProcessQueuedAnimationManagersRequest()
+void FVoltModuleRunnable::ProcessBufferedAnimationManagersRequest()
 {
-	for (UVoltAnimationManager* AdditionQueueAnimationManager : AdditionQueueAnimationManagers)
+	// If we are working, or if we are pending kill, do nothing.
+	if (IsWorking() || IsPendingKill()) return;
+	
+	for (UVoltAnimationManager* AssignBuffer : AssignBufferAnimationManagers)
 	{
-		if(!AdditionQueueAnimationManager) continue;
+		if(!AssignBuffer) continue;
 
-		AnimationManagers.Add(AdditionQueueAnimationManager);
+		AnimationManagers.Add(AssignBuffer);
 	}
 
-	for (UVoltAnimationManager* DeletionQueueAnimationManager : DeletionQueueAnimationManagers)
+	for (UVoltAnimationManager* DeletionBuffer : DeletionBufferAnimationManagers)
 	{
-		if(!DeletionQueueAnimationManager) continue;
+		if(!DeletionBuffer) continue;
 
-		AnimationManagers.Remove(DeletionQueueAnimationManager);
+		AnimationManagers.Remove(DeletionBuffer);
 	}
 	
-	AdditionQueueAnimationManagers.Empty();
-	DeletionQueueAnimationManagers.Empty();
+	AssignBufferAnimationManagers.Empty();
+	DeletionBufferAnimationManagers.Empty();
 	
 	AnimationManagers.RemoveAll([] (const UVoltAnimationManager* Manager)
 	{
@@ -135,29 +183,20 @@ void FVoltModuleRunnable::ProcessAnimationManagerTrackQueue()
 	}
 }
 
-void FVoltModuleRunnable::Exit()
-{
-	FRunnable::Exit();
-}
-
-bool FVoltModuleRunnable::Init()
-{
-	return FRunnable::Init();
-}
 
 void FVoltModuleRunnable::MarkAsWorking()
 {
-	bWorking = true;
+	bIsWorking = true;
 }
 
 void FVoltModuleRunnable::UnmarkAsWorking()
 {
-	bWorking = false;
+	bIsWorking = false;
 }
 
 const bool FVoltModuleRunnable::IsWorking() const
 {
-	return bWorking;
+	return bIsWorking;
 }
 
 void FVoltModuleRunnable::MarkAsPendingKill()
