@@ -148,7 +148,7 @@ FReply SJointGraphEditorImpl::OnKeyDown(const FGeometry& MyGeometry, const FKeyE
 
 void SJointGraphEditorImpl::NotifyGraphChanged()
 {
-#if UE_VERSION_OLDER_THAN(5,5,0)
+#if UE_VERSION_OLDER_THAN(5,4,0)
     FEdGraphEditAction DefaultAction;
     OnGraphChanged(DefaultAction);
 #else
@@ -159,7 +159,7 @@ void SJointGraphEditorImpl::NotifyGraphChanged()
 void SJointGraphEditorImpl::OnGraphChanged(const FEdGraphEditAction& InAction)
 {
 
-#if UE_VERSION_OLDER_THAN(5,5,0)
+#if UE_VERSION_OLDER_THAN(5,4,0)
     if (!bIsActiveTimerRegistered)
     {
         const UJointEdGraphSchema* Schema = Cast<UJointEdGraphSchema>(EdGraphObj->GetSchema());
