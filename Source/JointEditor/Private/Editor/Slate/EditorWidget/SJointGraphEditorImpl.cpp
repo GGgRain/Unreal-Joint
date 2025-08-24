@@ -148,16 +148,52 @@ FReply SJointGraphEditorImpl::OnKeyDown(const FGeometry& MyGeometry, const FKeyE
 
 void SJointGraphEditorImpl::NotifyGraphChanged()
 {
-    GetCurrentGraph()->NotifyGraphChanged();
+#if UE_VERSION_OLDER_THAN(5,5,0)
+    FEdGraphEditAction DefaultAction;
+    OnGraphChanged(DefaultAction);
+#else
+    if (GetCurrentGraph()) GetCurrentGraph()->NotifyGraphChanged();
+#endif
 }
 
 void SJointGraphEditorImpl::OnGraphChanged(const FEdGraphEditAction& InAction)
 {
+
+#if UE_VERSION_OLDER_THAN(5,5,0)
+    if (!bIsActiveTimerRegistered)
+    {
+        const UJointEdGraphSchema* Schema = Cast<UJointEdGraphSchema>(EdGraphObj->GetSchema());
+        const bool bSchemaRequiresFullRefresh = Schema->ShouldAlwaysPurgeOnModification();
+
+        const bool bWasAddAction = (InAction.Action & GRAPHACTION_AddNode) != 0;
+        const bool bWasSelectAction = (InAction.Action & GRAPHACTION_SelectNode) != 0;
+        const bool bWasRemoveAction = (InAction.Action & GRAPHACTION_RemoveNode) != 0;
+
+        // If we did a 'default action' (or some other action not handled by SGraphPanel::OnGraphChanged
+        // or if we're using a schema that always needs a full refresh, then purge the current nodes
+        // and queue an update:
+        if (bSchemaRequiresFullRefresh ||
+            (!bWasAddAction && !bWasSelectAction && !bWasRemoveAction))
+        {
+            GraphPanel->PurgeVisualRepresentation();
+            // Trigger the refresh
+            bIsActiveTimerRegistered = true;
+            RegisterActiveTimer(
+                0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SJointGraphEditorImpl::TriggerRefresh));
+        }
+
+        if (bWasAddAction)
+        {
+            NumNodesAddedSinceLastPointerPosition++;
+        }
+    }
+#else
     const bool bWasAddAction = (InAction.Action & GRAPHACTION_AddNode) != 0;
     if (bWasAddAction)
     {
         NumNodesAddedSinceLastPointerPosition++;
     }
+#endif
 }
 
 void SJointGraphEditorImpl::GetPinContextMenuActionsForSchema(UToolMenu* InMenu) const
@@ -890,14 +926,10 @@ void SJointGraphEditorImpl::Tick(const FGeometry& AllottedGeometry, const double
 
 EActiveTimerReturnType SJointGraphEditorImpl::TriggerRefresh(double InCurrentTime, float InDeltaTime)
 {
-    if (bIsActiveTimerRegistered)
-    {
-        GraphPanel->PurgeVisualRepresentation();
-        
-        GraphPanel->Update();
-
-        bIsActiveTimerRegistered = false;
-    }
+    GraphPanel->Update();
+    
+    bIsActiveTimerRegistered = false;
+    
     return EActiveTimerReturnType::Stop;
 }
 
