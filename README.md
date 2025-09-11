@@ -131,7 +131,7 @@ The development of Joint is a purely community-driven and sponsorship-supported 
 >[!NOTE]
 > Our team is currently focused on several exciting directions:
 >
-> **Joint Graph Editor**: Inspired by the workflow of Jupyter Notebooks, we are building a GUI-based editor powered by a Python local server and a browser client. This will allow creators to easily design Joint Graphs outside of game engines in an intuitive, standalone environment.
+> **Standalone Joint Graph Editor**: Inspired by the workflow of Jupyter Notebooks, we are building a GUI-based editor powered by a Python local server and a browser client. This will allow creators to easily design Joint Graphs outside of game engines in an intuitive, standalone environment.
 >
 > **General Lifelike Characters**: We are deeply interested in making it possible for anyone to create NPC characters with the same level of realism you might find in AAA games such as GTA or The Witcher-characters with expressive faces, natural voices, and fluid animations. These do not need to be photo-realistic; the goal is to make the interaction with them feel truly alive.
 
