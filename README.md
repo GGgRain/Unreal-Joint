@@ -1,3 +1,11 @@
+> [!NOTE]
+> **🎁 Now Joint is COMPLETELY FREE to use! (MIT LICENSE, 2025.9.12)**
+> 
+> Please share this project to your loving folks, friends, and even family! Plus, We're going to open Fab store version of Joint for the sponsorship purpose - It's the exact same copy of Joint on GitHub with no limitation or restriction, but with a slight amount of fee that I and other future workers will gladly use for our communities' growth!
+>
+> If you like this project, please buy me a beer with that one.
+
+
 > [!WARNING]
 > **Joint** provided in this repository is **the core part of the framework of a **General Purpose Modular Playback System**** that has been designed to run modularized playback of certain contents that works better with modular design - such as dialogue, or advanced level sequener playback that is dynamically adjusted with localization.
 >
@@ -6,7 +14,6 @@
 > You can explore available extensions - such as **Joint Native**, which provides **an advanced narrative system** in the **"Related & Derivative Projects" section of this repository.**
 > And if you don’t find what you need, creating your own sub plugin is always a great option!
 > > We used to call Joint itself as a dialogue system before - but THIS is what it actually is. calling it as a dialogue system was a dumb decision.
-
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/8ddd48a4-8adb-4ff9-8b2b-83b3bac28acd" width="300", height="300", alt="Joint Logo">
@@ -36,16 +43,22 @@
 <p align="center">
   <a href="#mag-about">About</a> &#xa0; | &#xa0;
   <a href="#inbox_tray-related-projects--derivative-projects">Related & Derivative Projects </a> &#xa0; | &#xa0;
-  <a href="#memo-joint-plugin-license--changes-after-it-became-open-source">License & Changed Things On Open Source</a> &#xa0; | &#xa0;
+  <a href="#star-join-joint-development-team">Join Joint Development Team</a> &#xa0; | &#xa0;
   <a href="#clipboard-main-features">Main Features</a> &#xa0; | &#xa0;
   <a href="#inbox_tray-installation">Installation</a> &#xa0; | &#xa0;
   <a href="#loudspeaker-supports">Supports</a> &#xa0;
 </p>
 
+## :sparkles: History ##
 
 <div align="center">
   <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
 </div>
+
+<div align="center">
+  <h3>🎁 Now Joint is COMPLETELY FREE to use! (MIT LICENSE) (25.09.12)</h3>
+</div>
+
 
 ## :sparkles: Official Videos - Please click the images to watch! ##
 
@@ -109,43 +122,20 @@ Also, We also provide **Volt** plugin (MIT License), Unreal Slate Architecture A
   <i>Please click the images above to visit each repository!</i>
 </p>
 
+## :star: Join Joint Development Team! ##
 
-## :memo: Joint Plugin License & Changes After It Became Source Available ##
+We are actively seeking skilled and passionate developers, social media managers, and designers who want to grow with us and contribute to something bigger than themselves.
 
-### 🎉 Now You Can Download The Source of Joint Here!
+The development of Joint is a purely community-driven and sponsorship-supported project. As much as we would love to financially reward the incredible efforts of those who join us, the reality is that we currently do not generate significant revenue nor receive stable, ongoing sponsorships. What drives us forward is not profit, but the shared vision of building systems and ecosystems that many studios in the gaming industry desperately need-and releasing them as open source. If you take pride in contributing to projects that give back to the community, you will find a meaningful place with us.
 
-<p align="center">
-  <a target="_blank">
-    <img src="https://github.com/user-attachments/assets/ec1bae6f-5642-4786-9189-922953aec4d1" width="400" height="auto" alt="Open Source">
-  </a>
-</p>
+>[!NOTE]
+> Our team is currently focused on several exciting directions:
+>
+> **Joint Graph Editor**: Inspired by the workflow of Jupyter Notebooks, we are building a GUI-based editor powered by a Python local server and a browser client. This will allow creators to easily design Joint Graphs outside of game engines in an intuitive, standalone environment.
+>
+> **General Lifelike Characters**: We are deeply interested in making it possible for anyone to create NPC characters with the same level of realism you might find in AAA games such as GTA or The Witcher-characters with expressive faces, natural voices, and fluid animations. These do not need to be photo-realistic; the goal is to make the interaction with them feel truly alive.
 
-All content is available on our official GitHub repository, and you can download it and start using Joint in a second!
-
-This project is licensed under our **Joint Plugin License**, Here are the important parts of the whole license:
-
-<hr/>
-
-<h3 align="center">💸 Don't Pay Anything Until Your Project Settles Down!</h3>
-<p>
-We aim to empower indie and small-scale developers to use Joint in a practical and proactive way, without financial pressure,<br/>
-As of April 5, 2025, <b>if your project using Joint earns more than $15,000 USD in net profit, USD 299 fee will apply for one time - if you have to pay this fee, congraturation! because that means your project has settled down!</b><br/>
-<b>Have you purchased Joint via Fab or Unreal Marketplace before May 20, 2025? You are exempt from this fee!</b>
-</p>
-
-<h3 align="center">🎁 Make Your Derivative Software With Joint</h3>
-<p>
-Got a brilliant idea for a plugin or tool based on Joint – like <b>Joint Native</b> or our secret upcoming project <b>Joint Yggdrasil?</b><br/>
-You are welcome to build and monetize your own Derivative Software based on Joint. You will retain full ownership and revenue rights for your derivative product.<br/>
-If your derivative software (for example, sub-plugin) using Joint earns more than $15,000 USD in annual gross revenue, a 1% royalty fee will apply only to the portion exceeding that amount. (It's more like "Hey, you're working on my world - and making money with it! share it a bit!!!!" vibe - but we're not a monster. If this rule is harsh to you, we can always offer a significant discount for it.)<br/>
-You can also receive active technical support via our official GitHub and Discord channels to bring your ideas to life.<br/>
-We also offer significant discounts or even exampt of the royalty for the team who made the contribution to the ecosystem - whatever it is technical, promotional, or just making a good product with it and making a good sale - so please consider this on your service!
-</p>
-
-<hr/>
-
-> [!NOTE]
-> Please refer to the [LICENSE](LICENSE.md) file for further details.
+If you are someone who wants to leave a mark on the future of gaming technology, we would love to hear from you. Please reach out to us at devgrain13@gmail.com .let’s build something extraordinary together.
 
 ## :clipboard: Main Features ##
 
@@ -252,9 +242,6 @@ Come along to find further details for the lastest updates and how to use the sy
 
 ## Contributions ##
 
-> [!NOTE]
-> Please refer to the [LICENSE](LICENSE.md) file for further details.
-
 <h3 align="center">💡 What’s a Contribution?</h3>
 A Contribution means any improvement, bug fix, feature, or idea you share to help improve this Software — whether through GitHub, Discord, or elsewhere.
 
@@ -269,6 +256,7 @@ You promise your work doesn’t infringe on copyrights, patents, or trade secret
 <br>
 <br>
 You can ask to change or remove your contribution within 2 months of submitting. We’ll try to honor that — unless it’s core to the Software and hard to take out.
+
 
 ## :loudspeaker: Supports ##
 
