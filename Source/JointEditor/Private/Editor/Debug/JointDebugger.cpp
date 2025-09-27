@@ -12,6 +12,7 @@
 
 #include "JointEditor.h"
 #include "JointEditorSettings.h"
+#include "JointEdUtils.h"
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -55,14 +56,14 @@ void UJointDebugger::RegisterJointLifecycleEvents()
 			CastedModule->OnJointExecutionExceptionDelegate.BindUObject(
 				this, &UJointDebugger::CheckWhetherToBreakExecution);
 			CastedModule->OnJointDebuggerMentionJointBeginPlay.
-				BindUObject(this, &UJointDebugger::OnJointBegin);
+			              BindUObject(this, &UJointDebugger::OnJointBegin);
 			CastedModule->OnJointDebuggerMentionJointEndPlay.BindUObject(this, &UJointDebugger::OnJointEnd);
 			CastedModule->OnJointDebuggerMentionNodeBeginPlay.BindUObject(
 				this, &UJointDebugger::OnJointNodeBeginPlayed);
 			CastedModule->OnJointDebuggerMentionNodeEndPlay.BindUObject(
 				this, &UJointDebugger::OnJointNodeEndPlayed);
 			CastedModule->OnJointDebuggerMentionNodePending.
-				BindUObject(this, &UJointDebugger::OnJointNodePending);
+			              BindUObject(this, &UJointDebugger::OnJointNodePending);
 		}
 	}
 
@@ -134,7 +135,7 @@ void UJointDebugger::OnJointEnd(AJointActor* JointInstance, const FGuid& JointGu
 
 	if (JointInstance != nullptr)
 	{
-		FJointEditorToolkit* ToolKit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointInstance->GetJointManager(), false);
+		FJointEditorToolkit* ToolKit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointInstance->GetJointManager(), false);
 
 		if (ToolKit != nullptr)
 		{
@@ -337,6 +338,12 @@ bool UJointDebugger::IsDebugging()
 	return IsPlaySessionPaused();
 }
 
+void UJointDebugger::NotifyDebugDataChanged(UJointEdGraph* Graph)
+{
+	if (Graph == nullptr) return;
+
+	Graph->UpdateDebugData();
+}
 
 void UJointDebugger::NotifyDebugDataChanged(const UJointManager* Manager)
 {
@@ -344,13 +351,70 @@ void UJointDebugger::NotifyDebugDataChanged(const UJointManager* Manager)
 
 	if (Manager->JointGraph == nullptr) return;
 
-	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph))
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
+
+	for (UJointEdGraph* Graph : Graphs)
 	{
-		CastedGraph->UpdateDebugData();
+		if (Graph == nullptr) continue;
+
+		Graph->UpdateDebugData();
 	}
 }
 
-TArray<FJointNodeDebugData>* UJointDebugger::GetDebugDataFromJointManager(UJointManager* Manager)
+TArray<FJointNodeDebugData>* UJointDebugger::GetCorrespondingDebugDataForGraph(UJointEdGraph* Graph)
+{
+	TArray<FJointNodeDebugData>* OutDebugData = nullptr;
+
+	if (Graph == nullptr) return OutDebugData;
+
+	UJointManager* JointManagerToSearchFrom = FJointEdUtils::GetOriginalJointManager(Graph->GetJointManager());
+	
+	//find the corresponding graph from the original Joint manager - probably via path name comparison.
+
+	if (JointManagerToSearchFrom == nullptr) return OutDebugData;
+	
+	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(JointManagerToSearchFrom);
+
+	const FString& InGraphPath = Graph->GetPathName(Graph->GetJointManager());
+	
+	for (UJointEdGraph* IterGraph : AllGraphs)
+	{
+		if (IterGraph == nullptr) continue;
+
+		if (IterGraph->GetPathName(IterGraph->GetJointManager()) != InGraphPath) continue;
+
+		OutDebugData = &IterGraph->DebugData;
+
+		break;
+	}
+
+	return OutDebugData;
+}
+
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstance(UJointEdGraphNode* Node)
+{
+	if (!Node) return nullptr;
+
+	UJointEdGraph* Graph = Node->GetCastedGraph();
+
+	if (!Graph) return nullptr;
+	
+	return GetDebugDataForInstanceFrom(GetCorrespondingDebugDataForGraph(Graph), Node);
+}
+
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstance(UJointNodeBase* Node)
+{
+	if (!Node) return nullptr;
+
+	UJointEdGraph* Graph = FJointEdUtils::FindGraphForNodeInstance(Node);
+
+	if (!Graph) return nullptr;
+	
+	return GetDebugDataForInstanceFrom(GetCorrespondingDebugDataForGraph(Graph), Node);
+}
+
+/*
+TArray<FJointNodeDebugData>* UJointDebugger::GetDebugDataFromOriginalJointManager(UJointManager* Manager)
 {
 	TArray<FJointNodeDebugData>* OutDebugData = nullptr;
 
@@ -360,6 +424,7 @@ TArray<FJointNodeDebugData>* UJointDebugger::GetDebugDataFromJointManager(UJoint
 
 	if (JointManagerToSearchFrom == nullptr) return OutDebugData;
 
+	//todo: FIX THIS SHIT FOR SUB GRAPHS
 	if (JointManagerToSearchFrom->JointGraph == nullptr) return OutDebugData;
 
 	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(JointManagerToSearchFrom->JointGraph))
@@ -369,30 +434,23 @@ TArray<FJointNodeDebugData>* UJointDebugger::GetDebugDataFromJointManager(UJoint
 
 	return OutDebugData;
 }
+*/
 
-FJointNodeDebugData* UJointDebugger::GetDebugDataFor(UJointEdGraphNode* Node)
-{
-	if (Node == nullptr || Node->GetCastedNodeInstance() == nullptr) return nullptr;
-
-	return GetDebugDataFor(Node->GetCastedNodeInstance());
-}
-
-FJointNodeDebugData* UJointDebugger::GetDebugDataFor(UJointNodeBase* NodeInstance)
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointEdGraphNode* Node)
 {
 	FJointNodeDebugData* OutDebugData = nullptr;
 
-	if (NodeInstance == nullptr) return nullptr;
+	if (!Node || !TargetDataArrayPtr) return nullptr;
 
-	TArray<FJointNodeDebugData>* DebugData = GetDebugDataFromJointManager(NodeInstance->GetJointManager());
+	UJointNodeBase* InNode = Node->GetCastedNodeInstance();
 
-	if (DebugData == nullptr) return nullptr;
+	if (!InNode) return nullptr;
 
-	FString RelPath = NodeInstance->GetPathName(NodeInstance->GetJointManager());
+	FString RelPath = InNode->GetPathName(InNode->GetJointManager());
 
-	for (FJointNodeDebugData& Data : *DebugData)
+	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
 	{
-		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()
-			->GetJointManager() == nullptr) continue;
+		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr) continue;
 
 		//UE_LOG(LogTemp,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
 
@@ -402,68 +460,33 @@ FJointNodeDebugData* UJointDebugger::GetDebugDataFor(UJointNodeBase* NodeInstanc
 
 		break;
 	}
-
+	
 	return OutDebugData;
 }
 
-UJointManager* UJointDebugger::GetOriginalJointManager(
-	UJointManager* InJointManager)
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointNodeBase* NodeInstance)
 {
-	if (InJointManager != nullptr && !InJointManager->IsAsset())
+	FJointNodeDebugData* OutDebugData = nullptr;
+	
+	if (!NodeInstance || !TargetDataArrayPtr) return nullptr;
+
+	FString RelPath = NodeInstance->GetPathName(NodeInstance->GetJointManager());
+
+	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
 	{
-		if (UObject* Outer = InJointManager->GetOuter())
-		{
-			if (AJointActor* JointActor = Cast<AJointActor>(Outer))
-			{
-				if (JointActor->OriginalJointManager && JointActor->OriginalJointManager->IsValidLowLevel())
-				{
-					return JointActor->OriginalJointManager;
-				}
-			}
-		}
+		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr)
+			continue;
+
+		//UE_LOG(LogTemp,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
+
+		if (Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()) != RelPath) continue;
+
+		OutDebugData = &Data;
+
+		break;
 	}
-	else if (InJointManager != nullptr && InJointManager->IsAsset())
-	{
-		return InJointManager;
-	}
-
-	return nullptr;
-}
-
-UJointEdGraphNode* UJointDebugger::GetOriginalJointGraphNodeFromJointGraphNode(
-	UJointEdGraphNode* InJointEdGraphNode)
-{
-	if (InJointEdGraphNode != nullptr && InJointEdGraphNode->GetJointManager() != nullptr)
-	{
-		UJointManager* OriginalAssetJointManager = GetOriginalJointManager(
-			InJointEdGraphNode->GetJointManager());
-
-		//if this node is from the original Joint manager : return itself.
-		if (InJointEdGraphNode->GetJointManager() == OriginalAssetJointManager) return InJointEdGraphNode;
-
-		if (OriginalAssetJointManager && OriginalAssetJointManager->JointGraph)
-		{
-			if (UJointEdGraph* JointEdGraph = Cast<UJointEdGraph>(OriginalAssetJointManager->JointGraph))
-			{
-				for (TObjectPtr<UEdGraphNode> EdGraphNode : JointEdGraph->Nodes)
-				{
-					if (!EdGraphNode) continue;
-
-					UJointEdGraphNode* CastedJointEdGraphNode = Cast<UJointEdGraphNode>(EdGraphNode);
-
-					if (!CastedJointEdGraphNode) continue;
-
-					if (InJointEdGraphNode->GetPathName(InJointEdGraphNode->GetJointManager()) !=
-						CastedJointEdGraphNode->GetPathName(CastedJointEdGraphNode->GetJointManager()))
-						continue;
-
-					return CastedJointEdGraphNode;
-				}
-			}
-		}
-	}
-
-	return nullptr;
+	
+	return OutDebugData;
 }
 
 bool UJointDebugger::CheckWhetherToBreakExecution(AJointActor* Instance, UJointNodeBase* NodeToCheck)
@@ -503,8 +526,12 @@ bool UJointDebugger::CheckWhetherToBreakExecution(AJointActor* Instance, UJointN
 			//Do not interrupt if we already broke with the node.
 			if (PausedJointNodeBase == NodeToCheck) return false;
 
+			UJointEdGraph* EdGraph = FJointEdUtils::FindGraphForNodeInstance(NodeToCheckInOriginalAsset);
+			
+			TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(EdGraph);
+
 			//Check whether we have any debug data for the node that can cause the pause action.
-			if (FJointNodeDebugData* DebugData = GetDebugDataFor(NodeToCheckInOriginalAsset); DebugData != nullptr)
+			if (FJointNodeDebugData* DebugData = GetDebugDataForInstanceFrom(DebugDataArr, NodeToCheckInOriginalAsset); DebugData != nullptr)
 			{
 				if (DebugData->bDisabled)
 				{
@@ -645,12 +672,11 @@ void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeB
 {
 	if (CheckHasInstanceInLookUp(JointActor))
 	{
-		if (const FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
-		
-		if (UJointEdGraphNode* OriginalNode = GetEditorNodeFor(JointNodeBase, JointActor->GetJointManager()))
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
+
+		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-				
-			if(const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
 				{
@@ -658,7 +684,6 @@ void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeB
 					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerPlayingNodeColor, true);
 				}
 			}
-				
 		}
 	}
 }
@@ -669,19 +694,17 @@ void UJointDebugger::OnJointNodePending(AJointActor* JointActor, UJointNodeBase*
 	{
 		FJointEditorToolkit* Toolkit = nullptr;
 
-		FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointActor->GetJointManager(), false);
+		FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false);
 
 		if (!Toolkit) return;
-		
-		if (UJointEdGraphNode* OriginalNode = GetEditorNodeFor(JointNodeBase, JointActor->GetJointManager()))
+
+		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-				
-			if(const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
 					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerPendingNodeColor, true);
 			}
-				
 		}
 	}
 }
@@ -690,17 +713,15 @@ void UJointDebugger::OnJointNodeEndPlayed(AJointActor* JointActor, UJointNodeBas
 {
 	if (CheckHasInstanceInLookUp(JointActor))
 	{
-		if (const FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
-		
-		if (UJointEdGraphNode* OriginalNode = GetEditorNodeFor(JointNodeBase, JointActor->GetJointManager()))
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
+
+		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-				
-			if(const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
 					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerEndedNodeColor, false);
 			}
-				
 		}
 	}
 }
@@ -799,7 +820,7 @@ bool UJointDebugger::CheckHasInstanceInLookUp(AJointActor* Instance)
 
 void UJointDebugger::OnInstanceAddedToLookUp(AJointActor* Instance)
 {
-	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(Instance->GetJointManager(), true))
+	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(Instance->GetJointManager(), true))
 	{
 		Toolkit->SetDebuggingJointInstance(Instance);
 	}
@@ -807,7 +828,7 @@ void UJointDebugger::OnInstanceAddedToLookUp(AJointActor* Instance)
 
 void UJointDebugger::OnInstanceRemovedFromLookUp(AJointActor* Instance)
 {
-	if (const FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(Instance->GetJointManager(), false); Toolkit != nullptr)
+	if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(Instance->GetJointManager(), false); Toolkit != nullptr)
 	{
 		//TODO: Notify the toolkit that we eliminated the debugging session in the debugger. Make it display the original normal editor asset again.
 	}
@@ -851,44 +872,14 @@ void UJointDebugger::ClearDebugSessionData()
 }
 
 
-UJointEdGraphNode* UJointDebugger::GetEditorNodeFor(UJointNodeBase* JointNodeBase,
-                                                       UJointManager* JointManager)
-{
-	if (JointManager == nullptr) return nullptr;
-	if (JointManager->JointGraph == nullptr) return nullptr;
-
-	UJointEdGraph* CastedGraph = nullptr;
-
-	CastedGraph = Cast<UJointEdGraph>(JointManager->JointGraph);
-
-	if (CastedGraph == nullptr) return nullptr;
-
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
-
-	for (TSoftObjectPtr<UJointEdGraphNode> CachedJointGraphNode : GraphNodes)
-	{
-		if (CachedJointGraphNode == nullptr) continue;
-
-		if (CachedJointGraphNode->GetCastedNodeInstance() != nullptr)
-		{
-			if (CachedJointGraphNode->GetCastedNodeInstance()->NodeGuid == JointNodeBase->NodeGuid)
-				return
-					CachedJointGraphNode.Get();
-		}
-	}
-
-	return nullptr;
-}
-
-
 void UJointDebugger::FocusGraphOnNode(UJointNodeBase* NodeToFocus)
 {
-	FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(NodeToFocus->GetJointManager(), true);
+	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(NodeToFocus->GetJointManager(), true);
 
 	//Cancel the action if the toolkit was not present.
 	if (Toolkit == nullptr) return;
 
-	if (UJointEdGraphNode* OriginalNode = GetEditorNodeFor(NodeToFocus, NodeToFocus->GetJointManager()))
+	if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(NodeToFocus->GetJointManager(), NodeToFocus->GetNodeGuid()))
 	{
 		TSet<UObject*> ObjectsToSelect;
 
@@ -896,7 +887,7 @@ void UJointDebugger::FocusGraphOnNode(UJointNodeBase* NodeToFocus)
 
 		Toolkit->StartHighlightingNode(OriginalNode, true);
 
-		Toolkit->JumpToNode(OriginalNode);
+		Toolkit->JumpToHyperlink(OriginalNode);
 	}
 }
 

@@ -2,15 +2,26 @@
 
 #include "JointEdUtils.h"
 
+#include "AssetToolsModule.h"
+#include "EdGraphSchema_K2_Actions.h"
+#include "JointActor.h"
 #include "JointEdGraph.h"
 #include "JointEditorToolkit.h"
 #include "Modules/ModuleManager.h"
 
 #include "JointEditor.h"
+#include "JointEditorNameValidator.h"
+#include "JointEditorStyle.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Internationalization/TextPackageNamespaceUtil.h"
+#include "Kismet2/BlueprintEditorUtils.h"
+#include "Kismet2/KismetEditorUtilities.h"
 #include "Node/JointFragment.h"
 #include "Node/JointNodeBase.h"
 #include "Serialization/TextReferenceCollector.h"
+
+
+#define LOCTEXT_NAMESPACE "JointEdUtils"
 
 class FJointEditorModule;
 
@@ -206,6 +217,46 @@ void FJointEdUtils::JointText_StaticStableTextIdWithObj(UObject* InObject,
 	JointText_StaticStableTextId(Package, InEditAction, InTextSource, InProposedNamespace, InProposedKey, OutStableNamespace, OutStableKey);
 }
 
+void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* InClass)
+{
+	if (InClass == nullptr) return;
+
+	FString ClassName = FBlueprintEditorUtils::GetClassNameWithoutSuffix(InClass);
+	
+	FString PathName = FPaths::DirectoryExists(BasePath) ? BasePath : FPaths::ProjectContentDir();
+	PathName = FPaths::GetPath(PathName);
+	PathName /= ClassName;
+
+	FString Name;
+	FString PackageName;
+	const FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
+	AssetToolsModule.Get().CreateUniqueAssetName(PathName, TEXT("_New"), PackageName, Name);
+
+	UPackage* Package = CreatePackage(*PackageName);
+	if (ensure(Package))
+	{
+		// Create and init a new Blueprint
+		if (UBlueprint* NewBP = FKismetEditorUtilities::CreateBlueprint(InClass
+																		, Package
+																		, FName(*Name)
+																		, BPTYPE_Normal
+																		, UBlueprint::StaticClass()
+																		, UBlueprintGeneratedClass::StaticClass()))
+		{
+			GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(NewBP);
+
+			// Notify the asset registry
+			FAssetRegistryModule::AssetCreated(NewBP);
+
+			// Mark the package dirty...
+			Package->MarkPackageDirty();
+		}
+	}
+
+
+	FSlateApplication::Get().DismissAllMenus();
+}
+
 void FJointEdUtils::OpenEditorFor(UJointManager* Manager, FJointEditorToolkit*& Toolkit)
 {
 	Toolkit = nullptr;
@@ -222,6 +273,261 @@ void FJointEdUtils::OpenEditorFor(UJointManager* Manager, FJointEditorToolkit*& 
 		Toolkit = static_cast<FJointEditorToolkit*>(EditorInstance);
 	}
 }
+
+FJointEditorToolkit* FJointEdUtils::FindOrOpenJointEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent)
+{
+	if (ObjectRelatedTo != nullptr)
+	{
+		if (UJointManager* Manager = Cast<UJointManager>(ObjectRelatedTo))
+		{
+			IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
+			                                                FindEditorForAsset(Manager, true);
+
+			if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
+
+			if (bOpenIfNotPresent)
+			{
+				GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Manager);
+
+				EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(Manager, true);
+
+				return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
+			}
+		}
+
+		if (UJointEdGraph* Graph = Cast<UJointEdGraph>(ObjectRelatedTo))
+		{
+			if (UJointManager* FoundManager = Graph->GetJointManager())
+			{
+				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
+				                                                FindEditorForAsset(FoundManager, true);
+
+				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
+
+				if (bOpenIfNotPresent)
+				{
+					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
+
+					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
+
+					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
+				}
+			}
+		}
+		if (UJointEdGraphNode* EdNode = Cast<UJointEdGraphNode>(ObjectRelatedTo))
+		{
+			if (UJointManager* FoundManager = EdNode->GetJointManager())
+			{
+				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
+				                                                FindEditorForAsset(FoundManager, true);
+
+				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
+
+				if (bOpenIfNotPresent)
+				{
+					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
+
+					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
+
+					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
+				}
+			}
+		}
+		if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(ObjectRelatedTo))
+		{
+			if (UJointManager* FoundManager = NodeBase->GetJointManager())
+			{
+				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
+				                                                FindEditorForAsset(FoundManager, true);
+
+				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
+
+				if (bOpenIfNotPresent)
+				{
+					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
+
+					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
+
+					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UJointEdGraph* FJointEdUtils::FindGraphForNodeInstance(const UJointNodeBase* NodeInstance)
+{
+	if (NodeInstance == nullptr) return nullptr;
+
+	if (UJointManager* Manager = NodeInstance->GetJointManager())
+	{
+		
+		if (Manager->JointGraph == nullptr) return nullptr;
+
+		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph))
+		{
+			TSet<TWeakObjectPtr<UObject>> Nodes = CastedGraph->GetCachedJointNodeInstances(false);
+
+			// do const_cast here - due to TSet not supporting const types in older UE versions
+			if (Nodes.Contains(const_cast<UJointNodeBase*>(NodeInstance)))
+			{
+				return CastedGraph;
+			}
+
+			//if not found, search in sub graphs
+			TArray<UJointEdGraph*> Graphs = CastedGraph->GetAllSubGraphsRecursively();
+			
+			for (UJointEdGraph* Graph : Graphs)
+			{
+				if (Graph == nullptr) continue;
+
+				Nodes = Graph->GetCachedJointNodeInstances(false);
+
+				// do const_cast here - due to TSet not supporting const types in older UE versions
+				if (Nodes.Contains(const_cast<UJointNodeBase*>(NodeInstance)))
+				{
+					return Graph;
+				}
+			}
+
+		}
+	}
+
+	return nullptr;
+	
+	
+}
+
+UEdGraphNode* FJointEdUtils::FindGraphNodeForNodeInstance(const UJointNodeBase* NodeInstance)
+{
+	
+	UEdGraphNode* OutNode = nullptr;
+	
+	if (NodeInstance == nullptr) return nullptr;
+
+	if (UJointManager* Manager = NodeInstance->GetJointManager())
+	{
+		if (Manager->JointGraph == nullptr) return nullptr;
+
+		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph))
+		{
+			OutNode =  CastedGraph->FindGraphNodeForNodeInstance(NodeInstance);
+
+			if (OutNode)
+			{
+				return OutNode;
+			}
+			
+			//if not found, search in sub graphs
+			TArray<UJointEdGraph*> Graphs = CastedGraph->GetAllSubGraphsRecursively();
+			
+			for (UJointEdGraph* Graph : Graphs)
+			{
+				if (Graph == nullptr) continue;
+
+				if (UEdGraphNode* FoundNode2 = Graph->FindGraphNodeForNodeInstance(NodeInstance))
+				{
+					return FoundNode2;
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+
+UJointManager* FJointEdUtils::GetOriginalJointManager(UJointManager* InJointManager)
+{
+	if (InJointManager != nullptr && !InJointManager->IsAsset())
+	{
+		if (UObject* Outer = InJointManager->GetOuter())
+		{
+			if (AJointActor* JointActor = Cast<AJointActor>(Outer))
+			{
+				if (JointActor->OriginalJointManager && JointActor->OriginalJointManager->IsValidLowLevel())
+				{
+					return JointActor->OriginalJointManager;
+				}
+			}
+		}
+	}
+	else if (InJointManager != nullptr && InJointManager->IsAsset())
+	{
+		return InJointManager;
+	}
+
+	return nullptr;
+}
+
+UJointEdGraphNode* FJointEdUtils::GetOriginalJointGraphNodeFromJointGraphNode(UJointEdGraphNode* InJointEdGraphNode)
+{
+	if (InJointEdGraphNode != nullptr && InJointEdGraphNode->GetJointManager() != nullptr)
+	{
+		UJointManager* OriginalAssetJointManager = FJointEdUtils::GetOriginalJointManager(InJointEdGraphNode->GetJointManager());
+		
+		//if this node is from the original Joint manager : return itself.
+		if (InJointEdGraphNode->GetJointManager() == OriginalAssetJointManager) return InJointEdGraphNode;
+
+		if (OriginalAssetJointManager && OriginalAssetJointManager->JointGraph)
+		{
+			TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(OriginalAssetJointManager);
+
+			for (UJointEdGraph*& AllGraph : AllGraphs)
+			{
+				if (AllGraph == nullptr) continue;
+				
+				// All cached nodes, including sub nodes.
+				TSet<TWeakObjectPtr<UJointEdGraphNode>> Nodes = AllGraph->GetCachedJointGraphNodes(true);
+
+				for (TWeakObjectPtr<UJointEdGraphNode> EdGraphNode : Nodes)
+				{
+					if (!EdGraphNode.IsValid() || EdGraphNode.Get() == nullptr) continue;
+
+					FString Path1 = InJointEdGraphNode->GetPathName(InJointEdGraphNode->GetJointManager());
+					FString Path2 = EdGraphNode->GetPathName(EdGraphNode->GetJointManager());
+
+					//const FString& Path1 = InJointEdGraphNode->GetPathName(InJointEdGraphNode->GetJointManager());
+					//const FString& Path2 = CastedJointEdGraphNode->GetPathName(CastedJointEdGraphNode->GetJointManager());
+
+					if (Path1 != Path2) continue;
+
+					return EdGraphNode.Get();
+				}	
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UJointEdGraphNode* FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(UJointManager* JointManager, const FGuid& NodeGuid)
+{
+	if (JointManager == nullptr) return nullptr;
+
+	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(JointManager);
+
+	for (UJointEdGraph* Graph : AllGraphs)
+	{
+		if (Graph == nullptr) continue;
+
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = Graph->GetCachedJointGraphNodes();
+
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		{
+			if (GraphNode == nullptr) continue;
+
+			UJointNodeBase* NodeInstance = GraphNode->GetCastedNodeInstance();
+			
+			if (NodeInstance && NodeInstance->NodeGuid == NodeGuid) return GraphNode.Get();
+		}
+	}
+
+	return nullptr;
+}
+
 
 #include "Misc/EngineVersionComparison.h"
 
@@ -248,16 +554,22 @@ UClass* FJointEdUtils::GetBlueprintClassWithClassPackageName(const FName& ClassN
 }
 
 
-FText FJointEdUtils::GetFriendlyNameOfNode(const UJointNodeBase* Node)
+FText FJointEdUtils::GetFriendlyNameOfNode(const UJointEdGraphNode* Node)
 {
 	if(Node)
 	{
-		if(Node->EdNodeSetting.bUseSimplifiedDisplayClassFriendlyNameText)
+		if(Node->GetEdNodeSetting().bUseSimplifiedDisplayClassFriendlyNameText)
 		{
-			return Node->EdNodeSetting.SimplifiedClassFriendlyNameText;
+			return Node->GetEdNodeSetting().SimplifiedClassFriendlyNameText;
 		}else
 		{
-			return GetFriendlyNameFromClass(Node->GetClass());
+			if (Node->GetCastedNodeInstance())
+			{
+				return GetFriendlyNameFromClass(Node->GetCastedNodeInstance()->GetClass());
+			}
+
+			//Fallback to class data if no instance
+			return GetFriendlyNameFromClass(const_cast<UJointEdGraphNode*>(Node)->NodeClassData.GetClass(true));
 		}
 	}
 
@@ -319,3 +631,254 @@ EMessageSeverity::Type FJointEdUtils::ResolveJointEdMessageSeverityToEMessageSev
 	
 	return EMessageSeverity::Info;
 }
+
+
+
+
+
+void FJointEdUtils::RemoveGraph(UJointEdGraph* GraphToRemove)
+{
+	if (GraphToRemove == nullptr) return;
+
+	if (UJointManager* Manager = GraphToRemove->GetJointManager())
+	{
+		if (Manager->GetJointGraphAs() == GraphToRemove)
+		{
+			//We cannot delete the main graph.
+			return;
+		}
+
+		Manager->Modify();
+
+		GraphToRemove->Modify();
+
+		// Can't just call Remove, the object is wrapped in a struct
+		for(int EditedDocIdx = 0; EditedDocIdx < Manager->LastEditedDocuments.Num(); ++EditedDocIdx)
+		{
+			if(Manager->LastEditedDocuments[EditedDocIdx].EditedObjectPath.ResolveObject() == GraphToRemove)
+			{
+				Manager->LastEditedDocuments.RemoveAt(EditedDocIdx);
+				break;
+			}
+		}
+
+		// traverse the graphs to find the parent graph and remove the subgraph reference
+
+		if (UEdGraph* ParentGraph = UEdGraph::GetOuterGraph(GraphToRemove))
+		{
+			if (UJointEdGraph* ParentJointGraph = Cast<UJointEdGraph>(ParentGraph))
+			{
+				ParentJointGraph->Modify();
+				ParentJointGraph->SubGraphs.Remove(GraphToRemove);
+			}
+		}
+
+		GraphToRemove->GetSchema()->HandleGraphBeingDeleted(*GraphToRemove);
+
+		GraphToRemove->Rename(nullptr, GetTransientPackage(), REN_DoNotDirty | REN_DontCreateRedirectors);
+		GraphToRemove->ClearFlags(RF_Standalone | RF_Public);
+		GraphToRemove->RemoveFromRoot();
+	}
+	
+}
+
+void FJointEdUtils::RemoveNode(class UObject* NodeRemove)
+{
+	if (NodeRemove == nullptr) return;
+		
+	if (UEdGraphNode* Node = Cast<UEdGraphNode>(NodeRemove))
+	{
+		if (!Node->CanUserDeleteNode()) return;
+
+		Node->Modify();
+
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node))
+		{
+			if (CastedNode->GetCastedNodeInstance()) CastedNode->GetCastedNodeInstance()->Modify();
+
+			UJointEdGraphNode* SavedParentNode = CastedNode->GetParentmostNode();
+
+			if (SavedParentNode)
+			{
+				SavedParentNode->Modify();
+
+				if (SavedParentNode->GetCastedNodeInstance())
+				{
+					SavedParentNode->GetCastedNodeInstance()->Modify();
+				}
+
+				for (UJointEdGraphNode* SubNodes : SavedParentNode->GetAllSubNodesInHierarchy())
+				{
+					if (SubNodes)
+					{
+						SubNodes->Modify();
+
+						if (SubNodes->GetCastedNodeInstance())
+						{
+							SubNodes->GetCastedNodeInstance()->Modify();
+						}
+					}
+				}
+			}
+
+			Node->DestroyNode();
+
+			if (SavedParentNode)
+			{
+				SavedParentNode->RequestUpdateSlate();
+			}
+		}
+		else
+		{
+			Node->DestroyNode();
+		}
+	}
+}
+
+void FJointEdUtils::RemoveNodes(TArray<class UObject*> NodesToRemove)
+{
+	
+	for (UObject* ToRemove : NodesToRemove){
+
+		if (ToRemove == nullptr) continue;
+		
+		if (UEdGraphNode* Node = Cast<UEdGraphNode>(ToRemove))
+		{
+			if (!Node->CanUserDeleteNode()) continue;
+
+			Node->Modify();
+
+			if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node))
+			{
+				if (CastedNode->GetCastedNodeInstance()) CastedNode->GetCastedNodeInstance()->Modify();
+
+				UJointEdGraphNode* SavedParentNode = CastedNode->GetParentmostNode();
+
+				if (SavedParentNode)
+				{
+					SavedParentNode->Modify();
+
+					if (SavedParentNode->GetCastedNodeInstance())
+					{
+						SavedParentNode->GetCastedNodeInstance()->Modify();
+					}
+
+					for (UJointEdGraphNode* SubNodes : SavedParentNode->GetAllSubNodesInHierarchy())
+					{
+						if (SubNodes)
+						{
+							SubNodes->Modify();
+
+							if (SubNodes->GetCastedNodeInstance())
+							{
+								SubNodes->GetCastedNodeInstance()->Modify();
+							}
+						}
+					}
+				}
+
+				Node->DestroyNode();
+
+				if (SavedParentNode && SavedParentNode != Node)
+				{
+					SavedParentNode->RequestUpdateSlate();
+				}
+			}
+			else
+			{
+				Node->DestroyNode();
+			}
+		}
+	}
+}
+
+
+
+bool FJointEdUtils::GetSafeNameForObjectRenaming(FString& InNewNameOutValidatedName, UObject* ObjectToRename, UObject* InOuter)
+{
+	//Revert if the node instance was nullptr.
+	if (!ObjectToRename) return false;
+
+	//Revert if the new outer is the same with the object.
+	if (ObjectToRename == InOuter) return false;
+
+	//for the case of renaming in the same outer, we need to ignore the existing name of the object, and if the outer is not the same, we must check it as well.
+	FName ExistingName = ObjectToRename->GetOuter() == InOuter ? ObjectToRename->GetFName() : NAME_None;
+	
+	TSharedPtr<FJointEditorNameValidator> NameValidator = MakeShareable(new FJointEditorNameValidator(InOuter, ExistingName));
+	NameValidator->FindValidStringPruningSuffixes(InNewNameOutValidatedName);
+
+	return true;
+}
+
+bool FJointEdUtils::IsNameSafeForObjectRenaming(const FString& InName, UObject* ObjectToRename, UObject* InOuter, FText& OutErrorMessage)
+{
+	//Revert if the node instance was nullptr.
+	if (!ObjectToRename) return false;
+
+	//Revert if the new outer is the same with the object.
+	if (ObjectToRename == InOuter) return false;
+
+	//for the case of renaming in the same outer, we need to ignore the existing name of the object, and if the outer is not the same, we must check it as well.
+	FName ExistingName = ObjectToRename->GetOuter() == InOuter ? ObjectToRename->GetFName() : NAME_None;
+	
+	TSharedPtr<FJointEditorNameValidator> NameValidator = MakeShareable(new FJointEditorNameValidator(InOuter, ExistingName));
+
+	const EValidatorResult Result = NameValidator->Validate(InName, OutErrorMessage);
+	
+	return Result == EValidatorResult::Ok || Result == EValidatorResult::ExistingName;
+}
+
+bool FJointEdUtils::GetSafeNameForObject(FString& InNewNameOutValidatedName, UObject* InOuter)
+{
+	TSharedPtr<FJointEditorNameValidator> NameValidator = MakeShareable(new FJointEditorNameValidator(InOuter, NAME_None));
+	NameValidator->FindValidStringPruningSuffixes(InNewNameOutValidatedName);
+
+	return true;
+}
+
+
+void FJointEdUtils::GetGraphIconForAction(FEdGraphSchemaAction_K2Graph const* const ActionIn, FSlateBrush const*& IconOut, FSlateColor& ColorOut, FText& ToolTipOut)
+{
+	switch (ActionIn->GraphType)
+	{
+	case EEdGraphSchemaAction_K2Graph::Graph:
+		{
+			IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
+			ToolTipOut = LOCTEXT("EventGraph_ToolTip", "Joint Graph");
+		}
+		break;
+	case EEdGraphSchemaAction_K2Graph::Subgraph:
+		{
+			if (Cast<UJointEdGraph>(ActionIn->EdGraph)) // TODO: MAKE IT WORK MORE WITH SUBGRAPH CLASS IF NEEDED
+			{
+				IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.SubGraph_16x") );
+				ToolTipOut = LOCTEXT("JointSubGraph_ToolTip", "Joint Sub Graph");
+			}
+		}
+		break;
+	}
+}
+
+void FJointEdUtils::GetGraphIconFor(const UEdGraph* Graph, FSlateBrush const*& IconOut)
+{
+
+	if (!Graph) return;
+
+	const UJointEdGraph* JointGraph = Cast<const UJointEdGraph>(Graph);
+
+	if (JointGraph->IsRootGraph())
+	{
+		IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
+	}else
+	{
+		IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.SubGraph_16x") );
+	}
+
+	// fallback
+	if (IconOut == nullptr) IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
+	
+}
+
+
+#undef LOCTEXT_NAMESPACE

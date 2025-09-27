@@ -9,9 +9,9 @@
 #include "JointEditorStyle.h"
 
 #include "JointFragmentActions.h"
-#include "JointGraphPinFactory.h"
+#include "JointGraphPinSlateFactory.h"
 #include "JointManagerActions.h"
-#include "JointNodeStyleFactory.h"
+#include "JointGraphNodeSlateFactory.h"
 
 #include "EdGraphUtilities.h"
 #include "JointBuildPresetActions.h"
@@ -70,8 +70,8 @@ void FJointEditorModule::StartupModule()
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_NodeClassManagementTab::MakeInstance());
 
-	JointNodeStyleFactory = MakeShareable(new FJointNodeStyleFactory);
-	JointGraphPinFactory = MakeShareable(new FJointGraphPinFactory);
+	JointNodeStyleFactory = MakeShareable(new FJointGraphNodeSlateFactory);
+	JointGraphPinFactory = MakeShareable(new FJointGraphPinSlateFactory);
 
 	FEdGraphUtilities::RegisterVisualNodeFactory(JointNodeStyleFactory);
 	FEdGraphUtilities::RegisterVisualPinFactory(JointGraphPinFactory);

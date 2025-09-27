@@ -60,6 +60,10 @@ public:
 	virtual void AddSlateOnSubNodePanel(const TSharedRef<SWidget>& Slate) override;
 
 public:
+
+	virtual bool IsSubNodeWidget() const override;
+
+public:
 	
 	/**
 	 * Event for the mouse button up. 
@@ -89,5 +93,8 @@ public:
 private:
 
 	EOrientation LastSeenSubNodeOrientation = EOrientation::Orient_Horizontal;
-	
+
+public:
+
+	const bool IsDissolvedSubNode() const;
 };

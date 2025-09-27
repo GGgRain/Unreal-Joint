@@ -53,34 +53,42 @@ int32 SJointGraphNodeSubNodeBase::OnPaint(const FPaintArgs& Args, const FGeometr
                                           int32 LayerId,
                                           const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
 {
-
-	const class UObject* Brush1ResourceObj = NodeBodyBorderImage ? NodeBodyBorderImage->GetResourceObject() : nullptr;
-	const class UObject* Brush2ResourceObj = NodeBackgroundInBorderImage ? NodeBackgroundInBorderImage->GetResourceObject() : nullptr;
-	const class UObject* Brush3ResourceObj = NodeBackgroundOutBorderImage ? NodeBackgroundOutBorderImage->GetResourceObject() : nullptr;
-	const class UObject* Brush4ResourceObj = GetIconicNodeSlateBrush() ? GetIconicNodeSlateBrush()->GetResourceObject() : nullptr;
-
-	// Fallback if any brush resource pointer is non-null but not a valid UObject
-	if ((Brush1ResourceObj != nullptr && !Brush1ResourceObj->IsValidLowLevelFast()) ||
-		(Brush2ResourceObj != nullptr && !Brush2ResourceObj->IsValidLowLevelFast()) ||
-		(Brush3ResourceObj != nullptr && !Brush3ResourceObj->IsValidLowLevelFast()) ||
-		(Brush4ResourceObj != nullptr && !Brush4ResourceObj->IsValidLowLevelFast()))
+	if (!IsDissolvedSubNode())
 	{
-		// If the border image is not set or invalidated, we should not paint the node body.
-		// TODO : Do we need to paint the fallback node body? Or even can we paint the fallback node body instead???
-		// -> possibly, but probably will not worth. maybe just try to notify the editor toolkit to handle this.
+		const class UObject* Brush1ResourceObj = NodeBodyBorderImage
+			                                         ? NodeBodyBorderImage->GetResourceObject()
+			                                         : nullptr;
+		const class UObject* Brush2ResourceObj = NodeBackgroundInBorderImage
+			                                         ? NodeBackgroundInBorderImage->GetResourceObject()
+			                                         : nullptr;
+		const class UObject* Brush3ResourceObj = NodeBackgroundOutBorderImage
+			                                         ? NodeBackgroundOutBorderImage->GetResourceObject()
+			                                         : nullptr;
+		const class UObject* Brush4ResourceObj = GetIconicNodeSlateBrush()
+			                                         ? GetIconicNodeSlateBrush()->GetResourceObject()
+			                                         : nullptr;
 
-		if (GetCastedGraphNode()
-			&& GetCastedGraphNode()->GetCastedGraph()
-			&& GetCastedGraphNode()->GetCastedGraph()
-			&& GetCastedGraphNode()->GetCastedGraph()->GetToolkit().IsValid())
-			GetCastedGraphNode()->GetCastedGraph()->GetToolkit().Pin()->PopulateNeedReopeningToastMessage();
-		
-		return LayerId;
+		// Fallback if any brush resource pointer is non-null but not a valid UObject
+		if ((Brush1ResourceObj != nullptr && !Brush1ResourceObj->IsValidLowLevelFast()) ||
+			(Brush2ResourceObj != nullptr && !Brush2ResourceObj->IsValidLowLevelFast()) ||
+			(Brush3ResourceObj != nullptr && !Brush3ResourceObj->IsValidLowLevelFast()) ||
+			(Brush4ResourceObj != nullptr && !Brush4ResourceObj->IsValidLowLevelFast()))
+		{
+			// If the border image is not set or invalidated, we should not paint the node body.
+			// TODO : Do we need to paint the fallback node body? Or even can we paint the fallback node body instead???
+			// -> possibly, but probably will not worth. maybe just try to notify the editor toolkit to handle this.
+
+			if (GetCastedGraphNode()
+				&& GetCastedGraphNode()->GetCastedGraph()
+				&& GetCastedGraphNode()->GetCastedGraph()->GetToolkit().IsValid())
+				GetCastedGraphNode()->GetCastedGraph()->GetToolkit().Pin()->PopulateNeedReopeningToastMessage();
+
+			return LayerId;
+		}
 	}
 
 	int CurLayerId = SJointGraphNodeBase::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId,
 	                                              InWidgetStyle, bParentEnabled);
-
 
 	TArray<FOverlayWidgetInfo> OverlayWidgets = GetOverlayWidgets(false, GetDesiredSize());
 
@@ -93,25 +101,22 @@ int32 SJointGraphNodeSubNodeBase::OnPaint(const FPaintArgs& Args, const FGeometr
 				*Widget, FSlateAttributeMetaData::EInvalidationPermission::AllowInvalidationIfConstructed);
 			if (Widget->GetVisibility() == EVisibility::Visible)
 			{
-				 
-				 
 				// call SlatePrepass as these widgets are not in the 'normal' child hierarchy
 				Widget->SlatePrepass(AllottedGeometry.GetAccumulatedLayoutTransform().GetScale());
 
 
 #if UE_VERSION_OLDER_THAN(5, 2, 0)
-				
+
 				const FGeometry WidgetGeometry = AllottedGeometry.MakeChild(
-									OverlayInfo.OverlayOffset, Widget->GetDesiredSize());
+					OverlayInfo.OverlayOffset, Widget->GetDesiredSize());
 
 #else
 				const FGeometry WidgetGeometry = AllottedGeometry.MakeChild(
-					Widget->GetDesiredSize(), FSlateLayoutTransform(1,OverlayInfo.OverlayOffset));
+					Widget->GetDesiredSize(), FSlateLayoutTransform(1, OverlayInfo.OverlayOffset));
 #endif
 
 				CurLayerId = Widget->Paint(Args, WidgetGeometry, MyCullingRect, OutDrawElements, CurLayerId,
 				                           InWidgetStyle, bParentEnabled);
-				
 			}
 		}
 	}
@@ -120,6 +125,44 @@ int32 SJointGraphNodeSubNodeBase::OnPaint(const FPaintArgs& Args, const FGeometr
 	return CurLayerId;
 }
 
+
+TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateNodeContentArea()
+{
+	//It's still here but never be populated.
+	//SAssignNew(LeftNodeBox, SVerticalBox);
+	//SAssignNew(RightNodeBox, SVerticalBox);
+
+	// NODE CONTENT AREA
+	return SNew(SHorizontalBox)
+		.Visibility(EVisibility::SelfHitTestInvisible)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			// RIGHT
+			SAssignNew(CenterContentBox, SVerticalBox)
+		];
+}
+
+
+TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateSubNodePanelSection()
+{
+	if (SubNodePanel.IsValid())
+	{
+		if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); LastSeenSubNodeOrientation != CastedGraphNode->
+			GetSubNodeBoxOrientation())
+		{
+			PopulateSubNodePanel();
+		}
+	}
+	else
+	{
+		PopulateSubNodePanel();
+	}
+
+	return SubNodePanel.ToSharedRef();
+}
 
 void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 {
@@ -166,261 +209,357 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 	UpdateErrorInfo();
 	UpdateBuildTargetPreset();
 
-	switch (GetSlateDetailLevel())
+	if (!IsDissolvedSubNode())
 	{
-	case EJointEdSlateDetailLevel::SlateDetailLevel_Stow:
+		switch (GetSlateDetailLevel())
+		{
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Stow:
 
-		CreateNodeBody(true);
-	
-		NodeBody->SetContent(
-			SNew(SOverlay)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			+ SOverlay::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SBox)
+			CreateNodeBody(true);
+
+			NodeBody->SetContent(
+				SNew(SOverlay)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SOverlay::Slot()
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
-				.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
 				[
-					/*SAssignNew(NodeBackground, SImage)
+					SNew(SBox)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
 					.Visibility(EVisibility::SelfHitTestInvisible)
-					.RenderTransformPivot(FVector2D(0.5))
-					.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Sphere"))
-					.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
-					CreateNodeBackground(true)
-				]
-			]
-			+ SOverlay::Slot()
-			[
-				SAssignNew(CenterWholeBox, SVerticalBox)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				[
-					CreateNameBox()
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					CreateSubNodePanelSection()
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					CreateNodeTagBox()
-				]
-			]
-		);
-		break;
-	case EJointEdSlateDetailLevel::SlateDetailLevel_Minimal_Content:
-		
-		CreateNodeBody();
-	
-		NodeBody->SetContent(
-			SNew(SOverlay)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			+ SOverlay::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SBox)
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
-				.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
-				[
-					/*SAssignNew(NodeBackground, SImage)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					.RenderTransformPivot(FVector2D(0.5))
-					.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
-					CreateNodeBackground()
-				]
-			]
-			+ SOverlay::Slot()
-			[
-				SAssignNew(CenterWholeBox, SVerticalBox)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				[
-					CreateNameBox()
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					SNew(SHorizontalBox)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
+					.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
+					.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
 					[
-						CreateNodeContentArea()
+						/*SAssignNew(NodeBackground, SImage)
+						.Visibility(EVisibility::SelfHitTestInvisible)
+						.RenderTransformPivot(FVector2D(0.5))
+						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Sphere"))
+						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
+						CreateNodeBackground(true)
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
+				]
+				+ SOverlay::Slot()
+				[
+					SAssignNew(CenterWholeBox, SVerticalBox)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					[
+						CreateNameBox()
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
 					[
 						CreateSubNodePanelSection()
 					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						CreateNodeTagBox()
+					]
 				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					PopulateSimpleDisplayForProperties()
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					CreateNodeTagBox()
-				]
-			]
-		);
-		
-		break;
-	case EJointEdSlateDetailLevel::SlateDetailLevel_Maximum:
-		
-		CreateNodeBody();
-	
-		NodeBody->SetContent(
-			SNew(SOverlay)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			+ SOverlay::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SBox)
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
+			);
+			break;
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Minimal_Content:
+
+			CreateNodeBody();
+
+			NodeBody->SetContent(
+				SNew(SOverlay)
 				.Visibility(EVisibility::SelfHitTestInvisible)
-				.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
-				.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
-				[
-					/*SAssignNew(NodeBackground, SImage)
-					.Visibility(EVisibility::SelfHitTestInvisible)
-					.RenderTransformPivot(FVector2D(0.5))
-					.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
-					CreateNodeBackground()
-				]
-			]
-			+ SOverlay::Slot()
-			[
-				SAssignNew(CenterWholeBox, SVerticalBox)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
+				+ SOverlay::Slot()
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
-					CreateNameBox()
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
-				[
-					SNew(SHorizontalBox)
+					SNew(SBox)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
 					.Visibility(EVisibility::SelfHitTestInvisible)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
+					.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
+					.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
 					[
-						CreateNodeContentArea()
+						/*SAssignNew(NodeBackground, SImage)
+						.Visibility(EVisibility::SelfHitTestInvisible)
+						.RenderTransformPivot(FVector2D(0.5))
+						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
+						CreateNodeBackground()
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
+				]
+				+ SOverlay::Slot()
+				[
+					SAssignNew(CenterWholeBox, SVerticalBox)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
 					[
-						CreateSubNodePanelSection()
+						CreateNameBox()
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+						.Visibility(EVisibility::SelfHitTestInvisible)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							CreateNodeContentArea()
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							CreateSubNodePanelSection()
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						PopulateSimpleDisplayForProperties()
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						CreateNodeTagBox()
 					]
 				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
+			);
+
+			break;
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Maximum:
+
+			CreateNodeBody();
+
+			NodeBody->SetContent(
+				SNew(SOverlay)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SOverlay::Slot()
 				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
+				.VAlign(VAlign_Fill)
 				[
-					PopulateSimpleDisplayForProperties()
+					SNew(SBox)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					.MinDesiredWidth(JointGraphNodeResizableDefs::MinFragmentSize.X)
+					.MinDesiredHeight(JointGraphNodeResizableDefs::MinFragmentSize.Y)
+					[
+						/*SAssignNew(NodeBackground, SImage)
+						.Visibility(EVisibility::SelfHitTestInvisible)
+						.RenderTransformPivot(FVector2D(0.5))
+						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
+						CreateNodeBackground()
+					]
 				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Top)
+				+ SOverlay::Slot()
 				[
-					CreateNodeTagBox()
+					SAssignNew(CenterWholeBox, SVerticalBox)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					[
+						CreateNameBox()
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						SNew(SHorizontalBox)
+						.Visibility(EVisibility::SelfHitTestInvisible)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							CreateNodeContentArea()
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							CreateSubNodePanelSection()
+						]
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						PopulateSimpleDisplayForProperties()
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Top)
+					[
+						CreateNodeTagBox()
+					]
 				]
-			]
 
-		);
-		
-		break;
-	}
+			);
 
-	//Set the color value to the current value.
-	PlayNodeBackgroundColorResetAnimationIfPossible(true);
+			break;
+		}
 
-	this->ContentScale.Bind(this, &SGraphNode::GetContentScale);
+		//Set the color value to the current value.
+		PlayNodeBackgroundColorResetAnimationIfPossible(true);
 
-	this->GetOrAddSlot(ENodeZone::Center)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
+		this->ContentScale.Bind(this, &SGraphNode::GetContentScale);
+
+		this->GetOrAddSlot(ENodeZone::Center)
+		    .HAlign(HAlign_Fill)
+		    .VAlign(VAlign_Fill)
 		[
 			NodeBody.ToSharedRef()
 		];
 
 
-	InitializeVoltVariables();
-}
-
-
-TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateNodeContentArea()
-{
-	//It's still here but never be populated.
-	//SAssignNew(LeftNodeBox, SVerticalBox);
-	//SAssignNew(RightNodeBox, SVerticalBox);
-
-	// NODE CONTENT AREA
-	return SNew(SHorizontalBox)
-		.Visibility(EVisibility::SelfHitTestInvisible)
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		[
-			// RIGHT
-			SAssignNew(CenterContentBox, SVerticalBox)
-		];
-}
-
-TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateSubNodePanelSection()
-{
-	if (SubNodePanel.IsValid())
-	{
-		if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); LastSeenSubNodeOrientation != CastedGraphNode->GetSubNodeBoxOrientation())
-		{
-			PopulateSubNodePanel();
-		}
-	}else
-	{
-		PopulateSubNodePanel();
+		InitializeVoltVariables();
 	}
-	
-	return SubNodePanel.ToSharedRef();
+	else
+	{
+
+		switch (GetSlateDetailLevel())
+		{
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Stow:
+
+			SAssignNew(CenterWholeBox, SVerticalBox)
+			.Visibility(EVisibility::SelfHitTestInvisible)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				SNew(SHorizontalBox)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateNodeContentArea()
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateSubNodePanelSection()
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				CreateNodeTagBox()
+			];
+			break;
+			
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Minimal_Content:
+
+			SAssignNew(CenterWholeBox, SVerticalBox)
+			.Visibility(EVisibility::SelfHitTestInvisible)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				SNew(SHorizontalBox)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateNodeContentArea()
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateSubNodePanelSection()
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				PopulateSimpleDisplayForProperties()
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				CreateNodeTagBox()
+			];
+
+			break;
+		case EJointEdSlateDetailLevel::SlateDetailLevel_Maximum:
+
+			SAssignNew(CenterWholeBox, SVerticalBox)
+			.Visibility(EVisibility::SelfHitTestInvisible)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				SNew(SHorizontalBox)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateNodeContentArea()
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					CreateSubNodePanelSection()
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				PopulateSimpleDisplayForProperties()
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Top)
+			[
+				CreateNodeTagBox()
+			];
+
+			break;
+		}
+
+		//Set the color value to the current value.
+		PlayNodeBackgroundColorResetAnimationIfPossible(true);
+
+		this->ContentScale.Bind(this, &SGraphNode::GetContentScale);
+
+		this->GetOrAddSlot(ENodeZone::Center)
+		    .HAlign(HAlign_Fill)
+		    .VAlign(VAlign_Fill)
+		[
+			CenterWholeBox.ToSharedRef()
+		];
+
+
+		InitializeVoltVariables();
+	}
 }
 
 FVector2D SJointGraphNodeSubNodeBase::GetNodeMinimumSize() const
@@ -439,7 +578,7 @@ void SJointGraphNodeSubNodeBase::PopulateSubNodePanel()
 	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
 	{
 		LastSeenSubNodeOrientation = CastedGraphNode->GetSubNodeBoxOrientation();
-		
+
 		switch (LastSeenSubNodeOrientation)
 		{
 		case Orient_Horizontal:
@@ -495,13 +634,13 @@ void SJointGraphNodeSubNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget
 			if (const TSharedPtr<SHorizontalBox> CastedSubNodePanel = INLINE_GetCastedSubNodePanel<SHorizontalBox>())
 			{
 				CastedSubNodePanel->AddSlot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.Padding(FJointEditorStyle::Margin_SubNode)
-					[
-						Slate
-					];
+				                  .AutoWidth()
+				                  .VAlign(VAlign_Center)
+				                  .HAlign(HAlign_Center)
+				                  .Padding(FJointEditorStyle::Margin_SubNode)
+				[
+					Slate
+				];
 			}
 
 			break;
@@ -510,18 +649,23 @@ void SJointGraphNodeSubNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget
 			if (const TSharedPtr<SVerticalBox> CastedSubNodePanel = INLINE_GetCastedSubNodePanel<SVerticalBox>())
 			{
 				CastedSubNodePanel->AddSlot()
-					.AutoHeight()
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.Padding(FJointEditorStyle::Margin_SubNode)
-					[
-						Slate
-					];
+				                  .AutoHeight()
+				                  .VAlign(VAlign_Center)
+				                  .HAlign(HAlign_Center)
+				                  .Padding(FJointEditorStyle::Margin_SubNode)
+				[
+					Slate
+				];
 			}
 
 			break;
 		}
 	}
+}
+
+bool SJointGraphNodeSubNodeBase::IsSubNodeWidget() const
+{
+	return true;
 }
 
 
@@ -573,7 +717,12 @@ FReply SJointGraphNodeSubNodeBase::OnMouseButtonDown(const FGeometry& SenderGeom
 
 		if (TestNode && TestNode->IsSubNode())
 		{
-			if (GetOwnerPanel().IsValid()) GetOwnerPanel()->SelectionManager.ClickedOnNode(GraphNode, MouseEvent);
+			TSharedPtr<SGraphPanel> Ptr = GetOwnerPanel();
+			
+			if (Ptr.IsValid())
+			{
+				Ptr->SelectionManager.ClickedOnNode(GraphNode, MouseEvent);
+			}
 		}
 	}
 	return FReply::Handled();
@@ -613,19 +762,27 @@ FLinearColor SJointGraphNodeSubNodeBase::GetNodeBodyBackgroundColor() const
 {
 	if (GetSlateDetailLevel() == EJointEdSlateDetailLevel::SlateDetailLevel_Stow)
 	{
-		if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode){
-
-			if ( CastedGraphNode->GetCastedNodeInstance() && CastedGraphNode->GetCastedNodeInstance()->EdNodeSetting.bUseIconicColorForNodeBodyOnStow)
+		if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+		{
+			if (InGraphNode->GetEdNodeSetting().bUseIconicColorForNodeBodyOnStow)
 			{
-				return CastedGraphNode->GetNodeTitleColor();
-			}else
+				return InGraphNode->GetNodeTitleColor();
+			}
+			else
 			{
-				return CastedGraphNode->GetNodeBodyTintColor();
+				return InGraphNode->GetNodeBodyTintColor();
 			}
 		}
 	}
 
 	return SJointGraphNodeBase::GetNodeBodyBackgroundColor();
+}
+
+const bool SJointGraphNodeSubNodeBase::IsDissolvedSubNode() const
+{
+	if (const UJointEdGraphNode_Fragment* CastedSelfGraphNode = Cast<UJointEdGraphNode_Fragment>(GraphNode)) return CastedSelfGraphNode->IsDissolvedSubNode();
+
+	return false;
 }
 
 

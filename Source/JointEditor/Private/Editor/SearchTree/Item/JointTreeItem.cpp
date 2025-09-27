@@ -105,6 +105,7 @@ EJointTreeFilterResult FJointTreeItem::GetFilterResult() const
 void FJointTreeItem::SetFilterResult(EJointTreeFilterResult InResult)
 {
 	FilterResult = InResult;
+	//UE_LOG(LogTemp, Log, TEXT("SetFilterResult: %d for %s"), (int32)InResult, *GetRowItemName().ToString());
 }
 
 FReply FJointTreeItem::OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)

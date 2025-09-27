@@ -2,13 +2,18 @@
 
 #pragma once
 
+#include "BlueprintEditor.h"
 #include "Editor/Graph/JointEdGraph.h"
 #include "EditorUndoClient.h"
-#include "VoltAnimationTrack.h"
-#include "EditorWidget/SJointGraphPanel.h"
+#include "JointEditorGraphDocument.h"
 #include "WorkflowOrientedApp/WorkflowCentricApplication.h"
 #include "Misc/NotifyHook.h"
 
+class UJointEdGraphNode_Composite;
+class UJointEdGraphNode_Tunnel;
+class FTabInfo;
+class SJointGraphEditor;
+class FDocumentTabFactory;
 class FJointEditorNodePickingManager;
 class SJointToolkitToastMessageHub;
 class UVoltAnimationManager;
@@ -18,9 +23,30 @@ class FSpawnTabArgs;
 class ISlateStyle;
 class IToolkitHost;
 class SDockTab;
+class SJointEditorOutliner;
 
 class UJointManager;
 class UJointEdGraph;
+
+namespace EJointEditorTapIDs
+{
+	static const FName AppIdentifier("JointEditorToolkit_019");
+	static const FName DetailsID("Joint_DetailsID");
+	static const FName PaletteID("Joint_PaletteID");
+	static const FName OutlinerID("Joint_OutlinerID");
+	static const FName SearchReplaceID("Joint_SearchID");
+	static const FName CompileResultID("Joint_CompileResultID");
+	static const FName ContentBrowserID("Joint_ContentBrowserID");
+	static const FName EditorPreferenceID("Joint_EditorPreferenceID");
+	static const FName GraphID("Document"); // This is the tab id used for graph documents - HARDCODED on the engine source and can't help with it our side (more specifically, it's not changeable on the lower version of the engine), Damn.
+}
+
+namespace EJointEditorModes
+{
+	static const FName StandaloneMode("JointEditor_StandaloneMode");
+}
+
+
 
 /**
  * Implements an Editor toolkit for textures.
@@ -34,6 +60,7 @@ public:
 	virtual ~FJointEditorToolkit() override;
 
 public:
+
 	//Initialize Joint manager editor and open up the Joint manager for the provided asset.
 	void InitJointEditor(const EToolkitMode::Type Mode, const TSharedPtr<class IToolkitHost>& InitToolkitHost,
 							UJointManager* InJointManager);
@@ -48,18 +75,19 @@ public:
 	void InitializeContentBrowser();
 	void InitializeEditorPreferenceView();
 	void InitializePaletteView();
+	void InitializeOutliner();
 	void InitializeManagerViewer();
-	void InitializeGraphEditor();
 	void InitializeCompileResult();
 
 	void FeedEditorSlateToEachTab() const;
 
 public:
+	
 	TSharedRef<SDockTab> SpawnTab_EditorPreference(const FSpawnTabArgs& Args, FName TabIdentifier) const;
 	TSharedRef<SDockTab> SpawnTab_ContentBrowser(const FSpawnTabArgs& Args, FName TabIdentifier);
 	TSharedRef<SDockTab> SpawnTab_Details(const FSpawnTabArgs& Args, FName TabIdentifier);
 	TSharedRef<SDockTab> SpawnTab_Palettes(const FSpawnTabArgs& Args, FName TabIdentifier);
-	TSharedRef<SDockTab> SpawnTab_Graph(const FSpawnTabArgs& Args, FName TabIdentifier);
+	TSharedRef<SDockTab> SpawnTab_Outliner(const FSpawnTabArgs& Args, FName TabIdentifier);
 	TSharedRef<SDockTab> SpawnTab_Search(const FSpawnTabArgs& Args, FName TabIdentifier);
 	TSharedRef<SDockTab> SpawnTab_CompileResult(const FSpawnTabArgs& Args, FName TabIdentifier);
 
@@ -80,6 +108,11 @@ public:
 	//~ Begin FEditorUndoClient Interface
 	virtual void PostUndo(bool bSuccess) override;
 	virtual void PostRedo(bool bSuccess) override;
+
+public:
+
+	void OnBeginPIE(bool bArg);
+	void OnEndPIE(bool bArg);
 	
 public:
 
@@ -97,24 +130,11 @@ public:
 	void SetJointManagerBeingEdited(UJointManager* NewManager);
 
 public:
+	
 	void RequestManagerViewerRefresh();
 
 public:
-	
-	void CreateNewGraphForEditingJointManagerIfNeeded() const;
 
-	void InitializeGraph();
-
-	void OnGraphRequestUpdate();
-
-public:
-
-	/**
-	 * Get the graph that the toolkit is currently editing.
-	 * @return the graph that the toolkit is currently editing.
-	 */
-	UJointEdGraph* GetJointGraph() const;
-	
 	/**
 	 * Get the Joint manager that the toolkit is currently editing.
 	 * @return the Joint manager that the toolkit is currently editing.
@@ -122,15 +142,120 @@ public:
 	UJointManager* GetJointManager() const;
 
 public:
+
+	//Graph Object related
+
+	/**
+	 * Get the main graph that the toolkit is currently editing.
+	 * @return the main graph that the toolkit is currently editing. You can access sub graphs from the main graph.
+	 */
+	UJointEdGraph* GetMainJointGraph() const;
+
+	/**
+	 * Get the currently focused graph that the toolkit is editing.
+	 * @return the currently focused graph that the toolkit is editing. You can access sub graphs from the main graph.
+	 */
+	UJointEdGraph* GetFocusedJointGraph() const;
+
+	//@note : if you're looking for a function that can return all graphs, please use FJointEdUtils::GetAllGraphsFrom()
+	
+	bool IsGraphInCurrentJointManager(UEdGraph* Graph);
+
+private:
+
+	/**
+	 * Create a new root graph for the current Joint manager if it doesn't have one.
+	 * We need to create a new graph for editing on the toolkit side - the asset may not have any graph in some unfortunate cases.
+	 */
+	void CreateNewRootGraphForJointManagerIfNeeded() const;
+
+public:
+
+	// Document management
+	
+	void InitializeDocumentManager();
+	
+public:
+
+	TSharedPtr<SDockTab> OpenDocument(UObject* DocumentID, FDocumentTracker::EOpenDocumentCause OpenMode = FDocumentTracker::OpenNewDocument);
+
+	void CloseDocumentTab(UObject* DocumentID);
+	
+	void SaveEditedObjectState();
+
+	/** Create new tab for each element of LastEditedObjects array */
+	void RestoreEditedObjectState();
+
+public:
+	
+	void RefreshJointEditorOutliner();
+	void CleanInvalidDocumentTabs();
+
+public:
+
+	TSharedPtr<FDocumentTracker> GetDocumentManager() const;
+	
+private:
+
+	// Document tracker for managing editor tabs.
+	TSharedPtr<class FDocumentTracker> DocumentManager;
+
+public:
+	
+	/**
+	 * Callbacks for graph editor events.
+	 */
+
+	TSharedRef<SGraphEditor> CreateGraphEditorWidget(TSharedRef<FTabInfo> TabInfo, UJointEdGraph* EdGraph);
+	
+	void OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEditor);
+	
+	void OnGraphEditorBackgrounded(TSharedRef<SGraphEditor> GraphEditor);
+	
+	void OnGraphEditorTabClosed(TSharedRef<SDockTab> DockTab);
+
+	void OnGraphEditorNodeTitleCommitted(const FText& NewText, ETextCommit::Type CommitInfo, UEdGraphNode* NodeBeingChanged);
+	
+	void OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection);
+
+public:
+	
+	void NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection) const;
+	
+public:
+
+	FGraphPanelSelectionSet GetSelectedNodes() const;
+	
+public:
+
+	TWeakPtr<FDocumentTabFactory> GraphEditorTabFactoryPtr;
+
+public:
+
+	/** Get the currently focused graph editor, if any */
+	TSharedPtr<SJointGraphEditor> GetFocusedGraphEditor() const;
+	
+private:
+
+	TWeakPtr<SJointGraphEditor> FocusedGraphEditorPtr;
+
+public:
 	
 	TSharedPtr<class IDetailsView> EditorPreferenceViewPtr;
 	TSharedPtr<class SJointList> ContentBrowserPtr;
-	TSharedPtr<class SJointGraphEditor> GraphEditorPtr;
 	TSharedPtr<class IDetailsView> DetailsViewPtr;
 	TSharedPtr<class SJointManagerViewer> ManagerViewerPtr;
-	TSharedPtr<class SWidget> JointFragmentPalettePtr;
-	
+	TSharedPtr<class SJointFragmentPalette> JointFragmentPalettePtr;
+	TSharedPtr<class SJointEditorOutliner> JointEditorOutlinerPtr;
+
 	TSharedPtr<class FJointEditorToolbar> Toolbar;
+
+public:
+	
+	TSharedPtr<class SJointToolkitToastMessageHub> GetOrCreateGraphToastMessageHub();
+	TSharedPtr<class SJointToolkitToastMessageHub> GetGraphToastMessageHub() const;
+
+	void CleanUpGraphToastMessageHub();
 
 public:
 
@@ -140,8 +265,6 @@ private:
 	
 	TWeakObjectPtr<UJointManager> JointManager;
 
-	FOnGraphRequestUpdate::FDelegate GraphRequestUpdateDele;
-	
 public:
 	
 	void OnDebuggingJointInstanceChanged(TWeakObjectPtr<AJointActor> WeakObject);
@@ -150,6 +273,17 @@ public:
 
 	TWeakObjectPtr<AJointActor> GetDebuggingJointInstance();
 
+public:
+
+	//Debugger related
+
+	TSharedRef<class SWidget> OnGetDebuggerActorsMenu();
+	
+	FText GetDebuggerActorDesc() const;
+	
+	void OnDebuggerActorSelected(TWeakObjectPtr<AJointActor> InstanceToDebug);
+
+
 private:
 
 	/**
@@ -157,34 +291,41 @@ private:
 	 */
 	TWeakObjectPtr<AJointActor> DebuggingJointInstance;
 
-protected:
-
-	/** Handle to the registered OnClassListUpdated delegate */
-	FDelegateHandle OnClassListUpdatedDelegateHandle;
-	
-public:
-
-	void HandleNewAssetActionClassPicked(UClass* InClass) const;
-	void OnNodeTitleCommitted(const FText& NewText, ETextCommit::Type CommitInfo, UEdGraphNode* NodeBeingChanged);
-	bool OnVerifyNodeTitleChanged(const FText& InText,UEdGraphNode* NodeBeingEdited, FText& OutErrorMessage);
-	virtual void OnClassListUpdated();
-
-public:
-	//Toolkit actions
-
-	FGraphPanelSelectionSet GetSelectedNodes() const;
-	
-	void OnGraphSelectedNodesChanged(const TSet<class UObject*>& NewSelection);
-	
-	void NotifySelectionChangeToNodeSlates(const TSet<class UObject*>& NewSelection) const;
-	
 public:
 	
-	void OnCompileJoint();
-	bool CanCompileJoint();
+	/**
+	 * Compile all graphs that the toolkit is currently editing.
+	 */
+	void CompileAllJointGraphs();
 
-	void OnCompileJointFinished(const UJointEdGraph::FJointGraphCompileInfo& CompileInfo) const;
+	/**
+	 * Check whether all graphs that the toolkit is currently editing can be compiled.
+	 * @return true if all graphs that the toolkit is currently editing can be compiled, false otherwise.
+	 */
+	bool CanCompileAllJointGraphs();
+
+	void OnCompileJointGraphFinished(const UJointEdGraph::FJointGraphCompileInfo& CompileInfo) const;
+	
 	void OnCompileResultTokenClicked(const TSharedRef<IMessageToken>& MessageToken);
+
+public:
+
+	/**
+	 * Get the node picking manager for the editor.
+	 * @return the node picking manager for the editor.
+	 */
+	TSharedPtr<FJointEditorNodePickingManager> GetNodePickingManager() const;
+
+	TSharedPtr<FJointEditorNodePickingManager> GetOrCreateNodePickingManager();
+
+private:
+
+	/**
+	 * Node picking manager for the editor.
+	 * Access this manager to perform node picking actions.
+	 */
+	TSharedPtr<FJointEditorNodePickingManager> NodePickingManager;
+	
 
 public:
 
@@ -198,6 +339,7 @@ public:
 
 	void PasteNodes();
 	void PasteNodesHere(const FVector2D& Location);
+	
 	bool CanPasteNodes() const;
 	virtual void FixupPastedNodes(const TSet<UEdGraphNode*>& NewPastedGraphNodes, const TMap<FGuid/*New*/, FGuid/*Old*/>& NewToOldNodeMapping);
 	
@@ -220,6 +362,20 @@ public:
 	bool CanJumpToSelection();
 	void OnJumpToSelection();
 
+	/** Called when a selection of nodes are being collapsed into a sub-graph */
+	void OnCollapseSelectionToSubGraph();
+	bool CanCollapseSelectionToSubGraph() const;
+
+	void CollapseNodes(TSet<class UEdGraphNode*>& InCollapsableNodes);
+	void CollapseNodesIntoGraph(UJointEdGraphNode_Composite* InGatewayNode, UJointEdGraphNode_Tunnel* InEntryNode, UJointEdGraphNode_Tunnel* InResultNode, UEdGraph* InSourceGraph, UEdGraph* InDestinationGraph, TSet<UEdGraphNode*>& InCollapsableNodes, bool bCanDiscardEmptyReturnNode, bool bCanHaveWeakObjPtrParam);
+
+	void MoveNodesToGraph(TArray<TObjectPtr<class UEdGraphNode>>& SourceNodes, UEdGraph* DestinationGraph, TSet<UEdGraphNode*>& OutExpandedNodes, UEdGraphNode** OutEntry, UEdGraphNode** OutResult, const bool bIsCollapsedGraph);
+
+	/** Called when a selection of nodes are being collapsed into a sub-graph */
+	void OnExpandNodes();
+	bool CanExpandNodes() const;
+	
+	void ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InSourceGraph, TSet<UEdGraphNode*>& OutExpandedNodes);
 	
 	void ToggleShowNormalConnection();
 	bool IsShowNormalConnectionChecked() const;
@@ -260,6 +416,12 @@ public:
 	void OnToggleDebuggerExecution();
 	bool GetCheckedToggleDebuggerExecution() const;
 
+	void OnDissolveSubNode();
+	bool CheckCanDissolveSubNode() const;
+
+	void OnSolidifySubNode();
+	bool CheckCanSolidifySubNode() const;
+
 	void OnToggleVisibilityChangeModeForSimpleDisplayProperty();
 	bool GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const;
 
@@ -294,7 +456,6 @@ public:
 
 	void ClearNodePickerPastedToastMessage() const;
 
-
 public:
 
 	FGuid NodePickingToastMessageGuid;
@@ -309,35 +470,10 @@ public:
 	
 	FGuid RequestReopenToastMessageGuid;
 
-
-public:
-
-	void OnBeginPIE(bool bArg);
-	
-	void OnEndPIE(bool bArg);
-
 public:
 
 	void OnContentBrowserAssetDoubleClicked(const FAssetData& AssetData);
 	
-private:
-
-	/**
-	 * Node picking manager for the editor.
-	 * Access this manager to perform node picking actions.
-	 */
-	TSharedPtr<FJointEditorNodePickingManager> NodePickingManager;
-	
-public:
-
-	/**
-	 * Get the node picking manager for the editor.
-	 * @return the node picking manager for the editor.
-	 */
-	TSharedPtr<FJointEditorNodePickingManager> GetNodePickingManager() const;
-
-	void AllocateNodePickerIfNeeded();
-
 private:
 
 	bool bIsOnVisibilityChangeModeForSimpleDisplayProperty = false;
@@ -359,12 +495,18 @@ public:
 	 * @param NodeToHighlight The target node to stop highlight.
 	 */
 	void StopHighlightingNode(class UJointEdGraphNode* NodeToHighlight);
+
+private:
+
+	//hyperlink related
 	
 	/**
 	 * Move the viewport to the provided node to make it be centered.
 	 */
 	void JumpToNode(UEdGraphNode* Node, bool bRequestRename = false);
-	
+
+public:
+
 	void JumpToHyperlink(UObject* ObjectReference, bool bRequestRename = false);
 
 	/**
@@ -385,19 +527,14 @@ public:
 
 public:
 
-	//Debugger related
-
-	TSharedRef<class SWidget> OnGetDebuggerActorsMenu();
-	FText GetDebuggerActorDesc() const;
-	void OnDebuggerActorSelected(TWeakObjectPtr<AJointActor> InstanceToDebug);
+	void MoveNodesToAveragePos(TSet<UEdGraphNode*>& AverageNodes, FVector2D SourcePos, bool bExpandedNodesNeedUniqueGuid = false) const;
 
 public:
-	/**
-	 * Find or add Joint Editor Toolkit for the provided asset or object.
-	 * @param ObjectRelatedTo The joint manager related object.
-	 * @param bOpenIfNotPresent If not present, open up.
-	 * @return Found toolkit for the provided asset.
-	 */
-	static FJointEditorToolkit* FindOrOpenEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent = true);
-
+	
+	// Check if we are currently in Play In Editor mode.
+	bool IsPlayInEditorActive() const;
+	
+	// Check if the current editor is in editing mode.
+	bool IsInEditingMode() const;
+	
 };

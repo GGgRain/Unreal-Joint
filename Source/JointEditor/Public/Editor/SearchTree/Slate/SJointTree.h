@@ -28,7 +28,8 @@ public:
 	SLATE_BEGIN_ARGS(SJointTree)
 	{
 	}
-	SLATE_ARGUMENT(FJointPropertyTreeBuilderArgs, BuilderArgs)
+		SLATE_ATTRIBUTE(FJointPropertyTreeBuilderArgs, BuilderArgs)
+		SLATE_ATTRIBUTE(FJointPropertyTreeFilterArgs, FilterArgs)
 	SLATE_END_ARGS()
 	
 public:
@@ -43,23 +44,28 @@ public:
 public:
 	void Construct(const FArguments& InArgs);
 
+	~SJointTree();
+
 public:
+
 	/** Creates the tree control and then populates */
 	void CreateTreeColumns();
 
 	void OnColumnSortModeChanged(EColumnSortPriority::Type SortPriority, const FName& ColumnId,
 	                             EColumnSortMode::Type InSortMode);
-	void AbandonAndJoinWithBuilderThread();
-
-	/** Function to build the skeleton tree widgets from the source skeleton tree */
-	void BuildFromJointManagers();
+	
+	void BuildFromJointManagers(const TArray<TWeakObjectPtr<UJointManager>>& JointManagersToShow);
 
 	/** Apply filtering to the tree */
 	void ApplyFilter();
 
 	void OnFilterDataChanged();
-	
-	void SortColumns();
+
+public:
+
+	void OnJointTreeBuildStarted();
+	void OnJointTreeBuildFinished(const FJointTreeBuilderOutput InOutput);
+	void OnJointTreeBuildCancelled();
 
 public:
 
@@ -68,22 +74,6 @@ public:
 	void ShowLoadingStateWidget();
 
 	void HideLoadingStateWidget();
-	
-public:
-
-	void AsyncLock();
-
-	void AsyncUnlock();
-
-	const bool& IsAsyncLocked() const;
-	
-private:
-
-	bool bIsAsyncLocked = false;
-
-public:
-
-	TArray<TWeakObjectPtr<UJointManager>> JointManagerToShow;
 
 public:
 	
@@ -97,13 +87,12 @@ public:
 
 	/** Filtered view of the skeleton tree. This is what is actually used in the tree widget */
 	TArray<TSharedPtr<class IJointTreeItem>> FilteredItems;
-
-
+	
 public:
 
 	TSharedPtr<class FJointTreeFilter> Filter;
 	
-	TSharedPtr<class IJointTreeBuilder> Builder;
+	TSharedPtr<class FJointTreeBuilder> Builder;
 
 	TSharedPtr<class FTextFilterExpressionEvaluator> TextFilterPtr;
 
@@ -120,7 +109,7 @@ public:
 	
 	/** Delegate handler for when the tree needs refreshing */
 	void HandleTreeRefresh();
-
+	
 	EJointTreeFilterResult HandleFilterJointPropertyTreeItem(const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem);
 
 public:
@@ -135,6 +124,10 @@ public:
 	
 	void HandleGetChildren(TSharedPtr<IJointTreeItem> Item, TArray<TSharedPtr<IJointTreeItem>>& OutChildren);
 
+public:
+
+	TAttribute<FJointPropertyTreeFilterArgs> FilterArgsAttr;
+	TAttribute<FJointPropertyTreeBuilderArgs> BuilderArgsAttr;
 
 private:
 
@@ -152,6 +145,10 @@ public:
 public:
 
 	void JumpToHyperlink(UObject* Obj);
-	
+
+public:
+
+	FJointTreeBuilderOutput CurrentOutput;
+
 };
 

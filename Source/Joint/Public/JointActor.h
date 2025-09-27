@@ -102,6 +102,7 @@ private:
 
 	//Only debugger class in the editor module can access this value.
 	friend class UJointDebugger;
+	friend class FJointEdUtils;
 	friend class FJointEditorToolkit;
 
 #endif

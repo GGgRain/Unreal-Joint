@@ -40,16 +40,22 @@ void FJointEditorCommands::RegisterCommands()
 
 	UI_COMMAND(EscapeNodePickingMode, "Escape Node Picking Mode", "Escape node picking mode without selecting any of the nodes.",  EUserInterfaceActionType::Button, FInputChord(EKeys::Escape));
 
-	UI_COMMAND(RemoveAllBreakpoints, "Remove All Breakpoints", "Remove all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::FromBools(1,0,1,0), EKeys::F9));
-	UI_COMMAND(EnableAllBreakpoints, "Enable All Breakpoints", "Enable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::FromBools(1,0,1,0), EKeys::F10));
-	UI_COMMAND(DisableAllBreakpoints, "Disable All Breakpoints", "Disable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::FromBools(1,0,1,0), EKeys::F11));
+	//It's a bit mask with shift op - you can use + to combine multiple modifier keys.
+	UI_COMMAND(RemoveAllBreakpoints, "Remove All Breakpoints", "Remove all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::F9));
+	UI_COMMAND(EnableAllBreakpoints, "Enable All Breakpoints", "Enable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::F10));
+	UI_COMMAND(DisableAllBreakpoints, "Disable All Breakpoints", "Disable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::F11));
 
 	UI_COMMAND(CreateFoundation, "Create Foundation", "Create a foundation node", EUserInterfaceActionType::Button, FInputChord(EKeys::F));
 
 	UI_COMMAND(ToggleDebuggerExecution, "Toggle Debugger Execution", "Toggle the debugger's execution to prevent any exection halting by the breakpoints on any Joint.",  EUserInterfaceActionType::ToggleButton, FInputChord(EModifierKey::FromBools(1,1,1,0), EKeys::F11));
-
-	UI_COMMAND(ShowIndividualVisibilityButtonForSimpleDisplayProperty, "Show Individual Visibility Button For Simple Display Property", "Show Individual Visibility Button For Simple Display Property.",  EUserInterfaceActionType::ToggleButton, FInputChord(EKeys::X));
 	
+	UI_COMMAND(DissolveSubNodeIntoParentNode, "Dissolve Sub Node", "Dissolve this sub node with its parent node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift,EKeys::D));
+	UI_COMMAND(SolidifySubNodesFromParentNode, "Solidify Sub Nodes", "Solidify all the sub nodes from this node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::S));
+	
+	UI_COMMAND(ShowIndividualVisibilityButtonForSimpleDisplayProperty, "Show Individual Visibility Button For Simple Display Property", "Show Individual Visibility Button For Simple Display Property.",  EUserInterfaceActionType::ToggleButton, FInputChord(EKeys::X));
+
+	// SMyBlueprint ported commands for Joint Editor Outliner
+	UI_COMMAND( DeleteEntry, "Delete", "Delete the selected entry.", EUserInterfaceActionType::Button, FInputChord(EKeys::Delete) );
 }
 
 FJointDebuggerCommands::FJointDebuggerCommands()

@@ -138,8 +138,9 @@ void SJointBreakpointIndicator::UpdateDebugData()
 		//Try to collect it.
 		if (this->ParentGraphNodeSlate.IsValid())
 		{
-			DebugData = UJointDebugger::GetDebugDataFor(
-				this->ParentGraphNodeSlate.Pin()->GetCastedGraphNode());
+			UJointEdGraphNode* Node =this->ParentGraphNodeSlate.Pin()->GetCastedGraphNode();
+			
+			DebugData = UJointDebugger::GetDebugDataForInstance(Node);
 		}
 	}
 	

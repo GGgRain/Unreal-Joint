@@ -20,7 +20,7 @@ TSubclassOf<UJointNodeBase> UJointEdGraphNode_Foundation::SupportedNodeClass()
 
 void UJointEdGraphNode_Foundation::ReallocatePins()
 {
-	if (!GetAllPinsFromChildren().IsEmpty())
+	if (!GetPinsFromSubNodes().IsEmpty())
 	{
 
 		TArray<FJointEdPinData> NewPinData;
@@ -75,23 +75,14 @@ void UJointEdGraphNode_Foundation::NodeConnectionListChanged()
 
 		if (Pin->Direction == EEdGraphPinDirection::EGPD_Input) continue;
 
-		if(CheckProvidedPinIsOnPinData(Pin))
+		if(CheckPinIsOriginatedFromThis(Pin))
 		{
-			for (const UEdGraphPin* LinkedTo : Pin->LinkedTo)
+			for ( UEdGraphPin* LinkedTo : Pin->LinkedTo)
 			{
-				if (LinkedTo == nullptr) continue;
-
-				if (LinkedTo->GetOwningNode() == nullptr) continue;
-
-				UEdGraphNode* ConnectedNode = LinkedTo->GetOwningNode();
-
-				if (!ConnectedNode) continue;
-
-				UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(ConnectedNode);
-
-				if (!CastedGraphNode) continue;
-
-				CastedGraphNode->AllocateReferringNodeInstancesOnConnection(CastedNode->NextNode);
+				if (UJointEdGraphNode* LinkedPinOwner = CastPinOwnerToJointEdGraphNode(LinkedTo))
+				{
+					LinkedPinOwner->AllocateReferringNodeInstancesOnConnection(CastedNode->NextNode, LinkedTo);
+				}
 			}
 		}
 	}

@@ -4,7 +4,10 @@
 
 #include "JointAdvancedWidgets.h"
 #include "JointEdGraph.h"
+#include "JointEdGraphNode_Composite.h"
+#include "JointEdGraphNode_Connector.h"
 #include "JointEditorStyle.h"
+#include "JointEdUtils.h"
 #include "ItemTag/JointTreeItemTag_ManagerFragment.h"
 #include "ItemTag/JointTreeItemTag_Node.h"
 #include "ItemTag/JointTreeItemTag_Type.h"
@@ -17,10 +20,10 @@
 #define LOCTEXT_NAMESPACE "JointPropertyList"
 
 
-FJointTreeItem_Node::FJointTreeItem_Node(TWeakObjectPtr<UJointNodeBase> InNodePtr,
+FJointTreeItem_Node::FJointTreeItem_Node(TWeakObjectPtr<UEdGraphNode> InNodePtr,
                                          const TSharedRef<SJointTree>& InTree)
 	: FJointTreeItem(InTree)
-	  , NodePtr(InNodePtr)
+	  , EditorNodePtr(InNodePtr)
 {
 	AllocateItemTags();
 }
@@ -40,28 +43,15 @@ void FJointTreeItem_Node::GenerateWidgetForNameColumn(TSharedPtr<SHorizontalBox>
 	TAttribute<FSlateColor> NodeBorderColor = TAttribute<FSlateColor>::CreateLambda([this]
 	{
 		constexpr FLinearColor DefaultColor = FLinearColor(0.1, 0.1, 0.1, 1);
-
-		if (NodePtr.Get() && NodePtr->GetJointManager() && NodePtr->GetJointManager()->JointGraph && Cast<
-			UJointEdGraph>(NodePtr->GetJointManager()->JointGraph))
+		
+		if (EditorNodePtr.IsValid())
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = Cast<UJointEdGraph>(
-				NodePtr->GetJointManager()->JointGraph)->GetCachedJointGraphNodes();
-
-			for (TSoftObjectPtr<UJointEdGraphNode> CachedGraphNode : GraphNodes)
-			{
-				if (!CachedGraphNode.IsValid()) continue;
-
-				if (CachedGraphNode->NodeInstance == NodePtr) return CachedGraphNode->GetNodeTitleColor();
-			}
+			return EditorNodePtr->GetNodeTitleColor();
 		}
+		
 		return DefaultColor;
 	});
-
-	TAttribute<FText> NodeName_Attr = TAttribute<FText>::CreateLambda([this]
-	{
-		return GetObject() ? FText::FromName(GetObject()->GetFName()) : LOCTEXT("NodeName_Null", "INVALID OBJECT");
-	});
-
+	
 	Box->AddSlot()
 		.AutoWidth()
 		.VAlign(VAlign_Center)
@@ -88,7 +78,7 @@ void FJointTreeItem_Node::GenerateWidgetForNameColumn(TSharedPtr<SHorizontalBox>
 				+ SHorizontalBox::Slot()
 				[
 					SNew(SInlineEditableTextBlock)
-					.Text(NodeName_Attr)
+					.Text(this, &FJointTreeItem_Node::GetDisplayName)
 					.HighlightText(InFilterText)
 					.IsReadOnly(true)
 				]
@@ -116,38 +106,97 @@ TSharedRef<SWidget> FJointTreeItem_Node::GenerateWidgetForDataColumn(const TAttr
 
 FName FJointTreeItem_Node::GetRowItemName() const
 {
-	return NodePtr != nullptr ? FName(NodePtr->GetPathName()) : NAME_None;
+	//it must return a path to the editor node itself.
+	if (EditorNodePtr == nullptr) return NAME_None;
+
+	if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(EditorNodePtr.Get()))
+	{
+		if (const UJointManager* JointManager = JointNode->GetCastedNodeInstance<UJointManager>())
+		{
+			//root node of the manager
+			return FName(JointNode->GetJointManager()->GetPathName() + ".Root");
+		}
+	}
+	
+	return FName(EditorNodePtr->GetPathName());
 }
 
 void FJointTreeItem_Node::OnItemDoubleClicked()
 {
-	if (GetJointPropertyTree() && NodePtr.Get()) GetJointPropertyTree()->JumpToHyperlink(NodePtr.Get());
+	if (GetJointPropertyTree() && EditorNodePtr.Get()) GetJointPropertyTree()->JumpToHyperlink(EditorNodePtr.Get());
 }
 
 UObject* FJointTreeItem_Node::GetObject() const
 {
-	return NodePtr.Get();
+	return EditorNodePtr.Get();
 }
 
 void FJointTreeItem_Node::AllocateItemTags()
 {
 	if (GetJointPropertyTree())
 	{
-		ItemTags.Add(MakeShareable(new FJointTreeItemTag_Node(GetJointPropertyTree()->Filter)));
+		if (!EditorNodePtr.Get()) return;
 
-		if (NodePtr.Get() && NodePtr->GetJointManager() && NodePtr->GetJointManager()->ManagerFragments.Contains(NodePtr))
-			ItemTags.Add(MakeShareable(new FJointTreeItemTag_ManagerFragment(GetJointPropertyTree()->Filter)));
+		if (UJointEdGraphNode_Connector* Connector = Cast<UJointEdGraphNode_Connector>(EditorNodePtr.Get()))
+		{
+			ItemTags.Add(MakeShareable( new FJointTreeItemTag_Type( LOCTEXT("ConnectorTypeTag","Connector"), GetJointPropertyTree()->Filter)));	
+		}
+		else if (UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(EditorNodePtr.Get()))
+		{
+			ItemTags.Add(MakeShareable( new FJointTreeItemTag_Type( LOCTEXT("CompositeTypeTag","Composite"), GetJointPropertyTree()->Filter)));
+		}
+		else if (UJointEdGraphNode_Tunnel* Tunnel = Cast<UJointEdGraphNode_Tunnel>(EditorNodePtr.Get()))
+		{
+			ItemTags.Add(MakeShareable( new FJointTreeItemTag_Type( LOCTEXT("TunnelTypeTag","Tunnel"), GetJointPropertyTree()->Filter)));
+		}
+		else if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(EditorNodePtr.Get()))
+		{
+			if (const UJointNodeBase* NodeInstance = JointNode->GetCastedNodeInstance())
+			{
 
-		ItemTags.Add(MakeShareable(
-			new FJointTreeItemTag_Type(
-				NodePtr.Get() ? FText::FromString(NodePtr->GetClass()->GetName()) : FText::GetEmpty()
-				, GetJointPropertyTree()->Filter)));
+				ItemTags.Add(MakeShareable(new FJointTreeItemTag_Node(GetJointPropertyTree()->Filter)));
+				
+				if (JointNode->GetJointManager()->ManagerFragments.Contains(NodeInstance))
+				{
+					ItemTags.Add(MakeShareable(new FJointTreeItemTag_ManagerFragment(GetJointPropertyTree()->Filter)));
+				}
+
+				ItemTags.Add(MakeShareable(
+					new FJointTreeItemTag_Type(
+						NodeInstance ? FText::FromString(NodeInstance->GetClass()->GetName()) : FText::GetEmpty()
+						, GetJointPropertyTree()->Filter)));	
+			}else if (const UJointManager* JointManager = JointNode->GetCastedNodeInstance<UJointManager>())
+			{
+				//root node of the manager
+			}
+		}
 	}
 }
 
 TSet<TSharedPtr<IJointTreeItemTag>> FJointTreeItem_Node::GetItemTags()
 {
 	return ItemTags;
+}
+
+FText FJointTreeItem_Node::GetDisplayName() const
+{
+	if (EditorNodePtr == nullptr) return LOCTEXT("NodeName_Null", "INVALID OBJECT");
+
+	if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(EditorNodePtr))
+	{
+		if (UJointNodeBase* NodeInstance = CastedNode->GetCastedNodeInstance())
+		{
+			return FText::FromName(NodeInstance->GetFName());
+		}else if (UJointManager* JointManager = CastedNode->GetCastedNodeInstance<UJointManager>())
+		{
+			return LOCTEXT("NodeName_RootManager", "Root Node & Manager Fragments");
+			//root node of the manager
+		}
+		
+		return CastedNode->GetNodeTitle(ENodeTitleType::FullTitle);
+	}
+	
+	return FText::FromString(EditorNodePtr->GetName());
 }
 
 FString FJointTreeItem_Node::GetReferencerName() const

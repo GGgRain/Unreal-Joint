@@ -318,6 +318,81 @@ public:
 };
 
 
+/**
+ * A template slate with drawer animations. 
+ */
+
+class JOINTEDITOR_API SJointSlateDrawer : public SBoxPanel
+{
+public:
+	SLATE_DECLARE_WIDGET(SJointSlateDrawer, SBoxPanel)
+public:
+
+	class FSlot : public SBoxPanel::TSlot<FSlot>
+	{
+	public:
+		SLATE_SLOT_BEGIN_ARGS(FSlot, SBoxPanel::TSlot<FSlot>)
+		/** The widget's DesiredSize will be used as the space required. */
+		SLATE_SLOT_END_ARGS()
+
+		void Construct(const FChildren& SlotOwner, FSlotArguments&& InArgs)
+		{
+			SBoxPanel::TSlot<FSlot>::Construct(SlotOwner, MoveTemp(InArgs));
+		}
+	};
+	
+	static FSlot::FSlotArguments Slot()
+	{
+		return FSlot::FSlotArguments(MakeUnique<FSlot>());
+	}
+
+	using FScopedWidgetSlotArguments = SBoxPanel::FScopedWidgetSlotArguments<SJointSlateDrawer::FSlot>;
+	FScopedWidgetSlotArguments AddSlot()
+	{
+		return InsertSlot(INDEX_NONE);
+	}
+
+	FScopedWidgetSlotArguments InsertSlot(int32 Index = INDEX_NONE)
+	{
+		return FScopedWidgetSlotArguments(MakeUnique<FSlot>(), this->Children, Index);
+	}
+
+	FSlot& GetSlot(int32 SlotIndex);
+	const FSlot& GetSlot(int32 SlotIndex) const;
+	
+public:
+
+	SLATE_BEGIN_ARGS(SJointSlateDrawer) {}
+		SLATE_SLOT_ARGUMENT(SJointSlateDrawer::FSlot, Slots)
+	SLATE_END_ARGS()
+	
+
+	FORCENOINLINE SJointSlateDrawer()
+	: SBoxPanel( Orient_Horizontal )
+	{
+		SetCanTick(false);
+		bCanSupportFocus = false;
+	}
+	
+	void Construct(const FArguments& InArgs);
+
+public:
+
+	void UpdateVisualOnHovered();
+	
+	void UpdateVisualOnUnhovered();
+
+public:
+
+	TArray<FVoltAnimationTrack> ChildrenAnimTracks;
+
+public:
+
+	const float BUTTON_INITIAL_OPACITY = 0.f;
+	const float BUTTON_ANIM_DELAY_PER_ICON = 0.04f;
+	const FSlateRenderTransform BUTTON_INITIAL_TRANSFORM = FSlateRenderTransform(FVector2D(0.f, 50.f));
+};
+
 class JOINTEDITOR_API SJointNodeDescription : public SCompoundWidget
 {
 	

@@ -468,35 +468,25 @@ TSharedRef<SWidget> FJointEditorToolbar::Task_HandleCreateNewJointAsset() const
 #endif
 	
 
-	const FOnClassPicked OnPicked(FOnClassPicked::CreateSP(JointEditor.Pin().Get(),
-	                                                       &FJointEditorToolkit::HandleNewAssetActionClassPicked));
+	const FOnClassPicked OnPicked(FOnClassPicked::CreateLambda([this](UClass* ChosenClass)
+		{
+			if (JointEditor.IsValid())
+			{
+				FString BasePath;
+
+				if (JointEditor.Pin()->GetJointManager() && JointEditor.Pin()->GetJointManager()->GetOutermostObject())
+				{
+					BasePath = JointEditor.Pin()->GetJointManager()->GetOutermostObject()->GetPathName();
+				}
+				
+				FJointEdUtils::HandleNewAssetActionClassPicked(BasePath, ChosenClass);
+			}
+		}));
 
 	return FModuleManager::LoadModuleChecked<FClassViewerModule>("ClassViewer").CreateClassViewer(Options, OnPicked);
 }
 
 bool FJointEditorToolbar::Task_CanCreateNewJointAsset() { return !UJointDebugger::IsPIESimulating(); }
-
-TSharedRef<SWidget> FJointEditorToolbar::Task_HandleCreateNewNode() const
-{
-	if (!JointEditor.IsValid()) return SNullWidget::NullWidget;
-
-	FClassViewerInitializationOptions Options;
-	Options.bShowUnloadedBlueprints = true;
-
-#if UE_VERSION_OLDER_THAN(5,0,0)
-	Options.ClassFilter = MakeShareable(new FJointEdUtils::FJointNodeFilter);
-#else
-	Options.ClassFilters.Add(MakeShareable(new FJointEdUtils::FJointNodeFilter));
-#endif
-	
-
-	const FOnClassPicked OnPicked(FOnClassPicked::CreateSP(JointEditor.Pin().Get(),
-	                                                       &FJointEditorToolkit::HandleNewAssetActionClassPicked));
-
-	return FModuleManager::LoadModuleChecked<FClassViewerModule>("ClassViewer").CreateClassViewer(Options, OnPicked);
-}
-
-bool FJointEditorToolbar::Task_CanCreateNewNode() { return true; }
 
 void FJointEditorToolbar::Task_HandleOpenSearchReplaceTab()
 {

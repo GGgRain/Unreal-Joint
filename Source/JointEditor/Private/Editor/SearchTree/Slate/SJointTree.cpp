@@ -2,6 +2,7 @@
 
 #include "SearchTree/Slate/SJointTree.h"
 
+#include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
 #include "SearchTree/Slate/SJointTreeFilter.h"
 
@@ -12,6 +13,8 @@
 
 #include "EdGraph/EdGraph.h"
 #include "Filter/JointTreeFilter.h"
+#include "Item/JointTreeItem_Graph.h"
+#include "Misc/ScopeTryLock.h"
 #include "SearchTree/Item/JointTreeItem_Node.h"
 #include "Preferences/PersonaOptions.h"
 #include "Widgets/Images/SThrobber.h"
@@ -27,18 +30,32 @@ const FName SJointTree::Columns::Value("Value");
 
 void SJointTree::Construct(const FArguments& InArgs)
 {
-	if (!Builder.IsValid()) { Builder = MakeShareable(new FJointTreeBuilder(InArgs._BuilderArgs)); }
+	if (!Builder.IsValid())
+	{
+		Builder = MakeShareable(new FJointTreeBuilder());
+		Builder->OnJointTreeBuildStartedDele.BindSP(this, &SJointTree::OnJointTreeBuildStarted);
+		Builder->OnJointTreeBuildFinishedDele.BindSP(this, &SJointTree::OnJointTreeBuildFinished);
+		Builder->OnJointTreeBuildCancelledDele.BindSP(this, &SJointTree::OnJointTreeBuildCancelled);
+	}
 	if (!Filter.IsValid()) { Filter = MakeShareable(new FJointTreeFilter(SharedThis(this))); }
 
-	Builder->Initialize(SharedThis(this),
-	                    FOnFilterJointPropertyTreeItem::CreateSP(
-		                    this, &SJointTree::HandleFilterJointPropertyTreeItem));
+	BuilderArgsAttr = InArgs._BuilderArgs;
+	FilterArgsAttr = InArgs._FilterArgs;
+
+	Builder->Initialize(SharedThis(this), FOnFilterJointPropertyTreeItem::CreateSP(this, &SJointTree::HandleFilterJointPropertyTreeItem));
 
 	Filter->OnJointFilterChanged.AddSP(this, &SJointTree::OnFilterDataChanged);
 
 	TextFilterPtr = MakeShareable(new FTextFilterExpressionEvaluator(ETextFilterExpressionEvaluatorMode::BasicString));
-
 	CreateTreeColumns();
+}
+
+SJointTree::~SJointTree()
+{
+	if (Builder.IsValid())
+	{
+		Builder->AbandonBuild();
+	}
 }
 
 void SJointTree::CreateTreeColumns()
@@ -61,32 +78,32 @@ void SJointTree::CreateTreeColumns()
 		);
 
 	this->ChildSlot
-		.VAlign(VAlign_Fill)
+	    .VAlign(VAlign_Fill)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Fill)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Fill)
+			SNew(SJointTreeFilter)
+			.Filter(Filter)
+		]
+		+ SVerticalBox::Slot()
+		.VAlign(VAlign_Fill)
+		.HAlign(HAlign_Fill)
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
 			[
-				SNew(SJointTreeFilter)
-				.Filter(Filter)
+				TreeView.ToSharedRef()
 			]
-			+ SVerticalBox::Slot()
-			.VAlign(VAlign_Fill)
-			.HAlign(HAlign_Fill)
+			+ SOverlay::Slot()
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				[
-					TreeView.ToSharedRef()
-				]
-				+ SOverlay::Slot()
-				[
-					PopulateLoadingStateWidget().ToSharedRef()
-				]
+				PopulateLoadingStateWidget().ToSharedRef()
 			]
-		];
+		]
+	];
 }
 
 void SJointTree::OnColumnSortModeChanged(const EColumnSortPriority::Type SortPriority, const FName& ColumnId,
@@ -94,63 +111,21 @@ void SJointTree::OnColumnSortModeChanged(const EColumnSortPriority::Type SortPri
 {
 	SortByColumn = ColumnId;
 	SortMode = InSortMode;
-
-	SortColumns();
 }
 
-
-void SJointTree::AbandonAndJoinWithBuilderThread()
-{
-	if (IsAsyncLocked())
-	{
-		if (Builder->IsBuilding())
-		{
-			Builder->SetShouldAbandonBuild(true);
-		}
-
-		while (Builder->IsBuilding())
-		{
-			//Busy waiting...
-		}
-	}
-
-	Builder->SetShouldAbandonBuild(false);
-}
-
-void SJointTree::BuildFromJointManagers()
+void SJointTree::BuildFromJointManagers(const TArray<TWeakObjectPtr<UJointManager>>& JointManagersToShow)
 {
 	if (!Builder.IsValid()) return;
 
 	ShowLoadingStateWidget();
-
-	AbandonAndJoinWithBuilderThread();
-
-	//Discard previous items
-	Items.Empty();
-	LinearItems.Empty();
-	FilteredItems.Empty();
-
-	AsyncTask(ENamedThreads::GameThread, [&]()
-	{
-		AsyncLock();
-
-		FJointTreeBuilderOutput Output(Items, LinearItems);
-
-		Builder->Build(Output);
-
-		AsyncUnlock();
-
-		AsyncTask(ENamedThreads::GameThread, [&]()
-		{
-			ApplyFilter();
-		});
-	});
+	
+	Builder->RequestBuild(JointManagersToShow);
 }
 
 void SJointTree::ApplyFilter()
 {
-	if (IsAsyncLocked() || Builder->GetShouldAbandonBuild()) return;
-
+	if (Builder->GetShouldAbandonBuild()) return;
+	
 	const FString ExtractedFilterItem = Filter->ExtractFilterItems().ToString();
 
 	TextFilterPtr->SetFilterText(
@@ -167,10 +142,9 @@ void SJointTree::ApplyFilter()
 
 	FilteredItems.Empty();
 
-	FJointPropertyTreeFilterArgs FilterArgs(TextFilterPtr);
-	FilterArgs.bFlattenHierarchyOnFilter = GetDefault<UPersonaOptions>()->bFlattenSkeletonHierarchyWhenFiltering;
-	Builder->Filter(FilterArgs, Items, FilteredItems);
-
+	FJointPropertyTreeFilterArgs Args = FilterArgsAttr.Get();
+	Args.TextFilter = TextFilterPtr;
+	Builder->Filter(Args, Items, FilteredItems);
 
 	for (TSharedPtr<IJointTreeItem>& Item : LinearItems)
 	{
@@ -180,9 +154,9 @@ void SJointTree::ApplyFilter()
 		}
 	}
 
-	HandleTreeRefresh();
-
 	HideLoadingStateWidget();
+	
+	HandleTreeRefresh();
 }
 
 void SJointTree::OnFilterDataChanged()
@@ -190,30 +164,24 @@ void SJointTree::OnFilterDataChanged()
 	ApplyFilter();
 }
 
-
-void SJointTree::SortColumns()
+void SJointTree::OnJointTreeBuildStarted()
 {
-	/*
-	if( SortByColumn == SJointTree::Columns::Name )
-	{
-		if( SortMode == EColumnSortMode::Ascending )
-		{
-			struct FCompareEventsByName
-			{
-				FORCEINLINE bool operator()( const TSharedPtr<FVisualizerEvent> A, const TSharedPtr<FVisualizerEvent> B ) const { return A->EventName < B->EventName; }
-			};
-			Items.Sort( FCompareEventsByName() );
-		}
-		else if( SortMode == EColumnSortMode::Descending )
-		{
-			struct FCompareEventsByNameDescending
-			{
-				FORCEINLINE bool operator()( const TSharedPtr<FVisualizerEvent> A, const TSharedPtr<FVisualizerEvent> B ) const { return B->EventName < A->EventName; }
-			};
-			Events.Sort( FCompareEventsByNameDescending() );
-		}
-	}
-	*/
+	ShowLoadingStateWidget();
+}
+
+void SJointTree::OnJointTreeBuildFinished(const FJointTreeBuilderOutput InOutput)
+{
+	Items = InOutput.Items;
+	LinearItems = InOutput.LinearItems;
+
+	ApplyFilter();
+	
+	HideLoadingStateWidget();
+}
+
+void SJointTree::OnJointTreeBuildCancelled()
+{
+	HideLoadingStateWidget();
 }
 
 TSharedPtr<SWidget> SJointTree::PopulateLoadingStateWidget()
@@ -221,9 +189,10 @@ TSharedPtr<SWidget> SJointTree::PopulateLoadingStateWidget()
 	if (!LoadingStateSlate.IsValid())
 	{
 		LoadingStateSlate = SNew(SBorder)
+			.Visibility(EVisibility::Collapsed)
 			.Padding(0)
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Solid"))
-			.BorderBackgroundColor(FLinearColor(0, 0, 0, 0.4))
+			.BorderBackgroundColor(FLinearColor(0, 0, 0, 0.1))
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			[
@@ -241,7 +210,7 @@ TSharedPtr<SWidget> SJointTree::PopulateLoadingStateWidget()
 				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(LOCTEXT("LoadingStateText", "Loading entries... Don't close your editor now (it will crash!)"))
+					.Text(LOCTEXT("LoadingStateText", "Loading entries..."))
 				]
 			];
 	}
@@ -267,22 +236,6 @@ void SJointTree::HideLoadingStateWidget()
 		LoadingStateSlate->SetVisibility(EVisibility::Collapsed);
 	}
 }
-
-void SJointTree::AsyncLock()
-{
-	bIsAsyncLocked = true;
-}
-
-void SJointTree::AsyncUnlock()
-{
-	bIsAsyncLocked = false;
-}
-
-const bool& SJointTree::IsAsyncLocked() const
-{
-	return bIsAsyncLocked;
-}
-
 
 void SJointTree::HandleTreeRefresh()
 {
@@ -355,6 +308,16 @@ void SJointTree::JumpToHyperlink(UObject* Obj)
 	else if (Cast<UJointManager>(Obj))
 	{
 		FJointEdUtils::OpenEditorFor(Cast<UJointNodeBase>(Obj)->GetJointManager(), ToolkitPtr);
+	}else if (Cast<UJointEdGraph>(Obj) && Cast<UJointEdGraph>(Obj)->GetJointManager())
+	{
+		FJointEdUtils::OpenEditorFor(Cast<UJointEdGraph>(Obj)->GetJointManager(), ToolkitPtr);
+
+		if (ToolkitPtr != nullptr) ToolkitPtr->JumpToHyperlink(Obj);
+	}else if (Cast<UJointEdGraphNode>(Obj) && Cast<UJointEdGraphNode>(Obj)->GetJointManager())
+	{
+		FJointEdUtils::OpenEditorFor(Cast<UJointEdGraphNode>(Obj)->GetJointManager(), ToolkitPtr);
+
+		if (ToolkitPtr != nullptr) ToolkitPtr->JumpToHyperlink(Obj);
 	}
 }
 
@@ -364,12 +327,47 @@ EJointTreeFilterResult SJointTree::HandleFilterJointPropertyTreeItem(
 {
 	EJointTreeFilterResult Result = EJointTreeFilterResult::ShownDescendant;
 
-	if (InItem && InArgs.TextFilter.IsValid())
+	if (!InItem) return Result;
+
+	if (InArgs.TextFilter.IsValid())
 	{
-		Result = InArgs.TextFilter->TestTextFilter(FBasicStringFilterExpressionContext(InItem->GetFilterString()))
-			         ? EJointTreeFilterResult::ShownHighlighted
-			         : EJointTreeFilterResult::Hidden;
+		if (!(InArgs.TextFilter->GetFilterType() == ETextFilterExpressionType::Empty || InArgs.TextFilter->GetFilterType() == ETextFilterExpressionType::Invalid))
+		{
+			Result = InArgs.TextFilter->TestTextFilter(FBasicStringFilterExpressionContext(InItem->GetFilterString()))
+				         ? EJointTreeFilterResult::ShownHighlighted
+				         : EJointTreeFilterResult::Hidden;
+
+			return Result;
+		}
 	}
+
+	if (InItem->IsOfType<FJointTreeItem_Graph>())
+	{
+		TSharedRef<FJointTreeItem_Graph> GraphItem = StaticCastSharedRef<FJointTreeItem_Graph>(InItem.ToSharedRef());
+
+		if (!GraphItem->GetObject()) return EJointTreeFilterResult::Hidden;
+
+		UObject* Obj = GraphItem->GetObject();
+
+		if (!InArgs.GraphsToShow.IsEmpty())
+		{
+			bool bFound = InArgs.GraphsToShow.Contains(Obj);
+
+			//UE_LOG(LogTemp, Log, TEXT("Filtering graph: %s, found: %s"), *Obj->GetName(), bFound ? TEXT("true") : TEXT("false"));
+			// if the graph is not in the list, hide it
+			return bFound ? EJointTreeFilterResult::Shown : EJointTreeFilterResult::Hidden;
+		}
+
+		return EJointTreeFilterResult::Shown;
+	}
+	else
+	{
+		if (InItem->GetParent() && InItem->GetParent()->GetFilterResult() == EJointTreeFilterResult::Hidden)
+		{
+			return EJointTreeFilterResult::Hidden;
+		}
+	}
+
 
 	return Result;
 }

@@ -9,6 +9,8 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
+#include "Misc/EngineVersionComparison.h"
+
 void SJointFragmentPalette::Construct(const FArguments& InArgs)
 {
 	ToolKitPtr = InArgs._ToolKitPtr;
@@ -23,7 +25,7 @@ void SJointFragmentPalette::OnFragmentActionSelected(const TArray<TSharedPtr<FEd
 {
 	if (!(InSelectionType == ESelectInfo::OnMouseClick || InSelectionType == ESelectInfo::OnKeyPress) || SelectedAction.Num() == 0) return;
 
-	if (!ToolKitPtr.IsValid() || !ToolKitPtr.Pin()->GetJointGraph()) return;
+	if (!ToolKitPtr.IsValid() || !ToolKitPtr.Pin()->GetFocusedJointGraph()) return;
 
 	const FGraphPanelSelectionSet Selections = ToolKitPtr.Pin()->GetSelectedNodes();
 
@@ -53,7 +55,11 @@ void SJointFragmentPalette::OnFragmentActionSelected(const TArray<TSharedPtr<FEd
 
 		StaticCastSharedPtr<FJointSchemaAction_NewSubNode>(CurrentAction)->NodesToAttachTo = Selections.Array();
 
-		CurrentAction->PerformAction(ToolKitPtr.Pin()->GetJointGraph(), nullptr, FVector2D::ZeroVector);
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		CurrentAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FVector2D::ZeroVector);
+#else
+		CurrentAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FVector2f::ZeroVector);
+#endif
 	}
 }
 
@@ -71,9 +77,12 @@ void SJointFragmentPalette::RebuildWidget()
 	ChildSlot
 	[
 		SNew(SJointGraphEditorActionMenu)
-		.GraphObj(ToolKitPtr.Pin()->GetJointGraph())
+		.GraphObj(ToolKitPtr.Pin()->GetFocusedJointGraph())
 		.bUseCustomActionSelected(true)
 		.AutoExpandActionMenu(true)
 		.OnActionSelected(this, &SJointFragmentPalette::OnFragmentActionSelected)
 	];
 }
+
+
+

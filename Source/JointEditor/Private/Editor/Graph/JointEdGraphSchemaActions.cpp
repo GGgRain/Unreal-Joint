@@ -10,6 +10,7 @@
 #include "EdGraphNode_Comment.h"
 #include "Editor.h"
 #include "GraphEditor.h"
+#include "JointEdGraphNode_Composite.h"
 #include "Node/JointNodeBase.h"
 #include "ScopedTransaction.h"
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -154,7 +155,7 @@ void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* Fr
 		{
 			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Output) continue;
 			AllPin->Modify();
-			AllPin->MakeLinkTo(FromPin);
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
 		}
 
 		break;
@@ -165,7 +166,7 @@ void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* Fr
 		{
 			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Input) continue;
 			AllPin->Modify();
-			AllPin->MakeLinkTo(FromPin);
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
 		}
 
 		break;
@@ -193,7 +194,11 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 	if (!ResultNode || !ResultNode->NodeClassData.GetClass()) return nullptr;
 	if (!ParentGraph) return nullptr;
 
-	UJointManager* Manager = Cast<UJointManager>(ParentGraph->GetOuter());
+	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
+
+	if (!CastedGraph) return nullptr;
+
+	UJointManager* Manager = CastedGraph->GetJointManager();
 
 	if (!Manager) return nullptr;
 
@@ -240,12 +245,15 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location,
 	bool bSelectNewNode)
 {
-
 	if (!NodeClass || !ParentGraph || !EdClass) return nullptr;
+
+	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
+
+	if (!CastedGraph) return nullptr;
 
 	UJointEdGraphNode* ResultNode = NewObject<UJointEdGraphNode>(ParentGraph,EdClass);
 	
-	UJointManager* Manager = Cast<UJointManager>(ParentGraph->GetOuter());
+	UJointManager* Manager = CastedGraph->GetJointManager();
 
 	if (!Manager) return nullptr;
 
@@ -343,3 +351,4 @@ UEdGraphNode* FJointSchemaAction_AddConnector::PerformAction(UEdGraph* ParentGra
 
 	return NewNode;
 }
+

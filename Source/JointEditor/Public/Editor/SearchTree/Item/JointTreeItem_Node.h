@@ -13,10 +13,9 @@ public:
 	
 	Joint_PROPERTY_TREE_ITEM_TYPE(FJointTreeItem_Node, FJointTreeItem)
 
-	FJointTreeItem_Node(TWeakObjectPtr<UJointNodeBase> InNodePtr, const TSharedRef<SJointTree>& InTree);
+	FJointTreeItem_Node(TWeakObjectPtr<UEdGraphNode> InNodePtr, const TSharedRef<SJointTree>& InTree);
 	
 public:
-
 	virtual void GenerateWidgetForNameColumn(TSharedPtr< SHorizontalBox > Box, const TAttribute<FText>& FilterText, FIsSelected InIsSelected) override;
 	virtual TSharedRef< SWidget > GenerateWidgetForDataColumn(const TAttribute<FText>& FilterText, const FName& DataColumnName, FIsSelected InIsSelected) override;
 
@@ -26,6 +25,10 @@ public:
 
 	virtual void AllocateItemTags() override;
 	virtual TSet<TSharedPtr<IJointTreeItemTag>> GetItemTags() override;
+
+public:
+
+	FText GetDisplayName() const;
 
 public:
 
@@ -40,7 +43,7 @@ public:
 private:
 	
 	UPROPERTY()
-	TWeakObjectPtr<UJointNodeBase> NodePtr;
+	TWeakObjectPtr<UEdGraphNode> EditorNodePtr;
 
 	TSet<TSharedPtr<IJointTreeItemTag>> ItemTags;
 

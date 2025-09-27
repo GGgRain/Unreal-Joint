@@ -7,6 +7,7 @@
 #include "IDocumentation.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEditorToolkit.h"
+#include "JointEdUtils.h"
 #include "ItemTag/IJointTreeItemTag.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
@@ -114,7 +115,7 @@ void FJointTreeItem_Manager::AddReferencedObjects(FReferenceCollector& Collector
 
 void FJointTreeItem_Manager::OnItemDoubleClicked()
 {
-	FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointManagerPtr.Get(), true);
+	FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointManagerPtr.Get(), true);
 }
 
 UObject* FJointTreeItem_Manager::GetObject() const

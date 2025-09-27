@@ -13,8 +13,8 @@
 class FJointManagementTabHandler;
 class FJointEditorToolkit;
 class UJointDebugger;
-class FJointGraphPinFactory;
-struct FJointNodeStyleFactory;
+class FJointGraphPinSlateFactory;
+struct FJointGraphNodeSlateFactory;
 
 class IAssetTypeActions;
 class IAssetTools;
@@ -129,10 +129,10 @@ private:
 	TSharedPtr<FExtensibilityManager> ToolBarExtensibilityManager;
 
 	/** Holds the tool bar extensibility manager. */
-	TSharedPtr<FJointNodeStyleFactory> JointNodeStyleFactory;
+	TSharedPtr<FJointGraphNodeSlateFactory> JointNodeStyleFactory;
 
 	/** Holds the tool bar extensibility manager. */
-	TSharedPtr<FJointGraphPinFactory> JointGraphPinFactory;
+	TSharedPtr<FJointGraphPinSlateFactory> JointGraphPinFactory;
 
 public:
 	

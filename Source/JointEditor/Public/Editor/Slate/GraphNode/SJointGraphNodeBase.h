@@ -81,6 +81,8 @@ public:
 
 	virtual void OnDrop(bool bDropWasHandled, const FPointerEvent& MouseEvent) override;
 
+	virtual bool AffectedByPointerEvent(const FPointerEvent& PointerEvent) override;
+	
 	virtual void NotifyDropAction();
 	
 protected:
@@ -158,6 +160,8 @@ public:
 public:
 
 	virtual TSharedRef<SWidget> CreateNameBox();
+
+	virtual TSharedRef<SWidget> CreateDissolvedSubNodeIndication();
 
 public:
 
@@ -250,6 +254,14 @@ public:
 
 public:
 
+	/**
+	 * Check whether this slate is a sub node widget or not.
+	 * @return true if this slate is a sub node widget, false otherwise.
+	 */
+	virtual bool IsSubNodeWidget() const;
+
+public:
+
 
 	/**
 	 * Cast and return subnode panel to the provided template typename.
@@ -320,6 +332,8 @@ public:
 	TSharedPtr<SBorder> NodeBody = nullptr;
 	
 	TSharedPtr<SHorizontalBox> NameBox = nullptr;
+	
+	TSharedPtr<SHorizontalBox> DissolveIndicator = nullptr;
 
 	TSharedPtr<SVerticalBox> CenterWholeBox = nullptr;
 
@@ -394,19 +408,25 @@ public:
 
 	FText GetIndexText();
 
-	FText GetNodeRawName();
+	FText GetGraphNodeName() const;
 
 public:
 	
 	const FSlateBrush* GetIconicNodeSlateBrush() const;
-
+	
 	const FText GetIconicNodeText() const;
 
 	const bool GetWhetherToDisplayIconicNodeText() const;
-	
-public:
 
-	bool VerifyNameOnTextChanged(const FText& InText, FText& OutErrorMessage);
+	const uint16 GetDissolvedSubnodeCounts() const;
+
+private:
+
+	/**
+	 * Only for cosmetics
+	 */
+	uint16 DissolvedSubnodeCounts = 0;
+
 
 public:
 	
@@ -424,6 +444,7 @@ public:
 	 * Fully update the slates. This is the equivalent of the refresh action.
 	 */
 	virtual void UpdateGraphNode() override;
+	void UpdateOwnerOfPinWidgets();
 
 public:
 	
@@ -485,6 +506,8 @@ public:
 public:
 	
 	void OnRenameTextCommited(const FText& InText, ETextCommit::Type CommitInfo);
+	
+	bool VerifyRenameNameOnTextChanged(const FText& InText, FText& OutErrorMessage);
 	
 public:
 	

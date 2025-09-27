@@ -43,6 +43,7 @@
 //VOLT
 
 #include "JointAdvancedWidgets.h"
+#include "SlateOptMacros.h"
 #include "VoltAnimation.h"
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
@@ -95,6 +96,11 @@ void FDragJointGraphNode::OnDrop(bool bDropWasHandled, const FPointerEvent& Mous
 	FDragNode::OnDrop(bDropWasHandled, MouseEvent);
 }
 
+bool FDragJointGraphNode::AffectedByPointerEvent(const FPointerEvent& PointerEvent)
+{
+	return true;
+}
+
 void FDragJointGraphNode::NotifyDropAction()
 {
 	for (TSharedRef<SGraphNode> DraggedNode : DraggedNodes)
@@ -127,6 +133,7 @@ void SJointGraphNodeBase::Construct(const FArguments& InArgs, UEdGraphNode* InNo
 
 SJointGraphNodeBase::~SJointGraphNodeBase()
 {
+	UE_LOG(LogTemp, Verbose, TEXT("SJointGraphNodeBase::~SJointGraphNodeBase()"));
 }
 
 void SJointGraphNodeBase::InitializeSlate()
@@ -135,14 +142,42 @@ void SJointGraphNodeBase::InitializeSlate()
 }
 
 
-void SJointGraphNodeBase::AssignSlateToGraphNode()
+TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 {
-	if (!this->GraphNode) return;
-
-	if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(this->GraphNode))
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
-		CastedGraphNode->SetGraphNodeSlate(SharedThis(this));
+		if (UJointNodeBase* InNodeInstance = InGraphNode->GetCastedNodeInstance())
+		{
+			if (!InGraphNode->GetEdNodeSetting().PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
+			{
+				//Don't populate again - really bad for the performance.
+
+				if (!JointDetailsView)
+				{
+					
+					SAssignNew(JointDetailsView, SJointDetailsView)
+					.OwnerGraphNode(SharedThis(this))
+					.Object(InNodeInstance)
+					.EditorNodeObject(InGraphNode)
+					.PropertyData(InGraphNode->GetEdNodeSetting().PropertyDataForSimpleDisplayOnGraphNode);
+				}
+				else
+				{
+					JointDetailsView->SetOwnerGraphNode(SharedThis(this));
+					JointDetailsView->UpdatePropertyData(InGraphNode->GetEdNodeSetting().PropertyDataForSimpleDisplayOnGraphNode);
+				}
+
+				if (JointDetailsView)
+				{
+					return JointDetailsView.ToSharedRef();
+				}
+
+				 return SNullWidget::NullWidget;
+			}
+		}
 	}
+
+	return SNullWidget::NullWidget;
 }
 
 void SJointGraphNodeBase::ModifySlateFromGraphNode() const
@@ -190,41 +225,17 @@ void SJointGraphNodeBase::OnDebugDataChanged(const FJointNodeDebugData* Data)
 }
 
 
-TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
+void SJointGraphNodeBase::AssignSlateToGraphNode()
 {
-	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	if (!this->GraphNode) return;
+
+	if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(this->GraphNode))
 	{
-		if (UJointNodeBase* InNodeInstance = InGraphNode->GetCastedNodeInstance())
-		{
-			if (!InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
-			{
-				//Don't populate again - really bad for the performance.
-
-				if (!JointDetailsView)
-				{
-					SAssignNew(JointDetailsView, SJointDetailsView)
-					.OwnerGraphNode(SharedThis(this))
-					.Object(InNodeInstance)
-					.EditorNodeObject(InGraphNode)
-					.PropertyData(InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode);
-				}
-				else
-				{
-					JointDetailsView->SetOwnerGraphNode(SharedThis(this));
-					JointDetailsView->UpdatePropertyData(
-						InNodeInstance->EdNodeSetting.PropertyDataForSimpleDisplayOnGraphNode);
-				}
-
-				return JointDetailsView.ToSharedRef();
-
-				//return SNullWidget::NullWidget;
-			}
-		}
+		CastedGraphNode->SetGraphNodeSlate(SharedThis(this));
 	}
-
-	return SNullWidget::NullWidget;
 }
 
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SJointGraphNodeBase::UpdateNodeTagBox() const
 {
@@ -273,6 +284,7 @@ void SJointGraphNodeBase::UpdateNodeTagBox() const
 	}
 }
 
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SJointGraphNodeBase::AssignBuildTargetPresetOverlay()
 {
@@ -310,7 +322,7 @@ void SJointGraphNodeBase::RemoveCompileResultOverlay()
 }
 
 void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColor& NormalColor, FLinearColor& HoverColor,
-                                           FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const
+                                             FLinearColor& OutlineNormalColor, FLinearColor& OutlineHoverColor) const
 {
 	FLinearColor Color = GetNodeBodyBackgroundColor();
 
@@ -324,8 +336,8 @@ void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColo
 
 		NormalColor = Color * 3 + OffsetColor;
 		HoverColor = Color * 3 + OffsetColor;
-		OutlineNormalColor = FJointEditorStyle::Color_Node_Selected + OffsetColor;
-		OutlineHoverColor = FJointEditorStyle::Color_Node_Selected + OffsetColor * 15;
+		OutlineNormalColor = Color * 10 + OffsetColor;
+		OutlineHoverColor = Color * 12 + OffsetColor * 15;
 	}
 	else
 	{
@@ -333,83 +345,12 @@ void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColo
 
 		NormalColor = Color;
 		HoverColor = Color;
-		OutlineNormalColor = Color * 1.5 + OffsetColor;
-		OutlineHoverColor = Color * 3 + OffsetColor * 15;
+		OutlineNormalColor = Color * 1.25 + OffsetColor;
+		OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
 	}
 }
 
-
-TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
-{
-	const FSlateBrush* InBorderImage = FJointEditorStyle::Get().GetBrush(
-		bSphere ? "JointUI.Border.NodeShadowSphere" : "JointUI.Border.NodeShadow");
-
-	if (GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance())
-	{
-		UJointNodeBase* NodeInstance = GetCastedGraphNode()->GetCastedNodeInstance();
-
-		if (NodeInstance->EdNodeSetting.bUseCustomNodeShadowImageBrush)
-			InBorderImage = &NodeInstance->EdNodeSetting.
-			                               NodeShadowImageBrush;
-	}
-
-	NodeBodyBorderImage = InBorderImage;
-
-	return SAssignNew(NodeBody, SBorder)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
-		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-		.RenderTransformPivot(FVector2D(0.5))
-		.Cursor(this, &SJointGraphNodeBase::GetCursor)
-		.BorderImage(InBorderImage)
-		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-		.Padding(FJointEditorStyle::Margin_Shadow);
-}
-
-
-TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const bool bSphere)
-{
-	FLinearColor NormalColor;
-	FLinearColor HoverColor;
-	FLinearColor OutlineNormalColor;
-	FLinearColor OutlineHoverColor;
-
-	GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
-
-	const FSlateBrush* InnerBorderImage = FJointEditorStyle::Get().GetBrush(
-		bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
-	const FSlateBrush* OuterBorderImage = FJointEditorStyle::Get().GetBrush(
-		bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
-
-	if (GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance())
-	{
-		UJointNodeBase* NodeInstance = GetCastedGraphNode()->GetCastedNodeInstance();
-
-		if (NodeInstance->EdNodeSetting.bUseCustomInnerNodeBodyImageBrush)
-			InnerBorderImage = &NodeInstance->
-			                    EdNodeSetting.InnerNodeBodyImageBrush;
-		if (NodeInstance->EdNodeSetting.bUseCustomOuterNodeBodyImageBrush)
-			OuterBorderImage = &NodeInstance->
-			                    EdNodeSetting.OuterNodeBodyImageBrush;
-	}
-
-
-	NodeBackgroundInBorderImage = InnerBorderImage;
-	NodeBackgroundOutBorderImage = OuterBorderImage;
-
-	return SAssignNew(NodeBackground, SJointOutlineBorder)
-	                                                      .RenderTransformPivot(FVector2D(0.5))
-			//.Visibility(EVisibility::SelfHitTestInvisible)
-	                                                      .NormalColor(NormalColor)
-	                                                      .HoverColor(HoverColor)
-	                                                      .OutlineNormalColor(OutlineNormalColor)
-	                                                      .OutlineHoverColor(OutlineHoverColor)
-	                                                      .UnHoverAnimationSpeed(9)
-	                                                      .HoverAnimationSpeed(9)
-	                                                      .InnerBorderImage(InnerBorderImage)
-	                                                      .OuterBorderImage(OuterBorderImage);
-}
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SJointGraphNodeBase::PopulateNodeSlates()
 {
@@ -527,7 +468,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	{
 		return RightNodeBox->GetDesiredSize();
 	});
-		
+
 #else
 	TAttribute<FVector2f> RightBoxOffset_Attr = TAttribute<FVector2f>::CreateLambda([this]
 	{
@@ -542,22 +483,22 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		return RightNodeBox->GetDesiredSize();
 	});
 #endif
-	
+
 
 	this->GetOrAddSlot(ENodeZone::Left)
 	    .Padding(FMargin(0))
 	    .HAlign(HAlign_Fill)
 	    .VAlign(VAlign_Fill)
 #if UE_VERSION_OLDER_THAN(5, 6, 0)
-	    .SlotOffset(LeftBoxOffset_Attr)
-	    .SlotSize(LeftBoxSize_Attr)
+		.SlotOffset(LeftBoxOffset_Attr)
+		.SlotSize(LeftBoxSize_Attr)
 #else
 		.SlotOffset2f(LeftBoxOffset_Attr)
-		.SlotSize2f(LeftBoxSize_Attr)
+			.SlotSize2f(LeftBoxSize_Attr)
 #endif
-	[
-		LeftNodeBox.ToSharedRef()
-	];
+		[
+			LeftNodeBox.ToSharedRef()
+		];
 
 	this->GetOrAddSlot(ENodeZone::Right)
 	    .Padding(FMargin(0))
@@ -568,11 +509,11 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		.SlotSize(RightBoxSize_Attr)
 #else
 		.SlotOffset2f(RightBoxOffset_Attr)
-		.SlotSize2f(RightBoxSize_Attr)
+			.SlotSize2f(RightBoxSize_Attr)
 #endif
-	[
-		RightNodeBox.ToSharedRef()
-	];
+		[
+			RightNodeBox.ToSharedRef()
+		];
 
 	this->GetOrAddSlot(ENodeZone::Center)
 	    .Padding(FMargin(0))
@@ -620,42 +561,88 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	InitializeVoltVariables();
 }
 
-FVector2D SJointGraphNodeBase::ComputeDesiredSize(float) const
+TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 {
-	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
-	{
-		if (CastedGraphNode->GetUseFixedNodeSize()) return CastedGraphNode->GetSize();
+	const FSlateBrush* InBorderImage = FJointEditorStyle::Get().GetBrush(
+		bSphere ? "JointUI.Border.NodeShadowSphere" : "JointUI.Border.NodeShadow");
 
-		return SNodePanel::SNode::ComputeDesiredSize(1);
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (InGraphNode->GetEdNodeSetting().bUseCustomNodeShadowImageBrush)
+			InBorderImage = &InGraphNode->GetEdNodeSetting().NodeShadowImageBrush;
 	}
 
-	if (GraphNode)
-	{
-		return FVector2D(GraphNode->NodeWidth, GraphNode->NodeHeight);
-	}
+	NodeBodyBorderImage = InBorderImage;
 
-	return GetNodeMinimumSize();
+	return SAssignNew(NodeBody, SBorder)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
+		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
+		.RenderTransformPivot(FVector2D(0.5))
+		.Cursor(this, &SJointGraphNodeBase::GetCursor)
+		.BorderImage(InBorderImage)
+		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
+		.Padding(FJointEditorStyle::Margin_Shadow);
 }
 
-
-FVector2D SJointGraphNodeBase::GetNodeMinimumSize() const
+TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const bool bSphere)
 {
-	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	FLinearColor NormalColor;
+	FLinearColor HoverColor;
+	FLinearColor OutlineNormalColor;
+	FLinearColor OutlineHoverColor;
+
+	GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+
+	const FSlateBrush* InnerBorderImage = FJointEditorStyle::Get().GetBrush(
+		bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
+	const FSlateBrush* OuterBorderImage = FJointEditorStyle::Get().GetBrush(
+		bSphere ? "JointUI.Border.Sphere" : "JointUI.Border.Round");
+
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
-		return CastedGraphNode->GetNodeMinimumSize();
+		if (InGraphNode->GetEdNodeSetting().bUseCustomInnerNodeBodyImageBrush)
+			InnerBorderImage = &InGraphNode->GetEdNodeSetting().InnerNodeBodyImageBrush;
+
+		if (InGraphNode->GetEdNodeSetting().bUseCustomOuterNodeBodyImageBrush)
+			OuterBorderImage = &InGraphNode->GetEdNodeSetting().OuterNodeBodyImageBrush;
 	}
-	return JointGraphNodeResizableDefs::MinNodeSize;
+
+
+	NodeBackgroundInBorderImage = InnerBorderImage;
+	NodeBackgroundOutBorderImage = OuterBorderImage;
+
+	return SAssignNew(NodeBackground, SJointOutlineBorder)
+	                                                      .RenderTransformPivot(FVector2D(0.5))
+			//.Visibility(EVisibility::SelfHitTestInvisible)
+	                                                      .NormalColor(NormalColor)
+	                                                      .HoverColor(HoverColor)
+	                                                      .OutlineNormalColor(OutlineNormalColor)
+	                                                      .OutlineHoverColor(OutlineHoverColor)
+	                                                      .UnHoverAnimationSpeed(9)
+	                                                      .HoverAnimationSpeed(9)
+	                                                      .InnerBorderImage(InnerBorderImage)
+	                                                      .OuterBorderImage(OuterBorderImage);
 }
 
-FVector2D SJointGraphNodeBase::GetNodeMaximumSize() const
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+
+TSharedPtr<SGraphNode> SJointGraphNodeBase::CreateSubNodeWidget(const TSharedPtr<SGraphPanel>& OwnerGraphPanel,
+                                                                UJointEdGraphNode_Fragment* EdFragment)
 {
-	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	TSharedPtr<SGraphNode> NewNode = FNodeFactory::CreateNodeWidget(EdFragment);
+
+	if (OwnerGraphPanel.IsValid())
 	{
-		return CastedGraphNode->GetNodeMaximumSize();
+		NewNode->SetOwner(OwnerGraphPanel.ToSharedRef());
+		OwnerGraphPanel->AttachGraphEvents(NewNode);
 	}
 
-	return JointGraphNodeResizableDefs::MaxNodeSize;
+	return NewNode;
 }
+
 
 void SJointGraphNodeBase::ClearSlates()
 {
@@ -678,6 +665,42 @@ void SJointGraphNodeBase::ClearSlates()
 	SubNodes.Reset();
 }
 
+FVector2D SJointGraphNodeBase::ComputeDesiredSize(float) const
+{
+	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	{
+		if (CastedGraphNode->GetUseFixedNodeSize()) return CastedGraphNode->GetSize();
+
+		return SNodePanel::SNode::ComputeDesiredSize(1);
+	}
+
+	if (GraphNode)
+	{
+		return FVector2D(GraphNode->NodeWidth, GraphNode->NodeHeight);
+	}
+
+	return GetNodeMinimumSize();
+}
+
+FVector2D SJointGraphNodeBase::GetNodeMinimumSize() const
+{
+	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	{
+		return CastedGraphNode->GetNodeMinimumSize();
+	}
+	return JointGraphNodeResizableDefs::MinNodeSize;
+}
+
+
+FVector2D SJointGraphNodeBase::GetNodeMaximumSize() const
+{
+	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	{
+		return CastedGraphNode->GetNodeMaximumSize();
+	}
+
+	return JointGraphNodeResizableDefs::MaxNodeSize;
+}
 
 void SJointGraphNodeBase::UpdateGraphNode()
 {
@@ -695,16 +718,37 @@ void SJointGraphNodeBase::UpdateGraphNode()
 
 	UserSize = ComputeDesiredSize(1);
 
-	//Modify the graph node slates from the editor graph node instance.
-	ModifySlateFromGraphNode();
-
 	//Update the node tag box to validate.
 	UpdateNodeTagBox();
+
+	//Update the name box.
+	UpdateNameBox();
+
+	//Modify the graph node slates from the editor graph node instance.
+	ModifySlateFromGraphNode();
 
 	//Update the debugger slate for the need.
 	if (UJointDebugger::IsPIESimulating())
 	{
 		UpdateDebuggerAnimationByState();
+	}
+}
+
+void SJointGraphNodeBase::UpdateOwnerOfPinWidgets()
+{
+	TSet<TSharedRef<SWidget>> AllPins;
+	GetPins(AllPins);
+
+	TSharedPtr<SGraphNode> SelfPtr = SharedThis(this);
+
+	if (!SelfPtr.IsValid()) return;
+
+	for (TSharedRef<SWidget> Pin : AllPins)
+	{
+		//cast to TSharedRef<SGraphPin>
+		TSharedRef<SGraphPin> PinAsGraphPin = StaticCastSharedRef<SGraphPin>(Pin);
+
+		PinAsGraphPin->SetOwner(SelfPtr.ToSharedRef());
 	}
 }
 
@@ -722,6 +766,8 @@ void SJointGraphNodeBase::SetOwner(const TSharedRef<SGraphPanel>& OwnerPanel)
 			OwnerPanel->AttachGraphEvents(InGraphNode);
 		}
 	}
+
+	//UpdateOwnerOfPinWidgets();
 }
 
 FGraphSelectionManager* SJointGraphNodeBase::GetSelectionManager() const
@@ -734,19 +780,7 @@ FGraphSelectionManager* SJointGraphNodeBase::GetSelectionManager() const
 	return nullptr;
 }
 
-TSharedPtr<SGraphNode> SJointGraphNodeBase::CreateSubNodeWidget(const TSharedPtr<SGraphPanel>& OwnerGraphPanel,
-                                                                UJointEdGraphNode_Fragment* EdFragment)
-{
-	TSharedPtr<SGraphNode> NewNode = FNodeFactory::CreateNodeWidget(EdFragment);
-
-	if (OwnerGraphPanel.IsValid())
-	{
-		NewNode->SetOwner(OwnerGraphPanel.ToSharedRef());
-		OwnerGraphPanel->AttachGraphEvents(NewNode);
-	}
-
-	return NewNode;
-}
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SJointGraphNodeBase::PopulateSubNodeSlates()
 {
@@ -775,6 +809,9 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 
 	InsertPoints.Empty();
 
+
+	TSharedPtr<SGraphPanel> OwnerPanel = GetOwnerPanel();
+
 	const int SubNodesNum = CastedGraphNode->SubNodes.Num();
 
 	for (int32 i = 0; i < SubNodesNum; i++)
@@ -792,14 +829,14 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 
 		TSharedPtr<SGraphNode> SubNodeSlateToAdd;
 
-		//When the slate already has a valid slate, just grab that and use that.
-		if (EdFragment->GetGraphNodeSlate().IsValid())
+		//When the slate already has a valid slate, just grab that and use that. + Check if the owner is correct - otherwise, reassign it.
+		if (EdFragment->CheckGraphNodeSlateReusableOn(OwnerPanel))
 		{
 			SubNodeSlateToAdd = EdFragment->GetGraphNodeSlate().Pin();
 		}
 		else //if not, make a new one.
 		{
-			SubNodeSlateToAdd = CreateSubNodeWidget(GetOwnerPanel(), EdFragment);
+			SubNodeSlateToAdd = CreateSubNodeWidget(OwnerPanel, EdFragment);
 
 			AssignSubNode(SubNodeSlateToAdd);
 		}
@@ -855,121 +892,12 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 	}
 }
 
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+
 void SJointGraphNodeBase::AssignSubNode(const TSharedPtr<SGraphNode>& SubNodeWidget)
 {
 	SubNodes.Add(SubNodeWidget);
-}
-
-
-void SJointGraphNodeBase::OnDragEnter(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
-{
-	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
-
-	if (DragConnectionOp.IsValid())
-	{
-		// Inform the Drag and Drop operation that we are hovering over this node.
-		//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
-		//DragConnectionOp->SetHoveredNode(SubNode.IsValid() ? SubNode : SharedThis(this));
-		DragConnectionOp->SetHoveredNode(SharedThis(this));
-
-		UJointEdGraphNode* TestNode = Cast<UJointEdGraphNode>(GraphNode);
-
-		if (!DragConnectionOp->DragOverNodes.Contains(SharedThis(this)))
-			DragConnectionOp->DragOverNodes.Add(
-				SharedThis(this));
-
-
-		VOLT_STOP_ANIM(NodeBodyTransformTrack);
-
-		UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
-		(
-			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.5)
-			.AlphaBasedBlendExp(6)
-			.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
-			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.002, 1.002),
-			                                        FVector2D::ZeroVector, 0))
-		);
-
-		NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
-
-		SharedThis(this)->PlayInsertPointHighlightAnimation();
-	}
-
-	//Internal execution blows up the Joint graph action.
-	//SGraphNode::OnDragEnter(MyGeometry, DragDropEvent);
-}
-
-void SJointGraphNodeBase::OnDragLeave(const FDragDropEvent& DragDropEvent)
-{
-	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
-
-	if (DragConnectionOp.IsValid() && DragConnectionOp->DragOverNodes.Contains(SharedThis(this)))
-		DragConnectionOp->
-			DragOverNodes.Remove(SharedThis(this));
-
-	VOLT_STOP_ANIM(NodeBodyTransformTrack);
-
-	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.InterpolationMode(EVoltInterpMode::AlphaBased)
-		.AlphaBasedDuration(0.5)
-		.AlphaBasedBlendExp(6)
-		.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
-		.TargetWidgetTransform(FWidgetTransform(
-			                                                 FVector2D::ZeroVector,
-			                                                 FVector2D(1, 1),
-			                                                 FVector2D::ZeroVector,
-			                                                 0))
-	);
-
-	NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, Anim);
-
-	SGraphNode::OnDragLeave(DragDropEvent);
-}
-
-
-FReply SJointGraphNodeBase::OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
-{
-	// Is someone dragging a node?
-	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
-	if (DragConnectionOp.IsValid())
-	{
-		// Inform the Drag and Drop operation that we are hovering over this node.
-		//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
-		DragConnectionOp->SetHoveredNode(SharedThis(this));
-	}
-
-	return FReply::Handled();
-	//return SGraphNode::OnDragOver(MyGeometry, DragDropEvent);
-}
-
-void SJointGraphNodeBase::OnDragStarted()
-{
-	VOLT_STOP_ALL_ANIM(SharedThis(this));
-
-	UVoltAnimation* Animation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.95, 0.95), FVector2D::ZeroVector, 0))
-	);
-
-	VOLT_PLAY_ANIM(SharedThis(this), Animation);
-}
-
-void SJointGraphNodeBase::OnDragEnded()
-{
-	VOLT_STOP_ALL_ANIM(SharedThis(this));
-
-	UVoltAnimation* Animation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
-	);
-
-	VOLT_PLAY_ANIM(SharedThis(this), Animation);
 }
 
 
@@ -1106,8 +1034,8 @@ FReply SJointGraphNodeBase::OnMouseMove(const FGeometry& SenderGeometry, const F
 		FVector2D OldGraphSpaceCoordinates = NodeCoordToGraphCoord(MouseEvent.GetLastScreenSpacePosition());
 		TSharedPtr<SWindow> OwnerWindow = FSlateApplication::Get().FindWidgetWindow(AsShared());
 		FVector2D Delta = (GraphSpaceCoordinates - OldGraphSpaceCoordinates) / (OwnerWindow.IsValid()
-				? OwnerWindow->GetDPIScaleFactor()
-				: 1.0f);
+			                                                                        ? OwnerWindow->GetDPIScaleFactor()
+			                                                                        : 1.0f);
 
 
 		//Clamp delta value based on resizing direction
@@ -1209,14 +1137,10 @@ FReply SJointGraphNodeBase::OnMouseMove(const FGeometry& SenderGeometry, const F
 	return SGraphNode::OnMouseMove(SenderGeometry, MouseEvent);
 }
 
+
 void SJointGraphNodeBase::OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
 	SGraphNodeResizable::OnMouseEnter(MyGeometry, MouseEvent);
-}
-
-void SJointGraphNodeBase::ResetDragMousePos()
-{
-	MouseDownScreenPosition = JointGraphNodeDragDropOperationDefs::NullDragPosition;
 }
 
 void SJointGraphNodeBase::OnMouseLeave(const FPointerEvent& MouseEvent)
@@ -1231,6 +1155,156 @@ FReply SJointGraphNodeBase::OnMouseButtonUp(const FGeometry& SenderGeometry, con
 	ResetDragMousePos();
 
 	return SGraphNodeResizable::OnMouseButtonUp(SenderGeometry, MouseEvent);
+}
+
+
+FReply SJointGraphNodeBase::OnMouseButtonDown(const FGeometry& SenderGeometry, const FPointerEvent& MouseEvent)
+{
+	CacheMouseDownPos(MouseEvent);
+
+	return SGraphNodeResizable::OnMouseButtonDown(SenderGeometry, MouseEvent);
+}
+
+void SJointGraphNodeBase::OnDragEnter(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
+{
+	if (TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation(); Operation.IsValid())
+	{
+		if (Operation->IsOfType<FDragJointGraphNode>())
+		{
+			TSharedPtr<FDragJointGraphNode> DragConnectionOp = StaticCastSharedPtr<FDragJointGraphNode>(Operation);
+
+			// Inform the Drag and Drop operation that we are hovering over this node.
+			//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
+			//DragConnectionOp->SetHoveredNode(SubNode.IsValid() ? SubNode : SharedThis(this));
+			DragConnectionOp->SetHoveredNode(SharedThis(this));
+
+			UJointEdGraphNode* TestNode = Cast<UJointEdGraphNode>(GraphNode);
+
+			if (!DragConnectionOp->DragOverNodes.Contains(SharedThis(this)))
+				DragConnectionOp->DragOverNodes.Add(
+					SharedThis(this));
+
+
+			VOLT_STOP_ANIM(NodeBodyTransformTrack);
+
+			UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+				.InterpolationMode(EVoltInterpMode::AlphaBased)
+				.AlphaBasedDuration(0.5)
+				.AlphaBasedBlendExp(6)
+				.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.002, 1.002),
+				                                        FVector2D::ZeroVector, 0))
+			);
+
+			NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
+
+			SharedThis(this)->PlayInsertPointHighlightAnimation();
+		}
+		else if (Operation->IsOfType<FGraphEditorDragDropAction>())
+		{
+			// Is someone dragging a connection?
+
+			// Inform the Drag and Drop operation that we are hovering over this pin.
+			TSharedPtr<FGraphEditorDragDropAction> DragConnectionOp = StaticCastSharedPtr<FGraphEditorDragDropAction>(Operation);
+			if (!IsSubNodeWidget())
+			{
+				DragConnectionOp->SetHoveredNode(SharedThis(this));
+			}
+		}else
+		{
+			SGraphNode::OnDragEnter(MyGeometry, DragDropEvent);
+		}
+	}
+	//Internal execution blows up the Joint graph action.
+	//SGraphNode::OnDragEnter(MyGeometry, DragDropEvent);
+}
+
+void SJointGraphNodeBase::OnDragLeave(const FDragDropEvent& DragDropEvent)
+{
+	if (TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation(); Operation.IsValid())
+	{
+		if (DragDropEvent.GetOperationAs<FDragJointGraphNode>())
+		{
+			TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
+
+			if (DragConnectionOp.IsValid() && DragConnectionOp->DragOverNodes.Contains(SharedThis(this))) DragConnectionOp->DragOverNodes.Remove(SharedThis(this));
+
+			VOLT_STOP_ANIM(NodeBodyTransformTrack);
+
+			const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+				.InterpolationMode(EVoltInterpMode::AlphaBased)
+				.AlphaBasedDuration(0.5)
+				.AlphaBasedBlendExp(6)
+				.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
+				.TargetWidgetTransform(FWidgetTransform(
+					                                                 FVector2D::ZeroVector,
+					                                                 FVector2D(1, 1),
+					                                                 FVector2D::ZeroVector,
+					                                                 0))
+			);
+
+			NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, Anim);
+		}
+		else if (DragDropEvent.GetOperationAs<FGraphEditorDragDropAction>())
+		{
+			TSharedPtr<FGraphEditorDragDropAction> DragConnectionOp = DragDropEvent.GetOperationAs<FGraphEditorDragDropAction>();
+
+			if (!IsSubNodeWidget())
+			{
+				DragConnectionOp->SetHoveredNode(nullptr);
+			}
+		}
+	}
+}
+
+FReply SJointGraphNodeBase::OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
+{
+	// Is someone dragging a node?
+	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
+	if (DragConnectionOp.IsValid())
+	{
+		// Inform the Drag and Drop operation that we are hovering over this node.
+		//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
+		DragConnectionOp->SetHoveredNode(SharedThis(this));
+	}
+
+	return FReply::Unhandled();
+	//return SGraphNode::OnDragOver(MyGeometry, DragDropEvent);
+}
+
+void SJointGraphNodeBase::OnDragStarted()
+{
+	VOLT_STOP_ALL_ANIM(SharedThis(this));
+
+	UVoltAnimation* Animation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.95, 0.95), FVector2D::ZeroVector, 0))
+	);
+
+	VOLT_PLAY_ANIM(SharedThis(this), Animation);
+}
+
+void SJointGraphNodeBase::OnDragEnded()
+{
+	VOLT_STOP_ALL_ANIM(SharedThis(this));
+
+	UVoltAnimation* Animation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
+	);
+
+	VOLT_PLAY_ANIM(SharedThis(this), Animation);
+}
+
+void SJointGraphNodeBase::ResetDragMousePos()
+{
+	MouseDownScreenPosition = JointGraphNodeDragDropOperationDefs::NullDragPosition;
 }
 
 void SJointGraphNodeBase::CacheMouseDownPos(const FPointerEvent& MouseEvent)
@@ -1248,15 +1322,11 @@ void SJointGraphNodeBase::OnRenameTextCommited(const FText& InText, ETextCommit:
 	{
 		ErrorReporting->SetError(ErrorMsg);
 	}
-
-	InlineEditableText->SetText(InText);
-}
-
-FReply SJointGraphNodeBase::OnMouseButtonDown(const FGeometry& SenderGeometry, const FPointerEvent& MouseEvent)
-{
-	CacheMouseDownPos(MouseEvent);
-
-	return SGraphNodeResizable::OnMouseButtonDown(SenderGeometry, MouseEvent);
+	
+	if (InlineEditableText)
+	{
+		InlineEditableText->SetText(GetGraphNodeName());
+	}
 }
 
 /*
@@ -1316,6 +1386,184 @@ FNavigationReply SJointGraphNodeBase::OnNavigation(const FGeometry& MyGeometry,
 }
 */
 
+void SJointGraphNodeBase::UpdateErrorInfo()
+{
+	//We don't use graph node's original properties for the error reporting. Reset it thus.
+	ErrorColor = FLinearColor(0, 0, 0);
+	ErrorMsg.Empty();
+
+	//Update CompileResultOverlay with the compile result.
+	//TODO: Change it to populate the overlay only when it's needed.
+	if (const UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		const TArray<TSharedPtr<class FTokenizedMessage>>& Messages = InGraphNode->CompileMessages;
+
+		if (Messages.Num() > 0)
+		{
+			if (!CompileResultOverlay) AssignCompileResultOverlay();
+
+			CompileResultOverlay->UpdateWidgetWithCompileResult(InGraphNode->CompileMessages);
+		}
+		else
+		{
+			RemoveCompileResultOverlay();
+		}
+	}
+}
+
+void SJointGraphNodeBase::UpdateBreakpoint()
+{
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (const FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(InGraphNode); DebugData != nullptr)
+		{
+			if (DebugData->bHasBreakpoint)
+			{
+				if (!BreakpointOverlay.IsValid())
+				{
+					AssignBreakpointOverlay();
+				}
+
+				return;
+			}
+		}
+	}
+
+	RemoveBreakpointOverlay();
+}
+
+void SJointGraphNodeBase::UpdateBuildTargetPreset()
+{
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (UJointNodeBase* NodeInstance = InGraphNode->GetCastedNodeInstance())
+		{
+			if (!NodeInstance->GetBuildPreset().IsNull())
+			{
+				if (!BuildPresetOverlay.IsValid())
+				{
+					AssignBuildTargetPresetOverlay();
+				}
+
+				BuildPresetOverlay->Update();
+
+				return;
+			}
+		}
+	}
+
+	RemoveBuildPresetOverlay();
+}
+
+void SJointGraphNodeBase::UpdateNameBox()
+{
+	// populate the dissolve indicator if needed.
+	if (NameBox)
+	{
+		//iterate over the slots of NameBox and remove the dissolve indicator if exists.
+		if (DissolveIndicator)
+		{
+			NameBox->RemoveSlot(DissolveIndicator.ToSharedRef());
+		}
+
+		DissolveIndicator = nullptr;
+
+		// Check whether the node has dissolved subnodes.
+		DissolvedSubnodeCounts = 0;
+
+		if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+		{
+			for (UJointEdGraphNode* SubNode : InGraphNode->SubNodes)
+			{
+				UJointEdGraphNode_Fragment* SubNodeAsFragment = Cast<UJointEdGraphNode_Fragment>(SubNode);
+
+				if (!SubNodeAsFragment) continue;
+
+				if (SubNodeAsFragment->IsDissolvedSubNode()) DissolvedSubnodeCounts++;
+			}
+		}
+
+		if (DissolvedSubnodeCounts > 0)
+		{
+			NameBox->AddSlot()
+			       .AutoWidth()
+			       .HAlign(HAlign_Left)
+			       .VAlign(VAlign_Center)
+			       .Padding(FJointEditorStyle::Margin_Normal)
+			[
+				CreateDissolvedSubNodeIndication()
+			];
+		}
+	}
+}
+
+UJointEdGraphNode* SJointGraphNodeBase::GetCastedGraphNode() const
+{
+	if (!GraphNode) return nullptr;
+
+	return Cast<UJointEdGraphNode>(GraphNode);
+}
+
+FText SJointGraphNodeBase::GetIndexTooltipText()
+{
+	FText Result = FText::GetEmpty();
+
+	if (!this->GraphNode) { return Result; }
+
+	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
+
+	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorTooltipText();
+}
+
+EVisibility SJointGraphNodeBase::GetIndexVisibility()
+{
+	EVisibility Result = EVisibility::Collapsed;
+
+	if (!this->GraphNode) { return Result; }
+
+	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
+
+	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorVisibility();
+}
+
+FText SJointGraphNodeBase::GetIndexText()
+{
+	FText Result = FText::GetEmpty();
+
+	if (!this->GraphNode) { return Result; }
+
+	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
+
+	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorText();
+}
+
+TSharedRef<SGraphNode> SJointGraphNodeBase::GetNodeUnderMouse(const FGeometry& MyGeometry,
+                                                              const FPointerEvent& MouseEvent)
+{
+	TSharedPtr<SGraphNode> ResultNode;
+
+	// We just need to find the one WidgetToFind among our descendants.
+	TSet<TSharedRef<SWidget>> SubWidgetsSet;
+	for (int32 i = 0; i < SubNodes.Num(); i++) { SubWidgetsSet.Add(SubNodes[i].ToSharedRef()); }
+
+	TMap<TSharedRef<SWidget>, FArrangedWidget> Result;
+	FindChildGeometries(MyGeometry, SubWidgetsSet, Result);
+
+	if (Result.Num() > 0)
+	{
+		FArrangedChildren ArrangedChildren(EVisibility::Visible);
+		Result.GenerateValueArray(ArrangedChildren.GetInternalArray());
+
+		const int32 HoveredIndex = SWidget::FindChildUnderMouse(ArrangedChildren, MouseEvent);
+		if (HoveredIndex != INDEX_NONE)
+		{
+			ResultNode = StaticCastSharedRef<SGraphNode>(ArrangedChildren[HoveredIndex].Widget);
+		}
+	}
+
+	return ResultNode.IsValid() ? ResultNode.ToSharedRef() : SGraphNode::GetNodeUnderMouse(MyGeometry, MouseEvent);
+}
+
 FChildren* SJointGraphNodeBase::GetChildren()
 {
 	//if(SubNodeBox) return SubNodeBox->GetChildren();
@@ -1323,9 +1571,72 @@ FChildren* SJointGraphNodeBase::GetChildren()
 	return SGraphNodeResizable::GetChildren();
 }
 
+void SJointGraphNodeBase::OnGraphSelectionChanged(const TSet<UObject*>& NewSelection)
+{
+	PlaySelectionAnimation();
+}
+
+void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce)
+{
+	if (!NodeBackground || !NodeBackground->InnerBorder) return;
+
+	VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
+
+	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+		.bShouldLoop(!bBlinkForOnce)
+		//.bShouldLoop(false)
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.RateBasedInterpSpeed(25)
+			.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3)),
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.RateBasedInterpSpeed(16)
+			.TargetColor(GetNodeBodyBackgroundColor())
+		)
+	);
+
+	NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, Anim);
+}
+
+void SJointGraphNodeBase::StopHighlightAnimation()
+{
+	if (!NodeBackground || !NodeBackground->InnerBorder) return;
+
+	VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
+
+	const UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+		.TargetColor(GetNodeBodyBackgroundColor())
+	);
+
+	NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ColorAnimation);
+}
+
+void SJointGraphNodeBase::PlayNodeBackgroundColorResetAnimationIfPossible(bool bInstant)
+{
+	if (!NodeBackground) return;
+
+	VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
+
+	const UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpColor)
+		.InterpolationMode(EVoltInterpMode::AlphaBased)
+		.AlphaBasedDuration(bInstant ? 0.05 : 0.4)
+		.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+		.AlphaBasedBlendExp(6)
+		.TargetColor(GetNodeBodyBackgroundColor())
+	);
+
+	NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ColorAnimation);
+}
+
 void SJointGraphNodeBase::PlaySelectionAnimation()
 {
-	if (!NodeBackground.IsValid()) PopulateNodeSlates();
+	if (!NodeBackground.IsValid()) return;
 
 	//Update animation.
 	if (CheckWhetherNodeSelected())
@@ -1492,6 +1803,7 @@ void SJointGraphNodeBase::PlayInsertAnimation()
 	NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
 }
 
+
 void SJointGraphNodeBase::PlayInsertPointHighlightAnimation()
 {
 	const float DelayTotalTime = 0.5;
@@ -1512,208 +1824,45 @@ void SJointGraphNodeBase::PlayInsertPointHighlightAnimation()
 
 void SJointGraphNodeBase::InitializeVoltVariables()
 {
-	if (NodeBackground.IsValid())
+	if (!NodeBackground) return;
+
+	FLinearColor NormalColor;
+	FLinearColor HoverColor;
+	FLinearColor OutlineNormalColor;
+	FLinearColor OutlineHoverColor;
+
+	GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+
+	if (NodeBackground->InnerBorder)
 	{
-		FLinearColor NormalColor;
-		FLinearColor HoverColor;
-		FLinearColor OutlineNormalColor;
-		FLinearColor OutlineHoverColor;
-
-		GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
-
-		if (NodeBackground->InnerBorder)
-		{
-			const UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(KINDA_SMALL_NUMBER)
-				.TargetColor(NormalColor)
-			);
-
-			VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ContentAnim);
-		}
-
-		if (NodeBackground->OuterBorder)
-		{
-			const UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(KINDA_SMALL_NUMBER)
-				.TargetColor(OutlineNormalColor)
-			);
-
-			VOLT_PLAY_ANIM(NodeBackground->OuterBorder, ContentAnim);
-		}
-	}
-}
-
-void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce)
-{
-	if (NodeBackground.IsValid() && NodeBackground->InnerBorder)
-	{
-		VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
-
-		const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
-		(
-			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
-			.bShouldLoop(!bBlinkForOnce)
-			//.bShouldLoop(false)
-			(
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-				.RateBasedInterpSpeed(25)
-				.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3)),
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-				.RateBasedInterpSpeed(16)
-				.TargetColor(GetNodeBodyBackgroundColor())
-			)
-		);
-
-		NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, Anim);
-	}
-}
-
-void SJointGraphNodeBase::StopHighlightAnimation()
-{
-	if (NodeBackground.IsValid() && NodeBackground->InnerBorder)
-	{
-		VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
-
-		const UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
-		(
+		const UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-			.TargetColor(GetNodeBodyBackgroundColor())
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(KINDA_SMALL_NUMBER)
+			.TargetColor(NormalColor)
 		);
 
-		NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ColorAnimation);
+		VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ContentAnim);
 	}
-}
 
-void SJointGraphNodeBase::PlayNodeBackgroundColorResetAnimationIfPossible(bool bInstant)
-{
-	VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
-
-	const UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpColor)
-		.InterpolationMode(EVoltInterpMode::AlphaBased)
-		.AlphaBasedDuration(bInstant ? 0.05 : 0.4)
-		.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
-		.AlphaBasedBlendExp(6)
-		.TargetColor(GetNodeBodyBackgroundColor())
-	);
-
-	NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, ColorAnimation);
-}
-
-void SJointGraphNodeBase::OnGraphSelectionChanged(const TSet<UObject*>& NewSelection)
-{
-	PlaySelectionAnimation();
-}
-
-TSharedRef<SGraphNode> SJointGraphNodeBase::GetNodeUnderMouse(const FGeometry& MyGeometry,
-                                                              const FPointerEvent& MouseEvent)
-{
-	TSharedPtr<SGraphNode> ResultNode;
-
-	// We just need to find the one WidgetToFind among our descendants.
-	TSet<TSharedRef<SWidget>> SubWidgetsSet;
-	for (int32 i = 0; i < SubNodes.Num(); i++) { SubWidgetsSet.Add(SubNodes[i].ToSharedRef()); }
-
-	TMap<TSharedRef<SWidget>, FArrangedWidget> Result;
-	FindChildGeometries(MyGeometry, SubWidgetsSet, Result);
-
-	if (Result.Num() > 0)
+	if (NodeBackground->OuterBorder)
 	{
-		FArrangedChildren ArrangedChildren(EVisibility::Visible);
-		Result.GenerateValueArray(ArrangedChildren.GetInternalArray());
+		const UVoltAnimation* ContentAnim = VOLT_MAKE_ANIMATION()(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(KINDA_SMALL_NUMBER)
+			.TargetColor(OutlineNormalColor)
+		);
 
-		const int32 HoveredIndex = SWidget::FindChildUnderMouse(ArrangedChildren, MouseEvent);
-		if (HoveredIndex != INDEX_NONE)
-		{
-			ResultNode = StaticCastSharedRef<SGraphNode>(ArrangedChildren[HoveredIndex].Widget);
-		}
+		VOLT_PLAY_ANIM(NodeBackground->OuterBorder, ContentAnim);
 	}
-
-	return ResultNode.IsValid() ? ResultNode.ToSharedRef() : SGraphNode::GetNodeUnderMouse(MyGeometry, MouseEvent);
-}
-
-void SJointGraphNodeBase::UpdateErrorInfo()
-{
-	//We don't use graph node's original properties for the error reporting. Reset it thus.
-	ErrorColor = FLinearColor(0, 0, 0);
-	ErrorMsg.Empty();
-
-	//Update CompileResultOverlay with the compile result.
-	//TODO: Change it to populate the overlay only when it's needed.
-	if (const UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
-	{
-		const TArray<TSharedPtr<class FTokenizedMessage>>& Messages = InGraphNode->CompileMessages;
-
-		if (Messages.Num() > 0)
-		{
-			if (!CompileResultOverlay) AssignCompileResultOverlay();
-
-			CompileResultOverlay->UpdateWidgetWithCompileResult(InGraphNode->CompileMessages);
-		}
-		else
-		{
-			RemoveCompileResultOverlay();
-		}
-	}
-}
-
-void SJointGraphNodeBase::UpdateBreakpoint()
-{
-	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
-	{
-		if (const FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataFor(InGraphNode); DebugData != nullptr)
-		{
-			if (DebugData->bHasBreakpoint)
-			{
-				if (!BreakpointOverlay.IsValid())
-				{
-					AssignBreakpointOverlay();
-				}
-
-				return;
-			}
-		}
-	}
-
-	RemoveBreakpointOverlay();
-}
-
-void SJointGraphNodeBase::UpdateBuildTargetPreset()
-{
-	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
-	{
-		if (UJointNodeBase* NodeInstance = InGraphNode->GetCastedNodeInstance())
-		{
-			if (!NodeInstance->GetBuildPreset().IsNull())
-			{
-				if (!BuildPresetOverlay.IsValid())
-				{
-					AssignBuildTargetPresetOverlay();
-				}
-
-				BuildPresetOverlay->Update();
-
-				return;
-			}
-		}
-	}
-
-	RemoveBuildPresetOverlay();
-}
-
-void SJointGraphNodeBase::UpdateNameBox()
-{
 }
 
 const FSlateBrush* SJointGraphNodeBase::GetShadowBrush(bool bSelected) const
 {
 	return FStyleDefaults::GetNoBrush();
 }
+
 
 const EJointEdSlateDetailLevel::Type SJointGraphNodeBase::GetSlateDetailLevel() const
 {
@@ -1725,48 +1874,28 @@ const EJointEdSlateDetailLevel::Type SJointGraphNodeBase::GetSlateDetailLevel() 
 	return EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
 }
 
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
-FText SJointGraphNodeBase::GetIndexTooltipText()
+TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterContentBox()
 {
-	FText Result = FText::GetEmpty();
-
-	if (!this->GraphNode) { return Result; }
-
-	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
-
-	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorTooltipText();
+	return SAssignNew(CenterContentBox, SVerticalBox)
+		.Visibility(EVisibility::SelfHitTestInvisible);
 }
 
-EVisibility SJointGraphNodeBase::GetIndexVisibility()
+void SJointGraphNodeBase::PopulatePinWidgets()
 {
-	EVisibility Result = EVisibility::Collapsed;
+	if (LeftNodeBox.IsValid() && RightNodeBox.IsValid())
+	{
+		InputPins.Empty();
+		OutputPins.Empty();
 
-	if (!this->GraphNode) { return Result; }
+		LeftNodeBox->ClearChildren();
+		RightNodeBox->ClearChildren();
 
-	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
-
-	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorVisibility();
+		CreatePinWidgets();
+		CreateSubNodePinWidgets();
+	}
 }
-
-FText SJointGraphNodeBase::GetIndexText()
-{
-	FText Result = FText::GetEmpty();
-
-	if (!this->GraphNode) { return Result; }
-
-	if (!Cast<UJointEdGraphNode>(this->GraphNode)) { return Result; }
-
-	return Cast<UJointEdGraphNode>(this->GraphNode)->GetPriorityIndicatorText();
-}
-
-
-UJointEdGraphNode* SJointGraphNodeBase::GetCastedGraphNode() const
-{
-	if (!GraphNode) return nullptr;
-
-	return Cast<UJointEdGraphNode>(GraphNode);
-}
-
 
 void SJointGraphNodeBase::CreateSubNodePinWidgets()
 {
@@ -1790,7 +1919,7 @@ void SJointGraphNodeBase::CreateSubNodePinWidgets()
 	{
 		if (!Pin) continue;
 		if (!Pin->GetOwningNode()) continue;
-		if (Node->CheckProvidedPinIsOnPinData(Pin)) continue; // revert if this pin is implemented in the node itself.
+		if (Node->CheckPinIsOriginatedFromThis(Pin)) continue; // revert if this pin is implemented in the node itself.
 
 		UEdGraphPin* OriginalPin = Node->FindOriginalSubNodePin(Pin);
 
@@ -1916,7 +2045,7 @@ void SJointGraphNodeBase::CreatePinWidgets()
 			continue;
 		}
 
-		if (!CastedGraphNode->CheckProvidedPinIsOnPinData(CurPin))
+		if (!CastedGraphNode->CheckPinIsOriginatedFromThis(CurPin))
 		{
 			//It means that this pin is a pin for the sub node. skip the creation and handle in CreateSubNodePinWidgets().
 			continue;
@@ -1963,183 +2092,15 @@ void SJointGraphNodeBase::AddPin(const TSharedRef<SGraphPin>& PinToAdd)
 	}
 }
 
-void SJointGraphNodeBase::PopulatePinWidgets()
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+
+FText SJointGraphNodeBase::GetGraphNodeName() const
 {
-	if (LeftNodeBox.IsValid() && RightNodeBox.IsValid())
-	{
-		InputPins.Empty();
-		OutputPins.Empty();
-
-		LeftNodeBox->ClearChildren();
-		RightNodeBox->ClearChildren();
-
-		CreatePinWidgets();
-		CreateSubNodePinWidgets();
-	}
+	return this->GraphNode ? this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle) : FText::GetEmpty();
 }
 
-TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterContentBox()
-{
-	return SAssignNew(CenterContentBox, SVerticalBox)
-		.Visibility(EVisibility::SelfHitTestInvisible);
-}
-
-FText SJointGraphNodeBase::GetNodeRawName()
-{
-	if (this)
-		if (this->GraphNode)
-			if (const UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(this->GraphNode))
-				if (Node->NodeInstance) return FText::FromString(Node->NodeInstance->GetClass()->GetName());
-
-	return FText::GetEmpty();
-}
-
-TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
-{
-	//Don't display if we don't need to display it
-	if (this && this->GraphNode && this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle).IsEmpty())
-		return
-			SNullWidget::NullWidget;
-
-
-	EVisibility NodeHintTextVisibility = this && this->GetSlateDetailLevel() !=
-	                                     EJointEdSlateDetailLevel::SlateDetailLevel_Maximum &&
-	                                     GetWhetherToDisplayIconicNodeText()
-		                                     ? EVisibility::SelfHitTestInvisible
-		                                     : EVisibility::Collapsed;
-
-	EVisibility NodeTitleVisibility = this && this->GetSlateDetailLevel() ==
-	                                  EJointEdSlateDetailLevel::SlateDetailLevel_Maximum
-		                                  ? EVisibility::Visible
-		                                  : this->InlineEditableText && this->InlineEditableText->IsInEditMode()
-		                                  ? EVisibility::Visible
-		                                  : EVisibility::Collapsed;
-
-	const TSharedPtr<SToolTip> ToolTip = SNew(SToolTip)
-		[
-			SNew(SVerticalBox)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.VAlign(VAlign_Center)
-			.Padding(FJointEditorStyle::Margin_Normal)
-			[
-				SNew(STextBlock)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.Text(CheckRenameNodeInstance()
-					      ? LOCTEXT("NodeRenameBox", "Press F2 to rename this node.")
-					      : LOCTEXT("NodeRenameBox_Revert", "Can not rename this node."))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.VAlign(VAlign_Center)
-			[
-				SNew(SJointNodeDescription)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.ClassToDescribe(GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance()
-					                 ? GetCastedGraphNode()->GetCastedNodeInstance()->GetClass()
-					                 : nullptr)
-			]
-		];
-
-
-	if (const FSlateBrush* IconBrush = GetIconicNodeSlateBrush(); IconBrush != nullptr && !IconBrush->ImageSize.
-		IsNearlyZero() && IconBrush->DrawAs != ESlateBrushDrawType::NoDrawType)
-	{
-		SAssignNew(NameBox, SHorizontalBox)
-		.Visibility(EVisibility::SelfHitTestInvisible)
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Large)
-		[
-			SNew(SImage)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			.Image(GetIconicNodeSlateBrush())
-		]
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FMargin(0, FJointEditorStyle::Margin_Large.Bottom, FJointEditorStyle::Margin_Large.Bottom,
-		                 FJointEditorStyle::Margin_Large.Bottom))
-		[
-			SAssignNew(NodeTitleHintTextBlock, STextBlock)
-			.Visibility(NodeHintTextVisibility)
-			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
-			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
-			.Text(GetIconicNodeText())
-		]
-		+ SHorizontalBox::Slot()
-		.FillWidth(1)
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Large)
-		[
-			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
-			.Visibility(NodeTitleVisibility)
-			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
-			.Text(this->GraphNode ? this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle) : FText::GetEmpty())
-			.ToolTip(ToolTip)
-			.OnVerifyTextChanged(this, &SJointGraphNodeBase::VerifyNameOnTextChanged)
-			.OnTextCommitted(this, &SJointGraphNodeBase::OnNameTextCommited)
-			.IsSelected(this, &SJointGraphNodeBase::IsSelectedExclusively)
-		];
-	}
-	else
-	{
-		SAssignNew(NameBox, SHorizontalBox)
-		.Visibility(EVisibility::SelfHitTestInvisible)
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Large)
-		[
-			SNew(STextBlock)
-			.Visibility(NodeHintTextVisibility)
-			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
-			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
-			.Text(GetIconicNodeText())
-		]
-		+ SHorizontalBox::Slot()
-		.FillWidth(1)
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Large)
-		[
-			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
-			.Visibility(NodeTitleVisibility)
-			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
-			.Text(this->GraphNode ? this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle) : FText::GetEmpty())
-			.ToolTip(ToolTip)
-			.OnVerifyTextChanged(this, &SJointGraphNodeBase::VerifyNameOnTextChanged)
-			.OnTextCommitted(this, &SJointGraphNodeBase::OnRenameTextCommited)
-			.IsSelected(this, &SJointGraphNodeBase::IsSelectedExclusively)
-		];
-	}
-
-	return NameBox.ToSharedRef();
-}
-
-
-bool SJointGraphNodeBase::VerifyNameOnTextChanged(const FText& InText, FText& OutErrorMessage)
-{
-	bool bValid(true);
-
-	if ((GetEditableNodeTitle() != InText.ToString()) && OnVerifyTextCommit.IsBound())
-	{
-		bValid = OnVerifyTextCommit.Execute(InText, GraphNode, OutErrorMessage);
-	}
-
-	if (OutErrorMessage.IsEmpty())
-	{
-		OutErrorMessage = FText::FromString(TEXT("Error"));
-	}
-
-	return bValid;
-}
+BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterWholeBox()
 {
@@ -2201,6 +2162,178 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterWholeBox()
 	return CenterWholeBox.ToSharedRef();
 }
 
+TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
+{
+	if (!this ) return SNullWidget::NullWidget;
+
+	UJointEdGraphNode* Node = GetCastedGraphNode();
+	
+	//Don't display if we don't need to display it
+	if (!Node) return SNullWidget::NullWidget;
+	//if (this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle).IsEmpty()) return SNullWidget::NullWidget;
+
+	EVisibility NodeHintTextVisibility = this && this->GetSlateDetailLevel() !=
+	                                     EJointEdSlateDetailLevel::SlateDetailLevel_Maximum &&
+	                                     GetWhetherToDisplayIconicNodeText()
+		                                     ? EVisibility::SelfHitTestInvisible
+		                                     : EVisibility::Collapsed;
+
+	EVisibility NodeTitleVisibility = this && this->GetSlateDetailLevel() ==
+	                                  EJointEdSlateDetailLevel::SlateDetailLevel_Maximum
+		                                  ? EVisibility::Visible
+		                                  : this->InlineEditableText && this->InlineEditableText->IsInEditMode()
+		                                  ? EVisibility::Visible
+		                                  : EVisibility::Collapsed;
+	
+	const TSharedPtr<SToolTip> ToolTip = SNew(SToolTip)
+		[
+			SNew(SVerticalBox)
+			.Visibility( Node->GetShouldHideNameBox()
+							? EVisibility::Collapsed
+							: EVisibility::SelfHitTestInvisible)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(STextBlock)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				.Text(CheckRenameNodeInstance()
+					      ? LOCTEXT("NodeRenameBox", "Press F2 to rename this node.")
+					      : LOCTEXT("NodeRenameBox_Revert", "Can not rename this node."))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.VAlign(VAlign_Center)
+			[
+				SNew(SJointNodeDescription)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				.ClassToDescribe(GetCastedGraphNode() && GetCastedGraphNode()->GetCastedNodeInstance()
+					                 ? GetCastedGraphNode()->GetCastedNodeInstance()->GetClass()
+					                 : nullptr)
+			]
+		];
+
+
+	if (const FSlateBrush* IconBrush = GetIconicNodeSlateBrush(); IconBrush != nullptr && !IconBrush->ImageSize.
+	                                                                                                  IsNearlyZero() && IconBrush->DrawAs != ESlateBrushDrawType::NoDrawType)
+	{
+		SAssignNew(NameBox, SHorizontalBox)
+		.Visibility(Node->GetShouldHideNameBox()
+			? EVisibility::Collapsed
+			: EVisibility::SelfHitTestInvisible)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Large)
+		[
+			SNew(SImage)
+			.Visibility(EVisibility::SelfHitTestInvisible)
+			.Image(GetIconicNodeSlateBrush())
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(0, FJointEditorStyle::Margin_Large.Bottom, FJointEditorStyle::Margin_Large.Bottom,
+		                 FJointEditorStyle::Margin_Large.Bottom))
+		[
+			SAssignNew(NodeTitleHintTextBlock, STextBlock)
+			.Visibility(NodeHintTextVisibility)
+			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
+			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
+			.Text(GetIconicNodeText())
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Large)
+		[
+			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
+			.Visibility(NodeTitleVisibility)
+			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
+			.Text(GetGraphNodeName())
+			.ToolTip(ToolTip)
+			.OnVerifyTextChanged(this, &SJointGraphNodeBase::VerifyRenameNameOnTextChanged)
+			.OnTextCommitted(this, &SJointGraphNodeBase::OnNameTextCommited)
+			.IsSelected(this, &SJointGraphNodeBase::IsSelectedExclusively)
+		];
+	}
+	else
+	{
+		SAssignNew(NameBox, SHorizontalBox)
+		.Visibility(Node->GetShouldHideNameBox()
+			? EVisibility::Collapsed
+			: EVisibility::SelfHitTestInvisible)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Large)
+		[
+			SNew(STextBlock)
+			.Visibility(NodeHintTextVisibility)
+			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
+			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
+			.Text(GetIconicNodeText())
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(1)
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Large)
+		[
+			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
+			.Visibility(NodeTitleVisibility)
+			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
+			.Text(GetGraphNodeName())
+			.ToolTip(ToolTip)
+			.OnVerifyTextChanged(this, &SJointGraphNodeBase::VerifyRenameNameOnTextChanged)
+			.OnTextCommitted(this, &SJointGraphNodeBase::OnRenameTextCommited)
+			.IsSelected(this, &SJointGraphNodeBase::IsSelectedExclusively)
+		];
+	}
+
+	return NameBox.ToSharedRef();
+}
+
+
+TSharedRef<SWidget> SJointGraphNodeBase::CreateDissolvedSubNodeIndication()
+{
+	SAssignNew(DissolveIndicator, SHorizontalBox)
+	.Visibility(EVisibility::Visible)
+	.ToolTipText(
+		FText::Format(
+			LOCTEXT("DissolveIndicatorToolTip", "This node has {0} dissolved sub-nodes - you can solidify them again by selecting this node and pressing Ctrl + Shift + S"),
+			FText::FromString(FString::FromInt(GetDissolvedSubnodeCounts()))
+		))
+	+ SHorizontalBox::Slot()
+	.AutoWidth()
+	.HAlign(HAlign_Left)
+	.VAlign(VAlign_Center)
+	.Padding(FMargin(0))
+	[
+		SNew(SImage)
+		.Visibility(EVisibility::SelfHitTestInvisible)
+		.DesiredSizeOverride(FVector2D(12, 12))
+		.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("ShowFlagsMenu.Decals"))
+	]
+	+ SHorizontalBox::Slot()
+	.AutoWidth()
+	.HAlign(HAlign_Left)
+	.VAlign(VAlign_Center)
+	.Padding(FMargin(2, 0, 0, 0))
+	[
+		SNew(STextBlock)
+		.Visibility(EVisibility::SelfHitTestInvisible)
+		.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
+		.Text(FText::FromString(FString::FromInt(GetDissolvedSubnodeCounts())))
+	];
+
+	return DissolveIndicator.ToSharedRef();
+}
 
 TSharedRef<SWidget> SJointGraphNodeBase::CreateSubNodePanelSection()
 {
@@ -2208,6 +2341,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateSubNodePanelSection()
 
 	return SubNodePanel.ToSharedRef();
 }
+
 
 TSharedRef<SWidget> SJointGraphNodeBase::CreateNodeTagBox()
 {
@@ -2220,36 +2354,6 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNodeTagBox()
 		[
 			SAssignNew(NodeTagContentBox, SVerticalBox)
 		];
-}
-
-bool SJointGraphNodeBase::CheckWhetherNodeSelected() const
-{
-	if (const FGraphSelectionManager* SelectionManager = GetSelectionManager())
-	{
-		return SelectionManager->SelectedNodes.Contains(this->GetCastedGraphNode());
-	}
-
-	return false;
-}
-
-bool SJointGraphNodeBase::CheckRenameNodeInstance() const
-{
-	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
-	{
-		if (UJointNodeBase* InGraphNodeInstance = InGraphNode->GetCastedNodeInstance())
-		{
-			return InGraphNode->GetCanRenameNode();
-		}
-	}
-
-	return false;
-}
-
-FLinearColor SJointGraphNodeBase::GetNodeBodyBackgroundColor() const
-{
-	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode(); CastedGraphNode) return CastedGraphNode->GetNodeBodyTintColor();
-
-	return FLinearColor::Transparent;
 }
 
 void SJointGraphNodeBase::PopulateSubNodePanel()
@@ -2279,7 +2383,6 @@ void SJointGraphNodeBase::PopulateSubNodePanel()
 	.PreferredSize(WrapRowSize_Attr);
 }
 
-
 void SJointGraphNodeBase::ClearChildrenOnSubNodePanel()
 {
 	if (const TSharedPtr<SWrapBox> CastedSubNodePanel = INLINE_GetCastedSubNodePanel<SWrapBox>())
@@ -2302,6 +2405,79 @@ void SJointGraphNodeBase::AddSlateOnSubNodePanel(const TSharedRef<SWidget>& Slat
 	}
 }
 
+bool SJointGraphNodeBase::IsSubNodeWidget() const
+{
+	return false;
+}
+
+FLinearColor SJointGraphNodeBase::GetNodeBodyBackgroundColor() const
+{
+	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode()) return CastedGraphNode->GetNodeBodyTintColor();
+
+	return FLinearColor::Transparent;
+}
+
+
+bool SJointGraphNodeBase::VerifyRenameNameOnTextChanged(const FText& InText, FText& OutErrorMessage)
+{
+	bool bValid(true);
+
+	if (GetEditableNodeTitle() != InText.ToString())
+	{
+		if (UJointEdGraphNode* EdNode = Cast<UJointEdGraphNode>(GraphNode))
+		{
+			bValid = FJointEdUtils::IsNameSafeForObjectRenaming(InText.ToString(), EdNode, EdNode->GetOuter(), OutErrorMessage);
+		}
+	}
+
+	if (OutErrorMessage.IsEmpty())
+	{
+		OutErrorMessage = FText::FromString(TEXT("Error"));
+	}
+
+	return bValid;
+}
+
+bool SJointGraphNodeBase::CheckWhetherNodeSelected() const
+{
+	if (const FGraphSelectionManager* SelectionManager = GetSelectionManager())
+	{
+		return SelectionManager->SelectedNodes.Contains(this->GetCastedGraphNode());
+	}
+
+	return false;
+}
+
+bool SJointGraphNodeBase::CheckRenameNodeInstance() const
+{
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (UJointNodeBase* InGraphNodeInstance = InGraphNode->GetCastedNodeInstance())
+		{
+			return InGraphNode->GetCanRenameNode();
+		}
+	}
+	
+	return false;
+}
+
+END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+
+TArray<FOverlayWidgetInfo> SJointGraphNodeBase::GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const
+{
+	TArray<FOverlayWidgetInfo> Widgets;
+
+	FVector2D OverlayOverallOffset = FVector2D(0, 8);
+
+	FVector2D OverlayOffset = FVector2D(0, 0);
+
+	AttachWidgetOnOverlayInfo(BuildPresetOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
+	AttachWidgetOnOverlayInfo(BreakpointOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
+	AttachWidgetOnOverlayInfo(CompileResultOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
+
+	return Widgets;
+}
 
 void SJointGraphNodeBase::AttachWidgetOnOverlayInfo(const TSharedPtr<SWidget>& WidgetToAdd,
                                                     TArray<FOverlayWidgetInfo>& Widgets,
@@ -2327,29 +2503,11 @@ void SJointGraphNodeBase::AttachWidgetOnOverlayInfo(const TSharedPtr<SWidget>& W
 	}
 }
 
-TArray<FOverlayWidgetInfo> SJointGraphNodeBase::GetOverlayWidgets(bool bSelected, const FVector2D& WidgetSize) const
-{
-	TArray<FOverlayWidgetInfo> Widgets;
-
-	FVector2D OverlayOverallOffset = FVector2D(0, 8);
-
-	FVector2D OverlayOffset = FVector2D(0, 0);
-
-	AttachWidgetOnOverlayInfo(BuildPresetOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
-	AttachWidgetOnOverlayInfo(BreakpointOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
-	AttachWidgetOnOverlayInfo(CompileResultOverlay, Widgets, OverlayOverallOffset, OverlayOffset);
-
-	return Widgets;
-}
-
 const FSlateBrush* SJointGraphNodeBase::GetIconicNodeSlateBrush() const
 {
-	if (UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
-		if (UJointNodeBase* CastedNodeInstance = CastedGraphNode->GetCastedNodeInstance())
-		{
-			return &CastedNodeInstance->EdNodeSetting.IconicNodeImageBrush;
-		}
+		return &InGraphNode->GetEdNodeSetting().IconicNodeImageBrush;
 	}
 
 	return nullptr;
@@ -2360,10 +2518,7 @@ const FText SJointGraphNodeBase::GetIconicNodeText() const
 {
 	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
 	{
-		if (const UJointNodeBase* CastedNodeInstance = CastedGraphNode->GetCastedNodeInstance())
-		{
-			return FJointEdUtils::GetFriendlyNameOfNode(CastedNodeInstance);
-		}
+		return FJointEdUtils::GetFriendlyNameOfNode(CastedGraphNode);
 	}
 
 	return FText::GetEmpty();
@@ -2371,14 +2526,16 @@ const FText SJointGraphNodeBase::GetIconicNodeText() const
 
 const bool SJointGraphNodeBase::GetWhetherToDisplayIconicNodeText() const
 {
-	if (const UJointEdGraphNode* CastedGraphNode = GetCastedGraphNode())
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
-		if (const UJointNodeBase* CastedNodeInstance = CastedGraphNode->GetCastedNodeInstance())
-		{
-			return CastedNodeInstance->EdNodeSetting.bAllowDisplayClassFriendlyNameText;
-		}
+		return InGraphNode->GetEdNodeSetting().bAllowDisplayClassFriendlyNameText;
 	}
 
 	return false;
+}
+
+const uint16 SJointGraphNodeBase::GetDissolvedSubnodeCounts() const
+{
+	return DissolvedSubnodeCounts;
 }
 #undef LOCTEXT_NAMESPACE

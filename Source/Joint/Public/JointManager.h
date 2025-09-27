@@ -248,8 +248,23 @@ public:
 	/** Editor Graph Data for Joint Manager. */
 	UPROPERTY(VisibleAnywhere, Category="Editor")
 	class UEdGraph* JointGraph;
+
+	UPROPERTY()
+	TArray<FEditedDocumentInfo> LastEditedDocuments;
+	
 #endif
 
+#if WITH_EDITOR
+
+	template<typename T=UEdGraph>
+	T* GetJointGraphAs() const
+	{
+		if (!JointGraph) return nullptr;
+		return Cast<T>(JointGraph);
+	}
+	
+#endif
+	
 #if WITH_EDITORONLY_DATA
 
 	//Editor Compile related.

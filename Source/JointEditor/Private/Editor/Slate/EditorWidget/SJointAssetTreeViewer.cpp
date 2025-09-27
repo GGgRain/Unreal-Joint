@@ -67,7 +67,6 @@ void SJointAssetTreeViewer::RebuildWidget()
 	ChildSlot
 	[
 		SAssignNew(ManagerTree,SJointManagerViewer)
-		.BuilderArgs(FJointPropertyTreeBuilderArgs())
 		.JointManagers(Managers)
 	];
 }

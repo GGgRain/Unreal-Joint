@@ -1,6 +1,6 @@
 //Copyright 2022~2024 DevGrain. All Rights Reserved.
 
-#include "JointGraphPinFactory.h"
+#include "JointGraphPinSlateFactory.h"
 
 #include "JointEdGraphNode.h"
 #include "JointEdGraphSchema.h"
@@ -10,7 +10,7 @@
 #include "SGraphPin.h"
 #include "GraphNode/SJointGraphPin.h"
 
-TSharedPtr<class SGraphPin> FJointGraphPinFactory::CreatePin(class UEdGraphPin* InPin) const
+TSharedPtr<class SGraphPin> FJointGraphPinSlateFactory::CreatePin(class UEdGraphPin* InPin) const
 {
 	
 	if(InPin->GetOwningNodeUnchecked())

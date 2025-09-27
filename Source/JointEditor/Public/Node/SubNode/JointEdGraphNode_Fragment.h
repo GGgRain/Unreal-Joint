@@ -39,5 +39,23 @@ public:
 	 * Check out the UJointEdFragment_Condition and UJointEdFragment_ConditionInstance.
 	 */
 	virtual bool ShouldManuallyImplementSlate() const;
+
+public:
+
+	const bool& IsDissolvedSubNode() const { return bIsDissolvedSubNode; }
+
+	void DissolveSelf();
+	void SolidifySelf();
+
+private:
+
+	/**
+	 * Whether this sub node is merged form.
+	 * Joint 2.10.0: Now subnodes can be merged into a single node.
+	 * Merge subnodes doesn't need to render everything - only few things - so we can optimize the rendering and interaction.
+	 */
+	UPROPERTY()
+	bool bIsDissolvedSubNode = false;
+	
 	
 };

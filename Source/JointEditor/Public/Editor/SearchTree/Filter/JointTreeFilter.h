@@ -37,8 +37,7 @@ private:
 	TSet<TSharedPtr<FJointTreeFilterItem>> Items;
 
 public:
-
-
+	
 	TSharedPtr<SJointTree> JointTree;
 
 public:

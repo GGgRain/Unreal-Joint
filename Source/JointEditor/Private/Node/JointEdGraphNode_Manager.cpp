@@ -20,6 +20,7 @@ UJointEdGraphNode_Manager::UJointEdGraphNode_Manager()
 	
 }
 
+
 bool UJointEdGraphNode_Manager::CanUserDeleteNode() const
 {
 	return false;
@@ -77,6 +78,8 @@ void UJointEdGraphNode_Manager::ReallocatePins()
 void UJointEdGraphNode_Manager::ReconstructNode()
 {
 	UpdatePins();
+
+	RequestUpdateSlate();
 }
 
 void UJointEdGraphNode_Manager::NodeConnectionListChanged()
@@ -96,21 +99,12 @@ void UJointEdGraphNode_Manager::NodeConnectionListChanged()
 
 		Nodes.Empty();
 		
-		for (const UEdGraphPin* LinkedTo : Pin->LinkedTo)
+		for (UEdGraphPin* LinkedTo : Pin->LinkedTo)
 		{
-			if (LinkedTo == nullptr) continue;
-
-			if (LinkedTo->GetOwningNode() == nullptr) continue;
-
-			UEdGraphNode* ConnectedNode = LinkedTo->GetOwningNode();
-
-			if(!ConnectedNode) continue;
-
-			UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(ConnectedNode);
-
-			if(!CastedGraphNode) continue;
-
-			CastedGraphNode->AllocateReferringNodeInstancesOnConnection(Nodes);
+			if (UJointEdGraphNode* LinkedPinOwner = CastPinOwnerToJointEdGraphNode(LinkedTo))
+			{
+				LinkedPinOwner->AllocateReferringNodeInstancesOnConnection(Nodes, LinkedTo);
+			}
 		}
 		
 		Manager->StartNodes.Append(Nodes);
@@ -142,7 +136,7 @@ void UJointEdGraphNode_Manager::UpdateNodeInstanceOuter() const
 
 	UJointManager* Manager = Cast<UJointManager>(GetGraph()->GetOuter());
 
-	SetNodeInstanceOuterTo(Manager);
+	SetNodeInstanceOuterAs(Manager);
 
 	//Propagate the execution to the children sub nodes to make sure all the sub nodes' instances are correctly assigned to its parent node.
 	UpdateSubNodesInstanceOuter();

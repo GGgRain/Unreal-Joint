@@ -1501,18 +1501,20 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 	{
 		if (!Data.GetAsset()) continue;
 
-		if (UJointManager* Manager = Cast<UJointManager>(Data.GetAsset()))
+		UJointManager* Manager = Cast<UJointManager>(Data.GetAsset());
+		
+		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
+
+		for (UJointEdGraph* Graph : Graphs)
 		{
-			if (!Manager || !Manager->JointGraph) continue;
+			if (!Graph) continue;
+			
+			Graph->UpdateClassData();
 
-			UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph);
-
-			if (!CastedGraph) continue;
-
-			CastedGraph->UpdateClassData();
-			CastedGraph->GrabUnknownClassDataFromGraph();
+			Graph->GrabUnknownClassDataFromGraph();
 		}
 	}
+	
 
 	if (FJointEditorModule* Module = FJointEditorModule::Get(); Module && Module->GetClassCache().IsValid())
 	{
@@ -1669,27 +1671,28 @@ FReply SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked()
 			{
 				UObject* Asset = Data.GetAsset();
 				if (!Asset) continue;
-
+				
 				UJointManager* Manager = Cast<UJointManager>(Asset);
-				if (!Manager || !Manager->JointGraph) continue;
+				TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
 
-				UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph);
-				if (!CastedGraph) continue;
-
-				CastedGraph->UpdateClassData();
-
-				TSet<TSoftObjectPtr<UJointEdGraphNode>> EditorNodes = CastedGraph->GetCachedJointGraphNodes(true);
-				for (TSoftObjectPtr<UJointEdGraphNode> JointEdGraphNode : EditorNodes)
+				for (UJointEdGraph* Graph : Graphs)
 				{
-					UJointNodeBase* NodeInstance = JointEdGraphNode->GetCastedNodeInstance();
+					if (!Graph) continue;
+					Graph->UpdateClassData();
 
-					if (!NodeInstance) continue;
-
-					if (NodeInstance->GetClass() == NodeClassLeftSelectedClass)
+					TSet<TWeakObjectPtr<UJointEdGraphNode>> EditorNodes = Graph->GetCachedJointGraphNodes(true);
+					for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : EditorNodes)
 					{
-						JointEdGraphNode->ReplaceNodeClassTo(NodeClassRightSelectedClass);
+						UJointNodeBase* NodeInstance = JointEdGraphNode->GetCastedNodeInstance();
 
-						Manager->MarkPackageDirty();
+						if (!NodeInstance) continue;
+
+						if (NodeInstance->GetClass() == NodeClassLeftSelectedClass)
+						{
+							JointEdGraphNode->ReplaceNodeClassTo(NodeClassRightSelectedClass);
+
+							Manager->MarkPackageDirty();
+						}
 					}
 				}
 			}
@@ -1772,23 +1775,24 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 			{
 				UObject* Asset = Data.GetAsset();
 				if (!Asset) continue;
-
+				
 				UJointManager* Manager = Cast<UJointManager>(Asset);
-				if (!Manager || !Manager->JointGraph) continue;
+				TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
 
-				UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph);
-				if (!CastedGraph) continue;
-
-				CastedGraph->UpdateClassData();
-
-				TSet<TSoftObjectPtr<UJointEdGraphNode>> EditorNodes = CastedGraph->GetCachedJointGraphNodes(true);
-				for (TSoftObjectPtr<UJointEdGraphNode> JointEdGraphNode : EditorNodes)
+				for (UJointEdGraph* Graph : Graphs)
 				{
-					if (JointEdGraphNode->GetClass() == EditorNodeClassLeftSelectedClass)
-					{
-						JointEdGraphNode->ReplaceEditorNodeClassTo(EditorNodeClassRightSelectedClass);
+					if (!Graph) continue;
+					Graph->UpdateClassData();
 
-						Manager->MarkPackageDirty();
+					TSet<TWeakObjectPtr<UJointEdGraphNode>> EditorNodes = Graph->GetCachedJointGraphNodes(true);
+					for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : EditorNodes)
+					{
+						if (JointEdGraphNode->GetClass() == EditorNodeClassLeftSelectedClass)
+						{
+							JointEdGraphNode->ReplaceEditorNodeClassTo(EditorNodeClassRightSelectedClass);
+
+							Manager->MarkPackageDirty();
+						}
 					}
 				}
 			}

@@ -454,10 +454,9 @@ void SJointGraphEditorImpl::ExecuteBreakPinLinks(const FToolMenuContext& InConte
     UGraphNodeContextMenuContext* NodeContext = InContext.FindContext<UGraphNodeContextMenuContext>();
     if (NodeContext && NodeContext->Pin)
     {
-        const UEdGraphSchema* Schema = NodeContext->Pin->GetSchema();
-        if (Schema)
+        if (NodeContext->Pin->GetSchema())
         {
-            if (const UJointEdGraphSchema* CastedSchema = Cast<UJointEdGraphSchema>(Schema))
+            if (const UJointEdGraphSchema* CastedSchema = Cast<UJointEdGraphSchema>(NodeContext->Pin->GetSchema()))
             {
                 CastedSchema->BreakPinLinks(const_cast<UEdGraphPin&>(*(NodeContext->Pin)), true);
             }
@@ -1114,14 +1113,14 @@ void SJointGraphEditorImpl::RegisterContextMenu(const UEdGraphSchema* Schema, FT
     // Root menu
     // "GraphEditor.GraphContextMenu.Common"
     // contains: GraphSchema->GetContextMenuActions(Menu, Context)
-    const FName CommonRootMenuName = "GraphEditor.GraphContextMenu.Common";
+    const FName CommonRootMenuName = "GraphEditor.GraphContextMenu.Joint.Common";
     if (!ToolMenus->IsMenuRegistered(CommonRootMenuName))
     {
         ToolMenus->RegisterMenu(CommonRootMenuName);
     }
 
     bool bDidRegisterGraphSchemaMenu = false;
-    const FName EdGraphSchemaContextMenuName = CastedSchema->GetContextMenuName(UEdGraphSchema::StaticClass());
+    const FName EdGraphSchemaContextMenuName = CastedSchema->GetContextMenuName(UJointEdGraphSchema::StaticClass());
     if (!ToolMenus->IsMenuRegistered(EdGraphSchemaContextMenuName))
     {
         ToolMenus->RegisterMenu(EdGraphSchemaContextMenuName);
@@ -1130,12 +1129,12 @@ void SJointGraphEditorImpl::RegisterContextMenu(const UEdGraphSchema* Schema, FT
 
     // Menus for subclasses of EdGraphSchema
     for (UClass* CurrentClass = Schema->GetClass(); CurrentClass && CurrentClass->
-         IsChildOf(UEdGraphSchema::StaticClass()); CurrentClass = CurrentClass->GetSuperClass())
+         IsChildOf(UJointEdGraphSchema::StaticClass()); CurrentClass = CurrentClass->GetSuperClass())
     {
-        const UEdGraphSchema* CurrentSchema = CurrentClass->GetDefaultObject<UEdGraphSchema>();
+        const UJointEdGraphSchema* CurrentSchema = CurrentClass->GetDefaultObject<UJointEdGraphSchema>();
         const FName CheckMenuName = CastedSchema->GetContextMenuName();
 
-        // Some subclasses of UEdGraphSchema chose not to include UEdGraphSchema's menu
+        // Some subclasses of UJointEdGraphSchema chose not to include UJointEdGraphSchema's menu
         // Note: menu "GraphEditor.GraphContextMenu.Common" calls GraphSchema->GetContextMenuActions() and adds entry for node comment
         const FName CheckParentName = CastedSchema->GetParentContextMenuName();
 
@@ -1243,7 +1242,8 @@ UToolMenu* SJointGraphEditorImpl::GenerateContextMenu(const UEdGraphSchema* Sche
 {
     // Register all the menu's needed
     RegisterContextMenu(Schema, MenuContext);
-
+    
+    
     const UJointEdGraphSchema* CastedSchema = Cast<const UJointEdGraphSchema>(Schema);
 
     UToolMenus* ToolMenus = UToolMenus::Get();
@@ -1270,7 +1270,9 @@ FActionMenuContent SJointGraphEditorImpl::GraphEd_OnGetContextMenuFor(const FGra
     {
         Result = FActionMenuContent(SNew(STextBlock).Text(NSLOCTEXT("GraphEditor", "NoNodes", "No Nodes")));
 
-        const UEdGraphSchema* Schema = EdGraphObj->GetSchema();
+        const UEdGraphSchema* OriSchema = EdGraphObj->GetSchema();
+
+        const UJointEdGraphSchema* Schema = Cast<UJointEdGraphSchema>(OriSchema);
         check(Schema);
 
         GraphPinForMenu.SetPin(SpawnInfo.GraphPin);

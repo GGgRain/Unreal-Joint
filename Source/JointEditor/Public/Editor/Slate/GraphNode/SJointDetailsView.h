@@ -6,7 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 
-class FJointRetainerWidgetRenderingResources;
+class SJointRetainerWidget;
 
 class JOINTEDITOR_API SJointDetailsView : public SCompoundWidget
 {
@@ -49,86 +49,57 @@ public:
 
 public:
 	
-	UJointNodeBase* Object;
-	UJointEdGraphNode* EdNode;
+	TWeakObjectPtr<UJointNodeBase> Object;
+	TWeakObjectPtr<UJointEdGraphNode> EdNode;
 	TArray<FJointGraphNodePropertyData> PropertyData;
 
 public:
 
 	void UpdatePropertyData(const TArray<FJointGraphNodePropertyData>& PropertyData);
 	
-	void SetOwnerGraphNode(TSharedPtr<SJointGraphNodeBase> InOwnerGraphNode);
+	void SetOwnerGraphNode(const TWeakPtr<SJointGraphNodeBase>& InOwnerGraphNode);
+
+public:
+	
+	EActiveTimerReturnType InitializationTimer(double InCurrentTime, float InDeltaTime);
 
 private:
 	
 	TArray<FName> PropertiesToShow;
 
 public:
-
-	TSharedPtr<SRetainerWidget> JointDetailViewRetainerWidget;
-
-public:
 	
 	TWeakPtr<SJointGraphNodeBase> OwnerGraphNode;
-
-public:
-	
-	bool CalculatePhaseAndCheckItsTime();
-	
-	virtual bool CustomPrepass(float LayoutScaleMultiplier) override;
-	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
-
-public:
-
-	void SetForceRedrawPerFrame(bool bInForceRedraw);
 	
 private:
+
+	TWeakPtr<SJointRetainerWidget> JointRetainerWidget;
 	
 	TSharedPtr<IDetailsView> DetailViewWidget;
-
-	FJointRetainerWidgetRenderingResources* RenderingResources;
-	
-	FIntPoint CachedSize = FIntPoint::ZeroValue;
-	
-	mutable bool bNeedsRedraw = true;
-
-	mutable FSlateBrush SurfaceBrush;
-
-private:
-
-	int32 Phase = 0;
-
-	int32 PhaseCount = 0;
 
 	float InitializationDelay = 5;
 
 private:
-
-	bool bForceRedrawPerFrame = false;
+	
+	TWeakPtr<FActiveTimerHandle> TimerHandle;
 
 public:
 
 	//LOD
 	bool UseLowDetailedRendering() const;
 
-public:
-	
-	virtual void OnMouseEnter(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
-
-public:
-
-	EActiveTimerReturnType InitializationTimer(double InCurrentTime, float InDeltaTime);
-	
-	EActiveTimerReturnType CheckUnhovered(double InCurrentTime, float InDeltaTime);
-
 private:
 
-	float UnhoveredCheckingInterval = 0.2f;
-
-private:
-
+	bool bInitializing = false;
 	bool bInitialized = false;
+	bool bAbandonBuild = false;
 
-	bool bUseLOD = true;
 
+	bool bUseLOD = false;
+
+private:
+
+	// for the async initialization
+	FCriticalSection InitializationCriticalSection;
+	
 };

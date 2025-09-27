@@ -695,9 +695,9 @@ void SJointNodePointerSlate::OnHovered()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+			TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
-			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
+			for (TWeakObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
 				if (!Node.IsValid()) continue;
 
@@ -740,9 +740,9 @@ void SJointNodePointerSlate::OnUnhovered()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+			TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
-			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
+			for (TWeakObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
 				if (!Node.IsValid()) continue;
 
@@ -777,7 +777,7 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 
 	if (JointManager == nullptr) return FReply::Handled();
 
-	FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointManager);
+	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointManager);
 
 	if (!Toolkit) return FReply::Handled();
 
@@ -785,9 +785,9 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 	{
 		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
 		{
-			TSet<TSoftObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+			TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
 
-			for (TSoftObjectPtr<UJointEdGraphNode> Node : GraphNodes)
+			for (TWeakObjectPtr<UJointEdGraphNode> Node : GraphNodes)
 			{
 				if (!Node.IsValid()) continue;
 
@@ -795,10 +795,8 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 
 				if (Node->GetCastedNodeInstance() == NodeInstance)
 				{
-					Toolkit->JumpToNode(Node.Get());
-
-					Toolkit->StartHighlightingNode(Node.Get(), true);
-
+					Toolkit->JumpToHyperlink(Node.Get());
+					
 					// if(!Toolkit->GetNodePickingManager().IsValid()) break;
 					//
 					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
@@ -826,7 +824,7 @@ FReply SJointNodePointerSlate::OnPickupButtonPressed()
 
 	if (JointManager == nullptr) return FReply::Handled();
 
-	FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(JointManager);
+	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointManager);
 
 	if (!Toolkit) return FReply::Handled();
 
@@ -856,7 +854,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 	FPlatformApplicationMisc::ClipboardCopy(*Value);
 
-	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(OwnerJointEdGraphNode))
+	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(OwnerJointEdGraphNode))
 	{
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
@@ -887,7 +885,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 		if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
 	}
 
-	if (FJointEditorToolkit* Toolkit = FJointEditorToolkit::FindOrOpenEditorInstanceFor(OwnerJointEdGraphNode))
+	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(OwnerJointEdGraphNode))
 	{
 		Toolkit->PopulateNodePickerPastedToastMessage();
 	}
@@ -1144,6 +1142,144 @@ void SJointNodePointerSlateFeatureButtons::UpdateVisualOnUnhovered()
 		);
 
 		ButtonAnimTracks.Add(VOLT_PLAY_ANIM(ChildWidget, Anim));
+	}
+}
+
+SLATE_IMPLEMENT_WIDGET(SJointSlateDrawer)
+void SJointSlateDrawer::PrivateRegisterAttributes(FSlateAttributeInitializer& AttributeInitializer)
+{
+}
+
+
+SJointSlateDrawer::FSlot& SJointSlateDrawer::GetSlot(int32 SlotIndex)
+{
+	check(this->IsValidSlotIndex(SlotIndex));
+	FSlotBase& BaseSlot = static_cast<FSlotBase&>(Children[SlotIndex]);
+	return static_cast<SJointSlateDrawer::FSlot&>(BaseSlot);
+}
+
+const SJointSlateDrawer::FSlot& SJointSlateDrawer::GetSlot(int32 SlotIndex) const
+{
+	check(this->IsValidSlotIndex(SlotIndex));
+	const FSlotBase& BaseSlot = static_cast<const FSlotBase&>(Children[SlotIndex]);
+	return static_cast<const SJointSlateDrawer::FSlot&>(BaseSlot);
+}
+
+
+void SJointSlateDrawer::Construct(const FArguments& InArgs)
+{
+	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetCanTick(false);
+
+	Children.Reserve(InArgs._Slots.Num());
+
+	for (const FSlot::FSlotArguments& Arg : InArgs._Slots)
+	{
+		// Because we want to override the AutoWidth, the base class doesn't exactly have the same parent.
+		//We are casting from parent to child to a different parent to prevent a reinterpret_cast
+		const FSlotBase::FSlotArguments& ChilSlotArgument = static_cast<const FSlotBase::FSlotArguments&>(Arg);
+		const SBoxPanel::FSlot::FSlotArguments& BoxSlotArgument = static_cast<const SBoxPanel::FSlot::FSlotArguments&>(ChilSlotArgument);
+		// Because InArgs is const&, we need to do some hacking here. That would need to changed in the future.
+		//The Slot has a unique_ptr, it cannot be copied. Anyway, previously, the Children.Add(), was wrong if we added the same slot twice.
+		//Because of that, it doesn't matter if we steal the slot from the FArguments.
+		Children.AddSlot(MoveTemp(const_cast<SBoxPanel::FSlot::FSlotArguments&>(BoxSlotArgument)));
+	}
+	
+	// Initialize the button animations ( TODO: Fix this bs )
+	UpdateVisualOnUnhovered();
+}
+
+void SJointSlateDrawer::UpdateVisualOnHovered()
+{
+	// Clean up old anim tracks
+	for (const FVoltAnimationTrack& ButtonAnimTrack : ChildrenAnimTracks)
+	{
+		VOLT_STOP_ANIM(ButtonAnimTrack);
+	}
+
+	ChildrenAnimTracks.Empty();
+
+	// Play animation
+	for (int i = 0; i < Children.Num(); i++)
+	{
+		TSharedPtr<SWidget> ChildWidget = Children.GetChildAt(i);
+
+		UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_Delay)
+				.Duration(i * BUTTON_ANIM_DELAY_PER_ICON),
+				VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.3)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetOpacity(1),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.25)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetWidgetTransform(FWidgetTransform(
+					FVector2D::ZeroVector,
+					FVector2D(1.0, 1.0),
+					FVector2D::ZeroVector,
+					0))
+				)
+			)
+		);
+
+		ChildrenAnimTracks.Add(VOLT_PLAY_ANIM(ChildWidget, Anim));
+	}
+}
+
+void SJointSlateDrawer::UpdateVisualOnUnhovered()
+{
+	// Clean up old anim tracks
+	for (const FVoltAnimationTrack& ButtonAnimTrack : ChildrenAnimTracks)
+	{
+		VOLT_STOP_ANIM(ButtonAnimTrack);
+	}
+
+	ChildrenAnimTracks.Empty();
+
+	// Play animation
+	for (int i = 0; i < Children.Num(); i++)
+	{
+		TSharedPtr<SWidget> ChildWidget = Children.GetChildAt(i);
+
+		UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_Delay)
+				.Duration(i * BUTTON_ANIM_DELAY_PER_ICON),
+				VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.3)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetOpacity(0),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.25)
+					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+					.AlphaBasedBlendExp(6)
+					.TargetWidgetTransform(FWidgetTransform(
+					FVector2D(0, 10),
+					FVector2D(1.0, 1.0),
+					FVector2D::ZeroVector,
+					0))
+				)
+			)
+		);
+
+		ChildrenAnimTracks.Add(VOLT_PLAY_ANIM(ChildWidget, Anim));
 	}
 }
 

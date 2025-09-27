@@ -11,15 +11,19 @@
 
 class UJointManager;
 class UJointNodeBase;
-class UJointEdGraphPin;
-
 
 namespace JointEditorDefaultSettings
 {
 	static const bool bUseLODRenderingForSimplePropertyDisplay(true);
 	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(32);
-	static const int SimplePropertyDisplayInitializationDelayStandard(60);
+	static const int SimplePropertyDisplayInitializationRate(150);
 
+	//Composite Node
+	static const FVector2D CompositeNodeTooltipSize(FVector2D(900.0f, 500.0f));
+
+	//Search & Replace
+	static const bool bUseAsynchronousBuildingOnSearchAndReplaceTree(true);
+	
 	//Graph Editor
 	static const bool bUseGrid(false);
 	static const FLinearColor BackgroundColor(FLinearColor(0.093963, 0.092709, 0.104167, 1));
@@ -115,30 +119,38 @@ public:
 	 * Enables or disables the LOD rendering of the Simple Property Display section.
 	 * This option is still in BETA, if your editor crashes for no reason, try to turn it off.
 	 */
-	UPROPERTY(EditAnywhere, config, Category = "Experimental",
-		meta = (DisplayName = "Use LOD Rendering For Simple Property Display (BETA)"))
-	bool bUseLODRenderingForSimplePropertyDisplay =
-		JointEditorDefaultSettings::bUseLODRenderingForSimplePropertyDisplay;
+	UPROPERTY(EditAnywhere, config, Category = "Experimental",meta = (DisplayName = "Use LOD Rendering For Simple Property Display (BETA)"))
+	bool bUseLODRenderingForSimplePropertyDisplay = JointEditorDefaultSettings::bUseLODRenderingForSimplePropertyDisplay;
 
 	/** 
 	 * LOD retainer Period for the SimplePropertyDisplay.
 	 * Higher value means higher frequency of the update.
 	 */
-	UPROPERTY(EditAnywhere, config, Category = "Experimental",
-		meta = (DisplayName = "LOD Rendering For Simple Property Display Retainer Period (BETA)"))
-	int LODRenderingForSimplePropertyDisplayRetainerPeriod =
-		JointEditorDefaultSettings::LODRenderingForSimplePropertyDisplayRetainerPeriod;
+	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "LOD Rendering For Simple Property Display Retainer Period (BETA)"))
+	int LODRenderingForSimplePropertyDisplayRetainerPeriod = JointEditorDefaultSettings::LODRenderingForSimplePropertyDisplayRetainerPeriod;
 
 	/** 
 	 * The count of the nodes that will initialize the Simple Property Display section per second.
 	 * Graph's node count / this value = the time in seconds it takes to initialize the Simple Property Display section.
-	 * Shorter value means faster initialization, but more performance cost - can lead to stuttering or freezing of the editor.
-	 * we recommend to use the default value of 60.
+	 * bigger value means faster initialization, but more performance cost - can lead to stuttering or freezing of the editor.
+	 * we recommend to use the default value of 150.
 	 */
-	UPROPERTY(EditAnywhere, config, Category = "Experimental",
-		meta = (DisplayName = "Simple Property Display Initialization Delay Standard (BETA)"))
-	int SimplePropertyDisplayInitializationDelayStandard =
-		JointEditorDefaultSettings::SimplePropertyDisplayInitializationDelayStandard;
+	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "Simple Property Display Initialization Delay Standard (BETA)"))
+	int SimplePropertyDisplayInitializationRate = JointEditorDefaultSettings::SimplePropertyDisplayInitializationRate;
+
+
+public:
+
+	/**
+	 * Use asynchronous building on the search & replace tree.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "Search & Replace",meta = (DisplayName = "Use Asynchronous Building On Search & Replace Tree (BETA)"))
+	bool bUseAsynchronousBuildingOnSearchAndReplaceTree = JointEditorDefaultSettings::bUseAsynchronousBuildingOnSearchAndReplaceTree;
+
+public:
+	
+	UPROPERTY(EditAnywhere, config, Category = "Sub Graph", meta = (DisplayName = "Composite Node Tooltip Size"))
+	FVector2D CompositeNodeTooltipSize = JointEditorDefaultSettings::CompositeNodeTooltipSize;
 
 public:
 	/** Enables or disables the display of a background grid in the material and blueprint editors. */
@@ -171,18 +183,15 @@ public:
 
 public:
 	/** Defines a scaling factor for font size in the context text editor. */
-	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",
-		meta = (DisplayName = "Context Text Editor Font Size Multiplier"))
+	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",meta = (DisplayName = "Context Text Editor Font Size Multiplier"))
 	float ContextTextEditorFontSizeMultiplier = JointEditorDefaultSettings::ContextTextEditorFontSizeMultiplier;
 
 	/** Specifies the number of characters per line before text automatically wraps within a node context box. */
-	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",
-		meta = (DisplayName = "Context Text Editor Auto-Wrap Texts Amount"))
+	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",meta = (DisplayName = "Context Text Editor Auto-Wrap Texts Amount"))
 	float ContextTextAutoTextWrapAt = JointEditorDefaultSettings::ContextTextAutoTextWrapAt;
 
 	/** Determines the background color used in the context text editor for improved readability. */
-	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",
-		meta = (DisplayName = "Context Text Editor Background Color"))
+	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",meta = (DisplayName = "Context Text Editor Background Color"))
 	FLinearColor ContextTextEditorBackgroundColor = JointEditorDefaultSettings::ContextTextEditorBackgroundColor;
 
 public:
@@ -191,13 +200,11 @@ public:
 	FLinearColor NormalConnectionColor = JointEditorDefaultSettings::NormalConnectionColor;
 
 	/** Specifies the color of recursive connections, often used for loops or self-referencing structures. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Recursive Connection Color"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection", meta = (DisplayName = "Recursive Connection Color"))
 	FLinearColor RecursiveConnectionColor = JointEditorDefaultSettings::RecursiveConnectionColor;
 
 	/** The color applied to highlighted connections, making them more visually distinct. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Highlighted Connection Color"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection", meta = (DisplayName = "Highlighted Connection Color"))
 	FLinearColor HighlightedConnectionColor = JointEditorDefaultSettings::HighlightedConnectionColor;
 
 	/** The color used to represent self-referential connections within a single node. */
@@ -205,28 +212,23 @@ public:
 	FLinearColor SelfConnectionColor = JointEditorDefaultSettings::SelfConnectionColor;
 
 	/** The color applied to connections in preview mode, before finalizing a link. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Preview Connection Color"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection", meta = (DisplayName = "Preview Connection Color"))
 	FLinearColor PreviewConnectionColor = JointEditorDefaultSettings::PreviewConnectionColor;
 
 	/** The default line thickness for pin connections. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Pin Connection Thickness"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Pin Connection Thickness"))
 	float PinConnectionThickness = JointEditorDefaultSettings::PinConnectionThickness;
 
 	/** The thickness applied to highlighted pin connections for better visibility. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Highlighted Pin Connection Thickness"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Highlighted Pin Connection Thickness"))
 	float HighlightedPinConnectionThickness = JointEditorDefaultSettings::HighlightedPinConnectionThickness;
 
 	/** Adjusts the fade bias when highlighting a connection, influencing its transition effect. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Connection Highlight Fade Bias"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Connection Highlight Fade Bias"))
 	float ConnectionHighlightFadeBias = JointEditorDefaultSettings::ConnectionHighlightFadeBias;
 
 	/** Specifies the duration for fade-in effects when a connection is highlighted. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Connection Highlight Fade Duration"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Connection Highlight Fade Duration"))
 	float ConnectionHighlightedFadeInPeriod = JointEditorDefaultSettings::ConnectionHighlightedFadeInPeriod;
 
 	/** Determines whether normal (non-recursive) connections should be drawn. */
@@ -234,118 +236,93 @@ public:
 	bool bDrawNormalConnection = JointEditorDefaultSettings::bDrawNormalConnection;
 
 	/** Enables or disables the visualization of recursive connections. */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Draw Recursive Connections"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Draw Recursive Connections"))
 	bool bDrawRecursiveConnection = JointEditorDefaultSettings::bDrawRecursiveConnection;
 
 
 	/** Opacity for connections that are not highlighted */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Not Highlighted Connection Opacity"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Not Highlighted Connection Opacity"))
 	float NotHighlightedConnectionOpacity = JointEditorDefaultSettings::NotHighlightedConnectionOpacity;
 
 	/** Opacity for connections representing routes that are not currently on active route (not reachable) */
-	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Not Reachable Route Connection Opacity"))
+	UPROPERTY(Config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Not Reachable Route Connection Opacity"))
 	float NotReachableRouteConnectionOpacity = JointEditorDefaultSettings::NotReachableRouteConnectionOpacity;
 
 
 	/** Defines the maximum horizontal distance that can be used to calculate the spline tangent when a connection moves forward. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Forward Spline Horizontal Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Forward Spline Horizontal Delta Range"))
 	float ForwardSplineHorizontalDeltaRange = JointEditorDefaultSettings::ForwardSplineHorizontalDeltaRange;
 
 	/** Defines the maximum vertical distance that can be used to calculate the spline tangent when a connection moves forward. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Forward Spline Vertical Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Forward Spline Vertical Delta Range"))
 	float ForwardSplineVerticalDeltaRange = JointEditorDefaultSettings::ForwardSplineVerticalDeltaRange;
 
 	/** Determines how much the horizontal distance affects the tangent calculation for forward-moving splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Forward Spline Tangent From Horizontal Delta"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Forward Spline Tangent From Horizontal Delta"))
 	FVector2D ForwardSplineTangentFromHorizontalDelta =
 		JointEditorDefaultSettings::ForwardSplineTangentFromHorizontalDelta;
 
 	/** Determines how much the vertical distance affects the tangent calculation for forward-moving splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Forward Spline Tangent From Vertical Delta"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Forward Spline Tangent From Vertical Delta"))
 	FVector2D ForwardSplineTangentFromVerticalDelta = JointEditorDefaultSettings::ForwardSplineTangentFromVerticalDelta;
 
 
 	/** Defines the maximum horizontal distance that can be used to calculate the spline tangent when a connection moves backward. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Backward Spline Horizontal Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Backward Spline Horizontal Delta Range"))
 	float BackwardSplineHorizontalDeltaRange = JointEditorDefaultSettings::BackwardSplineHorizontalDeltaRange;
 
 	/** Defines the maximum vertical distance that can be used to calculate the spline tangent when a connection moves backward. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Backward Spline Vertical Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Backward Spline Vertical Delta Range"))
 	float BackwardSplineVerticalDeltaRange = JointEditorDefaultSettings::BackwardSplineVerticalDeltaRange;
 
 	/** Determines how much the horizontal distance affects the tangent calculation for backward-moving splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Backward Spline Tangent From Horizontal Delta"))
-	FVector2D BackwardSplineTangentFromHorizontalDelta =
-		JointEditorDefaultSettings::BackwardSplineTangentFromHorizontalDelta;
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Backward Spline Tangent From Horizontal Delta"))
+	FVector2D BackwardSplineTangentFromHorizontalDelta = JointEditorDefaultSettings::BackwardSplineTangentFromHorizontalDelta;
 
 	/** Determines how much the vertical distance affects the tangent calculation for backward-moving splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Backward Spline Tangent From Vertical Delta"))
-	FVector2D BackwardSplineTangentFromVerticalDelta =
-		JointEditorDefaultSettings::BackwardSplineTangentFromVerticalDelta;
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Backward Spline Tangent From Vertical Delta"))
+	FVector2D BackwardSplineTangentFromVerticalDelta =JointEditorDefaultSettings::BackwardSplineTangentFromVerticalDelta;
 
 
 	/** Defines the maximum horizontal distance that can be used to calculate the spline tangent for self-connections. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Self Spline Horizontal Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Self Spline Horizontal Delta Range"))
 	float SelfSplineHorizontalDeltaRange = JointEditorDefaultSettings::SelfSplineHorizontalDeltaRange;
 
 	/** Defines the maximum vertical distance that can be used to calculate the spline tangent for self-connections. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Self Spline Vertical Delta Range"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Self Spline Vertical Delta Range"))
 	float SelfSplineVerticalDeltaRange = JointEditorDefaultSettings::SelfSplineVerticalDeltaRange;
 
 	/** Determines how much the horizontal distance affects the tangent calculation for self-referential splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Self Spline Tangent From Horizontal Delta"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Self Spline Tangent From Horizontal Delta"))
 	FVector2D SelfSplineTangentFromHorizontalDelta = JointEditorDefaultSettings::SelfSplineTangentFromHorizontalDelta;
 
 	/** Determines how much the vertical distance affects the tangent calculation for self-referential splines. */
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",
-		meta = (DisplayName = "Self Spline Tangent From Vertical Delta"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection",meta = (DisplayName = "Self Spline Tangent From Vertical Delta"))
 	FVector2D SelfSplineTangentFromVerticalDelta = JointEditorDefaultSettings::SelfSplineTangentFromVerticalDelta;
 
 public:
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Use Wiggle Wire For Normal Connection"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Use Wiggle Wire For Normal Connection"))
 	bool bUseWiggleWireForNormalConnection = JointEditorDefaultSettings::bUseWiggleWireForNormalConnection;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Use Wiggle Wire For Recursive Connection"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Use Wiggle Wire For Recursive Connection"))
 	bool bUseWiggleWireForRecursiveConnection = JointEditorDefaultSettings::bUseWiggleWireForRecursiveConnection;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Use Wiggle Wire For Self Connection"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Use Wiggle Wire For Self Connection"))
 	bool bUseWiggleWireForSelfConnection = JointEditorDefaultSettings::bUseWiggleWireForSelfConnection;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Use Wiggle Wire For Preview Connection"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Use Wiggle Wire For Preview Connection"))
 	bool bUseWiggleWireForPreviewConnection = JointEditorDefaultSettings::bUseWiggleWireForPreviewConnection;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Normal Connection Wiggle Wire Renderer Config"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Normal Connection Wiggle Wire Renderer Config"))
 	FWiggleWireConfig NormalConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Recursive Connection Wiggle Wire Renderer Config"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Recursive Connection Wiggle Wire Renderer Config"))
 	FWiggleWireConfig RecursiveConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Self Connection Wiggle Wire Renderer Config"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Self Connection Wiggle Wire Renderer Config"))
 	FWiggleWireConfig SelfConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 
-	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",
-		meta = (DisplayName = "Preview Connection Wiggle Wire Renderer Config"))
+	UPROPERTY(config, EditAnywhere, Category = "Pin / Pin Connection - Physics-Based Wiggle Wire Rendering (Beta)",meta = (DisplayName = "Preview Connection Wiggle Wire Renderer Config"))
 	FWiggleWireConfig PreviewConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 
 public:
@@ -372,8 +349,7 @@ public:
 
 public:
 	/** Default color assigned to nodes when no specific color is set. */
-	UPROPERTY(Config, EditAnywhere, Category = "Detail Panel",
-		meta = (DisplayName = "Description Card Box Max Desired Height"))
+	UPROPERTY(Config, EditAnywhere, Category = "Detail Panel",meta = (DisplayName = "Description Card Box Max Desired Height"))
 	float DescriptionCardBoxMaxDesiredHeight = JointEditorDefaultSettings::DescriptionCardBoxMaxDesiredHeight;
 
 public:

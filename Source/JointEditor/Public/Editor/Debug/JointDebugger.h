@@ -158,16 +158,6 @@ private:
 	 */
 	void ClearDebugSessionData();
 
-private:
-	
-	/**
-	 * Get the editor node that has the provided node instance as its node instance.
-	 * @param JointNodeBase Node instance to search with.
-	 * @param JointManager Manager that will search with.
-	 * @return Found editor node.
-	 */
-	UJointEdGraphNode* GetEditorNodeFor(UJointNodeBase* JointNodeBase, UJointManager* JointManager);
-	
 public:
 
 	/**
@@ -257,42 +247,60 @@ public:
 	static bool IsDebugging();
 public:
 
+	static void NotifyDebugDataChanged(UJointEdGraph* Graph);
+
+
 	static void NotifyDebugDataChanged(const UJointManager* Manager);
 
 	/**
 	 * Get the debug data for the provided Joint manager
 	 * In Joint 2.3.0, This function now returns the original asset's debug data since now the debug data only available on the stored asset side, not on transient objects.
 	 * @param Manager The Manager that it will find debug data from.
-	 * @return found debug data. If not present, returns nullptr. 
+	 * @return found debug data. If not present, returns nullptr.
+	 *
+	 * Joint 2.10: this function is removed due to the subgraph support. Please use GetDebugDataForInstanceFromOriginalJointManager instead.
 	 */
-	static TArray<FJointNodeDebugData>* GetDebugDataFromJointManager(UJointManager* Manager);
+	//static TArray<FJointNodeDebugData>* GetDebugDataFromOriginalJointManager(UJointManager* Manager);
 
 	/**
+	 * Get the debug data for the provided graph.
+	 * In Joint 2.3.0, This function now returns the original asset's debug data since now the debug data only available on the stored asset side, not on transient objects.
+	 * @param Graph The Graph that it will find debug data from.
+	 * @return found debug data
+	 */
+	static TArray<FJointNodeDebugData>* GetCorrespondingDebugDataForGraph(UJointEdGraph* Graph);
+
+public:
+	
+  	/**
 	 * Get the debug data for the provided graph node.
 	 * In Joint 2.3.0, This function now returns the original asset's debug data that is corresponding to the provided graph node since now the debug data only available on the stored asset side, not on transient objects.
 	 * @param Node The node that it will find debug data for.
 	 * @return found debug data. If not present, returns nullptr. 
 	 */
-	static FJointNodeDebugData* GetDebugDataFor(UJointEdGraphNode* Node);
+	static FJointNodeDebugData* GetDebugDataForInstance(UJointEdGraphNode* Node);
 
 	/**
-	 * Get the debug data for the provided node instance.
-	 * In Joint 2.3.0, This function now returns the original asset's debug data that is corresponding to the provided node instance since now the debug data only available on the stored asset side, not on transient objects.
+	* Get the debug data for the provided graph node.
+	* In Joint 2.3.0, This function now returns the original asset's debug data that is corresponding to the provided graph node since now the debug data only available on the stored asset side, not on transient objects.
+	* @param Node The node that it will find debug data for.
+	* @return found debug data. If not present, returns nullptr. 
+	*/
+	static FJointNodeDebugData* GetDebugDataForInstance(UJointNodeBase* Node);
+	
+	/**
+	 * Get the debug data for the provided graph node from the provided debug data array.
+	 * @param Node The node that it will find debug data for.
+	 * @return found debug data. If not present, returns nullptr. 
+	 */
+	static FJointNodeDebugData* GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointEdGraphNode* Node);
+
+	/**
+	 * Get the debug data for the provided node instance from the provided debug data array.
 	 * @param NodeInstance The node that it will find debug data for.
 	 * @return found debug data. If not present, returns nullptr. 
 	 */
-	static FJointNodeDebugData* GetDebugDataFor(UJointNodeBase* NodeInstance);
-
-public:
-
-	/**
-	 * Return the Joint manager asset from the provided Joint manager object. If itself is an asset, then it will return itself.
-	 * @param InJointManager Key object to use
-	 * @return Original Joint Manager Asset.
-	 */
-	static UJointManager* GetOriginalJointManager(UJointManager* InJointManager);
-
-	static UJointEdGraphNode* GetOriginalJointGraphNodeFromJointGraphNode(UJointEdGraphNode* InJointEdGraphNode);
+	static FJointNodeDebugData* GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointNodeBase* NodeInstance);
 
 
 public:

@@ -416,6 +416,17 @@ FJointEdPinData::FJointEdPinData(
 FJointEdPinData::FJointEdPinData(
 	const FName& InPinName,
 	const EEdGraphPinDirection& InDirection,
+	const FJointEdPinDataSetting& InSettings) :
+		PinName(InPinName),
+		Direction(InDirection),
+		Type(PinType_Joint_Normal),
+		Settings(InSettings)
+{
+}
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection,
 	const FEdGraphPinType& InType):
 		PinName(InPinName),
 		Direction(InDirection),

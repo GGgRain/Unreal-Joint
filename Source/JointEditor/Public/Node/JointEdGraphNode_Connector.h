@@ -3,12 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointEdGraphNode_Tunnel.h"
 #include "Node/JointEdGraphNode.h"
 #include "JointEdGraphNode_Connector.generated.h"
 
 class UJointManager;
+
 /**
- * 
+ * User-placeable tunnel node for Joint Graph.
  */
 UCLASS()
 class JOINTEDITOR_API UJointEdGraphNode_Connector : public UJointEdGraphNode
@@ -18,7 +20,7 @@ class JOINTEDITOR_API UJointEdGraphNode_Connector : public UJointEdGraphNode
 public:
 
 	UJointEdGraphNode_Connector();
-	
+
 public:
 
 	//UObject Interface
@@ -30,6 +32,7 @@ public:
 
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
 
+	virtual bool GetShouldHideNameBox() const override;
 public:
 	
 	virtual FVector2D GetNodeMinimumSize() const override;
@@ -62,7 +65,7 @@ public:
 
 public:
 
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes) override;
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void UpdateNodeInstance() override;
 	
@@ -112,18 +115,17 @@ public:
 	UPROPERTY(EditAnywhere, Category="Connector Info")
 	TArray<UJointNodeBase*> ConnectedNodes;
 
-private:
-	
-	UPROPERTY()
-	TSoftObjectPtr<UJointEdGraphNode_Connector> CachedPairOutputConnector;
 
 public:
 
-	UJointEdGraphNode_Connector* GetCachedPairOutputConnector();
-
-	void CachesPairOutputConnector();
-
-	TArray<UJointEdGraphNode_Connector*> GetPairInputConnector();
+	UJointEdGraphNode_Connector* GetPairOutputConnector() const;
 	
+	TArray<UJointEdGraphNode_Connector*> GetPairInputConnector();
+
+
+private:
+
+	UPROPERTY(Transient)
+	TSoftObjectPtr<UJointEdGraphNode_Connector> CachedPairOutputConnector = nullptr;
 	
 };

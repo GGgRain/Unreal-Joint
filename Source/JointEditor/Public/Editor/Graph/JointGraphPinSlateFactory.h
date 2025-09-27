@@ -8,7 +8,7 @@
 class SGraphPin;
 
 
-class JOINTEDITOR_API FJointGraphPinFactory : public FGraphPanelPinFactory
+class JOINTEDITOR_API FJointGraphPinSlateFactory : public FGraphPanelPinFactory
 {
 	virtual TSharedPtr<class SGraphPin> CreatePin(class UEdGraphPin* InPin) const override;
 };

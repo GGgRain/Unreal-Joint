@@ -22,7 +22,6 @@
 #include "JointEdGraphNode.generated.h"
 
 
-class UJointEdGraphPin;
 class FJointEditorToolkit;
 class UJointEdGraph;
 class SJointGraphNodeBase;
@@ -46,6 +45,8 @@ class JOINTEDITOR_API UJointEdGraphNode : public UEdGraphNode, public IJointEdNo
 public:
 	
 	UJointEdGraphNode();
+
+	virtual ~UJointEdGraphNode() override;
 
 public:
 	
@@ -180,21 +181,35 @@ public:
 	 */
 	void SetGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& GraphNodeSlate);
 
+	void ClearGraphNodeSlate();
+
 	/**
 	 * Get the graph node's slate that is populated on the Joint graph editor.
 	 * In most case, you don't need to cast it to derived slate class but if you need, then you can try to cast it with 'StaticCastSharedPtr<SJointGraphNodeSubNodeBase>(GetGraphNodeSlate());'
 	 * But you make sure to whether it is valid first, and whether it has the type you want by GetGraphNodeSlate()->GetType() == "SJointGraphNodeSubNodeBase" (or something else you want).  
 	 */
-	TWeakPtr<SJointGraphNodeBase> GetGraphNodeSlate();
+	TWeakPtr<SJointGraphNodeBase> GetGraphNodeSlate() const;
+
+	/**
+	 * Check whether the graph node's slate can be reused on the provided graph.
+	 * If it returns false, the graph editor will throw out the old slate and create a new one.
+	 * By default, it checks whether the InGraph is the same as the graph that this node belongs to.
+	 * @param InGraphPanel The graph panel to check the reusability of the slate.
+	 * @return Whether we can reuse the slate on the provided graph or not.
+	 */
+	bool CheckGraphNodeSlateReusableOn(TWeakPtr<SGraphPanel> InGraphPanel) const;
 
 private:
 
-	//Saved Slate of the graph node. Guaranteed to be cast to SJointGraphNodeBase.
+	/**
+	 * Saved Slate of the graph node. Guaranteed to be cast to SJointGraphNodeBase.
+	 * Graph node slate will be reused if it is possible to reuse.
+	 */
 	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = nullptr;
 	
 public:
 
-	//Request the node slate to refresh the slates.
+	//Request the node slate to refresh the slates: it will let it throw out the old internal slates and repopulate them.
 	void RequestUpdateSlate();
 	
 	//Request the node slate to refresh the pin widgets and repopulate it.
@@ -259,13 +274,14 @@ public:
 
 	//Triggered when the node's connections (pin) have been changed. Use this function to grab other node that are connected with the node.
 	virtual void NodeConnectionListChanged() override;
-
+	
 	/**
 	 * Allocates the node instances that this graph node refers to. By default, it allocates the owning node instance.
 	 * This function is used to get the actual node instance of the connected graph node refers to in the children graph node classes' NodeConnectionListChanged().
 	 * Override this function to implement nodes that must be work as connector or proxy in the Joint. See how UJointEdGraphNode_Connector override this function.
+	 * Joint 2.10: Now it has SourcePin parameter to provide the pin that triggered this allocation action - useful when you want to allocate different node instances depending on the pin that triggered this action.
 	 */
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes);
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin = nullptr);
 
 public:
 
@@ -364,30 +380,84 @@ public:
 
 public:
 
+	//Pin & Pin Data Related Functions
+
 	//Check if the provided pin is implemented by the pin data of this node by comparing the pin Guid with the stored pin data's implemented pin Guid.
-	bool CheckProvidedPinIsOnPinData(const UEdGraphPin* Pin);
-	
-	//Find and return if the node has a implemented pin for the provided pin data.
-	UEdGraphPin* FindImplementedPinFromPinData(const FJointEdPinData& InPinData);
+	bool CheckPinIsOriginatedFromThis(const UEdGraphPin* Pin);
 
-	FJointEdPinData* FindPinDataForImplementedPin(const UEdGraphPin* Pin);
+	/**
+	 * Get the pin that is implemented by the provided pin data from this node or its sub nodes.
+	 * @param InPinData The pin data to find the pin for.
+	 * @return Found pin instance. nullptr if not found or the pin data is not from this node.
+	 */
+	UEdGraphPin* GetPinForPinDataFromHierarchy(const FJointEdPinData& InPinData);
+	
+	/**
+	 * Get the pin that is implemented by the provided pin data from this node.
+	 * @param InPinData The pin data to find the pin for.
+	 * @return Found pin instance. nullptr if not found or the pin data is not from this node.
+	 */
+	UEdGraphPin* GetPinForPinDataFromThis(const FJointEdPinData& InPinData);
+
+	/**
+	 * Get the pin that is implemented by the provided pin data from its sub nodes.
+	 * @param InPinData The pin data to find the pin for.
+	 * @return Found pin instance. nullptr if not found or the pin data is not from this node or its sub nodes.
+	 */
+	UEdGraphPin* GetPinForPinDataFromSubNodes(const FJointEdPinData& InPinData);
 
 public:
 
-	FJointEdPinData* FindPinDataFromChildren(const UEdGraphPin* Pin);
+	/**
+	 * Get the pin data that is implementing the provided pin from this node or its sub nodes.
+	 * @param Pin The pin to find the pin data for.
+	 * @return Found pin data instance. nullptr if not found or the pin is not from this node.
+	 */
+	FJointEdPinData* GetPinDataForPinFromHierarchy(const UEdGraphPin* Pin);
+	
+	/**
+	 * Get the pin data that is implementing the provided pin from this node only.
+	 * @param Pin The pin to find the pin data for.
+	 * @return Found pin data instance. nullptr if not found or the pin is not from this node.
+	 */
+	FJointEdPinData* GetPinDataForPinFromThis(const UEdGraphPin* Pin);
+
+	/**
+	 * Get the pin data that is implementing the provided pin from this node but from its sub nodes.
+	 * @param Pin The pin to find the pin data for.
+	 * @return Found pin data instance. nullptr if not found or the pin is not from this node or its sub nodes.
+	 */
+	FJointEdPinData* GetPinDataForPinFromSubNodes(const UEdGraphPin* Pin);
 
 public:
 
-	//Grab all the pins from whole children sub nodes.
-	TArray<UEdGraphPin*> GetAllPinsFromChildren();
+	//Grab all the pins from whole hierarchy including this node and its sub nodes.
+	TArray<UEdGraphPin*> GetPinsFromHierarchy();
 
-	//Grab all the pins from this node.
-	TArray<UEdGraphPin*> GetAllPinsFromThis();
+	//Grab all the pins from this node only.
+	TArray<UEdGraphPin*> GetPinsFromThis();
 	
-	TArray<FJointEdPinData>& GetPinData();
+	//Grab all the pins from whole sub nodes.
+	TArray<UEdGraphPin*> GetPinsFromSubNodes();
 
-	TArray<FJointEdPinData*> GetAllPinDataFromChildren() const;
+public:
 
+	//Grab all the pin data from whole hierarchy including this node and its sub nodes.
+	TArray<FJointEdPinData*> GetPinDataFromHierarchy();
+
+	//Grab all the pins from this node only.
+	TArray<FJointEdPinData>& GetPinDataFromThis();
+
+	//Grab all the pin data from whole sub nodes.
+	TArray<FJointEdPinData*> GetPinDataFromSubNodes() const;
+
+
+public:
+
+	static bool TryCastPinOwnerToJointEdGraphNode(const UEdGraphPin* Pin, UJointEdGraphNode*& OutGraphNode);
+
+	static UJointEdGraphNode* CastPinOwnerToJointEdGraphNode(const UEdGraphPin* Pin);
+	
 public:
 
 	//Begin of IJointEdNodeInterface implementation
@@ -492,7 +562,7 @@ protected:
 	 * If false, it will wrapped down to its minimum size.
 	 */
 	UPROPERTY()
-	bool bUseFixedNodeSize = true;
+	bool bIsNodeResizeable = true;
 	
 	/**
 	 * Depth of the node in the graph. Used on coloring the node.
@@ -541,6 +611,15 @@ public:
 public:
 
 	/**
+	 * Whether to hide the name of the node on the graph
+	 * There are some cases that you might want to hide the name while still enabling renaming feature to get the event of renaming. This is for that case.
+	 * @return whether to hide the name of the node on the graph.
+	 */
+	virtual bool GetShouldHideNameBox() const;
+
+public:
+
+	/**
 	 * Check whether this graph node must use the node instance specified color.
 	 * @return whether this graph node must use the node instance specified color.
 	 */
@@ -551,7 +630,7 @@ public:
 public:
 	
 	virtual void PostPlacedNewNode() override;
-	
+
 	virtual void PrepareForCopying() override;
 	virtual void PostCopyNode();
 	virtual void PostPasteNode() override;
@@ -563,7 +642,6 @@ public:
 	virtual void DestroyNode() override;
 
 	virtual void ImportCustomProperties(const TCHAR* SourceText, FFeedbackContext* Warn) override;
-
 
 public:
 
@@ -579,11 +657,14 @@ public:
 	
 public:
 
-	virtual void OnRenameNode(const FString& NewName) override;
+	virtual void OnRenameNode(const FString& DesiredNewName) override;
 
-	//Start to rename this node on the graph.
-	void RequestRenameOnGraphNodeSlate();
-
+	/**
+	 * Start to rename this node on the graph.
+	 * It will call RequestRename on the graph node slate if it is valid.
+	 * Override this function to implement any additional logic when the renaming is requested. (see UJointEdGraphNode_Composite for example)
+	 */
+	virtual void RequestStartRenaming();
 
 public:
 	
@@ -649,10 +730,13 @@ protected:
 
 	//Update sub nodes outer to its parent node.
 	virtual void UpdateSubNodesInstanceOuter() const;
-	FName GetSafeNewName(const FString& InPotentialNewName, UObject* Outer) const;
 
 	//Set the node instance's outer to the provided object.
-	virtual bool SetNodeInstanceOuterTo(UObject* NewOuter) const;
+	virtual bool SetNodeInstanceOuterAs(UObject* NewOuter) const;
+
+public:
+
+	void SetOuterAs(UObject* NewOuter);
 
 public:
 
@@ -700,6 +784,19 @@ public:
 	 */
 	virtual FLinearColor GetNodeBodyTintColor() const override;
 
+#if WITH_EDITORONLY_DATA
+	
+	/**
+	 * Joint 2.10 : Now Editor nodes also have their own settings. This will be used only when the editor node doesn't have a valid node instance.
+	 * This is only accessible on the code side only - because we don't support BP derived editor node classes.
+	 */
+	UPROPERTY(Transient)
+	FJointEdNodeSetting DefaultEdNodeSetting;
+
+	const FJointEdNodeSetting& GetEdNodeSetting() const;
+	
+#endif
+	
 public:
 
 	//Declare the actions the users will get when they right click on the graph node. By default, it implements add fragment action.
@@ -707,6 +804,6 @@ public:
 
 	void CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Graph) const;
 	
-	void AddContextMenuActionsFragments(UToolMenu* Menu, const FName SectionName, UGraphNodeContextMenuContext* Context) const;
-	
+	void AddContextMenuActions_Fragments(UToolMenu* Menu, const FName SectionName, UGraphNodeContextMenuContext* Context) const;
+
 };
