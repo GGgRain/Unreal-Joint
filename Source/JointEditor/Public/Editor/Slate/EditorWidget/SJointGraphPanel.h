@@ -98,6 +98,10 @@ public:
 	virtual int32 OnPaint( const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled ) const override;
 
 
+public:
+
+	void SetAllowContinousZoomInterpolation(bool bAllow);
+
 private:
 	
 	static inline float Joint_FancyMod(float Value, float Size);

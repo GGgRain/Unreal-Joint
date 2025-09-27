@@ -361,6 +361,8 @@ public:
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection);
 
+	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FJointEdPinDataSetting& InSettings);
+
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType);
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType,

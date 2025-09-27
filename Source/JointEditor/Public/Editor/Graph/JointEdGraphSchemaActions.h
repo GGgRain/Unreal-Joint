@@ -74,6 +74,17 @@ public:
 public:
 
 	UEdGraphNode* PerformAction_Command(class UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location, bool bSelectNewNode = true);
+
+	template<typename T=UJointEdGraphNode>
+	static T* SpawnNode(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true)
+	{
+		T* const ConnectorTemplate = NewObject<T>();
+		
+		T* const NewNode = FEdGraphSchemaAction_NewNode::SpawnNodeFromTemplate<T>(
+			ParentGraph, ConnectorTemplate, Location, bSelectNewNode);
+
+		return NewNode;
+	}
 	
 };
 
@@ -115,3 +126,5 @@ struct JOINTEDITOR_API FJointSchemaAction_AddConnector : public FEdGraphSchemaAc
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override final;
 	// End of FEdGraphSchemaAction interface
 };
+
+/** Action to add a pair of connector to the graph */

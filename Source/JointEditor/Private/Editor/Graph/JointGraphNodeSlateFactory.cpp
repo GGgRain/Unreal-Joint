@@ -1,6 +1,6 @@
 //Copyright 2022~2024 DevGrain. All Rights Reserved.
 
-#include "JointNodeStyleFactory.h"
+#include "JointGraphNodeSlateFactory.h"
 
 #include "Styling/SlateTypes.h"
 
@@ -9,7 +9,7 @@
 
 #include "Node/SubNode/JointEdGraphNode_Fragment.h"
 
-TSharedPtr<class SGraphNode> FJointNodeStyleFactory::CreateNode(class UEdGraphNode* InNode) const
+TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNode(class UEdGraphNode* InNode) const
 {
 
 	if (UJointEdGraphNode_Fragment* SubNode = Cast<UJointEdGraphNode_Fragment>(InNode))
@@ -27,10 +27,10 @@ TSharedPtr<class SGraphNode> FJointNodeStyleFactory::CreateNode(class UEdGraphNo
 	if (UJointEdGraphNode* BaseNode = Cast<UJointEdGraphNode>(InNode))
 	{
 		//Reuse the old one.
-		if(BaseNode->GetGraphNodeSlate().IsValid())
+		if (BaseNode->GetGraphNodeSlate().IsValid())
 		{
 			BaseNode->GetGraphNodeSlate().Pin()->UpdateGraphNode();
-			
+		
 			return BaseNode->GetGraphNodeSlate().Pin();
 		}
 		

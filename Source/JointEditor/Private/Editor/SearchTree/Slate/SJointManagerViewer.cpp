@@ -4,6 +4,7 @@
 
 #include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
+#include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "Filter/JointTreeFilter.h"
 #include "Filter/JointTreeFilterItem.h"
@@ -24,7 +25,9 @@ void SJointManagerViewer::Construct(const FArguments& InArgs)
 {
 	ToolKitPtr = InArgs._ToolKitPtr;
 	JointManagers = InArgs._JointManagers;
-	BuilderArgs = InArgs._BuilderArgs;
+	
+	bShowOnlyCurrentGraph = InArgs._bInitialShowOnlyCurrentGraph;
+	ShowOnlyCurrentGraphToggleButtonVisibilityAttr = InArgs._ShowOnlyCurrentGraphToggleButtonVisibility;
 
 	RebuildWidget();
 }
@@ -60,6 +63,36 @@ void SJointManagerViewer::OnReplaceAllButtonPressed()
 	ReplaceAllSrc();
 }
 
+FJointPropertyTreeFilterArgs SJointManagerViewer::GetFilterArgs() const
+{
+	FJointPropertyTreeFilterArgs Args = FJointPropertyTreeFilterArgs();
+	Args.TextFilter = Tree->TextFilterPtr;
+	Args.bFlattenHierarchyOnFilter = false;
+
+	if (bShowOnlyCurrentGraph && ToolKitPtr.IsValid())
+	{
+		if (UJointEdGraph* CurrentGraph = ToolKitPtr.Pin()->GetFocusedJointGraph())
+		{
+			Args.GraphsToShow.Add(CurrentGraph);
+		}
+	}
+
+	return Args;
+}
+
+FJointPropertyTreeBuilderArgs SJointManagerViewer::GetBuilderArgs() const
+{
+
+	FJointPropertyTreeBuilderArgs Args = FJointPropertyTreeBuilderArgs();
+
+	Args.bShowJointManagers = true;
+	Args.bShowGraphs = true;
+	Args.bShowNodes = true;
+	Args.bShowProperties = true;
+
+	return Args;
+}
+
 
 TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 {
@@ -72,115 +105,179 @@ TSharedRef<SWidget> SJointManagerViewer::CreateModeSelectionSection()
 	{
 		return Mode != EJointManagerViewerMode::Replace ? true : false;
 	});
-
-	return SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Top)
-		.AutoWidth()
+	
+	return
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
 		.Padding(FJointEditorStyle::Margin_Normal)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Top)
 		[
-			SNew(SJointOutlineButton)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			.OnPressed(this, &SJointManagerViewer::OnSearchModeButtonPressed)
-			.IsEnabled(IsEnabled_Search_Attr)
+
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Top)
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(SHorizontalBox)
-				.Visibility(EVisibility::HitTestInvisible)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
+				SNew(SJointOutlineButton)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
+				.OnPressed(this, &SJointManagerViewer::OnSearchModeButtonPressed)
+				.IsEnabled(IsEnabled_Search_Attr)
 				[
-					SNew(SBox)
-					.WidthOverride(16)
-					.HeightOverride(16)
+					SNew(SHorizontalBox)
+					.Visibility(EVisibility::HitTestInvisible)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Search"))
+						SNew(SBox)
+						.WidthOverride(16)
+						.HeightOverride(16)
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Search"))
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("SearchBox", "Search"))
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
+						.ColorAndOpacity(FLinearColor(1, 1, 1))
 					]
 				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
+			]
+			+ SHorizontalBox::Slot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Top)
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(SJointOutlineButton)
+				.ContentPadding(FJointEditorStyle::Margin_Normal)
+				.OnPressed(this, &SJointManagerViewer::OnReplaceModeButtonPressed)
+				.IsEnabled(IsEnabled_Replace_Attr)
 				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("SearchBox", "Search"))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
-					.ColorAndOpacity(FLinearColor(1, 1, 1))
+					SNew(SHorizontalBox)
+					.Visibility(EVisibility::HitTestInvisible)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(SBox)
+						.WidthOverride(16)
+						.HeightOverride(16)
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Convert"))
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("ReplaceBox", "Replace"))
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
+						.ColorAndOpacity(FLinearColor(1, 1, 1))
+					]
 				]
 			]
 		]
-		+ SHorizontalBox::Slot()
-		.HAlign(HAlign_Left)
-		.VAlign(VAlign_Top)
-		.AutoWidth()
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Fill)
 		.Padding(FJointEditorStyle::Margin_Normal)
 		[
-			SNew(SJointOutlineButton)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			.OnPressed(this, &SJointManagerViewer::OnReplaceModeButtonPressed)
-			.IsEnabled(IsEnabled_Replace_Attr)
-			[
-				SNew(SHorizontalBox)
-				.Visibility(EVisibility::HitTestInvisible)
+			SNew(SHorizontalBox)
+			.Visibility(ShowOnlyCurrentGraphToggleButtonVisibilityAttr)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
-				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBox)
-					.WidthOverride(16)
-					.HeightOverride(16)
-					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Convert"))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
 				.HAlign(HAlign_Left)
-				.VAlign(VAlign_Center)
-				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(STextBlock)
-					.Text(LOCTEXT("ReplaceBox", "Replace"))
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
+					.Text(LOCTEXT("GraphDisplayTooltip", "Display Current Graph Only"))
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
 					.ColorAndOpacity(FLinearColor(1, 1, 1))
 				]
-			]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Left)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(SJointOutlineToggleButton)
+					.ToggleSize(8)
+					.ButtonLength(10)
+					.ToggleImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.RoundSolid")
+					.IsChecked(this, &SJointManagerViewer::GetShowOnlyCurrentGraphState)
+					.OnCheckStateChanged(this, &SJointManagerViewer::OnShowOnlyCurrentGraphChanged)
+				]
 		];
 }
+
+
+ECheckBoxState SJointManagerViewer::GetShowOnlyCurrentGraphState() const
+{
+	if (bShowOnlyCurrentGraph)
+	{
+		return ECheckBoxState::Checked;
+	}
+	else
+	{
+		return ECheckBoxState::Unchecked;
+	}
+}
+
+void SJointManagerViewer::OnShowOnlyCurrentGraphChanged(ECheckBoxState CheckBoxState)
+{
+	switch (CheckBoxState)
+	{
+	case ECheckBoxState::Unchecked:
+		bShowOnlyCurrentGraph = true;
+		break;
+	case ECheckBoxState::Checked:
+		bShowOnlyCurrentGraph = false;
+		break;
+	case ECheckBoxState::Undetermined:
+		break;
+	}
+
+	Tree->BuildFromJointManagers(JointManagers);
+
+	//todo: change it to filtering
+	//Builder->AbandonBuild();
+	//BuildFromJointManagers();
+}
+
+
 
 void SJointManagerViewer::RebuildWidget()
 {
 	if (!Tree.IsValid())
 	{
-		Tree = SNew(SJointTree)
-			.BuilderArgs(BuilderArgs);
+		SAssignNew(Tree, SJointTree)
+		.BuilderArgs(this, &SJointManagerViewer::GetBuilderArgs)
+		.FilterArgs(this, &SJointManagerViewer::GetFilterArgs);
 	}
-
-	Tree->JointManagerToShow = JointManagers;
-	Tree->BuildFromJointManagers();
-
-	TAttribute<FSlateColor> NodeVisibilityCheckBoxColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-	{
-		if (!NodeVisibilityCheckbox.IsValid()) { return FLinearColor(0.5, 0.2, 0.2); }
-		return (NodeVisibilityCheckbox->IsChecked())
-			       ? FLinearColor(0.7, 0.4, 0.02)
-			       : FLinearColor(0.03, 0.03, 0.03);
-	});
-
-	TAttribute<ECheckBoxState> NodeVisibilityIsChecked_Attr = TAttribute<ECheckBoxState>::CreateLambda([this]
-	{
-		return (Tree->Builder->IsShowingNodes()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-	});
-
-
+	
 	TAttribute<EVisibility> VisibilityByMode_Search_Attr = TAttribute<EVisibility>::CreateLambda([this]
 	{
 		return (Mode == EJointManagerViewerMode::Search) ? EVisibility::Visible : EVisibility::Collapsed;
@@ -325,7 +422,7 @@ void SJointManagerViewer::RequestTreeRebuild()
 {
 	if (Tree)
 	{
-		Tree->BuildFromJointManagers();
+		Tree->BuildFromJointManagers(JointManagers);
 	}
 }
 
@@ -606,8 +703,6 @@ void SJointManagerViewer::SetMode(const EJointManagerViewerMode InMode)
 void SJointManagerViewer::SetTargetManager(TArray<TWeakObjectPtr<UJointManager>> NewManagers)
 {
 	JointManagers = NewManagers;
-
-	RebuildWidget();
 }
 
 #undef LOCTEXT_NAMESPACE

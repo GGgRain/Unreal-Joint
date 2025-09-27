@@ -106,7 +106,7 @@ void SJointGraphEditorActionMenu::CollectAllActions(FGraphActionListBuilderBase&
 
 	// Determine all possible actions
 
-	if(GraphObj->GetSchema())
+	if(GraphObj && GraphObj->GetSchema())
 	{
 		const UJointEdGraphSchema* MySchema = Cast<const UJointEdGraphSchema>(GraphObj->GetSchema());
 		

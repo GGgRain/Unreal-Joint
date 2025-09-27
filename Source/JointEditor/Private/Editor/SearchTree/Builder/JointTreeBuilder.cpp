@@ -2,6 +2,11 @@
 
 #include "SearchTree/Builder/JointTreeBuilder.h"
 
+#include "JointEdGraph.h"
+#include "JointEditorSettings.h"
+#include "JointEdUtils.h"
+#include "Async/Async.h"
+#include "Item/JointTreeItem_Graph.h"
 #include "Item/JointTreeItem_Property.h"
 #include "SearchTree/Item/JointTreeItem_Manager.h"
 #include "SearchTree/Item/JointTreeItem_Node.h"
@@ -12,438 +17,9 @@
 #include "Node/JointNodeBase.h"
 
 #include "Misc/EngineVersionComparison.h"
+#include "Misc/ScopeTryLock.h"
 
 #define LOCTEXT_NAMESPACE "FJointTreeBuilder"
-
-void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
-                                  const FName& InParentName, const FName& InParentType, bool bAddToHead)
-{
-	Add(InItem, InParentName, TArray<FName, TInlineAllocator<1>>({InParentType}), bAddToHead);
-}
-
-void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
-                                  const FName& InParentName, TArrayView<const FName> InParentTypes,
-                                  bool bAddToHead)
-{
-	TSharedPtr<IJointTreeItem> ParentItem = Find(InParentName, InParentTypes);
-	if (ParentItem.IsValid())
-	{
-		InItem->SetParent(ParentItem);
-
-		if (bAddToHead) { ParentItem->GetChildren().Insert(InItem, 0); }
-		else { ParentItem->GetChildren().Add(InItem); }
-	}
-	else
-	{
-		if (bAddToHead) { Items.Insert(InItem, 0); }
-		else { Items.Add(InItem); }
-	}
-
-	LinearItems.Add(InItem);
-}
-
-TSharedPtr<class IJointTreeItem> FJointTreeBuilderOutput::Find(
-	const FName& InName, const FName& InType) const
-{
-	return Find(InName, TArray<FName, TInlineAllocator<1>>({InType}));
-}
-
-TSharedPtr<class IJointTreeItem> FJointTreeBuilderOutput::Find(
-	const FName& InName, TArrayView<const FName> InTypes) const
-{
-	for (const TSharedPtr<IJointTreeItem>& Item : LinearItems)
-	{
-		if (!Item.IsValid()) continue;
-
-		bool bPassesType = (InTypes.Num() == 0);
-		for (const FName& TypeName : InTypes)
-		{
-			if (Item->IsOfTypeByName(TypeName))
-			{
-				bPassesType = true;
-				break;
-			}
-		}
-
-		if (bPassesType && Item->GetAttachName() == InName) { return Item; }
-	}
-
-	return nullptr;
-}
-
-FJointTreeBuilder::FJointTreeBuilder(const FJointPropertyTreeBuilderArgs& InBuilderArgs)
-	: BuilderArgs(InBuilderArgs)
-{
-}
-
-FJointTreeBuilder::~FJointTreeBuilder()
-{
-	FJointTreeBuilder::SetShouldAbandonBuild(true);
-}
-
-void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
-                                   FOnFilterJointPropertyTreeItem InOnFilterSkeletonTreeItem)
-{
-	TreePtr = InTree;
-	OnFilterJointPropertyTreeItem = InOnFilterSkeletonTreeItem;
-}
-
-void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
-{
-	bIsBuilding = true;
-
-	if (!GetShouldAbandonBuild() && BuilderArgs.bShowJointManagers) { AddJointManagers(Output); }
-
-	if (!GetShouldAbandonBuild() && BuilderArgs.bShowNodes) { AddNodes(Output); }
-
-	if (!GetShouldAbandonBuild() && BuilderArgs.bShowProperties) { AddProperties(Output); }
-
-	bIsBuilding = false;
-}
-
-void FJointTreeBuilder::Filter(const FJointPropertyTreeFilterArgs& InArgs,
-                               const TArray<TSharedPtr<IJointTreeItem>>& InItems
-                               , TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
-{
-	OutFilteredItems.Empty();
-
-	for (const TSharedPtr<IJointTreeItem>& Item : InItems)
-	{
-		if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
-		{
-			FilterRecursive(InArgs, Item, OutFilteredItems);
-		}
-		else
-		{
-			EJointTreeFilterResult FilterResult = FilterRecursive(InArgs, Item, OutFilteredItems);
-			if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(Item); }
-
-			Item->SetFilterResult(FilterResult);
-		}
-	}
-}
-
-EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
-	const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<IJointTreeItem>& InItem
-	, TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
-{
-	EJointTreeFilterResult FilterResult = EJointTreeFilterResult::Shown;
-
-	InItem->GetFilteredChildren().Empty();
-
-	if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
-	{
-		FilterResult = FilterItem(InArgs, InItem);
-		InItem->SetFilterResult(FilterResult);
-
-		if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(InItem); }
-
-		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
-		{
-			FilterRecursive(InArgs, Item, OutFilteredItems);
-		}
-	}
-	else
-	{
-		// check to see if we have any children that pass the filter
-		EJointTreeFilterResult DescendantsFilterResult = EJointTreeFilterResult::Hidden;
-		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
-		{
-			EJointTreeFilterResult ChildResult = FilterRecursive(InArgs, Item, OutFilteredItems);
-			if (ChildResult != EJointTreeFilterResult::Hidden) { InItem->GetFilteredChildren().Add(Item); }
-			if (ChildResult > DescendantsFilterResult) { DescendantsFilterResult = ChildResult; }
-		}
-
-		FilterResult = FilterItem(InArgs, InItem);
-		if (DescendantsFilterResult > FilterResult)
-		{
-			FilterResult = EJointTreeFilterResult::ShownDescendant;
-		}
-
-		InItem->SetFilterResult(FilterResult);
-	}
-
-	return FilterResult;
-}
-
-const bool& FJointTreeBuilder::IsBuilding() const
-{
-	return bIsBuilding;
-}
-
-void FJointTreeBuilder::SetShouldAbandonBuild(const bool bNewInShouldAbandonBuild)
-{
-	bShouldAbandonBuild = bNewInShouldAbandonBuild;
-}
-
-const bool FJointTreeBuilder::GetShouldAbandonBuild() const
-{
-	return bShouldAbandonBuild || IsEngineExitRequested() || IsRunningCommandlet() || IsGarbageCollecting();
-}
-
-EJointTreeFilterResult FJointTreeBuilder::FilterItem(
-	const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem)
-{
-	return OnFilterJointPropertyTreeItem.Execute(InArgs, InItem);
-}
-
-bool FJointTreeBuilder::IsShowingJointManagers() const { return BuilderArgs.bShowJointManagers; }
-
-bool FJointTreeBuilder::IsShowingNodes() const { return BuilderArgs.bShowNodes; }
-
-bool FJointTreeBuilder::IsShowingProperties() const { return BuilderArgs.bShowProperties; }
-
-
-void FJointTreeBuilder::AddJointManagers(FJointTreeBuilderOutput& Output)
-{
-	struct FJointManagerInfo
-	{
-		FJointManagerInfo(TWeakObjectPtr<UJointManager> InManager)
-			: JointManager(InManager)
-		{
-			if (JointManager.Get())
-			{
-				SortString = JointManager.Get()->GetName();
-				SortNumber = 0;
-				SortLength = SortString.Len();
-			}
-
-			// Split the bone name into string prefix and numeric suffix for sorting (different from FName to support leading zeros in the numeric suffix)
-			int32 Index = SortLength - 1;
-			for (int32 PlaceValue = 1; Index >= 0 && FChar::IsDigit(SortString[Index]); --Index, PlaceValue *= 10)
-			{
-				SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
-			}
-#if UE_VERSION_OLDER_THAN(5, 5, 0)
-			SortString.LeftInline(Index + 1, false);
-#else
-				SortString.LeftInline(Index + 1, EAllowShrinking::No);
-#endif
-		}
-
-		bool operator<(const FJointManagerInfo& RHS)
-		{
-			// Sort alphabetically by string prefix
-			if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
-
-			// Sort by number if the string prefixes match
-			if (SortNumber != RHS.SortNumber) { return SortNumber < RHS.SortNumber; }
-
-			// Sort by length to give us the equivalent to alphabetical sorting if the numbers match (which gives us the following sort order: bone_, bone_0, bone_00, bone_000, bone_001, bone_01, bone_1, etc)
-			return (SortNumber == 0) ? SortLength < RHS.SortLength : SortLength > RHS.SortLength;
-		}
-
-		TWeakObjectPtr<UJointManager> JointManager;
-
-		FString SortString;
-		int32 SortNumber = 0;
-		int32 SortLength = 0;
-	};
-
-	TArray<FJointManagerInfo> Managers;
-	
-	Managers.Reserve(TreePtr.Pin()->JointManagerToShow.Num());
-
-	for (int i = 0; i < TreePtr.Pin()->JointManagerToShow.Num(); ++i)
-	{
-		if (GetShouldAbandonBuild()) break;
-
-		if (!TreePtr.Pin()->JointManagerToShow.IsValidIndex(i)) continue;
-
-		if (!TreePtr.Pin()->JointManagerToShow[i].IsValid()) continue;
-
-		Managers.Emplace(FJointManagerInfo(TreePtr.Pin()->JointManagerToShow[i]));
-	}
-
-	Algo::Sort(Managers);
-
-	// Add the sorted bones to the skeleton tree
-	for (const FJointManagerInfo& Manager : Managers)
-	{
-		if (GetShouldAbandonBuild()) break;
-
-		if (!Manager.JointManager.Get()) { continue; }
-		
-		TSharedPtr<IJointTreeItem> DisplayNode = CreateManagerTreeItem(Manager.JointManager);
-
-		if (!DisplayNode.IsValid()) continue;
-		
-		Output.Add(DisplayNode, NAME_None, FJointTreeItem_Manager::GetTypeId());
-	}
-}
-
-void FJointTreeBuilder::AddNodes(FJointTreeBuilderOutput& Output)
-{
-	for (TWeakObjectPtr<UJointManager> Manager : TreePtr.Pin()->JointManagerToShow)
-	{
-		if (GetShouldAbandonBuild()) break;
-
-		if (!Manager.Get()) { return; }
-
-		struct FNodeInfo
-		{
-			FNodeInfo(UJointNodeBase* InNodeInstance)
-				: NodeInstance(InNodeInstance)
-			{
-				if (InNodeInstance)
-				{
-					SortString = NodeInstance->GetName();
-					SortNumber = 0;
-					SortLength = SortString.Len();
-				}
-
-				// Split the bone name into string prefix and numeric suffix for sorting (different from FName to support leading zeros in the numeric suffix)
-				int32 Index = SortLength - 1;
-				for (int32 PlaceValue = 1; Index >= 0 && FChar::IsDigit(SortString[Index]); --Index, PlaceValue *= 10)
-				{
-					SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
-				}
-#if UE_VERSION_OLDER_THAN(5, 5, 0)
-				SortString.LeftInline(Index + 1, false);
-#else
-				SortString.LeftInline(Index + 1, EAllowShrinking::No);
-#endif
-			}
-
-			bool operator<(const FNodeInfo& RHS)
-			{
-				// Sort alphabetically by string prefix
-				if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
-
-				// Sort by number if the string prefixes match
-				if (SortNumber != RHS.SortNumber) { return SortNumber < RHS.SortNumber; }
-
-				// Sort by length to give us the equivalent to alphabetical sorting if the numbers match (which gives us the following sort order: bone_, bone_0, bone_00, bone_000, bone_001, bone_01, bone_1, etc)
-				return (SortNumber == 0) ? SortLength < RHS.SortLength : SortLength > RHS.SortLength;
-			}
-
-			UJointNodeBase* NodeInstance;
-
-			FString SortString;
-			int32 SortNumber = 0;
-			int32 SortLength = 0;
-		};
-
-		TArray<FNodeInfo> Nodes;
-
-		// Gather the nodes.
-
-		TArray<UJointNodeBase*> IterNodes = Manager->ManagerFragments;
-
-		for (UJointNodeBase* NodeBase : IterNodes)
-		{
-			if (GetShouldAbandonBuild()) break;
-
-			if (!NodeBase) continue;
-
-			Nodes.Add(NodeBase);
-
-			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
-			{
-				if (!Fragment) continue;
-
-				Nodes.Add(Fragment);
-			}
-		}
-
-		IterNodes = Manager->Nodes;
-
-		for (UJointNodeBase* JointNodeBase : IterNodes)
-		{
-			if (GetShouldAbandonBuild()) break;
-
-			if (JointNodeBase == nullptr) continue;
-
-			Nodes.Add(FNodeInfo(JointNodeBase));
-
-			for (UJointFragment* Fragment : JointNodeBase->GetAllFragmentsOnLowerHierarchy())
-			{
-				if (GetShouldAbandonBuild()) break;
-
-				if (!Fragment) continue;
-
-				Nodes.Add(Fragment);
-			}
-		}
-
-		for (const FNodeInfo& Node : Nodes)
-		{
-			if (GetShouldAbandonBuild()) break;
-
-			if (!Node.NodeInstance) { continue; }
-
-			TSharedPtr<IJointTreeItem> DisplayNode = CreateNodeTreeItem(Node.NodeInstance);
-
-			if (!DisplayNode.IsValid()) continue;
-
-			if (Node.NodeInstance->GetParentNode() == nullptr && Node.NodeInstance->GetJointManager() && Node.
-				NodeInstance->GetJointManager()->ManagerFragments.Contains(Node.NodeInstance))
-			{
-				Output.Add(DisplayNode,
-				           FName(Node.NodeInstance->GetJointManager()->GetPathName()),
-				           FJointTreeItem_Manager::GetTypeId());
-			}
-			else if (Node.NodeInstance->GetParentNode())
-			{
-				Output.Add(DisplayNode,
-				           FName(Node.NodeInstance->GetParentNode()->GetPathName()),
-				           FJointTreeItem_Node::GetTypeId());
-			}
-			else if (Node.NodeInstance->GetJointManager())
-			{
-				Output.Add(DisplayNode,
-				           FName(Node.NodeInstance->GetJointManager()->GetPathName()),
-				           FJointTreeItem_Manager::GetTypeId());
-			}
-		}
-	}
-}
-
-
-struct FPropertyInfo
-{
-	FPropertyInfo(FProperty* InProperty, UObject* InObject)
-		: Property(InProperty), Object(InObject)
-	{
-		if (InObject)
-		{
-			SortString = InObject->GetName();
-			SortNumber = 0;
-			SortLength = SortString.Len();
-		}
-
-		// Split the bone name into string prefix and numeric suffix for sorting (different from FName to support leading zeros in the numeric suffix)
-		int32 Index = SortLength - 1;
-		for (int32 PlaceValue = 1; Index >= 0 && FChar::IsDigit(SortString[Index]); --Index, PlaceValue *= 10)
-		{
-			SortNumber += static_cast<int32>(SortString[Index] - '0') * PlaceValue;
-		}
-#if UE_VERSION_OLDER_THAN(5, 5, 0)
-		SortString.LeftInline(Index + 1, false);
-#else
-		SortString.LeftInline(Index + 1, EAllowShrinking::No);
-#endif
-	}
-
-	bool operator<(const FPropertyInfo& RHS)
-	{
-		// Sort alphabetically by string prefix
-		if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
-
-		// Sort by number if the string prefixes match
-		if (SortNumber != RHS.SortNumber) { return SortNumber < RHS.SortNumber; }
-
-		// Sort by length to give us the equivalent to alphabetical sorting if the numbers match (which gives us the following sort order: bone_, bone_0, bone_00, bone_000, bone_001, bone_01, bone_1, etc)
-		return (SortNumber == 0) ? SortLength < RHS.SortLength : SortLength > RHS.SortLength;
-	}
-
-	FProperty* Property;
-	UObject* Object;
-
-	FString SortString;
-	int32 SortNumber = 0;
-	int32 SortLength = 0;
-};
 
 bool CheckCanImplementProperty(FProperty* Property)
 {
@@ -470,87 +46,661 @@ void AddPropertyInfo(TArray<FPropertyInfo>& Infos, UObject* SearchObj)
 		Infos.Add(FPropertyInfo(Property, SearchObj));
 	}
 }
-
-
-void FJointTreeBuilder::AddProperties(FJointTreeBuilderOutput& Output)
+void AddPropertyInfoForEditorNode(TArray<FPropertyInfo>& Infos, UEdGraphNode* SearchObj)
 {
-	if (!TreePtr.Pin().IsValid()) return;
+	if (!SearchObj) return;
 
-	TArray<TWeakObjectPtr<UJointManager>> Managers = TreePtr.Pin()->JointManagerToShow;
+	if (UJointEdGraphNode* CastedEdNode = Cast<UJointEdGraphNode>(SearchObj))
+	{
+		if (UJointNodeBase* NodeInstance = CastedEdNode->GetCastedNodeInstance())
+		{
+			for (TFieldIterator<FProperty> It(NodeInstance->GetClass()); It; ++It)
+			{
+				FProperty* Property = *It;
 
-	for (TWeakObjectPtr<UJointManager> Manager : Managers)
+				if (!CheckCanImplementProperty(Property)) continue;
+
+				Infos.Add(FPropertyInfo(Property, NodeInstance, CastedEdNode));
+			}
+		}
+	}
+	
+}
+
+
+
+void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
+                                  const FName& InParentName, TArrayView<const FName> InParentTypes,
+                                  bool bAddToHead)
+{
+	TSharedPtr<IJointTreeItem> ParentItem = Find(InParentName, InParentTypes);
+	if (ParentItem.IsValid())
+	{
+		InItem->SetParent(ParentItem);
+
+		if (bAddToHead) { ParentItem->GetChildren().Insert(InItem, 0); }
+		else { ParentItem->GetChildren().Add(InItem); }
+	}
+	else
+	{
+		if (bAddToHead) { Items.Insert(InItem, 0); }
+		else { Items.Add(InItem); }
+	}
+
+	LinearItems.Add(InItem);
+	ItemMap.Add(InItem->GetAttachName(), InItem);
+}
+
+void FJointTreeBuilderOutput::Add(const TSharedPtr<class IJointTreeItem>& InItem,
+                                  const FName& InParentName, const FName& InParentType, bool bAddToHead)
+{
+	Add(InItem, InParentName, TArray<FName, TInlineAllocator<1>>({InParentType}), bAddToHead);
+}
+
+TSharedPtr<class IJointTreeItem> FJointTreeBuilderOutput::Find(
+	const FName& InName, TArrayView<const FName> InTypes)
+{
+	if (ItemMap.Contains(InName))
+	{
+		return ItemMap[InName];
+	}
+
+	for (const TSharedPtr<IJointTreeItem>& Item : LinearItems)
+	{
+		if (!Item.IsValid()) continue;
+
+		bool bPassesType = (InTypes.Num() == 0);
+		for (const FName& TypeName : InTypes)
+		{
+			if (Item->IsOfTypeByName(TypeName))
+			{
+				bPassesType = true;
+				break;
+			}
+		}
+
+		if (bPassesType && Item->GetAttachName() == InName) { return Item; }
+	}
+
+	return nullptr;
+}
+
+TSharedPtr<class IJointTreeItem> FJointTreeBuilderOutput::Find(
+	const FName& InName, const FName& InType)
+{
+	return Find(InName, TArray<FName, TInlineAllocator<1>>({InType}));
+}
+
+IJointTreeBuilder::~IJointTreeBuilder()
+{
+}
+
+FJointTreeBuilder::FJointTreeBuilder()
+{
+}
+
+FJointTreeBuilder::~FJointTreeBuilder()
+{
+	if (bIsBuilding)
+	{
+		SetShouldAbandonBuild(true);
+			
+		// block until the current build is finished.
+		WaitForBuildToFinish();
+	}
+}
+
+void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
+                                   FOnFilterJointPropertyTreeItem InOnFilterJointPropertyTreeItem)
+{
+	TreePtr = InTree;
+	OnFilterJointPropertyTreeItem = InOnFilterJointPropertyTreeItem;
+
+	bUseMultithreading = UJointEditorSettings::Get()->bUseLODRenderingForSimplePropertyDisplay;
+
+#if UE_VERSION_OLDER_THAN(5,3,0)
+	// This delegate is deprecated in 5.3 - Direct access to this delegate is not thread safe while it can be used concurrently
+	FCoreDelegates::ApplicationWillTerminateDelegate.AddSP(this, &FJointTreeBuilder::OnCleanUpBlocking);
+#else
+	FCoreDelegates::GetApplicationWillTerminateDelegate().AddSP(this, &FJointTreeBuilder::OnCleanUpBlocking);
+#endif
+}
+
+void FJointTreeBuilder::ReserveJointManagerInfo(TArray<FJointManagerInfo>& ManagerInfos)
+{
+	ManagerInfos.Reserve(BuildTargetJointManagers.Num());
+
+	for (int i = 0; i < BuildTargetJointManagers.Num(); ++i)
 	{
 		if (GetShouldAbandonBuild()) break;
 
-		if (!Manager.Get()) { return; }
+		if (!BuildTargetJointManagers.IsValidIndex(i) || !BuildTargetJointManagers[i]) continue;
 
-		TArray<UObject*> ObjectsToIterate;
+		ManagerInfos.Emplace(FJointManagerInfo(BuildTargetJointManagers[i]));
+	}
 
-		TArray<UJointNodeBase*> Nodes = Manager->ManagerFragments;
+	Algo::Sort(ManagerInfos);
+}
 
-		for (UJointNodeBase* NodeBase : Nodes)
+void FJointTreeBuilder::ReserveGraphInfo(TArray<FGraphInfo>& Graphs)
+{
+	Graphs.Reserve(BuildTargetGraphs.Num());
+
+	for (int i = 0; i < BuildTargetGraphs.Num(); ++i)
+	{
+		if (GetShouldAbandonBuild()) break;
+
+		if (!BuildTargetGraphs.IsValidIndex(i) || !BuildTargetGraphs[i]) continue;
+
+		Graphs.Emplace(FGraphInfo(BuildTargetGraphs[i]));
+	}
+
+	Algo::Sort(Graphs);
+}
+
+void FJointTreeBuilder::ReserveNodeInfo(TArray<FNodeInfo>& NodeInfos)
+{
+	// Gather the nodes.
+	
+	for (UEdGraphNode* NodeBase : BuildTargetEditorNodes)
+	{
+		if (GetShouldAbandonBuild()) break;
+
+		if (!NodeBase) continue;
+
+		NodeInfos.Add(NodeBase);
+	}
+}
+
+void FJointTreeBuilder::ReservePropertyInfo(TArray<FPropertyInfo>& Properties)
+{
+	TArray<UEdGraphNode*> EditorNodes = BuildTargetEditorNodes;
+
+	for (UEdGraphNode* EditorNode : EditorNodes)
+	{
+		if (!EditorNode) continue;
+
+		AddPropertyInfoForEditorNode(Properties, EditorNode);
+	}
+}
+
+void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
+{
+	if (TreePtr.Pin())
+	{
+		FJointPropertyTreeBuilderArgs Args = TreePtr.Pin()->BuilderArgsAttr.Get();
+		
+		if (Args.bShowJointManagers)
 		{
-			if (GetShouldAbandonBuild()) break;
+			TArray<FJointManagerInfo> Managers;
+			
+			ReserveJointManagerInfo(Managers);
 
-			if (!NodeBase) continue;
-
-			ObjectsToIterate.Add(NodeBase);
-
-			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
+			for (FJointManagerInfo& Manager : Managers)
 			{
-				if (!Fragment) continue;
+				if (GetShouldAbandonBuild()) break;
 
-				ObjectsToIterate.Add(Cast<UObject>(Fragment));
+				BuildJointManagerInfo(Manager,Output);
+			}
+		}
+		
+		if (Args.bShowGraphs)
+		{
+			TArray<FGraphInfo> Graphs;
+
+			ReserveGraphInfo(Graphs);
+
+			for (FGraphInfo& Graph : Graphs)
+			{
+				if (GetShouldAbandonBuild()) break;
+
+				BuildGraphInfo(Graph,Output);
 			}
 		}
 
-		Nodes = Manager->Nodes;
-
-		for (UJointNodeBase* NodeBase : Nodes)
+		if (Args.bShowNodes)
 		{
-			if (GetShouldAbandonBuild()) break;
+			TArray<FNodeInfo> NodeInfos;
 
-			if (!NodeBase) continue;
+			ReserveNodeInfo(NodeInfos);
 
-			ObjectsToIterate.Add(NodeBase);
-
-			for (UJointFragment* Fragment : NodeBase->GetAllFragmentsOnLowerHierarchy())
+			for (FNodeInfo& NodeInfo : NodeInfos)
 			{
-				if (!Fragment) continue;
-
-				ObjectsToIterate.Add(Cast<UObject>(Fragment));
+				if (GetShouldAbandonBuild()) break;
+				
+				BuildNodeInfo(NodeInfo,Output);
 			}
 		}
-
-		TArray<FPropertyInfo> Properties;
-
-		// Gather the nodes.
-		for (UObject* Object : ObjectsToIterate)
+		
+		if (Args.bShowProperties)
 		{
-			if (GetShouldAbandonBuild()) break;
+			TArray<FPropertyInfo> Properties;
 
-			if (!Object) continue;
+			ReservePropertyInfo(Properties);
 
-			AddPropertyInfo(Properties, Object);
-		}
-
-
-		for (FPropertyInfo& PropertyInfo : Properties)
-		{
-			if (GetShouldAbandonBuild()) break;
-
-			if (!PropertyInfo.Object) { continue; }
-
-			TSharedPtr<IJointTreeItem> DisplayNode = CreatePropertyTreeItem(PropertyInfo.Property, PropertyInfo.Object);
-
-			if (!DisplayNode.IsValid()) continue;
-
-			Output.Add(
-				DisplayNode,
-				FName(PropertyInfo.Object->GetPathName()),
-				FJointTreeItem_Node::GetTypeId());
+			for (FPropertyInfo& Property : Properties)
+			{
+				if (GetShouldAbandonBuild()) break;
+				
+				BuildPropertyInfo(Property,Output);
+			}
 		}
 	}
+
+	CleanUpCollectedReferences();
+}
+
+void FJointTreeBuilder::Filter(const FJointPropertyTreeFilterArgs& InArgs,
+                               const TArray<TSharedPtr<IJointTreeItem>>& InItems
+                               , TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
+{
+	OutFilteredItems.Empty();
+
+	for (const TSharedPtr<IJointTreeItem>& Item : InItems)
+	{
+		if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
+		{
+			FilterRecursive(InArgs, Item, OutFilteredItems);
+		}
+		else
+		{
+			EJointTreeFilterResult FilterResult = FilterRecursive(InArgs, Item, OutFilteredItems);
+			if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(Item); }
+
+			Item->SetFilterResult(FilterResult);
+		}
+	}
+}
+
+EJointTreeFilterResult FJointTreeBuilder::FilterItem(
+	const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem)
+{
+	return OnFilterJointPropertyTreeItem.Execute(InArgs, InItem);
+}
+
+void FJointTreeBuilder::RequestBuild(TArray<TWeakObjectPtr<UJointManager>> InJointManagersToShow)
+{
+	// put it in the queued jointmanagers to build with - this is threadsafe.
+	QueuedBuildTargetJointManagers = InJointManagersToShow;
+
+	// If we are not using multithreading, we do nothing.
+	if (bUseMultithreading)
+	{
+		RunBuildAsync();
+	}
+	else
+	{
+		RunBuildSync();
+	}
+}
+
+void FJointTreeBuilder::RunBuildSync()
+{
+	bIsBuilding = true;
+
+	OnJointTreeBuildStarted();
+
+	//Discard previous items
+	CleanUpCollectedReferences();
+
+	//Collect references to build
+	CollectReferencesToBuild(QueuedBuildTargetJointManagers);
+
+	FJointTreeBuilderOutput Output = FJointTreeBuilderOutput();
+
+	Build(Output);
+
+	OnJointTreeBuildFinished(Output);
+
+	bIsBuilding = false;
+}
+
+void FJointTreeBuilder::RunBuildAsync()
+{
+	// do not start a new build if a new build is already requested. 
+	if (GetIsNewBuildRequested()) return;
+
+	SetIsNewBuildRequested(true);
+	
+	// Start to build the tree in the background thread.
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this]()
+	{
+
+		// if we are already building, we set the flag to abandon the current build.
+		if (bIsBuilding)
+		{
+			SetShouldAbandonBuild(true);
+			
+			// block until the current build is finished.
+			WaitForBuildToFinish();
+		}
+
+		AsyncTask(ENamedThreads::GameThread, [this]()
+		{
+			// Start to build the tree in the background thread.
+			FScopeTryLock Lock(&BuildMutex);
+			if (!Lock.IsLocked()) return;
+
+			SetShouldAbandonBuild(false);
+			bIsBuilding = true;
+
+			OnJointTreeBuildStarted();
+
+			//Discard previous items
+			CleanUpCollectedReferences();
+
+			//Collect references to build
+			CollectReferencesToBuild(QueuedBuildTargetJointManagers);
+
+			// Start to build the tree in the background thread.
+			AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this]()
+			{
+				FScopeTryLock NewLock(&BuildMutex);
+
+				if (!NewLock.IsLocked()) return;
+
+				// we are no longer requesting a new build - we are building now.
+				SetIsNewBuildRequested(false);
+					
+				FJointTreeBuilderOutput Output = FJointTreeBuilderOutput();
+
+				Build(Output);
+
+				// we finished building the tree - if we should abandon the build, we do so now.
+				AsyncTask(ENamedThreads::GameThread, [this, Output]()
+				{
+					if (!GetShouldAbandonBuild())
+					{
+						OnJointTreeBuildFinished(Output);
+					}
+					else
+					{
+						OnJointTreeBuildCancelled();
+					}
+
+					SetShouldAbandonBuild(false);
+					bIsBuilding = false;
+				});
+			});
+		});
+	});
+}
+
+void FJointTreeBuilder::AbandonBuild()
+{
+	// If we are not using multithreading, we do nothing.
+	if (!bUseMultithreading) return;
+
+	// Simply set the flag to abandon the build - the build thread will check this flag and abandon the build if necessary.
+	SetShouldAbandonBuild(true);
+}
+
+void FJointTreeBuilder::WaitForBuildToFinish()
+{
+	while (bIsBuilding)
+	{
+		//Add a small delay to avoid harshing the thread on busy waiting.
+
+		FPlatformProcess::Sleep(0.02f);
+	}
+}
+
+void FJointTreeBuilder::OnJointTreeBuildStarted()
+{
+	if (OnJointTreeBuildStartedDele.IsBound())
+	{
+		OnJointTreeBuildStartedDele.Execute();
+	}
+}
+
+void FJointTreeBuilder::OnJointTreeBuildFinished(const FJointTreeBuilderOutput Output)
+{
+	if (OnJointTreeBuildFinishedDele.IsBound())
+	{
+		OnJointTreeBuildFinishedDele.Execute(Output);
+	}
+}
+
+void FJointTreeBuilder::OnJointTreeBuildCancelled()
+{
+	if (OnJointTreeBuildCancelledDele.IsBound())
+	{
+		OnJointTreeBuildCancelledDele.Execute();
+	}
+}
+
+void FJointTreeBuilder::OnCleanUpBlocking()
+{
+	// If we are not using multithreading, we do nothing.
+	if (!bUseMultithreading) return;
+
+	SetShouldAbandonBuild(true);
+
+	FScopeTryLock Lock(&BuildMutex);
+
+	WaitForBuildToFinish();
+
+	CleanUpCollectedReferences();
+}
+
+
+void FJointTreeBuilder::CleanUpCollectedReferences()
+{
+	BuildTargetJointManagers.Empty();
+	BuildTargetEditorNodes.Empty();
+	BuildTargetGraphs.Empty();
+}
+
+void FJointTreeBuilder::CollectReferencesToBuild(const TArray<TWeakObjectPtr<UJointManager>>& InJointManagers)
+{
+	for (TWeakObjectPtr<UJointManager> ManagerPtr : InJointManagers)
+	{
+		if (!ManagerPtr.IsValid()) continue;
+
+		UJointManager* Manager = ManagerPtr.Get();
+
+		if (!Manager) continue;
+
+		BuildTargetJointManagers.Add(Manager);
+
+		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
+
+		for (UJointEdGraph* Graph : Graphs)
+		{
+			if (!Graph) continue;
+
+			BuildTargetGraphs.Add(Graph);
+		}
+
+		for (UJointEdGraph* JointEdGraph : Graphs)
+		{
+			if (!JointEdGraph) continue;
+
+			TSet<TWeakObjectPtr<UJointEdGraphNode>> Nodes = JointEdGraph->GetCachedJointGraphNodes(false);
+
+			for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : Nodes)
+			{
+				BuildTargetEditorNodes.Add(JointEdGraphNode.Get());
+			}
+
+			// for comment nodes - they are not included in the cached nodes.
+			for (UEdGraphNode* GraphNodes : JointEdGraph->Nodes)
+			{
+				if (!GraphNodes) continue;
+
+				if (!Cast<UEdGraphNode_Comment>(GraphNodes)) continue;
+				
+				if (!BuildTargetEditorNodes.Contains(GraphNodes)) BuildTargetEditorNodes.Add(GraphNodes);
+			}
+		}
+	}
+}
+
+void FJointTreeBuilder::SetShouldAbandonBuild(const bool bNewInShouldAbandonBuild)
+{
+	bShouldAbandonBuild = bNewInShouldAbandonBuild;
+}
+
+const bool FJointTreeBuilder::GetShouldAbandonBuild() const
+{
+	return bShouldAbandonBuild || IsEngineExitRequested() || IsRunningCommandlet() || IsGarbageCollecting();
+}
+
+void FJointTreeBuilder::SetIsNewBuildRequested(const bool bNewInIsNewBuildRequested)
+{
+	bIsNewBuildRequested = bNewInIsNewBuildRequested;
+}
+
+bool FJointTreeBuilder::GetIsNewBuildRequested() const
+{
+	return bIsNewBuildRequested;
+}
+
+void FJointTreeBuilder::BuildJointManagerInfo(const FJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output)
+{
+	if (!JointManagerInfo.JointManager.Get()) return;
+
+	TSharedPtr<IJointTreeItem> DisplayNode = CreateManagerTreeItem(JointManagerInfo.JointManager);
+
+	if (!DisplayNode.IsValid()) return;
+
+	Output.Add(DisplayNode, NAME_None, FJointTreeItem_Manager::GetTypeId());
+}
+
+void FJointTreeBuilder::BuildGraphInfo(const FGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output)
+{
+	// Add the sorted bones to the skeleton tree
+
+	if (!GraphInfo.Graph) return;
+
+	TSharedPtr<IJointTreeItem> DisplayNode = CreateGraphTreeItem(GraphInfo.Graph);
+
+	if (!DisplayNode.IsValid()) return;
+
+	if (GraphInfo.Graph->GetParentGraph())
+	{
+		UJointEdGraph* Graph = GraphInfo.Graph;
+		Output.Add(DisplayNode, FName(Graph->GetParentGraph()->GetPathName()), FJointTreeItem_Graph::GetTypeId());
+	}
+	else
+	{
+		UJointEdGraph* Graph = GraphInfo.Graph;
+		Output.Add(DisplayNode, FName(Graph->GetJointManager()->GetPathName()), FJointTreeItem_Manager::GetTypeId());
+	}
+}
+
+void FJointTreeBuilder::BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output)
+{
+	if (!NodeInfo.EditorNode) return;
+
+	TSharedPtr<IJointTreeItem> DisplayNode = CreateNodeTreeItem(NodeInfo.EditorNode);
+
+	if (!DisplayNode.IsValid()) return;
+
+	if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(NodeInfo.EditorNode))
+	{
+		if (JointNode->GetCastedNodeInstance<UJointManager>() == JointNode->GetJointManager())
+		{
+			// root node of the manager
+			Output.Add(DisplayNode, FName(JointNode->GetJointManager()->GetPathName()), FJointTreeItem_Manager::GetTypeId());
+		}
+		else if (JointNode->GetJointManager() && JointNode->GetJointManager()->ManagerFragments.Contains(JointNode->GetCastedNodeInstance()))
+		{
+			//manager fragments - attach it on the root node above ( attach ".Root" at the end )
+			Output.Add(DisplayNode,FName(JointNode->GetJointManager()->GetPathName()+".Root"),FJointTreeItem_Manager::GetTypeId());
+		}
+		else if (JointNode->ParentNode == nullptr)
+		{
+			//top level nodes without managers - attach it on the graph.
+			Output.Add(DisplayNode, FName(JointNode->GetGraph()->GetPathName()), FJointTreeItem_Graph::GetTypeId());
+		}
+		else if (JointNode->ParentNode)
+		{
+			Output.Add(DisplayNode,
+					   FName(JointNode->ParentNode->GetPathName()),
+					   FJointTreeItem_Node::GetTypeId());
+		}
+		else if (JointNode->GetJointManager())
+		{
+			Output.Add(DisplayNode,
+					   FName(JointNode->GetJointManager()->GetPathName()),
+					   FJointTreeItem_Manager::GetTypeId());
+		}
+	}else if (UEdGraphNode_Comment* CommentNode = Cast<UEdGraphNode_Comment>(NodeInfo.EditorNode))
+	{
+		// Comment nodes - attach it on the graph.
+		Output.Add(DisplayNode, FName(CommentNode->GetGraph()->GetPathName()), FJointTreeItem_Graph::GetTypeId());
+	}
+}
+
+EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
+	const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<IJointTreeItem>& InItem
+	, TArray<TSharedPtr<IJointTreeItem>>& OutFilteredItems)
+{
+	EJointTreeFilterResult FilterResult = EJointTreeFilterResult::Shown;
+
+	InItem->GetFilteredChildren().Empty();
+
+	if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
+	{
+		FilterResult = FilterItem(InArgs, InItem);
+		InItem->SetFilterResult(FilterResult);
+
+		if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(InItem); }
+
+		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
+		{
+			FilterRecursive(InArgs, Item, OutFilteredItems);
+		}
+	}
+	else if (InArgs.TextFilter.IsValid())
+	{
+		// check to see if we have any children that pass the filter
+		EJointTreeFilterResult DescendantsFilterResult = EJointTreeFilterResult::Hidden;
+
+		// check to see if we pass the filter by itself - 
+		FilterResult = FilterItem(InArgs, InItem);
+
+		// Set the filter result for this item - the descendants will check this value and decide whether to show themselves or not if they want.
+		InItem->SetFilterResult(FilterResult);
+
+		// check out the children
+		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
+		{
+			EJointTreeFilterResult ChildResult = FilterRecursive(InArgs, Item, OutFilteredItems);
+
+			// If the child is visible, add it to the filtered children list.
+			if (ChildResult != EJointTreeFilterResult::Hidden) { InItem->GetFilteredChildren().Add(Item); }
+
+			// Accumulate the best result from all children.
+			if (ChildResult > DescendantsFilterResult) { DescendantsFilterResult = ChildResult; }
+		}
+
+		// If the item itself passes the filter, or any of its descendants do, it should be shown.
+		if (DescendantsFilterResult > FilterResult)
+		{
+			FilterResult = EJointTreeFilterResult::ShownDescendant;
+		}
+
+		// finalize the filter result for this item
+		InItem->SetFilterResult(FilterResult);
+	}
+
+	return FilterResult;
+}
+
+void FJointTreeBuilder::BuildPropertyInfo(FPropertyInfo& PropertyInfo, FJointTreeBuilderOutput& Output)
+{
+	if (!PropertyInfo.Object) return;
+
+	TSharedPtr<IJointTreeItem> DisplayNode = CreatePropertyTreeItem(PropertyInfo.Property, PropertyInfo.Object);
+
+	if (!DisplayNode.IsValid()) return;
+
+	Output.Add(
+		DisplayNode,
+		FName(PropertyInfo.TreeItemOwnerObject != nullptr ? PropertyInfo.TreeItemOwnerObject->GetPathName() : PropertyInfo.Object->GetPathName()),
+		FJointTreeItem_Node::GetTypeId());
 }
 
 TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateManagerTreeItem(TWeakObjectPtr<UJointManager> ManagerPtr)
@@ -560,7 +710,14 @@ TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateManagerTreeItem(TWeakObjectP
 	return MakeShareable(new FJointTreeItem_Manager(ManagerPtr, TreePtr.Pin().ToSharedRef()));
 }
 
-TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateNodeTreeItem(UJointNodeBase* NodePtr)
+TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateGraphTreeItem(UJointEdGraph* GraphPtr)
+{
+	if (GetShouldAbandonBuild()) return nullptr;
+
+	return MakeShareable(new FJointTreeItem_Graph(GraphPtr, TreePtr.Pin().ToSharedRef()));
+}
+
+TSharedPtr<IJointTreeItem> FJointTreeBuilder::CreateNodeTreeItem(UEdGraphNode* NodePtr)
 {
 	if (GetShouldAbandonBuild()) return nullptr;
 

@@ -19,16 +19,16 @@ class UJointManager;
 enum class JOINTEDITOR_API EJointTreeFilterResult : int32
 {
 	/** Hide the item */
-	Hidden,
+	Hidden = 0,
 
 	/** Show the item because child items were shown */
-	ShownDescendant,
+	ShownDescendant = 1,
 
 	/** Show the item */
-	Shown,
+	Shown = 2,
 
 	/** Show the item and highlight search text */
-	ShownHighlighted,
+	ShownHighlighted = 3,
 };
 
 #define Joint_PROPERTY_TREE_BASE_ITEM_TYPE(TYPE) \

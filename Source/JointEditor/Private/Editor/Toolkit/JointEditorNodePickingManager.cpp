@@ -4,6 +4,7 @@
 
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
+#include "JointEditorGraphDocument.h"
 #include "ScopedTransaction.h"
 #include "SGraphPanel.h"
 #include "EditorWidget/JointGraphEditor.h"
@@ -214,9 +215,11 @@ void FJointEditorNodePickingManager::PerformNodePicking(UJointNodeBase* Node, UJ
 
 	if (JointEditorToolkitPtr.IsValid())
 	{
-		if (JointEditorToolkitPtr.Pin()->GraphEditorPtr && JointEditorToolkitPtr.Pin()->GraphEditorPtr->GetGraphPanel())
-			JointEditorToolkitPtr.Pin()->GraphEditorPtr->GetGraphPanel()->SelectionManager.SetSelectionSet(
-				SavedSelectionSet);
+		if (JointEditorToolkitPtr.Pin()
+			&& JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()
+			&& JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()->GetGraphPanel()
+			)
+			JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()->GetGraphPanel()->SelectionManager.SetSelectionSet(SavedSelectionSet);
 	}
 
 	if (OptionalEdNode)
@@ -233,9 +236,7 @@ void FJointEditorNodePickingManager::PerformNodePicking(UJointNodeBase* Node, UJ
 
 	if (JointEditorToolkitPtr.IsValid())
 	{
-		if (JointEditorToolkitPtr.Pin()->GetJointGraph())
-			JointEditorToolkitPtr.Pin()->GetJointGraph()->
-				CompileJointGraph();
+		JointEditorToolkitPtr.Pin()->CompileAllJointGraphs();
 	}
 
 	EndNodePicking();

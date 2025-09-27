@@ -174,14 +174,17 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 
 
 	FTextBlockStyle NodeRenameTextBlockStyle = Regular_h4;
-
 	NodeRenameTextBlockStyle.ColorAndOpacity = FLinearColor(0.9, 0.9, 0.9, 0.7);
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_NodeTitleInlineEditableText, "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText", NodeRenameTextBlockStyle)
 
-	Style->Set("JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText", FInlineEditableTextBlockStyle()
-	           .SetTextStyle(NodeRenameTextBlockStyle)
-	           .SetEditableTextBoxStyle(
-		           GetUEEditorSlateStyleSet().GetWidgetStyle<FEditableTextBoxStyle>("Graph.Node.NodeTitleEditableText"))
-	);
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h1, "JointUI.InlineEditableTextBlock.Regular.h1", Regular_h1)
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h2, "JointUI.InlineEditableTextBlock.Regular.h2", Regular_h2)
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h3, "JointUI.InlineEditableTextBlock.Regular.h3", Regular_h3)
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h4, "JointUI.InlineEditableTextBlock.Regular.h4", Regular_h4)
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h5, "JointUI.InlineEditableTextBlock.Regular.h5", Regular_h5)
+	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h6, "JointUI.InlineEditableTextBlock.Regular.h6", Regular_h6)
+
+	
 
 	const FEditableTextStyle EditableTextStyle = FEditableTextStyle().SetFont(Black_h5.Font);
 

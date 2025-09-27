@@ -165,7 +165,8 @@ void SJointBulkSearchReplace::InitializeJointList()
 void SJointBulkSearchReplace::InitializeJointTree()
 {
 	JointTree = SNew(SJointManagerViewer)
-		.BuilderArgs(FJointPropertyTreeBuilderArgs(true, true, true));
+		.bInitialShowOnlyCurrentGraph(false)
+		.ShowOnlyCurrentGraphToggleButtonVisibility(EVisibility::Collapsed);
 }
 
 
@@ -242,6 +243,7 @@ void SJointBulkSearchReplace::OnJointListAssetSelected(const FAssetData& AssetDa
 	}
 
 	JointTree->SetTargetManager(Managers);
+	JointTree->RequestTreeRebuild();
 }
 
 #undef LOCTEXT_NAMESPACE

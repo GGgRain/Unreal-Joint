@@ -10,6 +10,7 @@
 #include "JointEdGraph.generated.h"
 
 
+class UJointEdGraphSchema;
 class FJointEditorToolkit;
 DECLARE_MULTICAST_DELEGATE(FOnGraphRequestUpdate);
 
@@ -17,6 +18,10 @@ UCLASS()
 class JOINTEDITOR_API UJointEdGraph : public UEdGraph
 {
 	GENERATED_BODY()
+
+public:
+
+	UJointEdGraph();
 	
 public:
 
@@ -41,6 +46,38 @@ private:
 	TWeakPtr<FJointEditorToolkit> Toolkit;
 
 public:
+	
+	/**
+	 * Get the parent graph of this graph if exists.
+	 * @return Parent graph of this graph if exists, nullptr otherwise
+	 */
+	UJointEdGraph* GetParentGraph() const;
+
+	/**
+	 * Get the root graph of this graph. If this graph is the root graph, it will return itself.
+	 * @return root graph of this graph
+	 */
+	UJointEdGraph* GetRootGraph() const;
+
+	/**
+	 * Check whether this graph is the root graph of the Joint manager.
+	 * @return true if this graph is the root graph of the Joint manager, false otherwise
+	 */
+	bool IsRootGraph() const;
+
+	/**
+	 * Get all the sub graphs that are under this graph.
+	 * @return All the sub graphs that are under this graph
+	 */
+	TArray<UJointEdGraph*> GetAllSubGraphsRecursively() const;
+
+public:
+
+	static TArray<UJointEdGraph*> GetAllGraphsFrom(UEdGraph* InGraph);
+	
+	static TArray<UJointEdGraph*> GetAllGraphsFrom(const UJointManager* InJointManager);
+
+public:
 
 	/**
 	 * Set the toolkit of the graph.
@@ -54,14 +91,7 @@ public:
 	 */
 	const TWeakPtr<FJointEditorToolkit>& GetToolkit() const { return Toolkit; }
 
-public:
 
-	/**
-	 * Pointer to the MessageLogListing instance this graph has.
-	 * This property will not be always valid so make sure the check whether it is valid or not first. It will be accessible only when the system need this.
-	 */
-	TSharedPtr<class IMessageLogListing> CompileResultPtr;
-	
 public:
 
 	//Discard unnecessary data
@@ -70,22 +100,28 @@ public:
 public:
 	
 	FORCEINLINE class UJointManager* GetJointManager() const {return JointManager;}
-	
-public:
 
-	//Called whenever the toolkit loads this graph and start to open this graph. Can be used to initialize any features in the editor initialization stage if needed.
-	virtual void Initialize();
+
+public:
 	
 	//Called when this graph is newly created.
-	virtual void OnCreated();
+	virtual void OnGraphObjectCreated();
 
-	//Called when this graph is loaded from the disk and started to be edited.
+public:
+
+	/**
+	 * Called when this graph is started to be opened as a document on a toolkit and started to be edited.
+	 */
 	virtual void OnLoaded();
 	
-	//Called when this graph is saved.
+	/**
+	 * Called when this graph is saved.
+	 */
 	virtual void OnSave();
 
-	//Called when this graph is closed on editing.
+	/**
+	 * Called when this graph's document has been closed on a toolkit.
+	 */
 	virtual void OnClosed();
 
 public:
@@ -93,70 +129,46 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 public:
-
+	
 	/**
 	 * Notify the change on the graph and request visual representation rebuild. Consider using NotifyGraphRequestUpdate() instead if you don't want to rebuild the graph panel and graph node slates.
 	 */
 	virtual void NotifyGraphChanged() override;
 
-	void ResetGraphNodeSlates();
-	void ResetNodeDepth();
-	void ResetGraphNodeToolkits();
-
-private:
-
 	virtual void NotifyGraphChanged(const FEdGraphEditAction& InAction) override;
-	void RecacheNodes();
-
-public:
-
+	
 	/**
 	 * Broadcast a notification whenever the graph has changed so need to update the following sub-objects (such as a tree view).
 	 * Also update the graph object itself to meet changes in the data.
 	 */
 	void NotifyGraphRequestUpdate();
+	
+public:
 
 	/**
-	 * Add a listener for OnGraphRequestUpdate events
+	 * Update the graph's data for the changes on its properties.
+	 * This will not do anything when the graph is locked, and also lock the graph during the process to avoid multiple updates.
 	 */
-	FDelegateHandle AddOnGraphRequestUpdateHandler( const FOnGraphRequestUpdate::FDelegate& InHandler );
-
-	/**
-	 * Remove a listener for OnGraphRequestUpdate events
-	 */
-	void RemoveOnGraphRequestUpdateHandler( FDelegateHandle Handle );
+	void UpdateGraph();
 
 private:
+
+	// Utility functions for the updating.
 	
-	/**
-	 * A delegate that broadcasts a notification whenever the graph has changed so need to update the following sub-objects (such as a tree view).
-	 */
-	FOnGraphRequestUpdate OnGraphRequestUpdate;
-
-public:
-
+	void ResetGraphNodeSlates();
+	void RecalculateNodeDepth();
+	void FeedToolkitToGraphNodes();
+	void NotifyNodeConnectionChanged();
+	void BindEdNodeEvents();
+	
 	//Clear and reallocate all the node instance references of the graph nodes on this graph to Joint manager.
-	void ReallocateGraphNodesToJointManager();
-
-	//Reconstruct the nodes on this graph.
-	void ReconstructAllNodes(bool bPropagateUnder = false);
-
-public:
-
-	//Update class data of the graph nodes.
-	void CleanUpNodes();
-
-public:
-
-
-	//Update class data of the graph nodes.
-	void UpdateClassData();
+	void AllocateBaseNodesToJointManager();
+	
+	//Allocate all the node instance references of the graph nodes on this graph to Joint manager.
+	static void AllocateThisGraphBaseNodesToJointManager(UJointManager* JointManager, UJointEdGraph* Graph);
 
 	//Update class data of the provided graph node. Can choose whether to propagate to the children nodes.
 	void UpdateClassDataForNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes = true);
-
-	//Grab Unknown class data from the graph
-	void GrabUnknownClassDataFromGraph();
 
 	void GrabUnknownClassDataFromNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes = true);
 	
@@ -165,6 +177,30 @@ public:
 	
 	//Patch node instance from stored node class of the node. Can choose whether to propagate to the children nodes.
 	void PatchNodeInstanceFromStoredNodeClass(TObjectPtr<UEdGraphNode> TargetNode, const bool bPropagateToSubNodes = true);
+
+public:
+
+	//Update class data of the graph nodes.
+	void UpdateClassData();
+	
+	//Grab Unknown class data from the graph
+	void GrabUnknownClassDataFromGraph();
+	
+public:
+
+	void ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel);
+
+private:
+	
+	void RecacheNodes();
+
+public:
+
+	//Update class data of the graph nodes.
+	void CleanUpNodes();
+	
+	//Reconstruct the nodes on this graph.
+	void ReconstructAllNodes(bool bPropagateUnder = false);
 
 public:
 
@@ -183,15 +219,25 @@ public:
 
 public:
 
+	/**
+	 * Initialize the compile result if it is not valid.
+	 * for the sub graphs, it will use the root graph's compile result.
+	 */
 	void InitializeCompileResultIfNeeded();
 
+	//Compile the graph.
+	void CompileAllJointGraphFromRoot();
+
+private:
+	
 	//Compile the provided graph node. Can choose whether to propagate to the children nodes.
 	void CompileJointGraphForNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes = true);
 	
 	//Compile the graph.
 	void CompileJointGraph();
 
-
+public:
+	
 	struct FJointGraphCompileInfo
 	{
 		int NodeCount;
@@ -203,10 +249,24 @@ public:
 	DECLARE_DELEGATE_OneParam(FOnCompileFinished, const FJointGraphCompileInfo&)
 	//Internal delegate that inform the editor that the compilation has been finished.
 	FOnCompileFinished OnCompileFinished;
+
+public:
+
+	/**
+	 * Pointer to the MessageLogListing instance this graph has.
+	 * This property will not be always valid so make sure the check whether it is valid or not first. It will be accessible only when the system need this.
+	 * Joint 2.10 : sub graphs will not have their own message log listing - only the root graph will have it and sub graphs will use the root graph's one.
+	 */
+	TSharedPtr<class IMessageLogListing> CompileResultPtr;
 	
 public:
 
-	//Update sub node chains of the whole nodes.
+	UPROPERTY(Transient)
+	bool bIsCompiling = false;
+	
+public:
+
+	//Update sub node chains of the whole nodes - let the sub nodes' node instances have valid parent node reference based on the graph node's tree structure.
 	void UpdateSubNodeChains();
 
 public:
@@ -223,12 +283,12 @@ public:
 	/**
 	 * Get cached Joint node instances. This action includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
-	TSet<TSoftObjectPtr<UObject>> GetCachedJointNodeInstances(const bool bForce = false);
+	TSet<TWeakObjectPtr<UObject>> GetCachedJointNodeInstances(const bool bForceRecache = false);
 	
 	/**
 	 * Get cached Joint graph nodes. This action includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> GetCachedJointGraphNodes(const bool bForce = false);
+	TSet<TWeakObjectPtr<UJointEdGraphNode>> GetCachedJointGraphNodes(const bool bForceRecache = false);
 
 public:
 
@@ -249,19 +309,23 @@ private:
 	 * Cached node instances for the search action. This variable includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
 	UPROPERTY(Transient)
-	TSet<TSoftObjectPtr<UObject>> CachedJointNodeInstances;
+	TSet<TWeakObjectPtr<UObject>> CachedJointNodeInstances;
 	
 	/**
 	 * Cached graph nodes for the search action. This variable includes the sub nodes. (Sub nodes are not being stored in the Joint manager directly.)
 	 */
 	UPROPERTY(Transient)
-	TSet<TSoftObjectPtr<UJointEdGraphNode>> CachedJointGraphNodes;
+	TSet<TWeakObjectPtr<UJointEdGraphNode>> CachedJointGraphNodes;
+
+private:
+	
+	FCriticalSection CachedJointNodeInstancesMutex;
+
+	FCriticalSection CachedJointGraphNodesMutex;
 
 public:
 	
 	virtual void OnNodesPasted(const FString& ImportStr);
-	
-	void BindEdNodeEvents();
 
 public:
 	
@@ -272,9 +336,21 @@ public:
 	virtual void OnNodeInstanceRemoved(UObject* NodeInstance);
 
 public:
-
+	
+	/**
+	 * Check whether the graph is locked for updates.
+	 * @return true if the graph is locked for updates, false otherwise
+	 */
 	const bool& IsLocked() const;
+
+	/**
+	 * Lock the graph for updates. While the graph is locked, it will not respond to any update requests.
+	 */
 	void LockUpdates();
+
+	/**
+	 * Unlock the graph for updates.
+	 */
 	void UnlockUpdates();
 
 public:
@@ -312,5 +388,9 @@ public:
 	TArray<FJointNodeDebugData> Schema_Captured;
 
 #endif
+	
+public:
+	
+	static UJointEdGraph* CreateNewJointGraph(UObject* InOuter, UJointManager* InJointManager, const FName& GraphName);
 	
 };

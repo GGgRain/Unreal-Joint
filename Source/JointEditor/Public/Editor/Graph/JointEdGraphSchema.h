@@ -8,6 +8,7 @@
 #include "JointWiggleWireSimulator.h"
 #include "JointEdGraphSchema.generated.h"
 
+class UJointEdGraphNode_Composite;
 class FJointGraphConnectionDrawingPolicy;
 class UJointEdGraphNode;
 
@@ -25,8 +26,20 @@ public:
 
 public:
 
+	//Graph Drag & Drop on the graph editor outliner
+	
+	/*
+	 * Can the function graph be dropped into another graph
+	 */
+	virtual bool CanGraphBeDropped(TSharedPtr<FEdGraphSchemaAction> InAction) const override;
+	
+	virtual FReply BeginGraphDragAction(TSharedPtr<FEdGraphSchemaAction> InAction, const FPointerEvent& MouseEvent) const override;
+
+public:
+
 	//Spawn default graph node for the new graph.
 	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
+	
 
 public:
 
@@ -53,7 +66,13 @@ public:
 	static TSharedPtr<FJointSchemaAction_NewNode> CreateNewNodeAction(const FText& Category, const FText& MenuDesc, const FText& Tooltip);
 
 	static TSharedPtr<FJointSchemaAction_NewSubNode> CreateNewSubNodeAction(const FText& Category, const FText& MenuDesc, const FText& Tooltip);
+
+public:
+
+	bool PruneGatewayNode(UJointEdGraphNode_Composite* InNode, UEdGraphNode* InEntryNode, UEdGraphNode* InResultNode, FKismetCompilerContext* CompilerContext, TSet<UEdGraphNode*>* OutExpandedNodes) const;
 	
+	void CombineTwoPinNetsAndRemoveOldPins(UEdGraphPin* InPinA, UEdGraphPin* InPinB) const;
+
 public:
 
 	//Context Menu
@@ -66,11 +85,11 @@ public:
 	 */
 	virtual void GetContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
 
-	FName GetContextMenuName() const;
+	virtual FName GetParentContextMenuName() const override;
+
+public:
 	
-	FName GetContextMenuName(UClass* InClass) const;
-	
-	FName GetParentContextMenuName() const override;
+	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const;
 
 public:
 
@@ -87,6 +106,21 @@ public:
 	virtual FConnectionDrawingPolicy* CreateConnectionDrawingPolicy(int32 InBackLayerID, int32 InFrontLayerID, float InZoomFactor, const FSlateRect& InClippingRect, class FSlateWindowElementList& InDrawElements, class UEdGraph* InGraphObj) const override;
 
 	virtual FLinearColor GetPinTypeColor(const FEdGraphPinType& PinType) const override;
+
+public:
+
+	virtual UEdGraphPin* DropPinOnNode(UEdGraphNode* InTargetNode, const FName& InSourcePinName, const FEdGraphPinType& InSourcePinType, EEdGraphPinDirection InSourcePinDirection) const override;
+
+	/**
+	 * Checks if the node supports dropping a pin on it
+	 *
+	 * @param InTargetNode					Node to check for pin adding support
+	 * @param InSourcePinType				Type of pin to drop onto the node
+	 * @param InSourcePinDirection			Direction of the source pin
+	 * @param OutErrorMessage				Only filled with an error if there is pin add support but there is an error with the pin type
+	 * @return								Returns TRUE if there is support for dropping the pin on the node
+	 */
+	virtual bool SupportsDropPinOnNode(UEdGraphNode* InTargetNode, const FEdGraphPinType& InSourcePinType, EEdGraphPinDirection InSourcePinDirection, FText& OutErrorMessage) const override;
 
 public:
 

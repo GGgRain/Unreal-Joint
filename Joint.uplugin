@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 56,
-	"VersionName": "2.9.6",
+	"Version": 57,
+	"VersionName": "2.10.0",
 	"FriendlyName": "Joint",
 	"Description": "General Purpose Modular Playback Framework for Unreal Engine",
 	"Category": "Conversation",
@@ -10,8 +10,8 @@
 	"DocsURL": "https://gggrain.github.io/Unreal-Joint-Documentation/",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/ec432b9261c94b70a4068507d42a4f5a",
 	"SupportURL": "https://discord.gg/DzNFax2aBS",
-	"EngineVersion": "5.0.0",
-	"CanContainContent": false,
+	"EngineVersion": "5.6.0",
+	"CanContainContent": true,
 	"Installed": true,
 	"Modules": [
 		{

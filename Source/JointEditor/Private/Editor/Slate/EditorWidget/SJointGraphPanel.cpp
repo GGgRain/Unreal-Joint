@@ -1374,6 +1374,11 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 	return MaxLayerId;
 }
 
+void SJointGraphPanel::SetAllowContinousZoomInterpolation(bool bAllow)
+{
+	bAllowContinousZoomInterpolation = bAllow;
+}
+
 float SJointGraphPanel::Joint_FancyMod(float Value, float Size)
 {
 	return ((Value >= 0) ? 0.0f : Size) + FMath::Fmod(Value, Size);

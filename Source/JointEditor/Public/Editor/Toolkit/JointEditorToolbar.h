@@ -45,9 +45,6 @@ public:
 	TSharedRef<SWidget> Task_HandleCreateNewJointAsset() const;
 	bool Task_CanCreateNewJointAsset();
 	
-	TSharedRef<SWidget> Task_HandleCreateNewNode() const;
-	bool Task_CanCreateNewNode();
-	
 	void Task_HandleOpenSearchReplaceTab();
 	
 };

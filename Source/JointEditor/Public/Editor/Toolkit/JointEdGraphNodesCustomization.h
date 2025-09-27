@@ -67,6 +67,11 @@ public:
 	
 	void HideDeveloperModeProperties(IDetailLayoutBuilder& DetailBuilder);
 
+public:
+
+	static bool CheckIfEveryNodeAllowPinDataControl(TArray<UObject*> NodeInstanceObjs);
+
+
 	
 };
 

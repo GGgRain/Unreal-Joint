@@ -722,6 +722,8 @@ public:
 	 * Joint 2.9 : We moved all the properties that are related to the editor node on here. To update it properly, you must follow this:
 	 * 1. Visit Joint Management, and press "Update BP fragments' Node Editor Setting With Last Value" button, and save your projects.
 	 * 2. For the C++ nodes, you must update the properties manually. Just put "EdNodeSetting->" for your properties related to the editor node settings.
+	 *
+	 * Joint 2.10 : Also check out the Editor Node's DefaultEdNodeSetting when you want to specify editor node side default values for your cosmetic properties. (That's a fallback property of this one.)
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor", meta=(DisplayName="Editor Node", ShowOnlyInnerProperties))
 	FJointEdNodeSetting EdNodeSetting;

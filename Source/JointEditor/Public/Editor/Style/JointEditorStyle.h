@@ -33,6 +33,12 @@
 	.SetHighlightColor(FLinearColor(1.f, 1.f, 1.f));\
 	Style->Set(StyleName, Signifier);
 
+#define Joint_AssignInlineEditableTextBlockStyle(Signifier, StyleName, TextStyle)\
+	const FInlineEditableTextBlockStyle Signifier = FInlineEditableTextBlockStyle()\
+	.SetTextStyle(TextStyle)\
+	.SetEditableTextBoxStyle(GetUEEditorSlateStyleSet().GetWidgetStyle<FEditableTextBoxStyle>("Graph.Node.NodeTitleEditableText"));\
+	Style->Set(StyleName, Signifier);
+
 
 class JOINTEDITOR_API FJointEditorStyle
 {

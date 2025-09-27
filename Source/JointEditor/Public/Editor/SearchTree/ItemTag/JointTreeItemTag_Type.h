@@ -16,6 +16,8 @@ public:
 
 	FJointTreeItemTag_Type(const FSlateColor& InColor, const FSlateBrush* InIcon, const FText& InType, const TSharedPtr<FJointTreeFilter>& InOwnerJointTreeFilter);
 
+public:
+
 	virtual TSharedRef<SWidget> MakeTagWidget() override;
 	virtual FText GetFilterText() override;
 	

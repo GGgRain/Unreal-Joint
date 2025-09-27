@@ -63,6 +63,8 @@ public class JointEditor : ModuleRules
 			"RenderCore",
 
 			"UMG",
+			"UMGEditor",
+			
 			"LevelSequence",
 
 			"KismetWidgets",
@@ -94,7 +96,8 @@ public class JointEditor : ModuleRules
 			"WorkspaceMenuStructure",
 			
 			//Deprecated: Can be removed in future updates.
-			"AIGraph", 
+			"AIGraph",
+			"AnimGraph", 
 			
 			//"SceneOutliner",
 			//"ConfigEditor"

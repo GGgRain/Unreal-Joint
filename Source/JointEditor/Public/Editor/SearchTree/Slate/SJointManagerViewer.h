@@ -30,11 +30,15 @@ class JOINTEDITOR_API SJointManagerViewer : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SJointManagerViewer)
+		:
+		_bInitialShowOnlyCurrentGraph(true)
+		
 	{
 	}
-	SLATE_ARGUMENT(TWeakPtr<FJointEditorToolkit>, ToolKitPtr)
-	SLATE_ARGUMENT(TArray<TWeakObjectPtr<UJointManager>>, JointManagers)
-	SLATE_ARGUMENT(FJointPropertyTreeBuilderArgs, BuilderArgs)
+		SLATE_ARGUMENT(TWeakPtr<FJointEditorToolkit>, ToolKitPtr)
+		SLATE_ARGUMENT(TArray<TWeakObjectPtr<UJointManager>>, JointManagers)
+		SLATE_ARGUMENT(bool, bInitialShowOnlyCurrentGraph)
+		SLATE_ATTRIBUTE(EVisibility, ShowOnlyCurrentGraphToggleButtonVisibility)
 	SLATE_END_ARGS()
 	
 public:
@@ -80,6 +84,20 @@ public:
 
 public:
 	
+	FJointPropertyTreeFilterArgs GetFilterArgs() const;
+	FJointPropertyTreeBuilderArgs GetBuilderArgs() const;
+
+public:
+
+	ECheckBoxState GetShowOnlyCurrentGraphState() const;
+	void OnShowOnlyCurrentGraphChanged(ECheckBoxState CheckBoxState);
+
+public:
+
+	bool bShowOnlyCurrentGraph = true;
+
+public:
+	
 	FText SearchFilterText;
 
 	FText ReplaceFromText;
@@ -91,25 +109,24 @@ private:
 	TWeakPtr<FJointEditorToolkit> ToolKitPtr;
 
 	TArray<TWeakObjectPtr<UJointManager>> JointManagers;
-
-	FJointPropertyTreeBuilderArgs BuilderArgs;
-
-
+	
 	EJointManagerViewerMode Mode = EJointManagerViewerMode::Search;
-
 
 public:
 
 	TSharedPtr<SSearchBox> ReplaceFromSearchBox;
 	TSharedPtr<SSearchBox> ReplaceToSearchBox;
 	TSharedPtr<SSearchBox> SearchSearchBox;
-
 	
 public:
 
 	TSharedPtr<class SJointTree> Tree;
 
 	TSharedPtr<SCheckBox> NodeVisibilityCheckbox;
+
+public:
+
+	TAttribute<EVisibility> ShowOnlyCurrentGraphToggleButtonVisibilityAttr;
 	
 };
 

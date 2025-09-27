@@ -48,11 +48,21 @@ public:
 
 public:
 
+	TSharedPtr<FUICommandInfo> DissolveSubNodeIntoParentNode;
+	TSharedPtr<FUICommandInfo> SolidifySubNodesFromParentNode;
+
+public:
+
 	TSharedPtr<FUICommandInfo> ShowIndividualVisibilityButtonForSimpleDisplayProperty;
 
 public:
 	
 	TSharedPtr<FUICommandInfo> CreateFoundation;
+
+public:
+
+	TSharedPtr<FUICommandInfo> DeleteEntry;
+
 
 public:
 	TSharedPtr<FUICommandList> PluginCommands;

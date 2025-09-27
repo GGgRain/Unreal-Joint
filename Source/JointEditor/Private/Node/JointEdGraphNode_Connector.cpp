@@ -8,6 +8,7 @@
 #include "IMessageLogListing.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
+#include "JointEdUtils.h"
 #include "JointFunctionLibrary.h"
 #include "GraphNode/SJointGraphNodeBase.h"
 
@@ -21,15 +22,21 @@
 
 UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 {
-	bUseFixedNodeSize = false;
+	bIsNodeResizeable = false;
 
 	bCanRenameNode = false;
 
 	Direction = EEdGraphPinDirection::EGPD_Output;
 
 	ConnectorName = LOCTEXT("ConnectorDefaultName", "New Connector");
+	
 }
 
+
+bool UJointEdGraphNode_Connector::GetShouldHideNameBox() const
+{
+	return true;
+}
 
 bool UJointEdGraphNode_Connector::CanReplaceNodeClass()
 {
@@ -41,6 +48,16 @@ bool UJointEdGraphNode_Connector::CanReplaceEditorNodeClass()
 	return false;
 }
 
+FText UJointEdGraphNode_Connector::GetNodeTitle(ENodeTitleType::Type TitleType) const
+{
+	FText Title = LOCTEXT("ConnectorNodeTitle", "Connector - {0}, {1}"); // {0} - Graph Name, {1} - Direction
+
+	const UJointEdGraphNode_Connector* OutputConnector = GetPairOutputConnector();
+
+	FText TargetConnectorName = Direction == EEdGraphPinDirection::EGPD_Output ? ConnectorName : OutputConnector ? OutputConnector->ConnectorName : LOCTEXT("NoPairedOutputConnector", "No Paired Output Connector");
+	
+	return FText::Format(Title, TargetConnectorName, Direction == EEdGraphPinDirection::EGPD_Input ? LOCTEXT("Input", "Input") : LOCTEXT("Output", "Output"));
+}
 
 void UJointEdGraphNode_Connector::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -76,11 +93,6 @@ void UJointEdGraphNode_Connector::ReallocatePins()
 FLinearColor UJointEdGraphNode_Connector::GetNodeTitleColor() const
 {
 	return FColor::Cyan;
-}
-
-FText UJointEdGraphNode_Connector::GetNodeTitle(ENodeTitleType::Type TitleType) const
-{
-	return FText::GetEmpty();
 }
 
 FVector2D UJointEdGraphNode_Connector::GetNodeMinimumSize() const
@@ -130,7 +142,7 @@ void UJointEdGraphNode_Connector::NotifyConnectionChangedToConnectedNodes()
 
 				if (LinkedTo->GetOwningNode() == nullptr) continue;
 
-				if (LinkedTo->GetOwningNode() == GetCachedPairOutputConnector()) continue;
+				if (LinkedTo->GetOwningNode() == GetPairOutputConnector()) continue;
 
 				LinkedTo->GetOwningNode()->NodeConnectionListChanged();
 			}
@@ -168,28 +180,21 @@ void UJointEdGraphNode_Connector::NodeConnectionListChanged()
 		{
 			if (Pin == nullptr) continue;
 
-			for (const UEdGraphPin* LinkedTo : Pin->LinkedTo)
+			for (UEdGraphPin* LinkedTo : Pin->LinkedTo)
 			{
-				if (LinkedTo == nullptr) continue;
-
-				if (LinkedTo->GetOwningNode() == nullptr) continue;
-
-				UEdGraphNode* ConnectedNode = LinkedTo->GetOwningNode();
-
-				if (!ConnectedNode) continue;
-
-				UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(ConnectedNode);
-
-				if (!CastedGraphNode) continue;
-
-				CastedGraphNode->AllocateReferringNodeInstancesOnConnection(ConnectedNodes);
+				if (UJointEdGraphNode* LinkedToGraphNode = CastPinOwnerToJointEdGraphNode(LinkedTo))
+				{
+					LinkedToGraphNode->AllocateReferringNodeInstancesOnConnection(ConnectedNodes, LinkedTo);
+				}
 			}
 		}
 	}
 
+	CachedPairOutputConnector = GetPairOutputConnector();
+
 	if (Direction == EEdGraphPinDirection::EGPD_Input)
 	{
-		if (GetCachedPairOutputConnector()) GetCachedPairOutputConnector()->NotifyConnectionChangedToConnectedNodes();
+		if (CachedPairOutputConnector) CachedPairOutputConnector->NotifyConnectionChangedToConnectedNodes();
 	}
 	else
 	{
@@ -200,9 +205,11 @@ void UJointEdGraphNode_Connector::NodeConnectionListChanged()
 	}
 }
 
-void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes)
+void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
 {
-	if (GetCachedPairOutputConnector()) Nodes = GetCachedPairOutputConnector()->ConnectedNodes;
+	CachedPairOutputConnector = GetPairOutputConnector();
+	
+	if (CachedPairOutputConnector) Nodes = CachedPairOutputConnector->ConnectedNodes;
 }
 
 
@@ -252,78 +259,56 @@ void UJointEdGraphNode_Connector::OnAddInputNodeButtonPressed()
 			CastedNode->Direction = EEdGraphPinDirection::EGPD_Input;
 
 			CastedNode->ConnectorGuid = this->ConnectorGuid;
-
-			CastedNode->CachedPairOutputConnector = this;
-
+			
 			CastedNode->UpdatePins();
 		}
 	}
 }
 
-UJointEdGraphNode_Connector* UJointEdGraphNode_Connector::GetCachedPairOutputConnector()
-{
-	if (!CachedPairOutputConnector.IsValid())
-	{
-		CachesPairOutputConnector();
-	}
-	else if (CachedPairOutputConnector->ConnectorGuid == this->ConnectorGuid && CachedPairOutputConnector->Direction !=
-		EEdGraphPinDirection::EGPD_Output)
-	{
-		CachesPairOutputConnector();
-	}
 
-	if (CachedPairOutputConnector.IsValid())
+UJointEdGraphNode_Connector* UJointEdGraphNode_Connector::GetPairOutputConnector() const
+{
+	TArray<UJointEdGraphNode_Connector*> Connectors;
+
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
 	{
-		if (CachedPairOutputConnector->GetGraph())
+		for (UEdGraphNode* EdGraphNode : Graph->Nodes)
 		{
-			if (CachedPairOutputConnector->GetGraph()->Nodes.Contains(CachedPairOutputConnector))
-				return
-					CachedPairOutputConnector.Get();
+			if (EdGraphNode == nullptr) continue;
+
+			if (UJointEdGraphNode_Connector* CastedNode = Cast<UJointEdGraphNode_Connector>(EdGraphNode))
+			{
+				if (CastedNode->ConnectorGuid == this->ConnectorGuid && CastedNode->Direction == EEdGraphPinDirection::EGPD_Output)
+				{
+					return CastedNode;
+				}
+			}
 		}
 	}
 
 	return nullptr;
 }
 
-void UJointEdGraphNode_Connector::CachesPairOutputConnector()
-{
-	CachedPairOutputConnector = nullptr;
-
-	if (GetGraph() == nullptr) return;
-
-	for (UEdGraphNode* EdGraphNode : GetGraph()->Nodes)
-	{
-		if (EdGraphNode == nullptr) continue;
-
-		if (UJointEdGraphNode_Connector* CastedNode = Cast<UJointEdGraphNode_Connector>(EdGraphNode))
-		{
-			if (CastedNode->ConnectorGuid == this->ConnectorGuid && CastedNode->Direction ==
-				EEdGraphPinDirection::EGPD_Output)
-			{
-				CachedPairOutputConnector = CastedNode;
-
-				return;
-			}
-		}
-	}
-}
-
 TArray<UJointEdGraphNode_Connector*> UJointEdGraphNode_Connector::GetPairInputConnector()
 {
 	TArray<UJointEdGraphNode_Connector*> Connectors;
+	
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
 
-	if (GetGraph() == nullptr) return Connectors;
-
-	for (UEdGraphNode* EdGraphNode : GetGraph()->Nodes)
+	for (UJointEdGraph* Graph : Graphs)
 	{
-		if (EdGraphNode == nullptr) continue;
-
-		if (UJointEdGraphNode_Connector* CastedNode = Cast<UJointEdGraphNode_Connector>(EdGraphNode))
+		for (UEdGraphNode* EdGraphNode : Graph->Nodes)
 		{
-			if (CastedNode->ConnectorGuid == this->ConnectorGuid && CastedNode->Direction ==
-				EEdGraphPinDirection::EGPD_Input)
+			if (EdGraphNode == nullptr) continue;
+
+			if (UJointEdGraphNode_Connector* CastedNode = Cast<UJointEdGraphNode_Connector>(EdGraphNode))
 			{
-				Connectors.Add(CastedNode);
+				if (CastedNode->ConnectorGuid == this->ConnectorGuid && CastedNode->Direction == EEdGraphPinDirection::EGPD_Input)
+				{
+					Connectors.Add(CastedNode);
+				}
 			}
 		}
 	}
@@ -335,15 +320,17 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
 {
 	if (!GetGraphNodeSlate().IsValid()) return;
 
+	CachedPairOutputConnector = GetPairOutputConnector();
+
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 
 	const TAttribute<FText> NodeText_Attr = TAttribute<FText>::CreateLambda([this]
 		{
 			if (Direction == EEdGraphPinDirection::EGPD_Input)
 			{
-				if (GetCachedPairOutputConnector())
+				if (CachedPairOutputConnector)
 				{
-					return GetCachedPairOutputConnector()->ConnectorName;
+					return CachedPairOutputConnector->ConnectorName;
 				}
 
 				return FText::FromString(
@@ -472,7 +459,7 @@ void UJointEdGraphNode_Connector::OnCompileNode()
 	
 	if (Direction == EEdGraphPinDirection::EGPD_Input)
 	{
-		if (GetCachedPairOutputConnector() == nullptr)
+		if (GetPairOutputConnector() == nullptr)
 		{
 			TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(EMessageSeverity::Info);
 			TokenizedMessage->AddToken(FAssetNameToken::Create(GetJointManager() ? GetJointManager()->GetName() : "NONE"));
