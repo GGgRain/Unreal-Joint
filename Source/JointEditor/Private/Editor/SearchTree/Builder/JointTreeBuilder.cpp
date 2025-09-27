@@ -522,6 +522,16 @@ void FJointTreeBuilder::CollectReferencesToBuild(const TArray<TWeakObjectPtr<UJo
 			{
 				BuildTargetEditorNodes.Add(JointEdGraphNode.Get());
 			}
+
+			// for comment nodes - they are not included in the cached nodes.
+			for (UEdGraphNode* GraphNodes : JointEdGraph->Nodes)
+			{
+				if (!GraphNodes) continue;
+
+				if (!Cast<UEdGraphNode_Comment>(GraphNodes)) continue;
+				
+				if (!BuildTargetEditorNodes.Contains(GraphNodes)) BuildTargetEditorNodes.Add(GraphNodes);
+			}
 		}
 	}
 }
@@ -602,14 +612,7 @@ void FJointTreeBuilder::BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuild
 		else if (JointNode->ParentNode == nullptr)
 		{
 			//top level nodes without managers - attach it on the graph.
-			for (UJointEdGraph* BuildTargetGraph : BuildTargetGraphs)
-			{
-				if (!BuildTargetGraph->GetCachedJointGraphNodes().Contains(JointNode)) continue;
-
-				Output.Add(DisplayNode, FName(BuildTargetGraph->GetPathName()), FJointTreeItem_Graph::GetTypeId());
-
-				break;
-			}
+			Output.Add(DisplayNode, FName(JointNode->GetGraph()->GetPathName()), FJointTreeItem_Graph::GetTypeId());
 		}
 		else if (JointNode->ParentNode)
 		{
@@ -623,6 +626,10 @@ void FJointTreeBuilder::BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuild
 					   FName(JointNode->GetJointManager()->GetPathName()),
 					   FJointTreeItem_Manager::GetTypeId());
 		}
+	}else if (UEdGraphNode_Comment* CommentNode = Cast<UEdGraphNode_Comment>(NodeInfo.EditorNode))
+	{
+		// Comment nodes - attach it on the graph.
+		Output.Add(DisplayNode, FName(CommentNode->GetGraph()->GetPathName()), FJointTreeItem_Graph::GetTypeId());
 	}
 }
 

@@ -133,7 +133,6 @@ void SJointGraphNodeBase::Construct(const FArguments& InArgs, UEdGraphNode* InNo
 
 SJointGraphNodeBase::~SJointGraphNodeBase()
 {
-	UE_LOG(LogTemp, Verbose, TEXT("SJointGraphNodeBase::~SJointGraphNodeBase()"));
 }
 
 void SJointGraphNodeBase::InitializeSlate()
@@ -946,6 +945,7 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 			UJointEdGraphNode* DraggedNode = Cast<UJointEdGraphNode>(DraggedNodes[Idx]->GetNodeObj());
 			if (DraggedNode && DraggedNode->ParentNode)
 			{
+				
 				//Remove the dragged node from the original parent node.
 				UJointEdGraphNode* RemoveFrom = DraggedNode->ParentNode;
 				UJointEdGraphNode* AddTo = DropTargetNode;
@@ -964,6 +964,11 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 					AddTo->Update();
 				}
 
+				if (GraphNode && GraphNode->GetGraph())
+				{
+					GraphNode->GetGraph()->NotifyGraphChanged();
+				}
+				
 				DraggedNode->GetGraphNodeSlate().Pin()->PlayDropAnimation();
 
 				DraggedNode->GetGraphNodeSlate().Pin()->PlayNodeBackgroundColorResetAnimationIfPossible();
@@ -1177,6 +1182,7 @@ void SJointGraphNodeBase::OnDragEnter(const FGeometry& MyGeometry, const FDragDr
 			//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
 			//DragConnectionOp->SetHoveredNode(SubNode.IsValid() ? SubNode : SharedThis(this));
 			DragConnectionOp->SetHoveredNode(SharedThis(this));
+			
 
 			UJointEdGraphNode* TestNode = Cast<UJointEdGraphNode>(GraphNode);
 
@@ -1263,6 +1269,7 @@ void SJointGraphNodeBase::OnDragLeave(const FDragDropEvent& DragDropEvent)
 
 FReply SJointGraphNodeBase::OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
 {
+	
 	// Is someone dragging a node?
 	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
 	if (DragConnectionOp.IsValid())
@@ -1270,8 +1277,11 @@ FReply SJointGraphNodeBase::OnDragOver(const FGeometry& MyGeometry, const FDragD
 		// Inform the Drag and Drop operation that we are hovering over this node.
 		//TSharedPtr<SGraphNode> SubNode = GetSubNodeUnderCursor(MyGeometry, DragDropEvent);
 		DragConnectionOp->SetHoveredNode(SharedThis(this));
-	}
 
+		return FReply::Handled();
+	}
+	
+	
 	return FReply::Unhandled();
 	//return SGraphNode::OnDragOver(MyGeometry, DragDropEvent);
 }

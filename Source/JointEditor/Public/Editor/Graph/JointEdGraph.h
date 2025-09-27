@@ -135,7 +135,14 @@ public:
 	 */
 	virtual void NotifyGraphChanged() override;
 
-
+	virtual void NotifyGraphChanged(const FEdGraphEditAction& InAction) override;
+	
+	/**
+	 * Broadcast a notification whenever the graph has changed so need to update the following sub-objects (such as a tree view).
+	 * Also update the graph object itself to meet changes in the data.
+	 */
+	void NotifyGraphRequestUpdate();
+	
 public:
 
 	/**
@@ -184,19 +191,8 @@ public:
 	void ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel);
 
 private:
-
-	virtual void NotifyGraphChanged(const FEdGraphEditAction& InAction) override;
 	
 	void RecacheNodes();
-
-public:
-
-	/**
-	 * Broadcast a notification whenever the graph has changed so need to update the following sub-objects (such as a tree view).
-	 * Also update the graph object itself to meet changes in the data.
-	 */
-	void NotifyGraphRequestUpdate();
-
 
 public:
 

@@ -74,40 +74,25 @@ void UJointEdGraph::NotifyGraphChanged()
 	RecacheNodes();
 
 	UpdateGraph();
+	
 }
 
-void UJointEdGraph::ResetGraphNodeSlates()
+void UJointEdGraph::NotifyGraphChanged(const FEdGraphEditAction& InAction)
 {
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
-	{
-		if (GraphNode.IsValid()) GraphNode->SetGraphNodeSlate(nullptr);
-	}
+	Super::NotifyGraphChanged(InAction);
+
+	RecacheNodes();
+
+	UpdateGraph();
 }
 
-void UJointEdGraph::RecalculateNodeDepth()
+void UJointEdGraph::NotifyGraphRequestUpdate()
 {
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
-	{
-		if (GraphNode.IsValid()) GraphNode->RecalculateNodeDepth();
-	}
+	RecacheNodes();
+
+	UpdateGraph();
 }
 
-
-void UJointEdGraph::FeedToolkitToGraphNodes()
-{
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
-	{
-		if (GraphNode.IsValid()) GraphNode->OptionalToolkit = Toolkit;
-	}
-}
-
-void UJointEdGraph::NotifyNodeConnectionChanged()
-{
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
-	{
-		if (GraphNode.IsValid()) GraphNode->NodeConnectionListChanged();
-	}
-}
 
 void UJointEdGraph::UpdateGraph()
 {
@@ -134,8 +119,46 @@ void UJointEdGraph::UpdateGraph()
 		
 		NotifyNodeConnectionChanged();
 
+		if (GetToolkit().Pin())
+		{
+			GetToolkit().Pin()->RequestManagerViewerRefresh();
+			GetToolkit().Pin()->RefreshJointEditorOutliner();
+		}
+		
 		//Unlock the graph after all the updates are done.
 		UnlockUpdates();
+	}
+}
+
+void UJointEdGraph::ResetGraphNodeSlates()
+{
+	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
+	{
+		if (GraphNode.IsValid()) GraphNode->SetGraphNodeSlate(nullptr);
+	}
+}
+
+void UJointEdGraph::RecalculateNodeDepth()
+{
+	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
+	{
+		if (GraphNode.IsValid()) GraphNode->RecalculateNodeDepth();
+	}
+}
+
+void UJointEdGraph::FeedToolkitToGraphNodes()
+{
+	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
+	{
+		if (GraphNode.IsValid()) GraphNode->OptionalToolkit = Toolkit;
+	}
+}
+
+void UJointEdGraph::NotifyNodeConnectionChanged()
+{
+	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
+	{
+		if (GraphNode.IsValid()) GraphNode->NodeConnectionListChanged();
 	}
 }
 
@@ -156,35 +179,10 @@ void UJointEdGraph::ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel
 	}
 }
 
-void UJointEdGraph::NotifyGraphChanged(const FEdGraphEditAction& InAction)
-{
-	Super::NotifyGraphChanged(InAction);
-
-	RecacheNodes();
-
-	UpdateGraph();
-}
-
 void UJointEdGraph::RecacheNodes()
 {
 	CacheJointNodeInstances();
 	CacheJointGraphNodes();
-}
-
-void UJointEdGraph::NotifyGraphRequestUpdate()
-{
-	RecacheNodes();
-
-	if (!IsLocked())
-	{
-		if (GetToolkit().Pin())
-		{
-			GetToolkit().Pin()->RequestManagerViewerRefresh();
-			GetToolkit().Pin()->RefreshJointEditorOutliner();
-		}
-	}
-
-	UpdateGraph();
 }
 
 void GetSubGraphsRecursively(UJointEdGraph* InGraph, TArray<UJointEdGraph*>& OutGraphs)
@@ -361,51 +359,6 @@ void UJointEdGraph::AllocateThisGraphBaseNodesToJointManager(UJointManager* Join
 	}
 }
 
-void UJointEdGraph::CleanUpNodes()
-{
-	TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = GetCachedJointGraphNodes();
-
-	for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : GraphNodes)
-	{
-		if (JointEdGraphNode.IsValid())
-		{
-			JointEdGraphNode->ClearGraphNodeSlate();
-		}
-	}
-}
-
-
-void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
-{
-	for (UEdGraphNode* Node : Nodes)
-	{
-		UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node);
-
-		if (!CastedNode) continue;
-
-		if (bPropagateUnder)
-		{
-			CastedNode->ReconstructNodeInHierarchy();
-		}
-		else
-		{
-			CastedNode->ReconstructNode();
-		}
-	}
-
-	NotifyGraphRequestUpdate();
-}
-
-void UJointEdGraph::UpdateClassData()
-{
-	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
-	{
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(EdGraphNode);
-
-		UpdateClassDataForNode(Node);
-	}
-}
-
 void UJointEdGraph::UpdateClassDataForNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes)
 {
 	if (!Node) return;
@@ -418,15 +371,6 @@ void UJointEdGraph::UpdateClassDataForNode(UJointEdGraphNode* Node, const bool b
 	}
 }
 
-void UJointEdGraph::GrabUnknownClassDataFromGraph()
-{
-	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
-	{
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(EdGraphNode);
-
-		GrabUnknownClassDataFromNode(Node, true);
-	}
-}
 
 void UJointEdGraph::GrabUnknownClassDataFromNode(UJointEdGraphNode* Node, const bool bPropagateToSubNodes)
 {
@@ -445,7 +389,6 @@ void UJointEdGraph::GrabUnknownClassDataFromNode(UJointEdGraphNode* Node, const 
 		}
 	}
 }
-
 
 void UJointEdGraph::TryReinstancingUnknownNodeClasses()
 {
@@ -470,6 +413,61 @@ void UJointEdGraph::PatchNodeInstanceFromStoredNodeClass(TObjectPtr<UEdGraphNode
 	{
 		for (UJointEdGraphNode* SubNode : CastedNode->SubNodes) PatchNodeInstanceFromStoredNodeClass(SubNode);
 	}
+}
+
+void UJointEdGraph::UpdateClassData()
+{
+	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
+	{
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(EdGraphNode);
+
+		UpdateClassDataForNode(Node);
+	}
+}
+
+void UJointEdGraph::GrabUnknownClassDataFromGraph()
+{
+	for (TObjectPtr<UEdGraphNode> EdGraphNode : Nodes)
+	{
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(EdGraphNode);
+
+		GrabUnknownClassDataFromNode(Node, true);
+	}
+}
+
+
+void UJointEdGraph::CleanUpNodes()
+{
+	TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = GetCachedJointGraphNodes();
+
+	for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : GraphNodes)
+	{
+		if (JointEdGraphNode.IsValid())
+		{
+			JointEdGraphNode->ClearGraphNodeSlate();
+		}
+	}
+}
+
+void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
+{
+	for (UEdGraphNode* Node : Nodes)
+	{
+		UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node);
+
+		if (!CastedNode) continue;
+
+		if (bPropagateUnder)
+		{
+			CastedNode->ReconstructNodeInHierarchy();
+		}
+		else
+		{
+			CastedNode->ReconstructNode();
+		}
+	}
+
+	NotifyGraphRequestUpdate();
 }
 
 void UJointEdGraph::PatchNodePickers()

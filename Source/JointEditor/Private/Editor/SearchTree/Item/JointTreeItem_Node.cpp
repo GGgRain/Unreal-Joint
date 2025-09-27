@@ -137,7 +137,11 @@ void FJointTreeItem_Node::AllocateItemTags()
 	{
 		if (!EditorNodePtr.Get()) return;
 
-		if (UJointEdGraphNode_Connector* Connector = Cast<UJointEdGraphNode_Connector>(EditorNodePtr.Get()))
+		if (UEdGraphNode_Comment* CommentNode = Cast<UEdGraphNode_Comment>(EditorNodePtr.Get()))
+		{
+			ItemTags.Add(MakeShareable( new FJointTreeItemTag_Type( LOCTEXT("CommentTypeTag","Comment"), GetJointPropertyTree()->Filter)));
+		}
+		else if (UJointEdGraphNode_Connector* Connector = Cast<UJointEdGraphNode_Connector>(EditorNodePtr.Get()))
 		{
 			ItemTags.Add(MakeShareable( new FJointTreeItemTag_Type( LOCTEXT("ConnectorTypeTag","Connector"), GetJointPropertyTree()->Filter)));	
 		}
@@ -194,6 +198,9 @@ FText FJointTreeItem_Node::GetDisplayName() const
 		}
 		
 		return CastedNode->GetNodeTitle(ENodeTitleType::FullTitle);
+	}else if (UEdGraphNode_Comment* CommentNode = Cast<UEdGraphNode_Comment>(EditorNodePtr))
+	{
+		return CommentNode->GetNodeTitle(ENodeTitleType::FullTitle);
 	}
 	
 	return FText::FromString(EditorNodePtr->GetName());

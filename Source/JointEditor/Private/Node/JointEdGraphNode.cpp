@@ -12,6 +12,7 @@
 #include "JointEditor.h"
 #include "JointEditorNameValidator.h"
 #include "JointEditorSettings.h"
+#include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "ScopedTransaction.h"
 
@@ -1150,13 +1151,16 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 	}else
 	{
-		NotificationInfo.Text = SucceedNotificationText;
-		NotificationInfo.SubText = FText::Format(
-			NodeRenameSucceed_Succeeded,
-			FText::FromString(SavedOriginalName),
-			FText::FromString(ProcessedName));
+		if (SavedOriginalName != ProcessedName)
+		{
+			NotificationInfo.Text = SucceedNotificationText;
+			NotificationInfo.SubText = FText::Format(
+				NodeRenameSucceed_Succeeded,
+				FText::FromString(SavedOriginalName),
+				FText::FromString(ProcessedName));
 
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		}
 	}
 
 	
