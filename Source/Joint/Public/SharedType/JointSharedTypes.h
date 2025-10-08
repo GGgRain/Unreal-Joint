@@ -259,6 +259,20 @@ public:
 	FSlateBrush OuterNodeBodyImageBrush;
 
 public:
+	
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseCustomShadowNodePadding = false;
+	
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	bool bUseCustomContentNodePadding = false;
+	
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FMargin ShadowNodePadding = FMargin(4);
+	
+	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	FMargin ContentNodePadding = FMargin(4);
+	
+public:
 	/**
 	 * Whether to display a ClassFriendlyName hint text next to the Iconic node that will be displayed only when SlateDetailLevel is not SlateDetailLevel_Maximum.
 	 */

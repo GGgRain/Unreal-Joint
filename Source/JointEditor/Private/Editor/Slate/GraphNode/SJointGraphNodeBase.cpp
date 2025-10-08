@@ -395,9 +395,17 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	SAssignNew(RightNodeBox, SVerticalBox)
 	.Visibility(EVisibility::SelfHitTestInvisible);
 
-
+	
 	CreateNodeBody();
 
+	FMargin ContentPadding = FMargin(0.f);
+	
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (InGraphNode->GetEdNodeSetting().bUseCustomContentNodePadding)
+			ContentPadding = InGraphNode->GetEdNodeSetting().ContentNodePadding;
+	}
+	
 	NodeBody->SetContent(
 		SNew(SOverlay)
 		.Visibility(EVisibility::SelfHitTestInvisible)
@@ -412,6 +420,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
+		.Padding(ContentPadding)
 		[
 			CreateCenterWholeBox()
 		]
@@ -565,10 +574,15 @@ TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 	const FSlateBrush* InBorderImage = FJointEditorStyle::Get().GetBrush(
 		bSphere ? "JointUI.Border.NodeShadowSphere" : "JointUI.Border.NodeShadow");
 
+	const FMargin* InPadding = &FJointEditorStyle::Margin_Shadow;
+	
 	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
 		if (InGraphNode->GetEdNodeSetting().bUseCustomNodeShadowImageBrush)
 			InBorderImage = &InGraphNode->GetEdNodeSetting().NodeShadowImageBrush;
+
+		if (InGraphNode->GetEdNodeSetting().bUseCustomShadowNodePadding)
+			InPadding = &InGraphNode->GetEdNodeSetting().ShadowNodePadding;
 	}
 
 	NodeBodyBorderImage = InBorderImage;
@@ -582,7 +596,7 @@ TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 		.Cursor(this, &SJointGraphNodeBase::GetCursor)
 		.BorderImage(InBorderImage)
 		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
-		.Padding(FJointEditorStyle::Margin_Shadow);
+		.Padding(*InPadding);
 }
 
 TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const bool bSphere)
@@ -608,21 +622,20 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 			OuterBorderImage = &InGraphNode->GetEdNodeSetting().OuterNodeBodyImageBrush;
 	}
 
-
 	NodeBackgroundInBorderImage = InnerBorderImage;
 	NodeBackgroundOutBorderImage = OuterBorderImage;
 
 	return SAssignNew(NodeBackground, SJointOutlineBorder)
-	                                                      .RenderTransformPivot(FVector2D(0.5))
+		.RenderTransformPivot(FVector2D(0.5))
 			//.Visibility(EVisibility::SelfHitTestInvisible)
-	                                                      .NormalColor(NormalColor)
-	                                                      .HoverColor(HoverColor)
-	                                                      .OutlineNormalColor(OutlineNormalColor)
-	                                                      .OutlineHoverColor(OutlineHoverColor)
-	                                                      .UnHoverAnimationSpeed(9)
-	                                                      .HoverAnimationSpeed(9)
-	                                                      .InnerBorderImage(InnerBorderImage)
-	                                                      .OuterBorderImage(OuterBorderImage);
+		.NormalColor(NormalColor)
+		.HoverColor(HoverColor)
+		.OutlineNormalColor(OutlineNormalColor)
+		.OutlineHoverColor(OutlineHoverColor)
+		.UnHoverAnimationSpeed(9)
+		.HoverAnimationSpeed(9)
+		.InnerBorderImage(InnerBorderImage)
+		.OuterBorderImage(OuterBorderImage);
 }
 
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
