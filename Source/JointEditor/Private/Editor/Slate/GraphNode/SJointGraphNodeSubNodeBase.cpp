@@ -209,6 +209,15 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 	UpdateErrorInfo();
 	UpdateBuildTargetPreset();
 
+	FMargin ContentPadding = FMargin(0.f);
+	
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (InGraphNode->GetEdNodeSetting().bUseCustomContentNodePadding)
+			ContentPadding = InGraphNode->GetEdNodeSetting().ContentNodePadding;
+	}
+	
+
 	if (!IsDissolvedSubNode())
 	{
 		switch (GetSlateDetailLevel())
@@ -240,6 +249,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					]
 				]
 				+ SOverlay::Slot()
+				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
 					.Visibility(EVisibility::SelfHitTestInvisible)
@@ -294,6 +304,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					]
 				]
 				+ SOverlay::Slot()
+				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
 					.Visibility(EVisibility::SelfHitTestInvisible)
@@ -367,6 +378,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					]
 				]
 				+ SOverlay::Slot()
+				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
 					.Visibility(EVisibility::SelfHitTestInvisible)

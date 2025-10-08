@@ -160,7 +160,7 @@ void FJointTreeItem_Node::AllocateItemTags()
 
 				ItemTags.Add(MakeShareable(new FJointTreeItemTag_Node(GetJointPropertyTree()->Filter)));
 				
-				if (JointNode->GetJointManager()->ManagerFragments.Contains(NodeInstance))
+				if (NodeInstance->GetJointManager() && NodeInstance->GetJointManager()->ManagerFragments.Contains(NodeInstance))
 				{
 					ItemTags.Add(MakeShareable(new FJointTreeItemTag_ManagerFragment(GetJointPropertyTree()->Filter)));
 				}

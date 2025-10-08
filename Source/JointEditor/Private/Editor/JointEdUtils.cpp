@@ -223,8 +223,7 @@ void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* In
 
 	FString ClassName = FBlueprintEditorUtils::GetClassNameWithoutSuffix(InClass);
 	
-	FString PathName = FPaths::DirectoryExists(BasePath) ? BasePath : FPaths::ProjectContentDir();
-	PathName = FPaths::GetPath(PathName);
+	FString PathName = BasePath.IsEmpty() ? FPaths::GetPath(BasePath) : TEXT("/Game");
 	PathName /= ClassName;
 
 	FString Name;
