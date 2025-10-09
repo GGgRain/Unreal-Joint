@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 58,
-	"VersionName": "2.10.1",
+	"Version": 59,
+	"VersionName": "2.10.2",
 	"FriendlyName": "Joint",
 	"Description": "General Purpose Modular Playback Framework for Unreal Engine",
 	"Category": "Conversation",
