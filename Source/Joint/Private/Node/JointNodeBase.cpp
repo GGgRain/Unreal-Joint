@@ -856,7 +856,14 @@ AJointActor* UJointNodeBase::GetHostingJointInstance() const
 
 void UJointNodeBase::ReloadNode()
 {
-	if (!CanReloadNode()) return;
+	if (!CanReloadNode()){
+
+#if WITH_EDITOR
+		UE_LOG(LogTemp, Error, TEXT("Joint: Tried to reload Joint node %s but it is not allowed to reload. Aborting the action... (If you want to make it playable multiple times,"), *this->GetName());
+#endif
+		
+		return;
+	}
 	
 	bIsNodeBegunPlay = false;
 	bIsNodeEndedPlay = false;

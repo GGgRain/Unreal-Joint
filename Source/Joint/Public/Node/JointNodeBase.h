@@ -386,16 +386,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Lifecycle")
 	const bool& CanReloadNode() const;
 
-private:
+public:
 
 	/**
 	 * Whether this node can be reloaded.
-	 * This will never be changed on the runtime. You must make sure that this is set to true if you want to reload the node.
 	 * We intended this to be used for the nodes that are not intended to be played multiple times, especially for security reasons.
-	 * So make sure to understand the possible issues and concerns before using this feature.
+	 * So make sure to understand the possible issues and concerns before handling this variable.
 	 */
-	UPROPERTY(EditDefaultsOnly, Category = "Lifecycle")
-	bool bCanReloadNode = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Lifecycle")
+	bool bCanReloadNode = true;
 
 public:
 	/**
