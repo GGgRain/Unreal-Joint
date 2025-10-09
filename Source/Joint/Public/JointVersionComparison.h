@@ -7,6 +7,7 @@
 #define JOINT_PATCH_VERSION	2
 
 
+
 // Helper for JOINT_VERSION_NEWER_THAN and JOINT_VERSION_OLDER_THAN
 #define JOINT_GREATER_SORT(Value, ValueToBeGreaterThan, TieBreaker) \
 	(((Value) > (ValueToBeGreaterThan)) || (((Value) == (ValueToBeGreaterThan)) && (TieBreaker)))
