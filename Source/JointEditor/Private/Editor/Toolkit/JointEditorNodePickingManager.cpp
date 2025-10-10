@@ -5,6 +5,7 @@
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
 #include "JointEditorGraphDocument.h"
+#include "PropertyHandle.h"
 #include "ScopedTransaction.h"
 #include "SGraphPanel.h"
 #include "EditorWidget/JointGraphEditor.h"

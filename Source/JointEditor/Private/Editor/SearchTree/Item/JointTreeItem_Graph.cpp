@@ -8,6 +8,7 @@
 #include "JointEdUtils.h"
 #include "ItemTag/JointTreeItemTag_Graph.h"
 #include "ItemTag/JointTreeItemTag_Node.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Text/SInlineEditableTextBlock.h"
 

@@ -2,10 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "JointEdGraphNode.h"
+#include "PropertyEditorDelegates.h"
 #include "Node/JointNodeBase.h"
 #include "Widgets/SCompoundWidget.h"
 
 
+class IDetailsView;
 class SJointRetainerWidget;
 
 class JOINTEDITOR_API SJointDetailsView : public SCompoundWidget

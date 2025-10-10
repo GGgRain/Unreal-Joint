@@ -7,6 +7,7 @@
 
 #include "Filter/JointTreeFilter.h"
 #include "Filter/JointTreeFilterItem.h"
+#include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "FJointTreeItemTag_Node"
 

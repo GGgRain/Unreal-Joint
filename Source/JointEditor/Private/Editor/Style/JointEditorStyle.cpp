@@ -11,6 +11,7 @@
 #include "Engine/Texture2D.h"
 #include "Interfaces/IPluginManager.h"
 #include "SlateOptMacros.h"
+#include "UObject/Package.h"
 
 TSharedPtr<ISlateStyle> FJointEditorStyle::Instance = nullptr;
 

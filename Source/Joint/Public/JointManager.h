@@ -8,7 +8,7 @@
 #include "Net/DataBunch.h"
 #include "Templates/SubclassOf.h"
 #include "Engine/EngineTypes.h"
-
+#include "Engine/Blueprint.h"
 #include "JointManager.generated.h"
 
 //An asset class for storaging data and some functions.

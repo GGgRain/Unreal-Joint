@@ -4,11 +4,13 @@
 
 #include "JointAdvancedWidgets.h"
 #include "JointEditorStyle.h"
+#include "Components/HorizontalBox.h"
 #include "Filter/JointTreeFilter.h"
 
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SEditableText.h"
+#include "Widgets/Layout/SBox.h"
 
 void FJointTreeFilterItem::MakeFilterWidget()
 {

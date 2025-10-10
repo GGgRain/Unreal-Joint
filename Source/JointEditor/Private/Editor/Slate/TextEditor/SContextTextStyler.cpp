@@ -10,6 +10,7 @@
 #include "JointAdvancedWidgets.h"
 #include "VoltAnimationManager.h"
 #include "JointEditorSettings.h"
+#include "PropertyEditorModule.h"
 #include "VoltDecl.h"
 #include "Components/RichTextBlock.h"
 #include "Module/Volt_ASM_InterpBackgroundColor.h"

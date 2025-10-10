@@ -68,6 +68,7 @@
 #include "EditorWidget/SJointEditorOutliner.h"
 #include "EditorWidget/SJointFragmentPalette.h"
 #include "EditorWidget/SJointGraphPanel.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 #include "Node/JointFragment.h"

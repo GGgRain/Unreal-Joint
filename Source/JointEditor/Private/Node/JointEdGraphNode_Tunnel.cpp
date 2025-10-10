@@ -7,11 +7,13 @@
 #include "JointEditorStyle.h"
 #include "JointFunctionLibrary.h"
 #include "K2Node_Tunnel.h"
+#include "Components/VerticalBox.h"
 #include "GraphNode/SJointGraphNodeBase.h"
 
 #include "EdGraph/EdGraph.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SBox.h"
 
 #define LOCTEXT_NAMESPACE "UJointEdGraphNode_Tunnel"
 

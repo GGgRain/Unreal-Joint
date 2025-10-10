@@ -12,6 +12,7 @@
 #include "VoltDecl.h"
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBox.h"
 
 #define LOCTEXT_NAMESPACE "SJointBreakpointIndicator"
 

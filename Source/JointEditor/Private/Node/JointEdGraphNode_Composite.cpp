@@ -10,6 +10,7 @@
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "JointFunctionLibrary.h"
+#include "ScopedTransaction.h"
 #include "SGraphPanel.h"
 #include "SGraphPreviewer.h"
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -25,6 +26,7 @@
 
 #include "UObject/ConstructorHelpers.h"
 #include "Materials/MaterialInstanceConstant.h"
+#include "Widgets/SToolTip.h"
 #include "Widgets/Text/SInlineEditableTextBlock.h"
 
 

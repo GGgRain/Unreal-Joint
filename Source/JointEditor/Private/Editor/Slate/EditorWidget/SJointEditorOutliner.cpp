@@ -9,9 +9,12 @@
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "JointManager.h"
+#include "ScopedTransaction.h"
 #include "EditorWidget/SJointGraphEditorActionMenu.h"
 #include "EditorWidget/SJointGraphPalette.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/Commands/GenericCommands.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/EngineVersionComparison.h"
 
 #if UE_VERSION_OLDER_THAN(5, 3, 0)

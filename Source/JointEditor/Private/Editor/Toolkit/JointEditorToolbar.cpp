@@ -23,6 +23,7 @@
 #include "JointManager.h"
 #include "JointEditor.h"
 #include "Debug/JointDebugger.h"
+#include "Widgets/Input/SComboButton.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolbar"
 

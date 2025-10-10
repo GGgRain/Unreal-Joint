@@ -8,6 +8,7 @@
 #include "JointWiggleWireSimulator.h"
 #include "JointEdGraphSchema.generated.h"
 
+class FKismetCompilerContext;
 class UJointEdGraphNode_Composite;
 class FJointGraphConnectionDrawingPolicy;
 class UJointEdGraphNode;
@@ -43,10 +44,10 @@ public:
 
 public:
 
-	//Implement the Graph Context Actions for the Joint graph when you get if you right click on the graph.
+	//Implement the Graph Context Actions for the Joint graph when you get if you right-click on the graph.
 	virtual void GetGraphContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const override;
 
-	//Implement the Graph Context Actions for the Joint graph node when you get if you right click on the graph node.
+	//Implement the Graph Context Actions for the Joint graph node when you get if you right-click on the graph node.
 	virtual void GetGraphNodeContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const;
 
 	//Implement actions for the add comment action on the provided ContextMenuBuilder.
@@ -89,7 +90,7 @@ public:
 
 public:
 	
-	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const;
+	virtual void GetGraphDisplayInformation(const UEdGraph& Graph, /*out*/ FGraphDisplayInfo& DisplayInfo) const override;
 
 public:
 
@@ -128,7 +129,7 @@ public:
 
 	virtual void BreakSinglePinLink(UEdGraphPin* SourcePin, UEdGraphPin* TargetPin) const override;
 
-	virtual void BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const;
+	virtual void BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotification) const;
 	
 	virtual bool FadeNodeWhenDraggingOffPin(const UEdGraphNode* Node, const UEdGraphPin* Pin) const override;
 
