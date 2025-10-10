@@ -2195,13 +2195,13 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 	if (!Node) return SNullWidget::NullWidget;
 	//if (this->GraphNode->GetNodeTitle(ENodeTitleType::FullTitle).IsEmpty()) return SNullWidget::NullWidget;
 
-	EVisibility NodeHintTextVisibility = this && this->GetSlateDetailLevel() !=
+	EVisibility NodeHintTextVisibility = this->GetSlateDetailLevel() !=
 	                                     EJointEdSlateDetailLevel::SlateDetailLevel_Maximum &&
 	                                     GetWhetherToDisplayIconicNodeText()
 		                                     ? EVisibility::SelfHitTestInvisible
 		                                     : EVisibility::Collapsed;
 
-	EVisibility NodeTitleVisibility = this && this->GetSlateDetailLevel() ==
+	EVisibility NodeTitleVisibility = this->GetSlateDetailLevel() ==
 	                                  EJointEdSlateDetailLevel::SlateDetailLevel_Maximum
 		                                  ? EVisibility::Visible
 		                                  : this->InlineEditableText && this->InlineEditableText->IsInEditMode()

@@ -8,6 +8,7 @@
 #include "JointEdUtils.h"
 #include "Filter/JointTreeFilter.h"
 #include "Filter/JointTreeFilterItem.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Item/JointTreeItem_Property.h"
 #include "SearchTree/Builder/IJointTreeBuilder.h"
 #include "Misc/MessageDialog.h"

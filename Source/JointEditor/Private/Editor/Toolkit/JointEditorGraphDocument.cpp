@@ -5,6 +5,7 @@
 #include "JointEdUtils.h"
 #include "JointManager.h"
 #include "SGraphPanel.h"
+#include "Widgets/Docking/SDockTab.h"
 
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 #include "WorkflowOrientedApp/WorkflowUObjectDocuments.h"

@@ -8,6 +8,8 @@
 #include "Widgets/Input/SCheckBox.h"
 
 
+class SButton;
+
 class JOINTEDITOR_API SJointOutlineBorder : public SCompoundWidget
 {
 public:

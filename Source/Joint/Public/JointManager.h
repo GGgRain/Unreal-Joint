@@ -8,7 +8,7 @@
 #include "Net/DataBunch.h"
 #include "Templates/SubclassOf.h"
 #include "Engine/EngineTypes.h"
-
+#include "Engine/Blueprint.h"
 #include "JointManager.generated.h"
 
 //An asset class for storaging data and some functions.
@@ -98,8 +98,8 @@ public:
 
 	/**
 	 * Find a fragment with a given class.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @param FragmentClass Provided class for the search action.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @param FragmentClass Provided class for the search action
 	 * @return Found fragment for the class.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
@@ -107,9 +107,9 @@ public:
 
 	/**
 	 * Find all fragment with a given class.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @param FragmentClass Provided class for the search action.
-	 * @return Found fragments for the class.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @param FragmentClass Provided class for the search action
+	 * @return Found fragments for the class
 	 */
 	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	const TArray<class UJointFragment*> FindManagerFragmentsByClassOnLowerHierarchy(
@@ -117,8 +117,8 @@ public:
 
 	/**
 	 * Get all fragments attached on this node.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @return Found fragments.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @return Found fragments
 	 */
 	UFUNCTION(BlueprintPure, Category = "Fragment")
 	const TArray<class UJointFragment*> GetAllManagerFragmentsOnLowerHierarchy() const;
@@ -174,7 +174,7 @@ public:
 
 	/**
 	 * Find fragments by the provided tags while iterating through the lower hierarchy.
-	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all of the matching tags with the provided tags.
+	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all the matching tags with the provided tags.
 	 * @param bExact whether to force exact.
 	 * @return Found fragments for the tag.
 	 */
@@ -234,7 +234,7 @@ public:
 
 	/**
 	 * Find fragments by the provided tags.
-	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all of the matching tags with the provided tags.
+	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all the matching tags with the provided tags.
 	 * @param bExact whether to force exact.
 	 * @return Found fragments for the tag.
 	 */

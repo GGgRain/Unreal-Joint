@@ -3,8 +3,6 @@
 #include "Editor/Sequencer/FJointMovieSection.h"
 
 #include "Sections/MovieSceneCameraCutSection.h"
-#include "Textures/SlateIcon.h"
-#include "Framework/Commands/UIAction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
@@ -17,9 +15,18 @@
 #include "Editor/Slate/JointAdvancedWidgets.h"
 #include "Editor/Slate/GraphNode/JointGraphNodeSharedSlates.h"
 #include "Fonts/FontMeasure.h"
-#include "MovieSceneTools/Public/CommonMovieSceneTools.h"
-#include "Node/JointNodeBase.h"
 
+#include "Misc/EngineVersionComparison.h"
+
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
+#include "MovieSceneTools/Public/CommonMovieSceneTools.h"
+#else
+#include "AnimatedRange.h"
+#include "TimeToPixel.h"
+#endif
+
+
+#include "Node/JointNodeBase.h"
 #include "Sequencer/MovieSceneJointSectionTemplate.h"
 #include "Sequencer/MovieSceneJointTrack.h"
 
@@ -130,7 +137,7 @@ int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) co
 
 	//InPainter.SectionGeometry.Size = FVector2D(InPainter.SectionGeometry.Size.X + 30, GetSectionHeight());
 	
-	float TextOffsetX = JointSection->GetRange().GetLowerBound().IsClosed() ? FMath::Max(0.f, InPainter.GetTimeConverter().FrameToPixel(JointSection->GetRange().GetLowerBoundValue())) : 0.f;
+	//float TextOffsetX = JointSection->GetRange().GetLowerBound().IsClosed() ? FMath::Max(0.f, InPainter.GetTimeConverter().FrameToPixel(JointSection->GetRange().GetLowerBoundValue())) : 0.f;
 	FString EventString = GetSectionTitle().ToString();
 	bool bIsEventValid = IsNodeValid();
 	//PaintNodeName(InPainter, InPainter.LayerId + 1, EventString, TextOffsetX, bIsEventValid);
@@ -151,7 +158,7 @@ void FJointMovieSection::PaintNodeName(FSequencerSectionPainter& Painter, int32 
 
 	TSharedRef<FSlateFontMeasure> FontMeasureService = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
 
-	// Setup the warning size. Static since it won't ever change
+	// Set up the warning size. Static since it won't ever change
 	static FVector2D WarningSize    = FontMeasureService->Measure(WarningString, FontAwesomeFont);
 	const  FMargin   WarningPadding = (bIsEventValid || InEventString.Len() == 0) ? FMargin(0.f) : FMargin(0.f, 0.f, 4.f, 0.f);
 	const  FMargin   BoxPadding     = FMargin(2.0f, 4.0f);

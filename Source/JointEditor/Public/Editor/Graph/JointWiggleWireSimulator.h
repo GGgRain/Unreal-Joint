@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "EdGraph/EdGraphPin.h"
 #include "UObject/Object.h"
 
 #include "Math/UnrealMathUtility.h"

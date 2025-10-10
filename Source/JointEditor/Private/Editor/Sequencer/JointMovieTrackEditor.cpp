@@ -22,7 +22,10 @@
 #include "Editor/Style/JointEditorStyle.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Framework/Commands/Commands.h"
 #include "Sequencer/MovieSceneJointTrack.h"
+
+#include "Misc/EngineVersionComparison.h"
 
 #define LOCTEXT_NAMESPACE "FJointMovieTrackEditor"
 
@@ -354,12 +357,20 @@ void FJointMovieTrackEditor::AddJointMovieTrackMenuExtension(FMenuBuilder& MenuB
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 
+#if UE_VERSION_OLDER_THAN(5,1,0)
 	TArray<FName> ClassNames;
 	ClassNames.Add(UJointManager::StaticClass()->GetFName());
 
 	TSet<FName> DerivedClassNames;
 	AssetRegistryModule.Get().GetDerivedClassNames(ClassNames, TSet<FName>(), DerivedClassNames);
+#else
+	TArray<FTopLevelAssetPath> ClassNames;
+	ClassNames.Add(UJointManager::StaticClass()->GetClassPathName());
 
+	TSet<FTopLevelAssetPath> DerivedClassNames;
+	AssetRegistryModule.Get().GetDerivedClassNames(ClassNames, TSet<FTopLevelAssetPath>(), DerivedClassNames);
+#endif
+	
 	FAssetPickerConfig AssetPickerConfig;
 	{
 		AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateRaw(this, &FJointMovieTrackEditor::OnJointManagerTrackAssetSelected);
@@ -368,7 +379,12 @@ void FJointMovieTrackEditor::AddJointMovieTrackMenuExtension(FMenuBuilder& MenuB
 		AssetPickerConfig.InitialAssetViewType = EAssetViewType::List;
 		for (auto ClassName : DerivedClassNames)
 		{
+#if UE_VERSION_OLDER_THAN(5,1,0)
 			AssetPickerConfig.Filter.ClassNames.Add(ClassName);
+#else
+			AssetPickerConfig.Filter.ClassPaths.Add(ClassName);
+#endif
+			
 		}
 		AssetPickerConfig.SaveSettingsName = TEXT("SequencerAssetPicker");
 	}
@@ -461,13 +477,21 @@ void FJointMovieTrackEditor::AddJointActorMenuExtension(FMenuBuilder& MenuBuilde
 	MenuBuilder.BeginSection("ChooseJointManagerSection", LOCTEXT("ChooseJointManager", "Choose Joint Manager:"));
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-
+	
+#if UE_VERSION_OLDER_THAN(5,1,0)
 	TArray<FName> ClassNames;
 	ClassNames.Add(UJointManager::StaticClass()->GetFName());
 
 	TSet<FName> DerivedClassNames;
 	AssetRegistryModule.Get().GetDerivedClassNames(ClassNames, TSet<FName>(), DerivedClassNames);
+#else
+	TArray<FTopLevelAssetPath> ClassNames;
+	ClassNames.Add(UJointManager::StaticClass()->GetClassPathName());
 
+	TSet<FTopLevelAssetPath> DerivedClassNames;
+	AssetRegistryModule.Get().GetDerivedClassNames(ClassNames, TSet<FTopLevelAssetPath>(), DerivedClassNames);
+#endif
+	
 	FAssetPickerConfig AssetPickerConfig;
 	{
 		AssetPickerConfig.OnAssetSelected = FOnAssetSelected::CreateRaw(this, &FJointMovieTrackEditor::OnJointManagerBindingAssetSelected);
@@ -476,7 +500,11 @@ void FJointMovieTrackEditor::AddJointActorMenuExtension(FMenuBuilder& MenuBuilde
 		AssetPickerConfig.InitialAssetViewType = EAssetViewType::List;
 		for (auto ClassName : DerivedClassNames)
 		{
+#if UE_VERSION_OLDER_THAN(5,1,0)
 			AssetPickerConfig.Filter.ClassNames.Add(ClassName);
+#else
+			AssetPickerConfig.Filter.ClassPaths.Add(ClassName);
+#endif
 		}
 		AssetPickerConfig.SaveSettingsName = TEXT("SequencerAssetPicker");
 	}
@@ -503,7 +531,15 @@ UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrack(UJointMana
 		return nullptr;
 	}
 
-	TArray<UMovieSceneTrack*> Tracks= FocusedMovieScene->GetMasterTracks();
+#if UE_VERSION_OLDER_THAN(5,2,0)
+
+	TArray<UMovieSceneTrack*> Tracks = FocusedMovieScene->GetMasterTracks();
+
+#else
+	
+	TArray<UMovieSceneTrack*> Tracks = FocusedMovieScene->GetTracks();
+
+#endif
 
 	UMovieSceneTrack* JointTrack = nullptr;
 	
@@ -520,9 +556,18 @@ UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrack(UJointMana
 	{
 		const FScopedTransaction Transaction(LOCTEXT("AddJointMovieTrack_Transaction", "Add Joint Movie Track"));
 		FocusedMovieScene->Modify();
-		
+
+#if UE_VERSION_OLDER_THAN(5,2,0)
+
 		JointTrack = FocusedMovieScene->AddMasterTrack<UMovieSceneJointTrack>();
 		ensure(JointTrack);
+
+#else
+		
+		JointTrack = FocusedMovieScene->AddTrack<UMovieSceneJointTrack>();
+		ensure(JointTrack);
+
+#endif
 
 		Cast<UMovieSceneJointTrack>(JointTrack)->SetJointManager(NewManager);
 	}

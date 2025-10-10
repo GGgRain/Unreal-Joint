@@ -7,6 +7,7 @@
 #include "Layout/Margin.h"
 #include "Node/JointNodeBase.h"
 
+class SBox;
 class AActor;
 class FMenuBuilder;
 class FSequencerSectionPainter;

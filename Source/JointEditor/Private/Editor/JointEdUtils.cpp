@@ -13,6 +13,7 @@
 #include "JointEditorNameValidator.h"
 #include "JointEditorStyle.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Internationalization/TextPackageNamespaceUtil.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"

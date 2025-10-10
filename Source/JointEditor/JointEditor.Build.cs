@@ -68,6 +68,7 @@ public class JointEditor : ModuleRules
 
 			"KismetWidgets",
 			"Kismet",
+			"KismetCompiler",
 			
 			"GraphEditor",
 

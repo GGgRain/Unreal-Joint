@@ -91,7 +91,7 @@ TArray<UJointNodeBase*> UJointNodeBase::GetParentNodesOnHierarchy() const
 
 UJointManager* UJointNodeBase::GetJointManager() const
 {
-	if (this && this->IsValidLowLevel() && GetOuter() && GetOuter()->IsValidLowLevel())
+	if (this->IsValidLowLevel() && GetOuter() && GetOuter()->IsValidLowLevel())
 	{
 		if (UJointManager* Manager = Cast<UJointManager>(GetOuter()))
 		{

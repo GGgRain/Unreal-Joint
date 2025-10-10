@@ -6,6 +6,8 @@
 #include "Widgets/SCompoundWidget.h"
 
 
+struct FPropertyAndParent;
+class IDetailsView;
 class SJointRetainerWidget;
 
 class JOINTEDITOR_API SJointDetailsView : public SCompoundWidget

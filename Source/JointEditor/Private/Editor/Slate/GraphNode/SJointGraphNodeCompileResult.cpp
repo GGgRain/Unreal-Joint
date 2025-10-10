@@ -7,6 +7,7 @@
 #include "Widgets/SToolTip.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SJointGraphNodeCompileResult"
 

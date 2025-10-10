@@ -6,11 +6,14 @@
 #include "JointEditorStyle.h"
 #include "VoltAnimation.h"
 #include "VoltDecl.h"
+#include "Components/HorizontalBox.h"
 
 #include "Module/Volt_ASM_InterpRenderOpacity.h"
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
 
 #include "Slate/WidgetTransform.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
 
 
 void SJointToolkitToastMessageHub::ReleaseVoltAnimationManager()

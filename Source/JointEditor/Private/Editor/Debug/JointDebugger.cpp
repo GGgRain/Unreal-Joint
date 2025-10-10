@@ -15,6 +15,7 @@
 #include "JointEdUtils.h"
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
+#include "Framework/Application/SlateApplication.h"
 #include "GraphNode/SJointGraphNodeBase.h"
 
 #define LOCTEXT_NAMESPACE "UJointDebugger"

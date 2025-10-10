@@ -16,12 +16,14 @@
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
 #include "AIGraph/Classes/AIGraphTypes.h"
 #else
+
+class SGraphPanel;class SGraphPanel;
 #include "Editor/AIGraph/Classes/AIGraphTypes.h"
 #endif
 
 #include "JointEdGraphNode.generated.h"
 
-
+class SGraphPanel;
 class FJointEditorToolkit;
 class UJointEdGraph;
 class SJointGraphNodeBase;
@@ -526,7 +528,7 @@ public:
 	
 public:
 
-	//Get casted version of the node instance. this is just for the clean code.
+	//Get cast version of the node instance. this is just for the clean code.
 	template<typename NodeClass=UJointNodeBase>
 	FORCEINLINE NodeClass* GetCastedNodeInstance() const
 	{
@@ -547,7 +549,7 @@ public:
 	
 	/**
 	 * Get the orientation of the sub node box. Return EOrientation::Orient_Horizontal by default.
-	 * We don't provide a variable to this feature by default because we thought having this feature on all of the nodes might harm the readability of the graph.
+	 * We don't provide a variable to this feature by default because we thought having this feature on all the nodes might harm the readability of the graph.
 	 * So instead, we provided it to only some of the nodes that we think it really needs.
 	 *
 	 * + If the node uses fixed size then it will have multiple rows, but if it is not then all the sub nodes will be populated in a single row or column.
@@ -705,10 +707,10 @@ public:
 	//Check if the stored class data is referring to the existing class.
 	virtual bool CheckClassDataIsKnown();
 	
-	//Notify this node is holding a invalid class data to the FGraphNodeClassHelper.
+	//Notify this node is holding an invalid class data to the FGraphNodeClassHelper.
 	virtual void NotifyClassDataUnknown();
 
-	//Let the FGraphNodeClassHelper knows this node is holding a invalid class data.
+	//Let the FGraphNodeClassHelper knows this node is holding an invalid class data.
 	virtual bool PatchNodeInstanceFromClassDataIfNeeded();
 	
 	//Update ClassData from node instance.
@@ -799,7 +801,7 @@ public:
 	
 public:
 
-	//Declare the actions the users will get when they right click on the graph node. By default, it implements add fragment action.
+	//Declare the actions the users will get when they right-click on the graph node. By default, it implements add fragment action.
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
 
 	void CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Graph) const;

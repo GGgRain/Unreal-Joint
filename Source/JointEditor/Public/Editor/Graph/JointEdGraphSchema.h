@@ -8,6 +8,7 @@
 #include "JointWiggleWireSimulator.h"
 #include "JointEdGraphSchema.generated.h"
 
+class FKismetCompilerContext;
 class UJointEdGraphNode_Composite;
 class FJointGraphConnectionDrawingPolicy;
 class UJointEdGraphNode;
