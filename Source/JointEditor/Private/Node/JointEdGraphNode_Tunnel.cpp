@@ -207,7 +207,7 @@ void UJointEdGraphNode_Tunnel::NodeConnectionListChanged()
 
 }
 
-void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	if (SourcePin == nullptr) return;
 
@@ -219,7 +219,7 @@ void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray
 
 	//a function to implement the pins to the input sink node and output source node.
 
-	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
+	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
 	{
 		if (InSourceNode == nullptr) return;
 		
@@ -229,7 +229,7 @@ void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray
 		}
 	};
 	
-	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
+	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
 	{
 		InNodes.Empty();
 		

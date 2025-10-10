@@ -599,7 +599,7 @@ void FJointEditorToolkit::FixupPastedNodes(const TSet<UEdGraphNode*>& NewPastedG
 	{
 		UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(NewPastedGraphNode);
 
-		UObject*& Instance = CastedGraphNode->NodeInstance;
+		TObjectPtr<UObject>& Instance = CastedGraphNode->NodeInstance;
 
 		if (CastedGraphNode == nullptr || Instance == nullptr) continue;
 
@@ -3035,7 +3035,11 @@ void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const T
 
 			if (CastedGraphNode == nullptr) continue;
 
-			GetNodePickingManager()->PerformNodePicking(CastedGraphNode->GetCastedNodeInstance(), CastedGraphNode);
+			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
+			Result->Node = CastedGraphNode->GetCastedNodeInstance();
+			Result->OptionalEdNode = CastedGraphNode;
+
+			GetNodePickingManager()->PerformNodePicking(Result);
 
 			break;
 		}
@@ -4051,7 +4055,7 @@ TSharedRef<class SWidget> FJointEditorToolkit::OnGetDebuggerActorsMenu()
 
 		//If it already has the debugging asset, then use that instance to getter the Joint manager because the toolkit's GetJointManager() will return the instance of the duplicated, transient version of it.
 		DebuggerSingleton->GetMatchingInstances(GetDebuggingJointInstance().IsValid()
-			                                        ? GetDebuggingJointInstance().Get()->OriginalJointManager
+			                                        ? GetDebuggingJointInstance().Get()->OriginalJointManager.Get()
 			                                        : GetJointManager(), MatchingInstances);
 
 		// Fill the combo menu with presets of common screen resolutions

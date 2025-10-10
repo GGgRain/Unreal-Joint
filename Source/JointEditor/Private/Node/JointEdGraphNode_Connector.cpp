@@ -205,7 +205,7 @@ void UJointEdGraphNode_Connector::NodeConnectionListChanged()
 	}
 }
 
-void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	CachedPairOutputConnector = GetPairOutputConnector();
 	

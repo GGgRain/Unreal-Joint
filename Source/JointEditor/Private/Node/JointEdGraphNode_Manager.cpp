@@ -95,7 +95,7 @@ void UJointEdGraphNode_Manager::NodeConnectionListChanged()
 	{
 		if (Pin == nullptr) continue;
 
-		TArray<UJointNodeBase*> Nodes;
+		TArray<TObjectPtr<UJointNodeBase>> Nodes;
 
 		Nodes.Empty();
 		

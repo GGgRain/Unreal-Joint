@@ -26,7 +26,7 @@ public:
 public:
 
 	UPROPERTY()
-	class UJointManager* JointManager;
+	TObjectPtr<UJointManager> JointManager;
 
 public:
 	

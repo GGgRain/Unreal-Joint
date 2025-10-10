@@ -225,13 +225,13 @@ public:
 	/**
 	 * Find a fragment by the provided class while iterating through the lower hierarchy.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	UJointFragment* FindFragmentByClassOnLowerHierarchy(TSubclassOf<UJointFragment> FragmentClass);
 
 	/**
 	 * Find all fragments by the provided class while iterating through the lower hierarchy.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	TArray<UJointFragment*> FindFragmentsByClassOnLowerHierarchy(TSubclassOf<UJointFragment> FragmentClass);
 
 	/**
@@ -313,14 +313,14 @@ public:
 	 * Find a fragment with by class. It only searches the children nodes that are directly attached to this node.
 	 * Notice it will not search through the sub node's sub node.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	UJointFragment* FindFragmentByClass(TSubclassOf<UJointFragment> FragmentClass) const;
 
 	/**
 	 * Find all fragments with its class. It only searches the children nodes that are directly attached to this node.
 	 * Notice it will not search through the sub node's sub node.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	TArray<UJointFragment*> FindFragmentsByClass(TSubclassOf<UJointFragment> FragmentClass) const;
 
 	/**

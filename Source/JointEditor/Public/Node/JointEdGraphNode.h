@@ -52,7 +52,7 @@ public:
 	
 	//The instance of the runtime Joint node that this editor graph node represent on the graph.
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	class UObject* NodeInstance;
+	TObjectPtr<UObject> NodeInstance;
 
 
 #if WITH_EDITOR
@@ -74,13 +74,13 @@ public:
 	 * The parent node that this node is attached at. If this node is the highest node on the hierarchy, It is nullptr.
 	 * */
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	class UJointEdGraphNode* ParentNode;
+	TObjectPtr<UJointEdGraphNode> ParentNode;
 
 	/**
 	 * The list of the sub nodes attached on this node.
 	 */
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	TArray<UJointEdGraphNode*> SubNodes;
+	TArray<TObjectPtr<UJointEdGraphNode>> SubNodes;
 
 	//The data of the pins that this graph node has. Modifying this property will affect the pins list of the node.
 	//This is necessary due to the accessing the pins by its category and name manually is difficult to manage.
@@ -119,10 +119,10 @@ public:
 
 	//Used in the copy - paste actions of the tool kit and graph.
 	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	class UJointEdGraphNode* CachedParentNodeForCopyPaste;
+	TObjectPtr<UJointEdGraphNode> CachedParentNodeForCopyPaste;
 
 	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	TArray<UJointEdGraphNode*> CachedSubNodesForCopyPaste;
+	TArray<TObjectPtr<UJointEdGraphNode>> CachedSubNodesForCopyPaste;
 
 	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
 	TObjectPtr<UJointNodeBase> CachedNodeInstanceParentNodeForCopyPaste;
@@ -281,7 +281,7 @@ public:
 	 * Override this function to implement nodes that must be work as connector or proxy in the Joint. See how UJointEdGraphNode_Connector override this function.
 	 * Joint 2.10: Now it has SourcePin parameter to provide the pin that triggered this allocation action - useful when you want to allocate different node instances depending on the pin that triggered this action.
 	 */
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin = nullptr);
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin = nullptr);
 
 public:
 

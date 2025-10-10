@@ -147,7 +147,7 @@ public:
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Objects")
-	TArray<UJointNodeBase*> Nodes;
+	TArray<TObjectPtr<UJointNodeBase>> Nodes;
 };
 
 

@@ -35,18 +35,18 @@ public:
 	 * Change this property to make it start from a specific node.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Data")
-	TArray<UJointNodeBase*> StartNodes;
+	TArray<TObjectPtr<UJointNodeBase>> StartNodes;
 
 	/**
 	 * The nodes this Joint manager contains.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Data")
-	TArray<UJointNodeBase*> Nodes;
+	TArray<TObjectPtr<UJointNodeBase>> Nodes;
 
 public:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Data")
-	TArray<UJointNodeBase*> ManagerFragments;
+	TArray<TObjectPtr<UJointNodeBase>> ManagerFragments;
 
 public:
 	/**
@@ -76,7 +76,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragment for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	class UJointFragment* FindManagerFragmentByClass(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
@@ -85,7 +85,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragments for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	const TArray<class UJointFragment*> FindManagerFragmentsByClass(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
@@ -102,7 +102,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragment for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	class UJointFragment* FindManagerFragmentByClassOnLowerHierarchy(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
@@ -111,7 +111,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragments for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	const TArray<class UJointFragment*> FindManagerFragmentsByClassOnLowerHierarchy(
 		TSubclassOf<class UJointFragment> FragmentClass) const;
 
@@ -247,7 +247,7 @@ public:
 
 	/** Editor Graph Data for Joint Manager. */
 	UPROPERTY(VisibleAnywhere, Category="Editor")
-	class UEdGraph* JointGraph;
+	TObjectPtr<class UEdGraph> JointGraph;
 
 	UPROPERTY()
 	TArray<FEditedDocumentInfo> LastEditedDocuments;

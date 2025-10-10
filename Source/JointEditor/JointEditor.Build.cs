@@ -6,7 +6,6 @@ public class JointEditor : ModuleRules
 {
 	public JointEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PublicDependencyModuleNames.AddRange(new string[] { "Joint", "EditorWidgets" });
 		
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		PrecompileForTargets = PrecompileTargetsType.Any;
@@ -99,6 +98,7 @@ public class JointEditor : ModuleRules
 			"AIGraph",
 			"AnimGraph", 
 			
+			"MovieScene",
 			//"SceneOutliner",
 			//"ConfigEditor"
 		});
@@ -117,6 +117,10 @@ public class JointEditor : ModuleRules
 			"AssetRegistry",
 
 			"ClassViewer",
+			"Joint", 
+			"EditorWidgets",
+			"Sequencer" 
+			
 		});
 	}
 }

@@ -51,10 +51,10 @@ private:
 private:
 
 	UPROPERTY(Transient)
-	TArray<UVoltVariableBase*> QueuedVariables;
+	TArray<TObjectPtr<UVoltVariableBase>> QueuedVariables;
 	
 private:
 
 	UPROPERTY(Transient)
-	TArray<UVoltVariableBase*> Variables;
+	TArray<TObjectPtr<UVoltVariableBase>> Variables;
 };

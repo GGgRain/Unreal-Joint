@@ -150,22 +150,22 @@ public:
 
 protected:
 
-	void ReserveJointManagerInfo(TArray<FJointManagerInfo>& ManagerInfos);
+	void ReserveJointManagerInfo(TArray<FJointTreeJointManagerInfo>& ManagerInfos);
 	
-	void ReserveGraphInfo(TArray<FGraphInfo>& Graphs);
+	void ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs);
 
-	void ReserveNodeInfo(TArray<FNodeInfo>& NodeInfos);
+	void ReserveNodeInfo(TArray<FJointTreeNodeInfo>& NodeInfos);
 
-	void ReservePropertyInfo(TArray<FPropertyInfo>& Properties);
+	void ReservePropertyInfo(TArray<FJointTreePropertyInfo>& Properties);
 
 	
-	void BuildJointManagerInfo(const FJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output);
+	void BuildJointManagerInfo(const FJointTreeJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output);
 
-	void BuildGraphInfo(const FGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output);
+	void BuildGraphInfo(const FJointTreeGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output);
 	
-	void BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output);
+	void BuildNodeInfo(const FJointTreeNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output);
 
-	void BuildPropertyInfo(FPropertyInfo& PropertyInfo,FJointTreeBuilderOutput& Output);
+	void BuildPropertyInfo(FJointTreePropertyInfo& PropertyInfo,FJointTreeBuilderOutput& Output);
 
 	TSharedPtr<IJointTreeItem> CreateManagerTreeItem(TWeakObjectPtr<UJointManager> ManagerPtr);
 

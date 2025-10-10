@@ -757,7 +757,7 @@ void UJointEdGraphNode::NodeConnectionListChanged()
 	return;
 }
 
-void UJointEdGraphNode::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	Nodes.Add(GetCastedNodeInstance());
 }
@@ -795,7 +795,7 @@ void UJointEdGraphNode::GetPinDataToConnectionMap(TMap<FJointEdPinData, FJointNo
 			{
 				if (UJointEdGraphNode* LinkedPinOwner = CastPinOwnerToJointEdGraphNode(LinkedTo))
 				{
-					TArray<UJointNodeBase*> ActualNodes;
+					TArray<TObjectPtr<UJointNodeBase>> ActualNodes;
 
 					LinkedPinOwner->AllocateReferringNodeInstancesOnConnection(ActualNodes, LinkedTo);
 

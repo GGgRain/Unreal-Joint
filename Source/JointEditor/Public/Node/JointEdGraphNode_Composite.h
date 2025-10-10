@@ -62,7 +62,7 @@ public:
 	virtual bool CanReplaceEditorNodeClass() override;
 	
 	virtual void NodeConnectionListChanged() override;
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin) override;
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void UpdateNodeInstance() override;
 	virtual void UpdateNodeInstanceOuter() const override;
