@@ -41,8 +41,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 
 #include "Widgets/Notifications/SNotificationList.h"
-
-#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 
 
 #define LOCTEXT_NAMESPACE "JointManagerEditor"

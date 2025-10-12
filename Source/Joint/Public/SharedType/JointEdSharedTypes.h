@@ -14,7 +14,7 @@
 
 /**
  * This is the type of response the graph editor should take when making a connection
- * It has been introduced to support BP.
+ * It has been introduced to support BP, because the original ECanCreateConnectionResponse is not exposed to BP and Editor only.
  */
 
 UENUM(BlueprintType)

@@ -48,7 +48,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SInvalidationPanel.h"
 #include "Widgets/Images/SImage.h"
-#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 
 class UVolt_ASM_InterpWidgetTransform;
 
