@@ -48,7 +48,8 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SInvalidationPanel.h"
 #include "Widgets/Images/SImage.h"
-#include "Windows/WindowsPlatformApplicationMisc.h"
+
+#include "GenericPlatform/GenericPlatformApplicationMisc.h"
 
 class UVolt_ASM_InterpWidgetTransform;
 
@@ -852,7 +853,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 	if (PointerToTargetStructure) Value = PointerToTargetStructure->Node.ToString();
 
-	FPlatformApplicationMisc::ClipboardCopy(*Value);
+	FGenericPlatformApplicationMisc::ClipboardCopy(*Value);
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(OwnerJointEdGraphNode))
 	{
@@ -866,7 +867,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 {
 	FString Value;
 
-	FPlatformApplicationMisc::ClipboardPaste(Value);
+	FGenericPlatformApplicationMisc::ClipboardPaste(Value);
 
 	GEditor->BeginTransaction(FGenericCommands::Get().Paste->GetDescription());
 

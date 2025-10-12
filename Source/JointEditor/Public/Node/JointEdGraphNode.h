@@ -537,7 +537,7 @@ public:
 		return NodeInstance ? Cast<NodeClass>(NodeInstance) : nullptr;
 	}
 
-	FORCEINLINE UJointEdGraph* GetCastedGraph() const;
+	UJointEdGraph* GetCastedGraph() const;
 	
 public:
 	

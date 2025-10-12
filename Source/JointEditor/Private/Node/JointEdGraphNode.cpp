@@ -451,19 +451,19 @@ inline ECanCreateConnectionResponse ConvertToECanCreateConnectionResponse(
 {
 	switch (InResponse)
 	{
-	case CONNECT_RESPONSE_MAKE:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE;
-	case CONNECT_RESPONSE_DISALLOW:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW;
-	case CONNECT_RESPONSE_BREAK_OTHERS_A:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_A:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_A;
-	case CONNECT_RESPONSE_BREAK_OTHERS_B:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_B:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_B;
-	case CONNECT_RESPONSE_BREAK_OTHERS_AB:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_AB:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_AB;
-	case CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE;
-	case CONNECT_RESPONSE_MAKE_WITH_PROMOTION:
+	case EJointEdCanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_PROMOTION:
 		return ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE_WITH_PROMOTION;
 	}
 

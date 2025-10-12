@@ -74,7 +74,7 @@
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
 #include "Widgets/Images/SImage.h"
-#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "GenericPlatform/GenericPlatformApplicationMisc.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolkit"
@@ -1504,7 +1504,7 @@ bool FJointEditorToolkit::CanPasteNodes() const
 	}
 
 	FString ClipboardContent;
-	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
+	FGenericPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
 
 	return FEdGraphUtilities::CanImportNodesFromText(CurrentGraphEditor->GetCurrentGraph(), ClipboardContent);
 }
@@ -2977,7 +2977,7 @@ void FJointEditorToolkit::CopySelectedNodes()
 
 	FEdGraphUtilities::ExportNodesToText(NodesToCopy, ExportedText);
 
-	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
+	FGenericPlatformApplicationMisc::ClipboardCopy(*ExportedText);
 
 
 	for (UObject* NodeToCopy : NodesToCopy)
@@ -3133,7 +3133,7 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	// Grab the text to paste from the clipboard.
 	FString TextToImport;
 
-	FPlatformApplicationMisc::ClipboardPaste(TextToImport);
+	FGenericPlatformApplicationMisc::ClipboardPaste(TextToImport);
 
 	// Import the nodes
 	TSet<UEdGraphNode*> PastedNodes;
