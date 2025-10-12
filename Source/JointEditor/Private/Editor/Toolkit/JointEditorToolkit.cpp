@@ -53,9 +53,6 @@
 
 #include "Misc/EngineVersionComparison.h"
 
-//this is for the window os related features like copy-pasting the node object from a place to somewhere elses or storing the node object data as a text.
-//and in ue5, the codes related with the hololens has been deprecicated, and it's features had been merged into the "GenericPlatform/GenericPlatformApplicationMisc.h"
-
 #include "JointEdGraphNode_Composite.h"
 #include "JointEdGraphNode_Foundation.h"
 #include "JointEdGraphNode_Fragment.h"
@@ -74,7 +71,7 @@
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
 #include "Widgets/Images/SImage.h"
-#include "GenericPlatform/GenericPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolkit"
@@ -1504,7 +1501,7 @@ bool FJointEditorToolkit::CanPasteNodes() const
 	}
 
 	FString ClipboardContent;
-	FGenericPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
+	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
 
 	return FEdGraphUtilities::CanImportNodesFromText(CurrentGraphEditor->GetCurrentGraph(), ClipboardContent);
 }
@@ -2977,7 +2974,7 @@ void FJointEditorToolkit::CopySelectedNodes()
 
 	FEdGraphUtilities::ExportNodesToText(NodesToCopy, ExportedText);
 
-	FGenericPlatformApplicationMisc::ClipboardCopy(*ExportedText);
+	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
 
 
 	for (UObject* NodeToCopy : NodesToCopy)
@@ -3133,7 +3130,7 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	// Grab the text to paste from the clipboard.
 	FString TextToImport;
 
-	FGenericPlatformApplicationMisc::ClipboardPaste(TextToImport);
+	FPlatformApplicationMisc::ClipboardPaste(TextToImport);
 
 	// Import the nodes
 	TSet<UEdGraphNode*> PastedNodes;

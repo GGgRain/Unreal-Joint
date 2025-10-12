@@ -41,7 +41,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 
 #include "Widgets/Notifications/SNotificationList.h"
-#include "GenericPlatform/GenericPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 
 
 #define LOCTEXT_NAMESPACE "JointManagerEditor"
@@ -1353,7 +1353,7 @@ FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 	FString Value;
 	if (NodeHandle->GetValueAsFormattedString(Value, PPF_Copy) == FPropertyAccess::Success)
 	{
-		FGenericPlatformApplicationMisc::ClipboardCopy(*Value);
+		FPlatformApplicationMisc::ClipboardCopy(*Value);
 	}
 
 	bool bFromMultipleManager = false;
@@ -1378,7 +1378,7 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 {
 	FString Value;
 
-	FGenericPlatformApplicationMisc::ClipboardPaste(Value);
+	FPlatformApplicationMisc::ClipboardPaste(Value);
 
 	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
 
