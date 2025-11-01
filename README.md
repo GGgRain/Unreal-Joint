@@ -61,7 +61,7 @@
   <br>
   <a>Thank you for your all support and love for Joint!</a>
   <br>
-  <a>We are committed to advancing this system into a standard framework for narrative creation on the game industry. If you're interested in contributing to our journey in any way - whether through development, 3D art, animation, marketing, feedback, sponsorship, or anything else - please feel free to reach out to us!</a>
+  <a>We are committed to evolving this system into a powerful, free, and friendly standard for narrative creation in the game industry - accessible to everyone, just like Blender did for 3D creation! If you're interested in contributing to our journey in any way - whether through development, 3D art, animation, marketing, feedback, sponsorship, or anything else - please feel free to reach out to us!</a>
 </div>
 
 <div align="center">
