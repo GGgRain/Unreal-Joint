@@ -23,7 +23,7 @@ class IJointTreeItem;
 /** Options for skeleton building */
 struct JOINTEDITOR_API FJointPropertyTreeBuilderArgs
 {
-	FJointPropertyTreeBuilderArgs() : bShowJointManagers(false), bShowGraphs(false), bShowNodes(false), bShowProperties(false)
+	FJointPropertyTreeBuilderArgs() : bShowJointManagers(true), bShowGraphs(true), bShowNodes(true), bShowProperties(true)
 	{
 	}
 

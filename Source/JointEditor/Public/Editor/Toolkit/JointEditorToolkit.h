@@ -341,7 +341,6 @@ public:
 	void PasteNodesHere(const FVector2D& Location);
 	
 	bool CanPasteNodes() const;
-	virtual void FixupPastedNodes(const TSet<UEdGraphNode*>& NewPastedGraphNodes, const TMap<FGuid/*New*/, FGuid/*Old*/>& NewToOldNodeMapping);
 	
 	void CutSelectedNodes();
 	bool CanCutNodes() const;

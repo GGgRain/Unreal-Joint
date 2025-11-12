@@ -112,30 +112,6 @@ public:
 
 public:
 	
-	//Internal properties
-
-	//Guid of the parent node. Used in the copy - paste actions of the tool kit and graph.
-	UPROPERTY(SkipSerialization, meta=(IgnoreForMemberInitializationTest), VisibleAnywhere, Category="Developer Mode")
-	FGuid CachedParentGuidForCopyPaste;
-
-
-	//Used in the copy - paste actions of the tool kit and graph.
-	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	TObjectPtr<UJointEdGraphNode> CachedParentNodeForCopyPaste;
-
-	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	TArray<TObjectPtr<UJointEdGraphNode>> CachedSubNodesForCopyPaste;
-
-	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	TObjectPtr<UJointNodeBase> CachedNodeInstanceParentNodeForCopyPaste;
-
-	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
-	TArray<TObjectPtr<UJointNodeBase>> CachedNodeInstanceSubNodesForCopyPaste;
-
-	void ClearCachedParentGuid();
-
-public:
-	
 	/**
 	 * Return the node class this editor node class supports. Editor module will automatically find the Ed class for the provided node class.
 	 * @return the class of the Joint node that this node supports.
@@ -344,7 +320,12 @@ public:
 	virtual void ReplicateSubNodePins();
 
 	/**
-	 * Find the original pin that provided sub node pin is replicated from.
+	 * Find the original pin of that provided node pin is replicated from. If the provided pin is not a replicated pin, it will return the provided pin itself.
+	 */
+	UEdGraphPin* FindOriginalPin(UEdGraphPin* InReplicatedPin);
+	
+	/**
+	 * Find the original pin pf that provided sub node pin is replicated from. If the provided pin is not a replicated sub node pin, it will return nullptr.
 	 * @param InReplicatedSubNodePin The replicated sub node pin on the parent-most node.
 	 * @return Found original sub node pin instance.
 	 */
@@ -528,6 +509,8 @@ public:
 	
 public:
 
+	UObject* GetNodeInstance() const;
+
 	//Get cast version of the node instance. this is just for the clean code.
 	template<typename NodeClass=UJointNodeBase>
 	FORCEINLINE NodeClass* GetCastedNodeInstance() const
@@ -556,7 +539,7 @@ public:
 	 * @return Orientation of the sub node box organization.
 	 */
 	virtual EOrientation GetSubNodeBoxOrientation();
-	
+
 protected:
 	
 	/**
@@ -571,7 +554,7 @@ protected:
 	 */
 	UPROPERTY(Transient)
 	uint16 NodeDepth = 0;
-	
+
 public:
 
 	/**
@@ -631,8 +614,12 @@ public:
 
 public:
 	
+	void UpdateEdNodeOuterChainToParentNode();
+	void UpdateEdNodeOuterChainToGraph();
+	
+public:
+	
 	virtual void PostPlacedNewNode() override;
-
 	virtual void PrepareForCopying() override;
 	virtual void PostCopyNode();
 	virtual void PostPasteNode() override;
@@ -644,7 +631,7 @@ public:
 	virtual void DestroyNode() override;
 
 	virtual void ImportCustomProperties(const TCHAR* SourceText, FFeedbackContext* Warn) override;
-
+	
 public:
 
 	virtual void ReconstructNodeInHierarchy();

@@ -414,7 +414,7 @@ public:
 
 public:
 	//Executed when a new node has been requested to be begin played.
-	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node BeginPlayed")
+	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Begin Played")
 	FOnJointNodeRequestBeginPlay OnJointNodeBeginPlayDelegate;
 
 	//Executed when a new node has been requested to be end played.

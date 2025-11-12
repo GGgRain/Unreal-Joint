@@ -165,8 +165,8 @@ TSharedRef<SWidget> FJointTreeItem_Property::GenerateWidgetForDataColumn(const T
 FName FJointTreeItem_Property::GetRowItemName() const
 {
 	return Property != nullptr
-		       ? FName(Property->GetName())
-		       : FName("Invalid Property");
+		       ? FName(Property->GetName().Replace(TEXT(" "), TEXT("_")))
+		       : FName("Invalid_Property");
 }
 
 UObject* FJointTreeItem_Property::GetObject() const
@@ -303,7 +303,7 @@ const FString FJointTreeItem_Property::GetFilterString()
 		FilterString += JointTreeItemTag->GetFilterText().ToString();
 	}
 
-	return "Name=" + GetRowItemName().ToString() + " Value=" + AdditionalRowSearchString + FilterString;
+	return "Name=" + GetRowItemName().ToString() + ",Value=" + AdditionalRowSearchString.Replace(TEXT(" "), TEXT("_")) + FilterString;
 }
 
 #undef LOCTEXT_NAMESPACE

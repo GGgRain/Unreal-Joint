@@ -694,13 +694,7 @@ void FJointEdGraphNodesCustomizationBase::HideDeveloperModeProperties(IDetailLay
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, NodeClassData));
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, ParentNode));
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SubNodes));
-		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedParentGuidForCopyPaste));
-		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedParentNodeForCopyPaste));
-		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedSubNodesForCopyPaste));
-		DetailBuilder.
-			HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedNodeInstanceParentNodeForCopyPaste));
-		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, CachedNodeInstanceSubNodesForCopyPaste));
-
+		
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SimpleDisplayHiddenProperties));
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, bFromExternal));
 	}

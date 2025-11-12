@@ -114,11 +114,11 @@ FName FJointTreeItem_Node::GetRowItemName() const
 		if (const UJointManager* JointManager = JointNode->GetCastedNodeInstance<UJointManager>())
 		{
 			//root node of the manager
-			return FName(JointNode->GetJointManager()->GetPathName() + ".Root");
+			return FName(JointNode->GetJointManager()->GetPathName().Replace(TEXT(" "), TEXT("_")) + ".Root");
 		}
 	}
 	
-	return FName(EditorNodePtr->GetPathName());
+	return FName(EditorNodePtr->GetPathName().Replace(TEXT(" "), TEXT("_")));
 }
 
 void FJointTreeItem_Node::OnItemDoubleClicked()
@@ -180,6 +180,11 @@ void FJointTreeItem_Node::AllocateItemTags()
 TSet<TSharedPtr<IJointTreeItemTag>> FJointTreeItem_Node::GetItemTags()
 {
 	return ItemTags;
+}
+
+const FString FJointTreeItem_Node::GetFilterString()
+{
+	return "Name=" + GetRowItemName().ToString().Replace(TEXT(" "), TEXT("_")) + "DisplayName" + EditorNodePtr->GetNodeTitle(ENodeTitleType::FullTitle).ToString().Replace(TEXT(" "), TEXT("_"));
 }
 
 FText FJointTreeItem_Node::GetDisplayName() const

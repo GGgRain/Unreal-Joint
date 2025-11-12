@@ -54,7 +54,11 @@ public:
 
 	virtual void AllocateDefaultPins() override;
 
+	virtual void PrepareForCopying() override;
+	virtual void PostCopyNode() override;
+	virtual void PostPasteNode() override;
 	virtual bool CanDuplicateNode() const override;
+	
 	virtual void ReconstructNode() override;
 	virtual void PostPlacedNewNode() override;
 	virtual bool CanHaveSubNode() const override;

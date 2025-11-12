@@ -56,8 +56,11 @@ public:
 	GENERATED_BODY()
 
 public:
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Connection Response")
 	FText Message;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Connection Response")
 	TEnumAsByte<EJointEdCanCreateConnectionResponse::Type> Response;
 
 public:

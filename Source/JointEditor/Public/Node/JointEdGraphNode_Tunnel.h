@@ -57,6 +57,8 @@ public:
 	virtual bool CanHaveSubNode() const override;
 	virtual bool CanReplaceNodeClass() override;
 	virtual bool CanReplaceEditorNodeClass() override;
+
+	virtual bool CanUserDeleteNode() const override;
 	
 	virtual void NodeConnectionListChanged() override;
 

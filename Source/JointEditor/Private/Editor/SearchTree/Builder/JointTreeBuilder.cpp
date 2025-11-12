@@ -178,8 +178,6 @@ void FJointTreeBuilder::ReserveJointManagerInfo(TArray<FJointTreeJointManagerInf
 
 		ManagerInfos.Emplace(FJointTreeJointManagerInfo(BuildTargetJointManagers[i]));
 	}
-
-	Algo::Sort(ManagerInfos);
 }
 
 void FJointTreeBuilder::ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs)
@@ -194,8 +192,6 @@ void FJointTreeBuilder::ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs)
 
 		Graphs.Emplace(FJointTreeGraphInfo(BuildTargetGraphs[i]));
 	}
-
-	Algo::Sort(Graphs);
 }
 
 void FJointTreeBuilder::ReserveNodeInfo(TArray<FJointTreeNodeInfo>& NodeInfos)
@@ -641,19 +637,7 @@ EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
 
 	InItem->GetFilteredChildren().Empty();
 
-	if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
-	{
-		FilterResult = FilterItem(InArgs, InItem);
-		InItem->SetFilterResult(FilterResult);
-
-		if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(InItem); }
-
-		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
-		{
-			FilterRecursive(InArgs, Item, OutFilteredItems);
-		}
-	}
-	else if (InArgs.TextFilter.IsValid())
+	if (InArgs.TextFilter.IsValid())
 	{
 		// check to see if we have any children that pass the filter
 		EJointTreeFilterResult DescendantsFilterResult = EJointTreeFilterResult::Hidden;

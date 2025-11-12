@@ -110,6 +110,11 @@ bool UJointEdGraphNode_Tunnel::CanReplaceEditorNodeClass()
 	return false;
 }
 
+bool UJointEdGraphNode_Tunnel::CanUserDeleteNode() const
+{
+	return false;
+}
+
 
 void UJointEdGraphNode_Tunnel::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -157,7 +162,7 @@ FVector2D UJointEdGraphNode_Tunnel::GetNodeMinimumSize() const
 
 bool UJointEdGraphNode_Tunnel::CanDuplicateNode() const
 {
-	return true; //Take care the occasion when there is another output node with the same Guid.
+	return false; //Take care the occasion when there is another output node with the same Guid.
 }
 
 void UJointEdGraphNode_Tunnel::ReconstructNode()
