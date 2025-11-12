@@ -2916,8 +2916,10 @@ void FJointEditorToolkit::CopySelectedNodes()
 	}
 	
 	for (UObject* NodeToCopy : NodesToCopy)
+	{
 		if (UEdGraphNode* CastedNode = Cast<UEdGraphNode>(NodeToCopy))
-			CastedNode->PrepareForCopying();
+			CastedNode->PrepareForCopying();	
+	}
 
 	FString ExportedText;
 	
@@ -2926,8 +2928,10 @@ void FJointEditorToolkit::CopySelectedNodes()
 	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
 	
 	for (UObject* NodeToCopy : NodesToCopy)
+	{
 		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
-			CastedNode->PostCopyNode();
+			CastedNode->PostCopyNode();	
+	}
 
 }
 

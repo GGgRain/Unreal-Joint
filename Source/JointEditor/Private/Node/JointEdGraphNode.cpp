@@ -932,7 +932,7 @@ void UJointEdGraphNode::PostPlacedNewNode()
 }
 
 
-void UJointEdGraphNode::UpdateEdNodeOuterChainToParentNode()
+void UJointEdGraphNode::HoldOuterChainToCopy()
 {
 	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
 	if (ParentNode.Get() != nullptr)
@@ -943,50 +943,52 @@ void UJointEdGraphNode::UpdateEdNodeOuterChainToParentNode()
 		SetOuterAs(GetGraph());
 	}
 
+	//Hold the node instance to make sure it is copied as well.
+	SetNodeInstanceOuterAs(this);
+	
+
 	for (UJointEdGraphNode* SubNode : SubNodes)
 	{
 		if (!SubNode) continue;
 
-		SubNode->UpdateEdNodeOuterChainToParentNode();
+		SubNode->HoldOuterChainToCopy();
 	}
 }
 
-void UJointEdGraphNode::UpdateEdNodeOuterChainToGraph()
+void UJointEdGraphNode::RestoreOuterChainFromCopy()
 {
 	if (ParentNode != nullptr)
 	{
 		SetOuterAs(ParentNode.Get()->GetGraph());
 	}
 
+	UpdateNodeInstanceOuterToJointManager();
+	
 	for (TObjectPtr<UJointEdGraphNode> SubNode : SubNodes)
 	{
 		if (!SubNode) continue;
 		
-		SubNode->UpdateEdNodeOuterChainToGraph();
+		SubNode->RestoreOuterChainFromCopy();
 	}
 }
 
 void UJointEdGraphNode::PrepareForCopying()
 {
-	//Hold the node instance to make sure it is copied as well.
-	SetNodeInstanceOuterAs(this);
-
-	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
-	UpdateEdNodeOuterChainToParentNode();
+	//Hold the outers to make it sure the copy-paste action works properly (make the objects reachable + duplicatable during the copy-paste action).
+	HoldOuterChainToCopy();
 }
 
 
 void UJointEdGraphNode::PostCopyNode()
 {
-	UpdateEdNodeOuterChainToGraph();
-	
-	UpdateNodeInstanceOuter();
+	//Restore the outer chain after the copy action is done. TODO: see if we need to just replace with existing functions.
+	RestoreOuterChainFromCopy();
 }
 
 void UJointEdGraphNode::PostPasteNode()
 {
 	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
-	UpdateEdNodeOuterChainToGraph();
+	RestoreOuterChainFromCopy();
 	
 	ReallocateNodeInstanceGuid();
 	
@@ -1643,22 +1645,21 @@ void UJointEdGraphNode::UpdateNodeInstance()
 
 	BindNodeInstance();
 
-	UpdateNodeInstanceOuter();
+	UpdateNodeInstanceOuterToJointManager();
+
+	UpdateSubNodesInstanceOuterToJointManager();
 
 	SyncNodeInstanceSubNodeListFromGraphNode();
 }
 
-void UJointEdGraphNode::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode::UpdateNodeInstanceOuterToJointManager() const
 {
 	UJointManager* Manager = GetJointManager();
 
 	SetNodeInstanceOuterAs(Manager);
-
-	//Propagate the execution to the children sub nodes to make sure all the sub nodes' instances are correctly assigned to its parent node.
-	UpdateSubNodesInstanceOuter();
 }
 
-void UJointEdGraphNode::UpdateSubNodesInstanceOuter() const
+void UJointEdGraphNode::UpdateSubNodesInstanceOuterToJointManager() const
 {
 	if (this->NodeInstance == nullptr) return;
 
@@ -1672,7 +1673,7 @@ void UJointEdGraphNode::UpdateSubNodesInstanceOuter() const
 
 		SubNode->SetNodeInstanceOuterAs(Manager);
 
-		SubNode->UpdateSubNodesInstanceOuter();
+		SubNode->UpdateSubNodesInstanceOuterToJointManager();
 	}
 }
 

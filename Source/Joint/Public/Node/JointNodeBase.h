@@ -644,7 +644,19 @@ private:
 	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Networking")
 	bool bReplicates = false;
-
+	
+	/**
+	 * Joint 2.11.0
+	 * Whether to use the player controller's function callspace for the RPC function calls.
+	 * If you set this to true, then it will use the Player controller's function callspace instead of the Joint actor's one, allowing the RPC functions to be executed on the player controller side.
+	 * Which means that you don't need to implement some 'workaround' functions on the controller side to execute the RPC functions on the node instance.
+	 *
+	 * This is not enabled by default, because it can cause some unexpected issues we haven't foreseen yet. So please use this option with caution.
+	 * (If you experience any issues regarding this option, please report them to us so we can fix them asap.)
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Networking|Advanced (Experimental)")
+	bool bUsePlayerControllerAsRPCFunctionCallspace = false;
+	
 public:
 	
 	/**

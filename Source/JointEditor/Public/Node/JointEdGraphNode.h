@@ -612,10 +612,13 @@ public:
 
 	void GrabSlateDetailLevelFromNodeInstance();
 
-public:
-	
-	void UpdateEdNodeOuterChainToParentNode();
-	void UpdateEdNodeOuterChainToGraph();
+protected:
+
+	//hold the outer chain of the node instances and ed nodes on its hierarchy to be able to copy them properly.
+	void HoldOuterChainToCopy();
+
+	//Resolve the outer chain of the node instances and ed nodes on its hierarchy after the copy action.
+	void RestoreOuterChainFromCopy();
 	
 public:
 	
@@ -715,10 +718,12 @@ protected:
 	virtual void ReallocateNodeInstanceGuid() const;
 
 	//Update node outer to the current graph's Joint manager.
-	virtual void UpdateNodeInstanceOuter() const;
+	virtual void UpdateNodeInstanceOuterToJointManager() const;
 
 	//Update sub nodes outer to its parent node.
-	virtual void UpdateSubNodesInstanceOuter() const;
+	virtual void UpdateSubNodesInstanceOuterToJointManager() const;
+
+protected:
 
 	//Set the node instance's outer to the provided object.
 	virtual bool SetNodeInstanceOuterAs(UObject* NewOuter) const;

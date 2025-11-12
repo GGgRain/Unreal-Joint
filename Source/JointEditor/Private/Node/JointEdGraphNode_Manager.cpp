@@ -124,12 +124,12 @@ void UJointEdGraphNode_Manager::UpdateNodeInstance()
 {
 	BindNodeInstance();
 
-	UpdateNodeInstanceOuter();
+	UpdateNodeInstanceOuterToJointManager();
 
 	SyncNodeInstanceSubNodeListFromGraphNode();
 }
 
-void UJointEdGraphNode_Manager::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode_Manager::UpdateNodeInstanceOuterToJointManager() const
 {
 	//Revert if this node is sub node since the sub node's outer should not be the Joint manager.
 	if (IsSubNode()) return;
@@ -139,7 +139,7 @@ void UJointEdGraphNode_Manager::UpdateNodeInstanceOuter() const
 	SetNodeInstanceOuterAs(Manager);
 
 	//Propagate the execution to the children sub nodes to make sure all the sub nodes' instances are correctly assigned to its parent node.
-	UpdateSubNodesInstanceOuter();
+	UpdateSubNodesInstanceOuterToJointManager();
 }
 
 

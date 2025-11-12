@@ -278,7 +278,7 @@ void UJointEdGraphNode_Tunnel::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Tunnel::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode_Tunnel::UpdateNodeInstanceOuterToJointManager() const
 {
 }
 

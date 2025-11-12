@@ -421,7 +421,7 @@ void UJointEdGraphNode_Composite::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Composite::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode_Composite::UpdateNodeInstanceOuterToJointManager() const
 {
 }
 

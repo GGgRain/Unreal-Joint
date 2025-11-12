@@ -69,7 +69,7 @@ public:
 	
 	virtual void UpdateNodeInstance() override;
 	
-	virtual void UpdateNodeInstanceOuter() const override;
+	virtual void UpdateNodeInstanceOuterToJointManager() const override;
 
 	virtual void DestroyNode() override;
 

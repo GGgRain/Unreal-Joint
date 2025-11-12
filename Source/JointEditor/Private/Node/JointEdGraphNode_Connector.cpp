@@ -217,7 +217,7 @@ void UJointEdGraphNode_Connector::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Connector::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode_Connector::UpdateNodeInstanceOuterToJointManager() const
 {
 }
 
