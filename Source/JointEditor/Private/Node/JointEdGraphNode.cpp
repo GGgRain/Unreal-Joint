@@ -1057,23 +1057,11 @@ void UJointEdGraphNode::DestroyNode()
 	Super::DestroyNode();
 }
 
-PRAGMA_DISABLE_OPTIMIZATION
 void UJointEdGraphNode::ImportCustomProperties(const TCHAR* SourceText, FFeedbackContext* Warn)
 {
 	Super::ImportCustomProperties(SourceText, Warn);
-	/*
-	Super::ImportCustomProperties(SourceText, Warn);
 
-	UJointEdGraphNode* ParentMostNode = GetParentmostNode();
-
-	if (ParentMostNode)
-	{
-		//Make it sure the replicated pins are up to date.
-		ParentMostNode->ReplicateSubNodePins();
-	}
-	*/
 }
-PRAGMA_ENABLE_OPTIMIZATION
 
 void UJointEdGraphNode::ReconstructNodeInHierarchy()
 {

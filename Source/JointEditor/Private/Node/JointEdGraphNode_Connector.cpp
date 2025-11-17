@@ -219,6 +219,7 @@ void UJointEdGraphNode_Connector::UpdateNodeInstance()
 
 void UJointEdGraphNode_Connector::UpdateNodeInstanceOuterToJointManager() const
 {
+	//bubble up (because we don't have own node instance)
 }
 
 void UJointEdGraphNode_Connector::DestroyNode()

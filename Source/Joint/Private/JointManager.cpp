@@ -485,7 +485,7 @@ void UJointManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UJointManager, Nodes)
+	//DOREPLIFETIME(UJointManager, Nodes)
 }
 
 bool UJointManager::IsSupportedForNetworking() const

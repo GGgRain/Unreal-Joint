@@ -421,8 +421,9 @@ void UJointEdGraphNode_Composite::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Composite::UpdateNodeInstanceOuterToJointManager() const
+bool UJointEdGraphNode_Composite::CanUserDeleteNode() const
 {
+	return true;
 }
 
 void UJointEdGraphNode_Composite::DestroyNode()

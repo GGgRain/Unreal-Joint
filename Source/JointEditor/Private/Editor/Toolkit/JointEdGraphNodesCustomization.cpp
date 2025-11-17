@@ -316,7 +316,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 	NodeInstanceCategory.AddExternalObjects(
 		NodeInstanceObjs,
-		EPropertyLocation::Common,
+		EPropertyLocation::Default,
 		FAddPropertyParams()
 		.HideRootObjectNode(true)
 	);
@@ -915,28 +915,18 @@ TSharedRef<IDetailCustomization> FJointNodeInstanceCustomizationBase::MakeInstan
 	return MakeShareable(new FJointNodeInstanceCustomizationBase);
 }
 
-void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+void FJointNodeInstanceCustomizationBase::PopulateNodeClassesDescription(IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances)
 {
-	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
-		DetailBuilder.GetSelectedObjects());
-
-	//If it was empty, try to grab the node instances by itself.
-	if (NodeInstances.IsEmpty())
-	{
-		NodeInstances = JointDetailCustomizationHelpers::CastToNodeInstance(DetailBuilder.GetSelectedObjects());
-	}
-
-	//Display class description for the nodes when all the nodes are instanced.
 	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
 	{
 		TSet<UClass*> ClassesToDescribe;
 
 		for (UObject* Obj : NodeInstances)
 		{
-			if (Obj != nullptr)
-			{
-				if (!ClassesToDescribe.Contains(Obj->GetClass())) ClassesToDescribe.Add(Obj->GetClass());
-			}
+			if (Obj == nullptr) continue;
+			if (ClassesToDescribe.Contains(Obj->GetClass())) continue;
+
+			ClassesToDescribe.Add(Obj->GetClass());
 		}
 
 		TSharedPtr<SScrollBox> DescriptionBox;
@@ -968,13 +958,27 @@ void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 	{
 		//DetailBuilder.HideCategory("Description");
 	}
+}
+
+void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
+		DetailBuilder.GetSelectedObjects());
+
+	//If it was empty, try to grab the node instances by itself.
+	if (NodeInstances.IsEmpty())
+	{
+		NodeInstances = JointDetailCustomizationHelpers::CastToNodeInstance(DetailBuilder.GetSelectedObjects());
+	}
+
+	//Display class description for the nodes when all the nodes are instanced.
+	PopulateNodeClassesDescription(DetailBuilder, NodeInstances);
 
 	//Display class description for the nodes when all the nodes are instanced.
 	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
 	{
 		DetailBuilder.HideCategory("Editor");
 	}
-
 	//Hide the properties that are not instance editable.
 	HideDisableEditOnInstanceProperties(DetailBuilder, NodeInstances);
 	
@@ -1008,12 +1012,13 @@ void FJointNodeInstanceCustomizationBase::HideDisableEditOnInstanceProperties(
 		for (TFieldIterator<FProperty> PropIt(Object->GetClass()); PropIt; ++PropIt)
 		{
 			if (!PropIt->IsValidLowLevel()) continue;
-
+			
 			if (!PropIt->HasAnyPropertyFlags(CPF_DisableEditOnInstance)) continue;
-
+			
 			TSharedRef<IPropertyHandle> PropertyHandle = DetailBuilder.GetProperty(
 				*PropIt->GetName(), Object->GetClass());
 
+			DetailBuilder.HideProperty(*PropIt->GetName());
 			PropertyHandle->MarkHiddenByCustomization();
 		}
 	}

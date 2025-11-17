@@ -3093,6 +3093,9 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 			{
 				CastedPastedNode->ParentNode = AttachTargetNode;
 				AttachTargetNode->AddSubNode(CastedPastedNode);
+
+				// Remove the Paste Node from the graph.
+				CastedGraph->RemoveNode(CastedPastedNode);
 			}
 		}
 	}

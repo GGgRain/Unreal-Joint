@@ -66,7 +66,7 @@ public:
 	/**
 	 * The Joint Actor used for runtime playback.
 	 */
-	UPROPERTY(Transient, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	UPROPERTY(Transient, BlueprintReadWrite, Category="Runtime", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AJointActor> RuntimePlaybackActor;
 	
 };

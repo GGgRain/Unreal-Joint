@@ -89,9 +89,14 @@ public:
 	 * It holds the copy of the original Joint manager.
 	 * This actor has the Joint manager's ownership on runtime.
 	 */
+	//UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Joint", ReplicatedUsing = OnRep_JointManager)
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Joint")
 	TObjectPtr<UJointManager> JointManager;
 
+	UFUNCTION()
+	void OnRep_JointManager(const UJointManager* PreviousJointManager);
+
+	
 private:
 #if WITH_EDITORONLY_DATA
 

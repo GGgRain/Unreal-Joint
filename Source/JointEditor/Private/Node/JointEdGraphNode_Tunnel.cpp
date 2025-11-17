@@ -278,10 +278,6 @@ void UJointEdGraphNode_Tunnel::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Tunnel::UpdateNodeInstanceOuterToJointManager() const
-{
-}
-
 void UJointEdGraphNode_Tunnel::DestroyNode()
 {
 	Super::DestroyNode();
