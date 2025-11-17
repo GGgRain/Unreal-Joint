@@ -50,7 +50,8 @@
   <a href="#star-join-joint-development-team">Join Joint Development Team</a> &#xa0; | &#xa0;
   <a href="#clipboard-main-features">Main Features</a> &#xa0; | &#xa0;
   <a href="#inbox_tray-installation">Installation</a> &#xa0; | &#xa0;
-  <a href="#loudspeaker-supports">Supports</a> &#xa0;
+  <a href="#loudspeaker-supports">Supports</a> &#xa0 | &#xa0;
+  <a href="https://gggrain.github.io/Unreal-Joint-Documentation/docs/category/joint-1">Release Note</a>
 </p>
 
 ## :sparkles: History ##
