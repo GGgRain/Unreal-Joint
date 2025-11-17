@@ -150,10 +150,10 @@ bool FJointTreeFilterItem::IsEqual(const TSharedPtr<FJointTreeFilterItem>& Other
 
 const FString FJointTreeFilterItem::ExtractFilterItem()
 {
-	return GetIsEnabled() ? FilterString : "";
+	return GetIsEnabled() ? FilterString.Replace(TEXT(" "), TEXT("_")) : "";
 }
 
 FText FJointTreeFilterItem::ExtractFilterItemText()
 {
-	return GetIsEnabled() ? FText::FromString(FilterString) : FText::GetEmpty();
+	return FText::FromString(ExtractFilterItem());
 }

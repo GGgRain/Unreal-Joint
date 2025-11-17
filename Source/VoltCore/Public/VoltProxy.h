@@ -42,7 +42,7 @@ public:
 public:
 
 	UPROPERTY(Transient)
-	UVoltVariableCollection* VariableCollection;
+	TObjectPtr<UVoltVariableCollection> VariableCollection;
 
 	TWeakPtr<SWidget> Widget;
 

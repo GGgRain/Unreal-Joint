@@ -27,7 +27,7 @@ public:
 public:
 
 	UPROPERTY()
-	class UJointManager* JointManager;
+	TObjectPtr<UJointManager> JointManager;
 
 public:
 	
@@ -72,6 +72,12 @@ public:
 	 */
 	TArray<UJointEdGraph*> GetAllSubGraphsRecursively() const;
 
+	/**
+	 * Get all the sub graphs that are directly under this graph.
+	 * @return All the sub graphs that are directly under this graph
+	 */
+	TArray<UJointEdGraph*> GetDirectSubGraphs() const;
+	
 public:
 
 	static TArray<UJointEdGraph*> GetAllGraphsFrom(UEdGraph* InGraph);
@@ -178,6 +184,16 @@ private:
 	
 	//Patch node instance from stored node class of the node. Can choose whether to propagate to the children nodes.
 	void PatchNodeInstanceFromStoredNodeClass(TObjectPtr<UEdGraphNode> TargetNode, const bool bPropagateToSubNodes = true);
+
+public:
+
+	// Duplication Related
+	virtual void PreDuplicate(FObjectDuplicationParameters& DupParams) override;
+	virtual void PostDuplicate(bool bDuplicateForPIE) override;
+
+	//
+	virtual void PrepareForCopy();
+	virtual void PostCopy();
 
 public:
 

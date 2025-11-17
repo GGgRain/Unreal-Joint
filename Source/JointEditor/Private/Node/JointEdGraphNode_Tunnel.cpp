@@ -110,6 +110,11 @@ bool UJointEdGraphNode_Tunnel::CanReplaceEditorNodeClass()
 	return false;
 }
 
+bool UJointEdGraphNode_Tunnel::CanUserDeleteNode() const
+{
+	return false;
+}
+
 
 void UJointEdGraphNode_Tunnel::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -157,7 +162,7 @@ FVector2D UJointEdGraphNode_Tunnel::GetNodeMinimumSize() const
 
 bool UJointEdGraphNode_Tunnel::CanDuplicateNode() const
 {
-	return true; //Take care the occasion when there is another output node with the same Guid.
+	return false; //Take care the occasion when there is another output node with the same Guid.
 }
 
 void UJointEdGraphNode_Tunnel::ReconstructNode()
@@ -209,7 +214,7 @@ void UJointEdGraphNode_Tunnel::NodeConnectionListChanged()
 
 }
 
-void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	if (SourcePin == nullptr) return;
 
@@ -221,7 +226,7 @@ void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray
 
 	//a function to implement the pins to the input sink node and output source node.
 
-	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
+	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
 	{
 		if (InSourceNode == nullptr) return;
 		
@@ -231,7 +236,7 @@ void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray
 		}
 	};
 	
-	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
+	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
 	{
 		InNodes.Empty();
 		
@@ -270,10 +275,6 @@ void UJointEdGraphNode_Tunnel::AllocateReferringNodeInstancesOnConnection(TArray
 
 
 void UJointEdGraphNode_Tunnel::UpdateNodeInstance()
-{
-}
-
-void UJointEdGraphNode_Tunnel::UpdateNodeInstanceOuter() const
 {
 }
 

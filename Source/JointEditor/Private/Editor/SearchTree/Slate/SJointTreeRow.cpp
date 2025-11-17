@@ -42,12 +42,7 @@ TSharedRef< SWidget > SJointTreeRow::GenerateWidgetForColumn( const FName& Colum
 	{
 		TSharedPtr< SHorizontalBox > RowBox;
 
-		SAssignNew( RowBox, SHorizontalBox )
-			.Visibility_Lambda([this]()
-			{
-				return (Item.Pin()->GetFilterResult() == EJointTreeFilterResult::ShownDescendant || Item.Pin()->GetFilterResult() == EJointTreeFilterResult::Shown)  && GetMutableDefault<UPersonaOptions>()->bHideParentsWhenFiltering ? EVisibility::Collapsed : EVisibility::Visible;
-			});
-
+		SAssignNew( RowBox, SHorizontalBox );
 		RowBox->AddSlot()
 			.AutoWidth()
 			[

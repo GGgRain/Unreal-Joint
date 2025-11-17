@@ -25,5 +25,9 @@ class JOINT_API UJointFragment : public UJointNodeBase
 public:
 	
 	UJointFragment();
-	
+
+public:
+
+	UFUNCTION(BlueprintPure, Category = "Fragment")
+	static bool IsManagerFragment(UJointNodeBase* InFragment);
 };

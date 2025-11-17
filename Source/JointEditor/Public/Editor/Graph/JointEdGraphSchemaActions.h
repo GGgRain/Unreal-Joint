@@ -28,11 +28,11 @@ public:
 	
 	//Template of node we want to create.
 	UPROPERTY()
-	UJointEdGraphNode* NodeTemplate;
+	TObjectPtr<UJointEdGraphNode> NodeTemplate;
 
 	//parent node that we will attach this node at, must be casted to UJointEdGraphNode first.
 	UPROPERTY()
-	TArray<UObject*> NodesToAttachTo;
+	TArray<TObjectPtr<UObject>> NodesToAttachTo;
 	
 public:
 	
@@ -61,7 +61,7 @@ public:
 	
 	//Template of node we want to create.
 	UPROPERTY()
-	UJointEdGraphNode* NodeTemplate;
+	TObjectPtr<UJointEdGraphNode> NodeTemplate;
 
 public:
 	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode);

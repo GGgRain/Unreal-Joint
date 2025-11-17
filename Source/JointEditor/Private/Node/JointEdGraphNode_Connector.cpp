@@ -205,7 +205,7 @@ void UJointEdGraphNode_Connector::NodeConnectionListChanged()
 	}
 }
 
-void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode_Connector::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	CachedPairOutputConnector = GetPairOutputConnector();
 	
@@ -217,8 +217,9 @@ void UJointEdGraphNode_Connector::UpdateNodeInstance()
 {
 }
 
-void UJointEdGraphNode_Connector::UpdateNodeInstanceOuter() const
+void UJointEdGraphNode_Connector::UpdateNodeInstanceOuterToJointManager() const
 {
+	//bubble up (because we don't have own node instance)
 }
 
 void UJointEdGraphNode_Connector::DestroyNode()
