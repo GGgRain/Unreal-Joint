@@ -26,8 +26,6 @@ public:
 	virtual void AllocateItemTags() override;
 	virtual TSet<TSharedPtr<IJointTreeItemTag>> GetItemTags() override;
 
-	virtual const FString GetFilterString() override;
-
 public:
 
 	FText GetDisplayName() const;

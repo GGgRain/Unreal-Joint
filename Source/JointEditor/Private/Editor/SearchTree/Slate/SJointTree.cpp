@@ -128,16 +128,13 @@ void SJointTree::ApplyFilter()
 	
 	const FString ExtractedFilterItem = Filter->ExtractFilterItems().ToString();
 
-	FString QueryText = QueryInlineFilterText.ToString();
-	QueryText = QueryText.Replace(TEXT(" "), TEXT("_"));
-	
 	TextFilterPtr->SetFilterText(
 		FText::FromString(
-			!QueryText.IsEmpty() && !ExtractedFilterItem.IsEmpty()
-				? QueryText + " && " + ExtractedFilterItem
-				: !QueryText.IsEmpty() && ExtractedFilterItem.IsEmpty()
-				? QueryText
-				: QueryText.IsEmpty() && !ExtractedFilterItem.IsEmpty()
+			!QueryInlineFilterText.IsEmpty() && !ExtractedFilterItem.IsEmpty()
+				? QueryInlineFilterText.ToString() + " && " + ExtractedFilterItem
+				: !QueryInlineFilterText.IsEmpty() && ExtractedFilterItem.IsEmpty()
+				? QueryInlineFilterText.ToString()
+				: QueryInlineFilterText.IsEmpty() && !ExtractedFilterItem.IsEmpty()
 				? ExtractedFilterItem
 				: ""
 		)
@@ -247,6 +244,15 @@ void SJointTree::HandleTreeRefresh()
 	TreeView->RequestTreeRefresh();
 }
 
+void SJointTree::SetInitialExpansionState()
+{
+	if (!TreeView) return;
+
+	for (TSharedPtr<IJointTreeItem>& Item : LinearItems)
+	{
+		TreeView->SetItemExpansion(Item, Item->IsInitiallyExpanded());
+	}
+}
 
 TSharedRef<ITableRow> SJointTree::HandleGenerateRow(TSharedPtr<IJointTreeItem> Item,
                                                     const TSharedRef<STableViewBase>& OwnerTable)

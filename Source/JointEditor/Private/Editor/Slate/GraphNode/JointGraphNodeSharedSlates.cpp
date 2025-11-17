@@ -48,6 +48,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SInvalidationPanel.h"
 #include "Widgets/Images/SImage.h"
+
 #include "HAL/PlatformApplicationMisc.h"
 
 class UVolt_ASM_InterpWidgetTransform;
@@ -316,6 +317,156 @@ void SJointGraphNodeInsertPoint::OnDragLeave(const FDragDropEvent& DragDropEvent
 	SCompoundWidget::OnDragLeave(DragDropEvent);
 }
 
+void SJointGraphNodeInsertPoint::Highlight(const float& Delay = 0)
+{
+	VOLT_STOP_ANIM(Track);
+
+	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_Delay)
+			.Duration(Delay),
+			VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+				.InterpolationMode(EVoltInterpMode::AlphaBased)
+				.AlphaBasedDuration(0.2)
+				.AlphaBasedBlendExp(6)
+				.AlphaBasedEasingFunction(EEasingFunc::CircularInOut)
+				.bUseStartWidgetTransform(true)
+				.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.6, 0.6),
+				                                       FVector2D::ZeroVector, 0))
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.5, 0.5),
+				                                        FVector2D::ZeroVector, 0)),
+				VOLT_MAKE_MODULE(UVolt_ASM_Sequence)(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.1)
+					.AlphaBasedBlendExp(6)
+					.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
+					.bUseStartOpacity(true)
+					.StartOpacity(0)
+					.TargetOpacity(0.5),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(0.9)
+					.AlphaBasedBlendExp(6)
+					.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
+					.bUseStartOpacity(true)
+					.StartOpacity(0.5)
+					.TargetOpacity(0)
+				)
+			)
+		)
+	);
+
+	Track = VOLT_PLAY_ANIM(SlateBorder, Anim);
+}
+
+void SJointBuildPreset::Construct(const FArguments& InArgs)
+{
+	ParentGraphNodeSlate = InArgs._ParentGraphNodeSlate;
+
+	PopulateSlate();
+}
+
+UJointBuildPreset* SJointBuildPreset::GetBuildTargetPreset()
+{
+	if (ParentGraphNodeSlate.Pin().IsValid())
+	{
+		if (UJointEdGraphNode* EdGraphNode = ParentGraphNodeSlate.Pin()->GetCastedGraphNode())
+		{
+			if (UJointNodeBase* NodeInstance = EdGraphNode->GetCastedNodeInstance())
+			{
+				TSoftObjectPtr<UJointBuildPreset> PresetSoftPtr = NodeInstance->GetBuildPreset();
+
+				if (!PresetSoftPtr.IsNull())
+				{
+					if (UJointBuildPreset* Preset = PresetSoftPtr.LoadSynchronous())
+					{
+						return Preset;
+					}
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+void SJointBuildPreset::PopulateSlate()
+{
+	if (UJointBuildPreset* Preset = GetBuildTargetPreset())
+	{
+		this->ChildSlot.DetachWidget();
+
+		FLinearColor NormalColor = Preset->PresetColor;
+		FLinearColor HoverColor = Preset->PresetColor * 1.5;
+		HoverColor.A = 0.1;
+		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
+		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
+		OutlineHoverColor.A = 0.1;
+
+		this->ChildSlot
+		[
+			SAssignNew(PresetBorder, SJointOutlineBorder)
+			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.NormalColor(NormalColor)
+			.HoverColor(HoverColor)
+			.OutlineNormalColor(OutlineNormalColor)
+			.OutlineHoverColor(OutlineHoverColor)
+			.OnHovered(this, &SJointBuildPreset::OnHovered)
+			.OnUnhovered(this, &SJointBuildPreset::OnUnHovered)
+			.ContentPadding(FJointEditorStyle::Margin_Normal)
+			[
+				SAssignNew(PresetTextBlock, STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
+				.Text(Preset->PresetInitial)
+			]
+		];
+	}
+}
+
+void SJointBuildPreset::OnHovered()
+{
+	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1);
+}
+
+void SJointBuildPreset::OnUnHovered()
+{
+	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(1);
+}
+
+void SJointBuildPreset::Update()
+{
+	if (UJointBuildPreset* Preset = GetBuildTargetPreset())
+	{
+		if (PresetBorder.IsValid())
+		{
+			FLinearColor NormalColor = Preset->PresetColor;
+			FLinearColor HoverColor = Preset->PresetColor * 1.5;
+			HoverColor.A = 0.1;
+			FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
+			FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
+			OutlineHoverColor.A = 0.1;
+
+			PresetBorder->NormalColor = NormalColor;
+			PresetBorder->HoverColor = HoverColor;
+			PresetBorder->OutlineNormalColor = OutlineNormalColor;
+			PresetBorder->OutlineHoverColor = OutlineHoverColor;
+
+			PresetBorder->PlayUnHoverAnimation();
+		}
+		if (PresetTextBlock.IsValid())
+		{
+			PresetTextBlock->SetText(Preset->PresetInitial);
+		}
+	}
+}
+
+
 FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent)
 {
 	TSharedPtr<FDragJointGraphNode> DragConnectionOp = DragDropEvent.GetOperationAs<FDragJointGraphNode>();
@@ -429,239 +580,87 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 	return SCompoundWidget::OnDrop(MyGeometry, DragDropEvent);
 }
 
-void SJointGraphNodeInsertPoint::Highlight(const float& Delay = 0)
-{
-	VOLT_STOP_ANIM(Track);
-
-	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
-		(
-			VOLT_MAKE_MODULE(UVolt_ASM_Delay)
-			.Duration(Delay),
-			VOLT_MAKE_MODULE(UVolt_ASM_Simultaneous)
-			(
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.2)
-				.AlphaBasedBlendExp(6)
-				.AlphaBasedEasingFunction(EEasingFunc::CircularInOut)
-				.bUseStartWidgetTransform(true)
-				.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.6, 0.6),
-				                                       FVector2D::ZeroVector, 0))
-				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.5, 0.5),
-				                                        FVector2D::ZeroVector, 0)),
-				VOLT_MAKE_MODULE(UVolt_ASM_Sequence)(
-					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
-					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.1)
-					.AlphaBasedBlendExp(6)
-					.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
-					.bUseStartOpacity(true)
-					.StartOpacity(0)
-					.TargetOpacity(0.5),
-					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
-					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.9)
-					.AlphaBasedBlendExp(6)
-					.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
-					.bUseStartOpacity(true)
-					.StartOpacity(0.5)
-					.TargetOpacity(0)
-				)
-			)
-		)
-	);
-
-	Track = VOLT_PLAY_ANIM(SlateBorder, Anim);
-}
-
-void SJointBuildPreset::Construct(const FArguments& InArgs)
-{
-	ParentGraphNodeSlate = InArgs._ParentGraphNodeSlate;
-
-	PopulateSlate();
-}
-
-void SJointBuildPreset::PopulateSlate()
-{
-	if (UJointBuildPreset* Preset = GetBuildTargetPreset())
-	{
-		this->ChildSlot.DetachWidget();
-
-		FLinearColor NormalColor = Preset->PresetColor;
-		FLinearColor HoverColor = Preset->PresetColor * 1.5;
-		HoverColor.A = 0.1;
-		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
-		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
-		OutlineHoverColor.A = 0.1;
-
-		this->ChildSlot
-		[
-			SAssignNew(PresetBorder, SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.NormalColor(NormalColor)
-			.HoverColor(HoverColor)
-			.OutlineNormalColor(OutlineNormalColor)
-			.OutlineHoverColor(OutlineHoverColor)
-			.OnHovered(this, &SJointBuildPreset::OnHovered)
-			.OnUnhovered(this, &SJointBuildPreset::OnUnHovered)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			[
-				SAssignNew(PresetTextBlock, STextBlock)
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
-				.Text(Preset->PresetInitial)
-			]
-		];
-	}
-}
-
-void SJointBuildPreset::Update()
-{
-	if (UJointBuildPreset* Preset = GetBuildTargetPreset())
-	{
-		if (PresetBorder.IsValid())
-		{
-			FLinearColor NormalColor = Preset->PresetColor;
-			FLinearColor HoverColor = Preset->PresetColor * 1.5;
-			HoverColor.A = 0.1;
-			FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
-			FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
-			OutlineHoverColor.A = 0.1;
-
-			PresetBorder->NormalColor = NormalColor;
-			PresetBorder->HoverColor = HoverColor;
-			PresetBorder->OutlineNormalColor = OutlineNormalColor;
-			PresetBorder->OutlineHoverColor = OutlineHoverColor;
-
-			PresetBorder->PlayUnHoverAnimation();
-		}
-		if (PresetTextBlock.IsValid())
-		{
-			PresetTextBlock->SetText(Preset->PresetInitial);
-		}
-	}
-}
-
-UJointBuildPreset* SJointBuildPreset::GetBuildTargetPreset()
-{
-	if (ParentGraphNodeSlate.Pin().IsValid())
-	{
-		if (UJointEdGraphNode* EdGraphNode = ParentGraphNodeSlate.Pin()->GetCastedGraphNode())
-		{
-			if (UJointNodeBase* NodeInstance = EdGraphNode->GetCastedNodeInstance())
-			{
-				TSoftObjectPtr<UJointBuildPreset> PresetSoftPtr = NodeInstance->GetBuildPreset();
-
-				if (!PresetSoftPtr.IsNull())
-				{
-					if (UJointBuildPreset* Preset = PresetSoftPtr.LoadSynchronous())
-					{
-						return Preset;
-					}
-				}
-			}
-		}
-	}
-
-	return nullptr;
-}
-
-void SJointBuildPreset::OnHovered()
-{
-	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1);
-}
-
-
-void SJointBuildPreset::OnUnHovered()
-{
-	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(1);
-}
-
 
 void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 {
 	SetRenderTransformPivot(FVector2D(0.5, 0.5));
 
-	StructureOwnerEdNode = InArgs._StructureOwnerEdNode;
 	PointerToTargetStructure = InArgs._PointerToStructure;
-	TargetJointManager = InArgs._PickingTargetJointManager;
+	OwnerJointEdGraphNode = InArgs._GraphContextObject;
 
 	bShouldShowDisplayName = InArgs._bShouldShowDisplayName;
 	bShouldShowNodeName = InArgs._bShouldShowNodeName;
-	OnNodePointerPerformed = InArgs._OnNodePickingPerformed;
-	OnNodeChanged = InArgs._OnNodeChanged;
-	
+
 	SetCanTick(false);
-
-	SJointOutlineBorder::FArguments BorderArgs = InArgs._BorderArgs;
-
-	BorderArgs
-		.OnHovered(this, &SJointNodePointerSlate::OnHovered)
-		.OnUnhovered(this, &SJointNodePointerSlate::OnUnhovered);
-
-	BorderArgs[
-		SNew(SOverlay)
-		+ SOverlay::Slot()
-		.HAlign(HAlign_Center)
-		[
-			SAssignNew(BackgroundBox, SVerticalBox)
-			.RenderOpacity(1)
-			.Visibility(EVisibility::SelfHitTestInvisible)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.HAlign(HAlign_Left)
-			.VAlign(VAlign_Center)
-			.Padding(InArgs._ContentMargin)
-			[
-				SAssignNew(DisplayNameBlock, STextBlock)
-				.Text(InArgs._DisplayName)
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-				.Visibility(bShouldShowDisplayName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.HAlign(HAlign_Left)
-			.VAlign(VAlign_Center)
-			.Padding(InArgs._ContentMargin)
-			[
-				SAssignNew(RawNameBlock, STextBlock)
-				.Text(GetRawName())
-				.ColorAndOpacity(FJointEditorStyle::Color_SolidHover)
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-				.Visibility(bShouldShowNodeName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
-			]
-		]
-		+ SOverlay::Slot()
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		[
-			SAssignNew(FeatureButtonsSlate, SJointNodePointerSlateFeatureButtons)
-			.OnClearButtonPressed(this, &SJointNodePointerSlate::OnClearButtonPressed)
-			.OnGotoButtonPressed(this, &SJointNodePointerSlate::OnGoButtonPressed)
-			.OnPickupButtonPressed(this, &SJointNodePointerSlate::OnPickupButtonPressed)
-			.OnCopyButtonPressed(this, &SJointNodePointerSlate::OnCopyButtonPressed)
-			.OnPasteButtonPressed(this, &SJointNodePointerSlate::OnPasteButtonPressed)
-		]
-	];
 
 	this->ChildSlot.DetachWidget();
 
-	TSharedRef<SJointOutlineBorder> BorderWidget = SNew(SJointOutlineBorder).Me() = BorderArgs;
-
 	this->ChildSlot
-	    .Padding(InArgs._ContentMargin)
+	    .Padding(FJointEditorStyle::Margin_Normal)
 	[
-		BorderWidget
-	];	
-	
+		SNew(SJointOutlineBorder)
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+		.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.OnHovered(this, &SJointNodePointerSlate::OnHovered)
+		.OnUnhovered(this, &SJointNodePointerSlate::OnUnhovered)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.HAlign(HAlign_Center)
+			[
+				SAssignNew(BackgroundBox, SVerticalBox)
+				.RenderOpacity(1)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Small)
+				[
+					SAssignNew(DisplayNameBlock, STextBlock)
+					.Text(InArgs._DisplayName)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+					.Visibility(bShouldShowDisplayName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Left)
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Small)
+				[
+					SAssignNew(RawNameBlock, STextBlock)
+					.Text(GetRawName())
+					.ColorAndOpacity(FJointEditorStyle::Color_SolidHover)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
+					.Visibility(bShouldShowNodeName ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
+				]
+			]
+			+ SOverlay::Slot()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				SAssignNew(FeatureButtonsSlate, SJointNodePointerSlateFeatureButtons)
+				.OnClearButtonPressed(this, &SJointNodePointerSlate::OnClearButtonPressed)
+				.OnGotoButtonPressed(this, &SJointNodePointerSlate::OnGoButtonPressed)
+				.OnPickupButtonPressed(this, &SJointNodePointerSlate::OnPickupButtonPressed)
+				.OnCopyButtonPressed(this, &SJointNodePointerSlate::OnCopyButtonPressed)
+				.OnPasteButtonPressed(this, &SJointNodePointerSlate::OnPasteButtonPressed)
+			]
+		]
+	];
 }
 
 
 const FText SJointNodePointerSlate::GetRawName()
 {
-	if (PointerToTargetStructure == nullptr) return LOCTEXT("InvalidStructure","Invalid Structure Provided!!");
+	if (PointerToTargetStructure == nullptr)
+		return LOCTEXT("NotValidStructure",
+		               "Not Valid Structure Provided!!");
 
 	const TSoftObjectPtr<UJointNodeBase> SavedCurrentNodeInstance = PointerToTargetStructure->Node;
 
@@ -681,7 +680,7 @@ void SJointNodePointerSlate::OnHovered()
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
 
-	UJointManager* JointManager = GetTargetJointManager();
+	UJointManager* JointManager = NodeInstance->GetJointManager();
 
 	if (JointManager == nullptr) return;
 
@@ -726,7 +725,7 @@ void SJointNodePointerSlate::OnUnhovered()
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
 
-	UJointManager* JointManager = GetTargetJointManager();
+	UJointManager* JointManager = NodeInstance->GetJointManager();
 
 	if (JointManager == nullptr) return;
 
@@ -769,66 +768,15 @@ void SJointNodePointerSlate::OnUnhovered()
 }
 
 
-FReply SJointNodePointerSlate::OnPickupButtonPressed()
-{
-	if (PointerToTargetStructure == nullptr || TargetJointManager == nullptr) return FReply::Handled();
-	
-	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager);
-
-	if (!Toolkit || !Toolkit->GetNodePickingManager().IsValid()) return FReply::Handled();
-	
-	if (!Toolkit->GetNodePickingManager()->IsInNodePicking())
-	{
-		Request = Toolkit->GetNodePickingManager()->StartNodePicking(
-			StructureOwnerEdNode ? StructureOwnerEdNode->GetCastedNodeInstance() : nullptr,
-			PointerToTargetStructure
-		);
-
-		//Attach lambda
-		Request.Pin()->OnNodePickingPerformed = FOnNodePickingPerformed::CreateLambda(
-			[this](UJointNodeBase* PickedNode)
-			{
-				if (OnNodePointerPerformed.IsBound())
-				{
-					OnNodePointerPerformed.Execute(PickedNode);
-				}
-
-				if (OnNodeChanged.IsBound())
-				{
-					OnNodeChanged.Execute();
-				}
-			}
-		);
-	}
-	else
-	{
-		Toolkit->GetNodePickingManager()->EndNodePicking();
-	}
-
-	return FReply::Handled();
-}
-
-UJointManager* SJointNodePointerSlate::GetTargetJointManager() const
-{
-	UJointManager* JointManager = nullptr;
-
-	JointManager = TargetJointManager;
-
-	if (JointManager == nullptr && StructureOwnerEdNode)
-	{
-		JointManager = StructureOwnerEdNode->GetJointManager();
-	}
-
-	return JointManager;
-}
-
 FReply SJointNodePointerSlate::OnGoButtonPressed()
 {
 	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return FReply::Handled();
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
 
-	UJointManager* JointManager = GetTargetJointManager();
+	UJointManager* JointManager = NodeInstance->GetJointManager();
+
+	if (JointManager == nullptr) return FReply::Handled();
 
 	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointManager);
 
@@ -867,6 +815,38 @@ FReply SJointNodePointerSlate::OnGoButtonPressed()
 	return FReply::Handled();
 }
 
+FReply SJointNodePointerSlate::OnPickupButtonPressed()
+{
+	if (PointerToTargetStructure == nullptr) return FReply::Handled();
+
+	if (OwnerJointEdGraphNode == nullptr) return FReply::Handled();
+
+	UJointManager* JointManager = OwnerJointEdGraphNode->GetJointManager();
+
+	if (JointManager == nullptr) return FReply::Handled();
+
+	FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointManager);
+
+	if (!Toolkit) return FReply::Handled();
+
+	if (!Toolkit->GetNodePickingManager().IsValid()) return FReply::Handled();
+
+	if (!Toolkit->GetNodePickingManager()->IsInNodePicking())
+	{
+		if (PointerToTargetStructure)
+		{
+			Request = Toolkit->GetNodePickingManager()->StartNodePicking(
+				OwnerJointEdGraphNode->GetCastedNodeInstance(), PointerToTargetStructure);
+		}
+	}
+	else
+	{
+		Toolkit->GetNodePickingManager()->EndNodePicking();
+	}
+
+	return FReply::Handled();
+}
+
 FReply SJointNodePointerSlate::OnCopyButtonPressed()
 {
 	FString Value;
@@ -875,7 +855,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 	FPlatformApplicationMisc::ClipboardCopy(*Value);
 
-	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
+	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(OwnerJointEdGraphNode))
 	{
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
@@ -891,35 +871,27 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 
 	GEditor->BeginTransaction(FGenericCommands::Get().Paste->GetDescription());
 
-	if (StructureOwnerEdNode)
+	if (OwnerJointEdGraphNode)
 	{
-		StructureOwnerEdNode->Modify();
+		OwnerJointEdGraphNode->Modify();
 
-		if (StructureOwnerEdNode->GetCastedNodeInstance()) StructureOwnerEdNode->GetCastedNodeInstance()->Modify();
+		if (OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
 	}
 
 	if (Value.IsEmpty() || Value.Equals(TEXT("None"), ESearchCase::CaseSensitive) || !
 		FPackageName::IsShortPackageName(Value))
 	{
-		if (PointerToTargetStructure)
-		{
-			PointerToTargetStructure->Node = FSoftObjectPath(Value);
+		PointerToTargetStructure->Node = FSoftObjectPath(Value);
 
-			if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
-		}
+		if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
 	}
 
-	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
+	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(OwnerJointEdGraphNode))
 	{
 		Toolkit->PopulateNodePickerPastedToastMessage();
 	}
 
-	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
-
-	if (OnNodeChanged.IsBound())
-	{
-		OnNodeChanged.Execute();
-	}
+	if (OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
 
 	GEditor->EndTransaction();
 
@@ -932,25 +904,17 @@ FReply SJointNodePointerSlate::OnClearButtonPressed()
 	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset",
 	                                    "Reset Node Pointer to default"));
 
-	if (StructureOwnerEdNode)
+	if (OwnerJointEdGraphNode)
 	{
-		StructureOwnerEdNode->Modify();
+		OwnerJointEdGraphNode->Modify();
 
-		if (StructureOwnerEdNode->GetCastedNodeInstance()) StructureOwnerEdNode->GetCastedNodeInstance()->Modify();
+		if (OwnerJointEdGraphNode->GetCastedNodeInstance()) OwnerJointEdGraphNode->GetCastedNodeInstance()->Modify();
 	}
 
-	if (PointerToTargetStructure)
-	{
-		PointerToTargetStructure->Node.Reset();
-		PointerToTargetStructure->EditorNode.Reset();	
-	}
+	PointerToTargetStructure->Node.Reset();
+	PointerToTargetStructure->EditorNode.Reset();
 
-	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
-
-	if (OnNodeChanged.IsBound())
-	{
-		OnNodeChanged.Execute();
-	}
+	if (OwnerJointEdGraphNode) OwnerJointEdGraphNode->ReconstructNode();
 
 	GEditor->EndTransaction();
 

@@ -59,8 +59,6 @@ protected:
 	/** Registers asset tool actions. */
 	void RegisterAssetTools();
 
-	void RegisterSequencerTrack();
-
 	/**
 	 * Registers a single asset type action.
 	 *
@@ -86,14 +84,12 @@ public:
 	TSharedRef<SDockTab> OnSpawnJointCompilerTab(const FSpawnTabArgs& SpawnTabArgs);
 
 private:
-	
 	/** Unregisters asset tool actions. */
 	void UnregisterAssetTools();
 
 	void RegisterClassLayout();
-	
-	void UnregisterSequencerTrack();
-	
+
+
 	/** Unregisters asset tool actions. */
 	void UnregisterClassLayout();
 
@@ -120,10 +116,6 @@ public:
 
 	/** Unregisters debugger. */
 	void UnregisterDebugger();
-
-public:
-
-	FDelegateHandle JointNativeMovieTrackCreateEditorHandle;
 
 private:
 

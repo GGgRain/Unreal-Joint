@@ -3,7 +3,6 @@
 
 #include "Node/JointEdGraphNode_Composite.h"
 
-#include "EdGraphUtilities.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEdGraph.h"
 #include "JointEditorSettings.h"
@@ -184,82 +183,6 @@ void UJointEdGraphNode_Composite::AllocateDefaultPins()
 	RequestPopulationOfPinWidgets();
 }
 
-void UJointEdGraphNode_Composite::PrepareForCopying()
-{
-	Super::PrepareForCopying();
-
-	if (BoundGraph)
-	{
-		//We want to make it have a 'duplicated' version of the BoundGraph - so, we're going to set the outer of the BoundGraph to this node temporarily to make the duplication process handle the nested-duplication of the BoundGraph.
-		
-		BoundGraph->Rename(*BoundGraph->GetName(), this, REN_DontCreateRedirectors | REN_NonTransactional);
-
-		if (UJointEdGraph* CastedBoundGraph = Cast<UJointEdGraph>(BoundGraph))
-		{
-			CastedBoundGraph->PrepareForCopy();
-		}
-	}
-	
-}
-
-void UJointEdGraphNode_Composite::PostCopyNode()
-{
-	Super::PostCopyNode();
-
-	if (BoundGraph)
-	{
-		BoundGraph->Rename(*BoundGraph->GetName(), this->GetGraph(), REN_DontCreateRedirectors | REN_NonTransactional);
-
-		if (UJointEdGraph* CastedBoundGraph = Cast<UJointEdGraph>(BoundGraph))
-		{
-			CastedBoundGraph->PostCopy();
-		}
-	}
-}
-
-void UJointEdGraphNode_Composite::PostPasteNode()
-{
-	Super::PostPasteNode();
-
-	TSet<UEdGraphNode*> PastedNodes;
-
-	if (BoundGraph)
-	{
-		FString NewName = BoundGraph->GetName();
-		
-		if (FJointEdUtils::GetSafeNameForObject(NewName, this->GetGraph()))
-		{
-			BoundGraph->Rename(
-				*NewName,
-				this->GetGraph(),
-				REN_DontCreateRedirectors | REN_NonTransactional
-			);
-		}
-
-		GetCastedGraph()->SubGraphs.Add(BoundGraph);
-
-		if (UJointEdGraph* CastedBoundGraph = Cast<UJointEdGraph>(BoundGraph))
-		{
-			TSet<TWeakObjectPtr<UJointEdGraphNode>> Nodes = CastedBoundGraph->GetCachedJointGraphNodes(true);
-
-			// Fill the pasted nodes set
-			for (TWeakObjectPtr<UJointEdGraphNode> EdGraphNode : Nodes)
-			{
-				if (!EdGraphNode.IsValid() || EdGraphNode.Get() == nullptr) continue;
-				PastedNodes.Add(EdGraphNode.Get());
-			}
-
-			// Post process the pasted nodes to fix up.
-			FEdGraphUtilities::PostProcessPastedNodes(PastedNodes);
-			
-			// Handle any fixup of the imported nodes
-			FJointEdUtils::MarkNodesAsModifiedAndValidateName(PastedNodes);
-		}
-	}
-
-	ModifyGraphNodeSlate();
-}
-
 bool UJointEdGraphNode_Composite::CanDuplicateNode() const
 {
 	return false;
@@ -361,7 +284,7 @@ void UJointEdGraphNode_Composite::NodeConnectionListChanged()
 	bIsUpdatingNodeConnection = false;
 }
 
-void UJointEdGraphNode_Composite::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode_Composite::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
 {
 	if (SourcePin == nullptr) return;
 
@@ -373,7 +296,7 @@ void UJointEdGraphNode_Composite::AllocateReferringNodeInstancesOnConnection(TAr
 
 	//a function to implement the pins to the input sink node and output source node.
 
-	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
+	auto AllocateConnectionFromSelf = [this](TObjectPtr<UJointEdGraphNode_Tunnel> InSourceNode, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
 	{
 		if (InSourceNode == nullptr) return;
 
@@ -383,7 +306,7 @@ void UJointEdGraphNode_Composite::AllocateReferringNodeInstancesOnConnection(TAr
 		}
 	};
 
-	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<TObjectPtr<UJointNodeBase>>& InNodes)
+	auto AllocateConnection = [this](EEdGraphPinDirection SelfTunnelNodeDirection, UEdGraphPin* InSourcePin, TArray<UJointNodeBase*>& InNodes)
 	{
 		InNodes.Empty();
 
@@ -428,9 +351,8 @@ void UJointEdGraphNode_Composite::UpdateNodeInstance()
 {
 }
 
-bool UJointEdGraphNode_Composite::CanUserDeleteNode() const
+void UJointEdGraphNode_Composite::UpdateNodeInstanceOuter() const
 {
-	return true;
 }
 
 void UJointEdGraphNode_Composite::DestroyNode()
@@ -555,6 +477,20 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
 					.HeightOverride_Lambda([this]() { return GetSize().Y - 48; })
 					.Clipping(EWidgetClipping::ClipToBounds)
 					[
+						/*
+							SNew(SJointRetainerWidget)
+													  .Visibility(EVisibility::HitTestInvisible)
+													  .bForceRecaptureCachedSizeWhenCaptureRetainerRenderingIsFalse(true)
+													  .DisplayRetainerRendering_UObject(this, &UJointEdGraphNode_Composite::UseLowDetailedRendering) // capture this always
+													  .CaptureRetainerRendering_UObject(this, &UJointEdGraphNode_Composite::UseCaptureDetailedRendering)
+													  .Phase(5)
+													  .Clipping(EWidgetClipping::Inherit)
+							[
+								SNew(SJointGraphPreviewer, BoundGraph)
+								.Visibility(EVisibility::Visible)
+								.Clipping(EWidgetClipping::Inherit)
+							]
+							*/
 						SAssignNew(JointGraphPreviewer, SJointGraphPreviewer, BoundGraph)
 						.Visibility(bLockPreviewer ? EVisibility::HitTestInvisible : EVisibility::Visible)
 						.Clipping(EWidgetClipping::Inherit)

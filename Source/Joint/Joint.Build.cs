@@ -49,9 +49,7 @@ public class Joint : ModuleRules
 				// Gameplay abilities with
 				"GameplayTags",
 				"GameplayTasks",
-				"GameplayAbilities",
-				
-				"MovieScene",
+				"GameplayAbilities"
 			}
 			);
 		

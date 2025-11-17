@@ -148,18 +148,10 @@ const FString FJointTreeItem::GetFilterString()
 	for (TSharedPtr<IJointTreeItemTag> JointTreeItemTag : GetItemTags())
 	{
 		FilterString += " ";
-		FilterString += JointTreeItemTag->GetFilterText().ToString().Replace(TEXT(" "), TEXT("_"));
+		FilterString += JointTreeItemTag->GetFilterText().ToString();
 	}
 
-	//for debugging
-	FString RowItemName;
-
-	if ( FilterString.IsEmpty())
-	{
-		RowItemName = "";
-	}
-	
-	return "Name=" + GetRowItemName().ToString().Replace(TEXT(" "), TEXT("_")) + FilterString;
+	return "Name=" + GetRowItemName().ToString() + FilterString;
 }
 
 TSharedRef<SWidget> FJointTreeItem::MakeItemTagContainerWidget()

@@ -113,6 +113,11 @@ public:
 	EJointTreeFilterResult HandleFilterJointPropertyTreeItem(const FJointPropertyTreeFilterArgs& InArgs, const TSharedPtr<class IJointTreeItem>& InItem);
 
 public:
+
+	/** Set the initial expansion state of the tree items */
+	void SetInitialExpansionState();
+	
+public:
 	
 	//Tree callback
 	TSharedRef<ITableRow> HandleGenerateRow(TSharedPtr<IJointTreeItem> Item, const TSharedRef<STableViewBase>& OwnerTable);

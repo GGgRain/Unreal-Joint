@@ -14,7 +14,6 @@
 #include "JointGraphNodeSlateFactory.h"
 
 #include "EdGraphUtilities.h"
-#include "ISequencerModule.h"
 #include "JointBuildPresetActions.h"
 #include "JointEditorSettings.h"
 #include "JointManagement.h"
@@ -31,7 +30,6 @@
 
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
-#include "Sequencer/JointMovieTrackEditor.h"
 #include "UObject/CoreRedirects.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorModule"
@@ -59,7 +57,7 @@ void FJointEditorModule::StartupModule()
 
 	RegisterAssetTools();
 	RegisterMenuExtensions();
-	RegisterSequencerTrack();
+
 	UnregisterClassLayout(); // Remove Default Layout;
 	RegisterClassLayout();
 	
@@ -109,8 +107,9 @@ void FJointEditorModule::ShutdownModule()
 
 	UnregisterAssetTools();
 	UnregisterMenuExtensions();
-	UnregisterSequencerTrack();
+
 	UnregisterClassLayout();
+
 	UnregisterDebugger();
 
 	FEdGraphUtilities::UnregisterVisualNodeFactory(JointNodeStyleFactory);
@@ -143,20 +142,6 @@ void FJointEditorModule::RegisterAssetTools()
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointManagerActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointFragmentActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointBuildPresetActions(AssetCategory)));
-}
-
-void FJointEditorModule::RegisterSequencerTrack()
-{
-	ISequencerModule& SequencerModule = FModuleManager::Get().LoadModuleChecked<ISequencerModule>( "Sequencer" );
-
-	JointNativeMovieTrackCreateEditorHandle = SequencerModule.RegisterTrackEditor( FOnCreateTrackEditor::CreateStatic( &FJointMovieTrackEditor::CreateTrackEditor ) );
-}
-
-void FJointEditorModule::UnregisterSequencerTrack()
-{
-	ISequencerModule& SequencerModule = FModuleManager::Get().GetModuleChecked<ISequencerModule>( "Sequencer" );
-
-	SequencerModule.UnRegisterTrackEditor( JointNativeMovieTrackCreateEditorHandle );
 }
 
 void FJointEditorModule::RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)

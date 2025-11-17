@@ -3,13 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JointManager.h"
-#include "Editor/Slate/JointAdvancedWidgets.h"
 #include "PropertyEditorDelegates.h"
 #include "VoltAnimationTrack.h"
 #include "Framework/SlateDelegates.h"
 #include "SharedType/JointSharedTypes.h"
-#include "Editor/Toolkit/JointEditorNodePickingManager.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SCompoundWidget.h"
 
@@ -213,40 +210,17 @@ public:
 
 class JOINTEDITOR_API SJointNodePointerSlate : public SCompoundWidget
 {
-
 public:
 
-	SLATE_BEGIN_ARGS(SJointNodePointerSlate) :
-		_StructureOwnerEdNode(nullptr),
-		_PointerToStructure(nullptr),
-		_bShouldShowDisplayName(true),
-		_bShouldShowNodeName(true),
-		_BorderArgs(SJointOutlineBorder::FArguments()
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Center)
-		),
-		_ContentMargin(FJointEditorStyle::Margin_Small)
-	{}
-	//Optional, if not set, it will not notify it.
-	SLATE_ARGUMENT(UJointEdGraphNode*, StructureOwnerEdNode)
-	SLATE_ARGUMENT(FJointNodePointer*, PointerToStructure)
-		
+	SLATE_BEGIN_ARGS(SJointNodePointerSlate)
+	{
+	}
+	SLATE_ARGUMENT(UJointEdGraphNode*, GraphContextObject)
 	SLATE_ATTRIBUTE(FText, DisplayName)
+	SLATE_ARGUMENT(FJointNodePointer*, PointerToStructure)
 	SLATE_ARGUMENT(bool, bShouldShowDisplayName)
 	SLATE_ARGUMENT(bool, bShouldShowNodeName)
-	SLATE_ARGUMENT(SJointOutlineBorder::FArguments, BorderArgs)
-	SLATE_ARGUMENT(FMargin, ContentMargin)
-	// The joint manager that is used for the pick and go operation.
-	SLATE_ARGUMENT(UJointManager*, PickingTargetJointManager)
-	SLATE_EVENT(FOnNodePickingPerformed, OnNodePickingPerformed)
-	SLATE_EVENT(FSimpleDelegate, OnNodeChanged)
 
-	//Delagates
 	SLATE_END_ARGS()
 	
 public:
@@ -278,22 +252,12 @@ private:
 private:
 	
 	FJointNodePointer* PointerToTargetStructure = nullptr;
-	UJointEdGraphNode* StructureOwnerEdNode = nullptr;
-	
-	UJointManager* TargetJointManager = nullptr;
+
+	UJointEdGraphNode* OwnerJointEdGraphNode = nullptr;
 
 private:
 
 	TWeakPtr<class FJointEditorNodePickingManagerRequest> Request = nullptr;
-
-public:
-
-	FOnNodePickingPerformed OnNodePointerPerformed;
-	FSimpleDelegate OnNodeChanged;
-
-public:
-
-	UJointManager* GetTargetJointManager() const;
 
 public:
 
@@ -302,11 +266,11 @@ public:
 	void OnUnhovered();
 
 public:
-
-	FReply OnPickupButtonPressed();
-
+	
 	FReply OnGoButtonPressed();
 	
+	FReply OnPickupButtonPressed();
+
 	FReply OnCopyButtonPressed();
 
 	FReply OnPasteButtonPressed();

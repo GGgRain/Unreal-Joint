@@ -240,23 +240,6 @@ TArray<UJointEdGraph*> UJointEdGraph::GetAllSubGraphsRecursively() const
 	return OutGraphs;
 }
 
-TArray<UJointEdGraph*> UJointEdGraph::GetDirectSubGraphs() const
-{
-	TArray<UJointEdGraph*> OutGraphs;
-
-	for (UEdGraph* SubGraph : SubGraphs)
-	{
-		if (SubGraph == nullptr) continue;
-
-		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(SubGraph))
-		{
-			OutGraphs.Add(CastedGraph);
-		}
-	}
-
-	return OutGraphs;
-}
-
 TArray<UJointEdGraph*> UJointEdGraph::GetAllGraphsFrom(UEdGraph* InGraph)
 {
 	TArray<UJointEdGraph*> OutGraphs;
@@ -429,85 +412,6 @@ void UJointEdGraph::PatchNodeInstanceFromStoredNodeClass(TObjectPtr<UEdGraphNode
 	if (bPropagateToSubNodes)
 	{
 		for (UJointEdGraphNode* SubNode : CastedNode->SubNodes) PatchNodeInstanceFromStoredNodeClass(SubNode);
-	}
-}
-
-void UJointEdGraph::PreDuplicate(FObjectDuplicationParameters& DupParams)
-{
-	Super::PreDuplicate(DupParams);
-
-	//PrepareForCopy();
-}
-
-void UJointEdGraph::PostDuplicate(bool bDuplicateForPIE)
-{
-	Super::PostDuplicate(bDuplicateForPIE);
-
-	//PostCopy();
-}
-
-void UJointEdGraph::PrepareForCopy()
-{
-	TSet<TWeakObjectPtr<UJointEdGraphNode>> AllNodes = GetCachedJointGraphNodes(true);
-	
-	for (const TWeakObjectPtr<UJointEdGraphNode>& JointEdGraphNode : AllNodes)
-	{
-		if (!JointEdGraphNode.IsValid()) continue;
-		
-		JointEdGraphNode->PrepareForCopying();
-	}
-
-	//Set every node's outer to this graph to make sure they get duplicated along with the graph.
-
-	for (const TWeakObjectPtr<UJointEdGraphNode>& JointEdGraphNode : AllNodes)
-	{
-		if (!JointEdGraphNode.IsValid()) continue;
-		
-		JointEdGraphNode->SetOuterAs(this);
-	}
-
-	//propagate to sub graphs
-	TArray<UJointEdGraph*> InSubGraphs = GetDirectSubGraphs();
-
-	for (UJointEdGraph* const& SubGraph : InSubGraphs)
-	{
-		if (!SubGraph) continue;
-		
-		SubGraph->PrepareForCopy();
-	}
-}
-
-void UJointEdGraph::PostCopy()
-{
-	TSet<TWeakObjectPtr<UJointEdGraphNode>> AllNodes = GetCachedJointGraphNodes(true);
-	
-	for (const TWeakObjectPtr<UJointEdGraphNode>& JointEdGraphNode : AllNodes)
-	{
-		if (!JointEdGraphNode.IsValid()) continue;
-		
-		JointEdGraphNode->PostCopyNode();
-	}
-
-	//Recache
-	AllNodes = GetCachedJointGraphNodes(true);
-
-	//Set every node's outer to this graph.
-
-	for (const TWeakObjectPtr<UJointEdGraphNode>& JointEdGraphNode : AllNodes)
-	{
-		if (!JointEdGraphNode.IsValid()) continue;
-		
-		JointEdGraphNode->SetOuterAs(this);
-	}
-
-	//propagate to sub graphs
-	TArray<UJointEdGraph*> InSubGraphs = GetDirectSubGraphs();
-
-	for (UJointEdGraph* const& SubGraph : InSubGraphs)
-	{
-		if (!SubGraph) continue;
-		
-		SubGraph->PostCopy();
 	}
 }
 

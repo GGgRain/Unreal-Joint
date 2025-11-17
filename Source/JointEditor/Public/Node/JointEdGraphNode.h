@@ -17,12 +17,14 @@
 #include "AIGraph/Classes/AIGraphTypes.h"
 #else
 
+
+class SGraphPanel;class SGraphPanel;class SGraphPanel;class SGraphPanel;
 #include "Editor/AIGraph/Classes/AIGraphTypes.h"
 #endif
 
 #include "JointEdGraphNode.generated.h"
 
-class SGraphPanel;
+
 class FJointEditorToolkit;
 class UJointEdGraph;
 class SJointGraphNodeBase;
@@ -54,7 +56,7 @@ public:
 	
 	//The instance of the runtime Joint node that this editor graph node represent on the graph.
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	TObjectPtr<UObject> NodeInstance;
+	class UObject* NodeInstance;
 
 
 #if WITH_EDITOR
@@ -76,13 +78,13 @@ public:
 	 * The parent node that this node is attached at. If this node is the highest node on the hierarchy, It is nullptr.
 	 * */
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	TObjectPtr<UJointEdGraphNode> ParentNode;
+	class UJointEdGraphNode* ParentNode;
 
 	/**
 	 * The list of the sub nodes attached on this node.
 	 */
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
-	TArray<TObjectPtr<UJointEdGraphNode>> SubNodes;
+	TArray<UJointEdGraphNode*> SubNodes;
 
 	//The data of the pins that this graph node has. Modifying this property will affect the pins list of the node.
 	//This is necessary due to the accessing the pins by its category and name manually is difficult to manage.
@@ -109,6 +111,30 @@ public:
 	 * The compile message to show on the graph node and compiler result on the Joint editor.
 	 */
 	TArray<TSharedPtr<class FTokenizedMessage>> CompileMessages;
+
+public:
+	
+	//Internal properties
+
+	//Guid of the parent node. Used in the copy - paste actions of the tool kit and graph.
+	UPROPERTY(SkipSerialization, meta=(IgnoreForMemberInitializationTest), VisibleAnywhere, Category="Developer Mode")
+	FGuid CachedParentGuidForCopyPaste;
+
+
+	//Used in the copy - paste actions of the tool kit and graph.
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
+	class UJointEdGraphNode* CachedParentNodeForCopyPaste;
+
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
+	TArray<UJointEdGraphNode*> CachedSubNodesForCopyPaste;
+
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
+	TObjectPtr<UJointNodeBase> CachedNodeInstanceParentNodeForCopyPaste;
+
+	UPROPERTY(DuplicateTransient, Transient, VisibleAnywhere, Category="Developer Mode")
+	TArray<TObjectPtr<UJointNodeBase>> CachedNodeInstanceSubNodesForCopyPaste;
+
+	void ClearCachedParentGuid();
 
 public:
 	
@@ -259,7 +285,7 @@ public:
 	 * Override this function to implement nodes that must be work as connector or proxy in the Joint. See how UJointEdGraphNode_Connector override this function.
 	 * Joint 2.10: Now it has SourcePin parameter to provide the pin that triggered this allocation action - useful when you want to allocate different node instances depending on the pin that triggered this action.
 	 */
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin = nullptr);
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin = nullptr);
 
 public:
 
@@ -320,12 +346,7 @@ public:
 	virtual void ReplicateSubNodePins();
 
 	/**
-	 * Find the original pin of that provided node pin is replicated from. If the provided pin is not a replicated pin, it will return the provided pin itself.
-	 */
-	UEdGraphPin* FindOriginalPin(UEdGraphPin* InReplicatedPin);
-	
-	/**
-	 * Find the original pin pf that provided sub node pin is replicated from. If the provided pin is not a replicated sub node pin, it will return nullptr.
+	 * Find the original pin that provided sub node pin is replicated from.
 	 * @param InReplicatedSubNodePin The replicated sub node pin on the parent-most node.
 	 * @return Found original sub node pin instance.
 	 */
@@ -509,9 +530,7 @@ public:
 	
 public:
 
-	UObject* GetNodeInstance() const;
-
-	//Get cast version of the node instance. this is just for the clean code.
+	//Get casted version of the node instance. this is just for the clean code.
 	template<typename NodeClass=UJointNodeBase>
 	FORCEINLINE NodeClass* GetCastedNodeInstance() const
 	{
@@ -532,14 +551,14 @@ public:
 	
 	/**
 	 * Get the orientation of the sub node box. Return EOrientation::Orient_Horizontal by default.
-	 * We don't provide a variable to this feature by default because we thought having this feature on all the nodes might harm the readability of the graph.
+	 * We don't provide a variable to this feature by default because we thought having this feature on all of the nodes might harm the readability of the graph.
 	 * So instead, we provided it to only some of the nodes that we think it really needs.
 	 *
 	 * + If the node uses fixed size then it will have multiple rows, but if it is not then all the sub nodes will be populated in a single row or column.
 	 * @return Orientation of the sub node box organization.
 	 */
 	virtual EOrientation GetSubNodeBoxOrientation();
-
+	
 protected:
 	
 	/**
@@ -554,7 +573,7 @@ protected:
 	 */
 	UPROPERTY(Transient)
 	uint16 NodeDepth = 0;
-
+	
 public:
 
 	/**
@@ -612,17 +631,10 @@ public:
 
 	void GrabSlateDetailLevelFromNodeInstance();
 
-protected:
-
-	//hold the outer chain of the node instances and ed nodes on its hierarchy to be able to copy them properly.
-	void HoldOuterChainToCopy();
-
-	//Resolve the outer chain of the node instances and ed nodes on its hierarchy after the copy action.
-	void RestoreOuterChainFromCopy();
-	
 public:
 	
 	virtual void PostPlacedNewNode() override;
+
 	virtual void PrepareForCopying() override;
 	virtual void PostCopyNode();
 	virtual void PostPasteNode() override;
@@ -634,7 +646,7 @@ public:
 	virtual void DestroyNode() override;
 
 	virtual void ImportCustomProperties(const TCHAR* SourceText, FFeedbackContext* Warn) override;
-	
+
 public:
 
 	virtual void ReconstructNodeInHierarchy();
@@ -697,10 +709,10 @@ public:
 	//Check if the stored class data is referring to the existing class.
 	virtual bool CheckClassDataIsKnown();
 	
-	//Notify this node is holding an invalid class data to the FGraphNodeClassHelper.
+	//Notify this node is holding a invalid class data to the FGraphNodeClassHelper.
 	virtual void NotifyClassDataUnknown();
 
-	//Let the FGraphNodeClassHelper knows this node is holding an invalid class data.
+	//Let the FGraphNodeClassHelper knows this node is holding a invalid class data.
 	virtual bool PatchNodeInstanceFromClassDataIfNeeded();
 	
 	//Update ClassData from node instance.
@@ -718,12 +730,10 @@ protected:
 	virtual void ReallocateNodeInstanceGuid() const;
 
 	//Update node outer to the current graph's Joint manager.
-	virtual void UpdateNodeInstanceOuterToJointManager() const;
+	virtual void UpdateNodeInstanceOuter() const;
 
 	//Update sub nodes outer to its parent node.
-	virtual void UpdateSubNodesInstanceOuterToJointManager() const;
-
-protected:
+	virtual void UpdateSubNodesInstanceOuter() const;
 
 	//Set the node instance's outer to the provided object.
 	virtual bool SetNodeInstanceOuterAs(UObject* NewOuter) const;
@@ -793,7 +803,7 @@ public:
 	
 public:
 
-	//Declare the actions the users will get when they right-click on the graph node. By default, it implements add fragment action.
+	//Declare the actions the users will get when they right click on the graph node. By default, it implements add fragment action.
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
 
 	void CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Graph) const;
