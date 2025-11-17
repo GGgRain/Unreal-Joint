@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "PropertyEditorDelegates.h"
 #include "VoltAnimationTrack.h"
-#include "Framework/SlateDelegates.h"
 #include "SharedType/JointSharedTypes.h"
+#include "Editor/Toolkit/JointEditorNodePickingManager.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SCompoundWidget.h"
 

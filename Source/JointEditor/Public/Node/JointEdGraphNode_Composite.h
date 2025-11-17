@@ -69,10 +69,7 @@ public:
 	virtual void DestroyNode() override;
 	virtual void ModifyGraphNodeSlate() override;
 
-	virtual void PostPasteNode() override;
 public:
-
-	void CreateBoundGraphIfNeeded();
 
 	virtual bool CanHaveBreakpoint() const override;
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;

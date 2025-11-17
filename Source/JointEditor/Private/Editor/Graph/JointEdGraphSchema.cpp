@@ -571,9 +571,9 @@ int32 UJointEdGraphSchema::GetNodeSelectionCount(const UEdGraph* Graph) const
 	return 0;
 }
 
-void UJointEdGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotification) const
+void UJointEdGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const
 {
-	Super::BreakPinLinks(TargetPin, bSendsNodeNotification);
+	Super::BreakPinLinks(TargetPin, bSendsNodeNotifcation);
 }
 
 void UJointEdGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContextMenuContext* Context) const
