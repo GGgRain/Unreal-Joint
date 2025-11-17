@@ -23,7 +23,7 @@ class IJointTreeItem;
 /** Options for skeleton building */
 struct JOINTEDITOR_API FJointPropertyTreeBuilderArgs
 {
-	FJointPropertyTreeBuilderArgs() : bShowJointManagers(true), bShowGraphs(true), bShowNodes(true), bShowProperties(true)
+	FJointPropertyTreeBuilderArgs() : bShowJointManagers(false), bShowGraphs(false), bShowNodes(false), bShowProperties(false)
 	{
 	}
 
@@ -150,22 +150,22 @@ public:
 
 protected:
 
-	void ReserveJointManagerInfo(TArray<FJointTreeJointManagerInfo>& ManagerInfos);
+	void ReserveJointManagerInfo(TArray<FJointManagerInfo>& ManagerInfos);
 	
-	void ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs);
+	void ReserveGraphInfo(TArray<FGraphInfo>& Graphs);
 
-	void ReserveNodeInfo(TArray<FJointTreeNodeInfo>& NodeInfos);
+	void ReserveNodeInfo(TArray<FNodeInfo>& NodeInfos);
 
-	void ReservePropertyInfo(TArray<FJointTreePropertyInfo>& Properties);
+	void ReservePropertyInfo(TArray<FPropertyInfo>& Properties);
 
 	
-	void BuildJointManagerInfo(const FJointTreeJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output);
+	void BuildJointManagerInfo(const FJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output);
 
-	void BuildGraphInfo(const FJointTreeGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output);
+	void BuildGraphInfo(const FGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output);
 	
-	void BuildNodeInfo(const FJointTreeNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output);
+	void BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output);
 
-	void BuildPropertyInfo(FJointTreePropertyInfo& PropertyInfo,FJointTreeBuilderOutput& Output);
+	void BuildPropertyInfo(FPropertyInfo& PropertyInfo,FJointTreeBuilderOutput& Output);
 
 	TSharedPtr<IJointTreeItem> CreateManagerTreeItem(TWeakObjectPtr<UJointManager> ManagerPtr);
 

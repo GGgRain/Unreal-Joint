@@ -53,8 +53,6 @@
 
 #include "Misc/EngineVersionComparison.h"
 
-#include "HAL/PlatformApplicationMisc.h"
-
 #include "JointEdGraphNode_Composite.h"
 #include "JointEdGraphNode_Foundation.h"
 #include "JointEdGraphNode_Fragment.h"
@@ -73,6 +71,7 @@
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
 #include "Widgets/Images/SImage.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolkit"
@@ -588,6 +587,21 @@ void FJointEditorToolkit::CleanUpGraphToastMessageHub()
 	{
 		GraphToastMessageHub->ReleaseVoltAnimationManager();
 		GraphToastMessageHub.Reset();
+	}
+}
+
+void FJointEditorToolkit::FixupPastedNodes(const TSet<UEdGraphNode*>& NewPastedGraphNodes,
+                                           const TMap<FGuid, FGuid>& NewToOldNodeMapping)
+{
+	for (UEdGraphNode* NewPastedGraphNode : NewPastedGraphNodes)
+	{
+		UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(NewPastedGraphNode);
+
+		UObject*& Instance = CastedGraphNode->NodeInstance;
+
+		if (CastedGraphNode == nullptr || Instance == nullptr) continue;
+
+		Instance->Rename(*MakeUniqueObjectName(Instance->GetOuter(), Instance->GetClass(), Instance->GetFName()).ToString());
 	}
 }
 
@@ -2878,6 +2892,34 @@ void FJointEditorToolkit::JumpToHyperlink(UObject* ObjectReference, bool bReques
 }
 
 
+void StoreNodeAndChildrenSubNodes(UObject* SelectedNode, TSet<UObject*>& NodesToCopy)
+{
+	UEdGraphNode* Node = Cast<UEdGraphNode>(SelectedNode);
+
+	if (Node == nullptr) return;
+
+	NodesToCopy.Add(Node);
+
+	UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node);
+
+	if (CastedNode == nullptr) return;
+
+	CastedNode->CachedParentGuidForCopyPaste = (CastedNode->ParentNode != nullptr)
+		                                           ? CastedNode->ParentNode->NodeGuid
+		                                           : CastedNode->CachedParentGuidForCopyPaste;
+
+	//Copy all selected sub nodes.
+	for (UJointEdGraphNode* SubNode : CastedNode->SubNodes)
+	{
+		if (SubNode == nullptr) continue;
+
+
+		NodesToCopy.Add(SubNode);
+
+		StoreNodeAndChildrenSubNodes(SubNode, NodesToCopy);
+	}
+}
+
 void FJointEditorToolkit::SelectAllNodes()
 {
 	if (TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
@@ -2900,39 +2942,50 @@ void FJointEditorToolkit::CopySelectedNodes()
 	//Export the selected nodes and place the text on the clipboard
 	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 
-	//Target nodes to copy. Ensure to be cleaned up before copying (it's necessary to empty it up because of the compiler optimization can cause issues sometimes.)
+	//Target nodes to copy.
 	TSet<UObject*> NodesToCopy;
-	
+
+	//Ensure to be clean
 	NodesToCopy.Empty();
 
 	for (UObject* SelectedNode : SelectedNodes)
 	{
 		if (SelectedNode == nullptr) continue;
-		
+
 		if (UEdGraphNode* GraphNode = Cast<UEdGraphNode>(SelectedNode))
 		{
-			if (GraphNode->CanDuplicateNode()) NodesToCopy.Add(GraphNode);
+			if (!GraphNode->CanDuplicateNode()) continue;
+
+			StoreNodeAndChildrenSubNodes(SelectedNode, NodesToCopy);
 		}
 	}
-	
+
 	for (UObject* NodeToCopy : NodesToCopy)
 	{
-		if (UEdGraphNode* CastedNode = Cast<UEdGraphNode>(NodeToCopy))
-			CastedNode->PrepareForCopying();	
+		if (NodeToCopy == nullptr) continue;
+
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
+		{
+			CastedNode->PrepareForCopying();
+		}
 	}
 
 	FString ExportedText;
-	
+
 	FEdGraphUtilities::ExportNodesToText(NodesToCopy, ExportedText);
 
 	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
-	
+
+
 	for (UObject* NodeToCopy : NodesToCopy)
 	{
-		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
-			CastedNode->PostCopyNode();	
-	}
+		if (NodeToCopy == nullptr) continue;
 
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
+		{
+			CastedNode->PostCopyNode();
+		}
+	}
 }
 
 void FJointEditorToolkit::PasteNodes()
@@ -2961,6 +3014,13 @@ void FJointEditorToolkit::DuplicateNodes()
 	RequestManagerViewerRefresh();
 }
 
+bool WasPastedJointEdNodeSubNode(const UJointEdGraphNode* NodeToCheckOut)
+{
+	if (NodeToCheckOut == nullptr) return false;
+
+	return NodeToCheckOut->CachedParentGuidForCopyPaste.IsValid();
+}
+
 void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection)
 {
 	if (GetNodePickingManager().IsValid() && GetNodePickingManager()->IsInNodePicking())
@@ -2973,11 +3033,7 @@ void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const T
 
 			if (CastedGraphNode == nullptr) continue;
 
-			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
-			Result->Node = CastedGraphNode->GetCastedNodeInstance();
-			Result->OptionalEdNode = CastedGraphNode;
-
-			GetNodePickingManager()->PerformNodePicking(Result);
+			GetNodePickingManager()->PerformNodePicking(CastedGraphNode->GetCastedNodeInstance(), CastedGraphNode);
 
 			break;
 		}
@@ -3014,29 +3070,33 @@ void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, c
 
 void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 {
-
-	//early returns
+	// Undo/Redo support
 	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
 
-	if (!CurrentGraphEditor.IsValid())
-	{
-		return;
-	}
-	
+	if (!CurrentGraphEditor.IsValid()) return;
+
+	const FScopedTransaction Transaction(FGenericCommands::Get().Paste->GetDescription());
+
 	UJointEdGraph* CastedGraph = CurrentGraphEditor->GetCurrentGraph() ? Cast<UJointEdGraph>(CurrentGraphEditor->GetCurrentGraph()) : nullptr;
 
-	if (CastedGraph == nullptr)
-	{
-		return;
-	}
-	
+	if (CastedGraph == nullptr) return;
+
+	CastedGraph->Modify();
+
+	//Lock the update to prevent unnecessary updates between the paste action.
+	CastedGraph->LockUpdates();
+
 	//Get the currently selected node on the graph and store it to use it when if we need to attach some nodes that will be imported right after this.
-	//But if there is any node that can be placed directly on the graph among the imported nodes, we will not implement those dependent nodes.
-	//This is for the fragment copy & paste between nodes.
-	
-	
+	//But if there is any node that can be standalone on the graph among the imported nodes, we will not implement those dependent nodes.
+	//This is for the fragment copy paste between nodes.
+
+
+	//Only can work with a single object. Not considering paste action for the multiple nodes at once, because it will be confusing and annoying sometimes (ex, Users didn't know that they selected unwanted node to paste to.)
+
+	bool bHasMultipleNodesSelected = false;
+
 	UJointEdGraphNode* AttachTargetNode = nullptr;
-	
+
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 
 	for (UObject* SelectedNode : SelectedNodes)
@@ -3045,19 +3105,25 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 
 		if (UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode))
 		{
-			//Only can work with a single object. Not considering paste action for the multiple nodes at once, because it will be confusing and annoying sometimes (ex, Users didn't know that they selected unwanted node to paste to.)
-			if (AttachTargetNode != nullptr) return;
-			
-			AttachTargetNode = Node;
+			if (AttachTargetNode == nullptr)
+			{
+				AttachTargetNode = Node;
+			}
+			else
+			{
+				bHasMultipleNodesSelected = true;
+			}
 		}
 	}
 
-	// Start to do actual paste operation - make a transaction for undo/redo
-	const FScopedTransaction Transaction(FGenericCommands::Get().Paste->GetDescription());
 
-	CastedGraph->Modify();
-	CastedGraph->LockUpdates();
-	
+	//Abort if we have multiple valid nodes.
+	if (bHasMultipleNodesSelected)
+	{
+		return;
+	}
+
+
 	// Clear the selection set (newly pasted stuff will be selected)
 	CurrentGraphEditor->ClearSelectionSet();
 
@@ -3069,38 +3135,157 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	// Import the nodes
 	TSet<UEdGraphNode*> PastedNodes;
 
-	FEdGraphUtilities::ImportNodesFromText(CastedGraph, TextToImport, PastedNodes);
-	
-	// Move the pasted nodes to the location of the paste request
-	FJointEdUtils::MoveNodesAtLocation(PastedNodes, Location);
-	
-	// Handle any fixup of the imported nodes
-	FJointEdUtils::MarkNodesAsModifiedAndValidateName(PastedNodes);
-	
-	// See if the newly pasted nodes can be attached to the selected node on the graph.
-	// if it's a node that had a parent node when it was copied, and we have a valid attach target node, then attach it to the target node.
+	FEdGraphUtilities::ImportNodesFromText(CastedGraph, TextToImport, /*out*/ PastedNodes);
+
+	//Reallocate graph nodes' outer to the Joint manager to prevent possible issues with ambiguous path search resolve
+	//CastedGraph->AllocateThisGraphBaseNodesToJointManager();
+	//CastedGraph->UpdateSubNodeChains();
+
+	//Average position of nodes so we can move them while still maintaining relative distances to each other
+	FVector2D AvgNodePosition(0.0f, 0.0f);
+
+	// Number of nodes used to calculate AvgNodePosition
+	int32 AvgCount = 0;
+
+	//Calculate the average position on the graph to place our new nodes at.
+
+	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
+	{
+		UEdGraphNode* EdNode = *It;
+
+		if (EdNode == nullptr)
+		{
+			It.RemoveCurrent();
+
+			continue;
+		}
+
+		//If it is UJointEdGraphNode type, then check whether it is a fragment to decide whether to add it on the avg point calculation.
+		//If it was a graph node but not a UJointEdGraphNode type node, then just add it to the calculation.
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(EdNode); CastedNode
+			                                                                     ? !WasPastedJointEdNodeSubNode(
+				                                                                     CastedNode)
+			                                                                     : true)
+		{
+			AvgNodePosition.X += EdNode->NodePosX;
+			AvgNodePosition.Y += EdNode->NodePosY;
+			++AvgCount;
+		}
+	}
+
+	if (AvgCount > 0)
+	{
+		float InvNumNodes = 1.0f / static_cast<float>(AvgCount);
+		AvgNodePosition.X *= InvNumNodes;
+		AvgNodePosition.Y *= InvNumNodes;
+	}
+
+
+	TMap<FGuid/*New*/, FGuid/*Old*/> NewToOldNodeMapping;
+
+	TMap<FGuid, UJointEdGraphNode*> OldGuidToNewParentMap; //Node for the new parent.
+
+	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
+	{
+		UEdGraphNode* EdNode = *It;
+
+		if (EdNode == nullptr) continue;
+
+		UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(EdNode);
+
+		//If it was not a sub node, then implement it as a parent node.
+		if (CastedNode ? !WasPastedJointEdNodeSubNode(CastedNode) : true)
+		{
+			EdNode->NodePosX = (EdNode->NodePosX - AvgNodePosition.X) + Location.X;
+			EdNode->NodePosY = (EdNode->NodePosY - AvgNodePosition.Y) + Location.Y;
+
+			EdNode->SnapToGrid(UJointEditorSettings::GetJointGridSnapSize());
+		}
+
+		const FGuid OldGuid = EdNode->NodeGuid;
+
+		// Give new node a different Guid from the old one
+		EdNode->CreateNewGuid();
+
+		const FGuid NewGuid = EdNode->NodeGuid;
+
+		NewToOldNodeMapping.Add(NewGuid, OldGuid);
+
+		if (CastedNode)
+		{
+			//Clear Out the sub nodes. we are going to attach it right away after this.
+			CastedNode->ParentNode = nullptr;
+			CastedNode->SubNodes.Empty();
+			//CastedNode->RemoveAllSubNodes();
+
+			OldGuidToNewParentMap.Add(OldGuid, CastedNode);
+		}
+	}
+
+	//Modify the object, so it can be stored in the transaction buffer.
+
 	if (AttachTargetNode)
 	{
 		AttachTargetNode->Modify();
 
 		if (AttachTargetNode->GetCastedNodeInstance()) AttachTargetNode->GetCastedNodeInstance()->Modify();
+	}
 
-		for (UEdGraphNode* InEdGraphNode : PastedNodes)
+	for (TTuple<FGuid, UJointEdGraphNode*> GuidToNewParentMap : OldGuidToNewParentMap)
+	{
+		if (!GuidToNewParentMap.Value) continue;
+
+		GuidToNewParentMap.Value->Modify();
+
+		if (!GuidToNewParentMap.Value->GetCastedNodeInstance()) continue;
+
+		GuidToNewParentMap.Value->GetCastedNodeInstance()->Modify();
+	}
+
+	//Reattach sub nodes to the nodes.
+	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
+	{
+		UEdGraphNode* EdNode = *It;
+
+		if (EdNode == nullptr) continue;
+
+		UJointEdGraphNode* CastedPastedNode = Cast<UJointEdGraphNode>(EdNode);
+
+		if (CastedPastedNode == nullptr) continue;
+
+		//Execute only when this node is sub node.
+		if (WasPastedJointEdNodeSubNode(CastedPastedNode))
 		{
-			if (InEdGraphNode == nullptr) continue;
-		
-			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
+			CastedPastedNode->NodePosX = 0;
+			CastedPastedNode->NodePosY = 0;
+
+			//Remove sub node from graph, it will be referenced from parent node
+			CastedPastedNode->DestroyNode();
+
+			CastedPastedNode->ParentNode = OldGuidToNewParentMap.
+				FindRef(CastedPastedNode->CachedParentGuidForCopyPaste);
+
+			if (CastedPastedNode->ParentNode)
+			{
+				CastedPastedNode->ParentNode->AddSubNode(CastedPastedNode);
+			}
+			else if (!bHasMultipleNodesSelected && AttachTargetNode)
 			{
 				CastedPastedNode->ParentNode = AttachTargetNode;
 				AttachTargetNode->AddSubNode(CastedPastedNode);
-
-				// Remove the Paste Node from the graph.
-				CastedGraph->RemoveNode(CastedPastedNode);
+			}
+		}
+		else
+		{
+			if (CastedPastedNode && Cast<UJointEdGraphNode_Fragment>(CastedPastedNode))
+			{
+				CastedPastedNode->DestroyNode();
 			}
 		}
 	}
-	
-	// Notify the graph that graph nodes have been pasted.
+
+	FixupPastedNodes(PastedNodes, NewToOldNodeMapping);
+
 	if (CastedGraph)
 	{
 		CastedGraph->OnNodesPasted(TextToImport);
@@ -3111,17 +3296,17 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	// Update UI
 	CurrentGraphEditor->NotifyGraphChanged();
 
-	// Mark the package as dirty
 	UObject* GraphOwner = CastedGraph->GetOuter();
 	if (GraphOwner)
 	{
 		GraphOwner->PostEditChange();
 		GraphOwner->MarkPackageDirty();
 	}
-	
-	// Select the newly pasted nodes on the graph
+
+
 	TSet<class UObject*> Selection;
 
+	// Select the newly pasted stuff
 	for (UEdGraphNode* PastedNode : PastedNodes)
 	{
 		if (!PastedNode) continue;
@@ -3130,7 +3315,6 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	}
 
 	SelectProvidedObjectOnGraph(Selection);
-	
 }
 
 
@@ -3865,7 +4049,7 @@ TSharedRef<class SWidget> FJointEditorToolkit::OnGetDebuggerActorsMenu()
 
 		//If it already has the debugging asset, then use that instance to getter the Joint manager because the toolkit's GetJointManager() will return the instance of the duplicated, transient version of it.
 		DebuggerSingleton->GetMatchingInstances(GetDebuggingJointInstance().IsValid()
-			                                        ? GetDebuggingJointInstance().Get()->OriginalJointManager.Get()
+			                                        ? GetDebuggingJointInstance().Get()->OriginalJointManager
 			                                        : GetJointManager(), MatchingInstances);
 
 		// Fill the combo menu with presets of common screen resolutions

@@ -13,7 +13,6 @@
 #include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/Engine.h"
 #include "Interfaces/ITargetPlatform.h"
-#include "Kismet/GameplayStatics.h"
 
 #if WITH_EDITOR
 
@@ -810,33 +809,12 @@ bool UJointNodeBase::CallRemoteFunction(UFunction* Function, void* Parms, FOutPa
 	
 	if (!HostingJointInstance.IsValid()) return false;
 	
-	/**
-	 * If bUsePlayerControllerAsRPCFunctionCallspace is true and the client does not have authority over the Joint Instance, it will try to retrieve the PlayerController's NetDriver to process the remote function.
-	 * + This is extremely experimental.
-	 */
-	
-	if (!GetHostingJointInstance()->HasAuthority() && bUsePlayerControllerAsRPCFunctionCallspace)
-	{
-		//Use the PlayerController's function callspace.
-		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-
-		if (!PC) return false;
-
-		UNetDriver* NetDriver = PC->GetNetDriver();
-	
-		if (!NetDriver) return false;
-
-		NetDriver->ProcessRemoteFunction(PC, Function, Parms, OutParms, Stack, this);
-	}
-	
-	
-	//Use the Joint actor's function callspace instead.
 	UNetDriver* NetDriver = HostingJointInstance->GetNetDriver();
 	
 	if (!NetDriver) return false;
 
 	NetDriver->ProcessRemoteFunction(HostingJointInstance.Get(), Function, Parms, OutParms, Stack, this);
-	
+
 	return true;
 }
 
@@ -850,18 +828,6 @@ int32 UJointNodeBase::GetFunctionCallspace(UFunction* Function, FFrame* Stack)
 		return GEngine->GetGlobalFunctionCallspace(Function, this, Stack);
 	}
 	
-	//for the clients that do not have authority (over the Joint Instance) - use the player controller's function callspace if the option is enabled.
-	if (!GetHostingJointInstance()->HasAuthority() && bUsePlayerControllerAsRPCFunctionCallspace)
-	{
-		//Use the PlayerController's function callspace.
-		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-		
-		if (PC)
-		{
-			return PC->GetFunctionCallspace(Function, Stack);
-		}
-	}
-	
 	return GetHostingJointInstance()->GetFunctionCallspace(Function, Stack);
 
 #else
@@ -871,21 +837,8 @@ int32 UJointNodeBase::GetFunctionCallspace(UFunction* Function, FFrame* Stack)
 		// This handles absorbing authority/cosmetic
 		return GEngine->GetGlobalFunctionCallspace(Function, this, Stack);
 	}
-
-	//for the clients that do not have authority (over the Joint Instance) - use the player controller's function callspace if the option is enabled.
-	if (!GetHostingJointInstance()->HasAuthority() && bUsePlayerControllerAsRPCFunctionCallspace)
-	{
-		//Use the PlayerController's function callspace.
-		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-		
-		if (PC)
-		{
-			return PC->GetFunctionCallspace(Function, Stack);
-		}
-	}
-	
 	return GetHostingJointInstance()->GetFunctionCallspace(Function, Stack);
-	
+
 #endif
 	
 	

@@ -23,7 +23,7 @@ public:
 
 	//Modules that this animation uses.
 	UPROPERTY(Instanced, BlueprintReadWrite, Category="Animation")
-		TArray<TObjectPtr<UVoltModuleItem>> Modules; 
+		TArray<UVoltModuleItem*> Modules; 
 
 	VOLT_DECLARE_SUBMODULE_FUNCTIONS(Modules)
 	

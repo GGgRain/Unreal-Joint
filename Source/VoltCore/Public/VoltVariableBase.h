@@ -74,7 +74,7 @@ public:
 	 * Though it's not that harsh on the performance. It's fine.
 	 */
 	UPROPERTY(EditAnywhere, Category="Variable Action")
-	TArray<TObjectPtr<UVoltVariableActionBase>> CachedActions;
+	TArray<UVoltVariableActionBase*> CachedActions;
 
 	/**
 	 * Whether we cached the actions.

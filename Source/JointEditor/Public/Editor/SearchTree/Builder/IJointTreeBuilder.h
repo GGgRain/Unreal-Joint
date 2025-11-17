@@ -16,10 +16,10 @@ class IJointTreeItem;
 class FTextFilterExpressionEvaluator;
 class UJointEdGraphNode;
 
-struct FJointTreeJointManagerInfo
+struct FJointManagerInfo
 
 {
-	FJointTreeJointManagerInfo(TWeakObjectPtr<UJointManager> InManager)
+	FJointManagerInfo(TWeakObjectPtr<UJointManager> InManager)
 		: JointManager(InManager)
 	{
 		if (JointManager.Get())
@@ -42,7 +42,7 @@ struct FJointTreeJointManagerInfo
 #endif
 	}
 
-	bool operator<(const FJointTreeJointManagerInfo& RHS)
+	bool operator<(const FJointManagerInfo& RHS)
 	{
 		// Sort alphabetically by string prefix
 		if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
@@ -61,9 +61,9 @@ struct FJointTreeJointManagerInfo
 	int32 SortLength = 0;
 };
 
-struct FJointTreeGraphInfo
+struct FGraphInfo
 {
-	FJointTreeGraphInfo(UJointEdGraph* InGraph)
+	FGraphInfo(UJointEdGraph* InGraph)
 		: Graph(InGraph)
 	{
 		if (Graph)
@@ -86,7 +86,7 @@ struct FJointTreeGraphInfo
 #endif
 	}
 
-	bool operator<(const FJointTreeGraphInfo& RHS)
+	bool operator<(const FGraphInfo& RHS)
 	{
 		// Sort alphabetically by string prefix
 		if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
@@ -105,9 +105,9 @@ struct FJointTreeGraphInfo
 	int32 SortLength = 0;
 };
 
-struct FJointTreeNodeInfo
+struct FNodeInfo
 {
-	FJointTreeNodeInfo(UEdGraphNode* InEditorNode)
+	FNodeInfo(UEdGraphNode* InEditorNode)
 		: EditorNode(InEditorNode)
 	{
 		if (InEditorNode)
@@ -137,7 +137,7 @@ struct FJointTreeNodeInfo
 #endif
 	}
 
-	bool operator<(const FJointTreeNodeInfo& RHS)
+	bool operator<(const FNodeInfo& RHS)
 	{
 		// Sort alphabetically by string prefix
 		if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }
@@ -157,9 +157,9 @@ struct FJointTreeNodeInfo
 };
 
 
-struct FJointTreePropertyInfo
+struct FPropertyInfo
 {
-	FJointTreePropertyInfo(FProperty* InProperty, UObject* InPropertyOwnerObject, UObject* TreeItemOwnerObject = nullptr)
+	FPropertyInfo(FProperty* InProperty, UObject* InPropertyOwnerObject, UObject* TreeItemOwnerObject = nullptr)
 		: Property(InProperty), Object(InPropertyOwnerObject), TreeItemOwnerObject(TreeItemOwnerObject)
 	{
 		if (InPropertyOwnerObject)
@@ -182,7 +182,7 @@ struct FJointTreePropertyInfo
 #endif
 	}
 
-	bool operator<(const FJointTreePropertyInfo& RHS)
+	bool operator<(const FPropertyInfo& RHS)
 	{
 		// Sort alphabetically by string prefix
 		if (int32 SplitNameComparison = SortString.Compare(RHS.SortString)) { return SplitNameComparison < 0; }

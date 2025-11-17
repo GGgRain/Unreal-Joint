@@ -147,8 +147,6 @@ public:
 	
 	void HideDisableEditOnInstanceProperties(IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances);
 
-	void PopulateNodeClassesDescription(IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances);
-
 };
 
 class JOINTEDITOR_API FJointEdGraphCustomization: public IDetailCustomization

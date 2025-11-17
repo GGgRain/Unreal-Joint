@@ -37,7 +37,6 @@
 
 #define DEBUG_ShowReplication 0 && WITH_EDITOR
 
-// Define to use new replication system introduced in UE 5.1.0.
 #define USE_NEW_REPLICATION !UE_VERSION_OLDER_THAN(5, 1, 0) && true
 
 
@@ -71,31 +70,6 @@ void AJointActor::ImplementAbilitySystemComponent()
 {
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
-}
-
-void AJointActor::OnRep_JointManager(const UJointManager* PreviousJointManager)
-{
-#if DEBUG_ShowReplication
-	
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Orange, FString::Printf(
-												 TEXT("%s, %s, %s: OnRep_JointManager, Previous Joint Manager : %s, New Joint Manager : %s"),
-												 UKismetSystemLibrary::IsStandalone(this)
-													 ? *FString("Standalone")
-													 : UKismetSystemLibrary::IsDedicatedServer(this)
-													 ? *FString("Dedicated Server")
-													 : UKismetSystemLibrary::IsServer(this)
-													 ? *FString("Listen Server (Client_Host)")
-													 : *FString("Client"),
-												 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-												 *this->GetName(),
-												 PreviousJointManager ? *PreviousJointManager->GetName() : *FString("None"),
-												 JointManager ? *JointManager->GetName() : *FString("None")));
-	}
-#endif
-	RequestSetJointManager(JointManager);
 }
 
 void AJointActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -938,7 +912,6 @@ void AJointActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 	Params.Condition = COND_None;
 	DOREPLIFETIME_WITH_PARAMS_FAST(AJointActor, CachedAllNodesForNetworking, Params);
-	//DOREPLIFETIME(AJointActor, JointManager);
 }
 
 bool AJointActor::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
@@ -964,7 +937,7 @@ bool AJointActor::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, 
 			WroteSomething |= Channel->ReplicateSubobject(NodeForNetworking, *Bunch, *RepFlags);
 		}
 	}
-	
+
 	for (UActorComponent* ActorComp : ReplicatedComponents)
 	{
 		if (ActorComp && ActorComp->GetIsReplicated())
@@ -987,7 +960,6 @@ bool AJointActor::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, 
 #endif
 }
 
-
 void AJointActor::CacheNodesForNetworking()
 {
 	if (HasAuthority())
@@ -1003,7 +975,7 @@ void AJointActor::CacheNodesForNetworking()
 				RemoveNodeForNetworking(NodesForNetworking);
 			}
 		}
-		
+
 #endif
 
 
@@ -1045,10 +1017,9 @@ void AJointActor::CacheNodesForNetworking()
 		}
 
 		CachedAllNodesForNetworking = Nodes;
-		
+
 #if USE_NEW_REPLICATION
 		
-		// This must be called after the hasing
 		for (UJointNodeBase* AllNodesForNetworking : CachedAllNodesForNetworking)
 		{
 			if(IsValid(AllNodesForNetworking))
@@ -1058,7 +1029,6 @@ void AJointActor::CacheNodesForNetworking()
 		}
 
 #endif
-		
 	}
 }
 

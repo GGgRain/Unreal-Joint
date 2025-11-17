@@ -52,7 +52,7 @@ void IVoltSubModuleInterface::K2_RemoveModuleAt_Implementation(const int& Index)
 
 bool IVoltSubModuleInterface::HasModule(UVoltModuleItem* InModule)
 {
-	if(const TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(const TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		return Container->Contains(InModule);
 	}
@@ -62,7 +62,7 @@ bool IVoltSubModuleInterface::HasModule(UVoltModuleItem* InModule)
 
 bool IVoltSubModuleInterface::HasModuleForClass(TSubclassOf<UVoltModuleItem> InModuleClass)
 {
-	if(const TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(const TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		return Container->ContainsByPredicate([InModuleClass](const UVoltModuleItem* Item) { return Item->GetClass() == InModuleClass; });
 	}
@@ -72,7 +72,7 @@ bool IVoltSubModuleInterface::HasModuleForClass(TSubclassOf<UVoltModuleItem> InM
 
 UVoltModuleItem* IVoltSubModuleInterface::GetModuleAt(const int& Index)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		return (Container->IsValidIndex(Index)) ? (*Container)[Index] : nullptr;
 	}
@@ -82,7 +82,7 @@ UVoltModuleItem* IVoltSubModuleInterface::GetModuleAt(const int& Index)
 
 UVoltModuleItem* IVoltSubModuleInterface::GetModuleForClass(const TSubclassOf<UVoltModuleItem> InModuleClass)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		return *Container->FindByPredicate([InModuleClass](const UVoltModuleItem* Item) { return Item->GetClass() == InModuleClass; });
 	}
@@ -92,7 +92,7 @@ UVoltModuleItem* IVoltSubModuleInterface::GetModuleForClass(const TSubclassOf<UV
 
 void IVoltSubModuleInterface::AddModule(UVoltModuleItem* InModule)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		if(!Container->Contains(InModule)) Container->Add(InModule);
 	}
@@ -100,7 +100,7 @@ void IVoltSubModuleInterface::AddModule(UVoltModuleItem* InModule)
 
 void IVoltSubModuleInterface::InsertModuleAt(UVoltModuleItem* InModule, const int& Index)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		if(!Container->Contains(InModule)) Container->Insert(InModule,Index);
 	}
@@ -108,7 +108,7 @@ void IVoltSubModuleInterface::InsertModuleAt(UVoltModuleItem* InModule, const in
 
 void IVoltSubModuleInterface::RemoveModule(UVoltModuleItem* InModule)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		Container->Remove(InModule);
 	}
@@ -116,7 +116,7 @@ void IVoltSubModuleInterface::RemoveModule(UVoltModuleItem* InModule)
 
 void IVoltSubModuleInterface::RemoveAllModuleForClass(TSubclassOf<UVoltModuleItem> InModuleClass)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		Container->RemoveAll([InModuleClass](const UVoltModuleItem* Item) { return Item->GetClass() == InModuleClass; });
 	}
@@ -124,7 +124,7 @@ void IVoltSubModuleInterface::RemoveAllModuleForClass(TSubclassOf<UVoltModuleIte
 
 void IVoltSubModuleInterface::RemoveModuleAt(const int& Index)
 {
-	if(TArray<TObjectPtr<UVoltModuleItem>>* Container = GetModuleContainer())
+	if(TArray<UVoltModuleItem*>* Container = GetModuleContainer())
 	{
 		if(Container->IsValidIndex(Index)) Container->RemoveAt(Index);
 	}

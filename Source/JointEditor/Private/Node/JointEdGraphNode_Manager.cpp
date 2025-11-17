@@ -95,7 +95,7 @@ void UJointEdGraphNode_Manager::NodeConnectionListChanged()
 	{
 		if (Pin == nullptr) continue;
 
-		TArray<TObjectPtr<UJointNodeBase>> Nodes;
+		TArray<UJointNodeBase*> Nodes;
 
 		Nodes.Empty();
 		
@@ -124,12 +124,12 @@ void UJointEdGraphNode_Manager::UpdateNodeInstance()
 {
 	BindNodeInstance();
 
-	UpdateNodeInstanceOuterToJointManager();
+	UpdateNodeInstanceOuter();
 
 	SyncNodeInstanceSubNodeListFromGraphNode();
 }
 
-void UJointEdGraphNode_Manager::UpdateNodeInstanceOuterToJointManager() const
+void UJointEdGraphNode_Manager::UpdateNodeInstanceOuter() const
 {
 	//Revert if this node is sub node since the sub node's outer should not be the Joint manager.
 	if (IsSubNode()) return;
@@ -139,7 +139,7 @@ void UJointEdGraphNode_Manager::UpdateNodeInstanceOuterToJointManager() const
 	SetNodeInstanceOuterAs(Manager);
 
 	//Propagate the execution to the children sub nodes to make sure all the sub nodes' instances are correctly assigned to its parent node.
-	UpdateSubNodesInstanceOuterToJointManager();
+	UpdateSubNodesInstanceOuter();
 }
 
 

@@ -274,7 +274,7 @@ public:
 
 public:
 	
-	virtual TArray<TObjectPtr<UVoltModuleItem>>* GetModuleContainer() { return nullptr; }
+	virtual TArray<UVoltModuleItem*>* GetModuleContainer() { return nullptr; }
 	
 };
 
@@ -325,4 +325,4 @@ void IVoltSubModuleInterface::RemoveAllModuleForClass(TSubclassOf<UVoltModuleIte
  * @param SubModuleArrayPropertyName The name of the TArray property that contains sub-modules.
  */
 #define VOLT_DECLARE_SUBMODULE_FUNCTIONS( SubModuleArrayPropertyName )\
-	virtual TArray<TObjectPtr<UVoltModuleItem>>* GetModuleContainer() override { return &SubModuleArrayPropertyName; }
+	virtual TArray<UVoltModuleItem*>* GetModuleContainer() override { return &SubModuleArrayPropertyName; }

@@ -430,6 +430,7 @@ void SJointManagerViewer::RequestTreeRebuild()
 void PerformReplaceAction(const FString& ReplaceFrom, const FString& ReplaceTo, TSharedPtr<IJointTreeItem>& ItemRef,
                           int& OccurrenceCount, bool bShouldStopOnFirstOccurrence, TSet<UObject*>& VisitedObjects)
 {
+	//UE_LOG(LogTemp, Log, TEXT("%s"), *ItemRef->GetRowItemName().ToString());
 	
 	if (bShouldStopOnFirstOccurrence && OccurrenceCount > 0)
 	{
