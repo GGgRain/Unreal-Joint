@@ -34,7 +34,7 @@ public:
 public:
 	
 	UPROPERTY(Instanced, BlueprintReadWrite, Category="Animation")
-		TArray<UVoltModuleItem*> Modules; 
+		TArray<TObjectPtr<UVoltModuleItem>> Modules; 
 	
 	VOLT_DECLARE_SUBMODULE_FUNCTIONS(Modules)
 	

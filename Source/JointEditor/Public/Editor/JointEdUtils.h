@@ -135,9 +135,13 @@ public:
 	 */
 	static UJointEdGraphNode* GetOriginalJointGraphNodeFromJointGraphNode(UJointEdGraphNode* InJointEdGraphNode);
 
-	
 public:
+	
+	static void MarkNodesAsModifiedAndValidateName(TSet<UEdGraphNode*> InNodes);
 
+	static void MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& PasteLocation);
+
+public:
 	
 	/**
 	 * Get blueprint class with the name.
@@ -208,7 +212,5 @@ public:
 		
 	}
 	
-	
-
 };
 

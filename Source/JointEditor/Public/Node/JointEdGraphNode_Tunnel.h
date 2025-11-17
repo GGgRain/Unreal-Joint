@@ -57,15 +57,16 @@ public:
 	virtual bool CanHaveSubNode() const override;
 	virtual bool CanReplaceNodeClass() override;
 	virtual bool CanReplaceEditorNodeClass() override;
+
 	
 	virtual void NodeConnectionListChanged() override;
 
 	bool bIsUpdatingNodeConnection = false;
 	
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin) override;
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void UpdateNodeInstance() override;
-	virtual void UpdateNodeInstanceOuter() const override;
+	virtual bool CanUserDeleteNode() const override;
 	virtual void DestroyNode() override;
 	virtual void ModifyGraphNodeSlate() override;
 	

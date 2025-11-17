@@ -37,6 +37,46 @@ bool FJointNodePointer::operator==(const FJointNodePointer& Other) const
 	return GetTypeHash(this) == GetTypeHash(&Other);
 }
 
+bool FJointNodePointer::HasSameRestrictionsAs(const FJointNodePointer& Other) const
+{
+	//check if the allowed types and disallowed types are the same.
+	return AllowedType.Num() == Other.AllowedType.Num() && DisallowedType.Num() == Other.DisallowedType.Num() &&
+		[&]() {
+			for (const TSubclassOf<UJointNodeBase>& Type : AllowedType)
+			{
+				if (!Other.AllowedType.Contains(Type)) return false;
+			}
+			return true;
+		}() &&
+		[&]() {
+			for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
+			{
+				if (!Other.DisallowedType.Contains(Type)) return false;
+			}
+			return true;
+		}();
+}
+
+bool FJointNodePointer::CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const
+{
+	//check if the allowed types and disallowed types are the same.
+	return AllowedType.Num() == AllowedClass.Num() && DisallowedType.Num() == DisallowedClasses.Num() &&
+		[&]() {
+			for (const TSubclassOf<UJointNodeBase>& Type : AllowedType)
+			{
+				if (!AllowedClass.Contains(Type)) return false;
+			}
+			return true;
+		}() &&
+		[&]() {
+			for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
+			{
+				if (!DisallowedClasses.Contains(Type)) return false;
+			}
+			return true;
+		}();
+}
+
 bool FJointNodePointer::IsValid() const
 {
 	return Node.IsValid();
@@ -65,13 +105,13 @@ void FJointEdPinData::CopyPropertiesFrom(const FJointEdPinData& Other)
 
 bool FJointEdPinData::operator==(const FJointEdPinData& Other) const
 {
-	return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type && ImplementedPinId ==
-		Other.ImplementedPinId;
+	return HasSameSignature(Other)
+		&& ImplementedPinId == Other.ImplementedPinId;
 }
 
 bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B)
 {
-	return A == B;
+	return !(A == B);
 }
 
 
@@ -451,12 +491,12 @@ FJointEdPinData::FJointEdPinData(
 	const EEdGraphPinDirection& InDirection,
 	const FEdGraphPinType& InType,
 	const FJointEdPinDataSetting& InSettings,
-	const FGuid& InGuid):
+	const FGuid& InImplementedPinGuid):
 		PinName(InPinName),
 		Direction(InDirection),
 		Type(InType),
 		Settings(InSettings),
-		ImplementedPinId(InGuid)
+		ImplementedPinId(InImplementedPinGuid)
 {
 }
 
@@ -467,7 +507,6 @@ FJointEdPinData::FJointEdPinData(const FJointEdPinData& Other) :
 	Type(Other.Type),
 	Settings(Other.Settings),
 	ImplementedPinId(Other.ImplementedPinId)
-
 {
 }
 

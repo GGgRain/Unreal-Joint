@@ -28,6 +28,7 @@
  */
 
 
+class UJointManager;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJointStarted, AJointActor*, JointInstance);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointBaseNodePlayed, AJointActor*, JointInstance,
@@ -64,7 +65,7 @@ public:
 	 * A Joint instance actor can have gameplay ability by itself, and it can be used in multiple situations.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
-	UAbilitySystemComponent* AbilitySystemComponent;
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
 public:
 	UFUNCTION(BlueprintPure, Category="GAS")
@@ -88,9 +89,14 @@ public:
 	 * It holds the copy of the original Joint manager.
 	 * This actor has the Joint manager's ownership on runtime.
 	 */
+	//UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Joint", ReplicatedUsing = OnRep_JointManager)
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Joint")
-	class UJointManager* JointManager;
+	TObjectPtr<UJointManager> JointManager;
 
+	UFUNCTION()
+	void OnRep_JointManager(const UJointManager* PreviousJointManager);
+
+	
 private:
 #if WITH_EDITORONLY_DATA
 
@@ -98,7 +104,7 @@ private:
 	 * The original Joint manager of Joint manager this instance uses.
 	 */
 	UPROPERTY()
-	class UJointManager* OriginalJointManager;
+	TObjectPtr<UJointManager> OriginalJointManager;
 
 	//Only debugger class in the editor module can access this value.
 	friend class UJointDebugger;
@@ -112,7 +118,7 @@ private:
 	 * The Joint node that this Joint actor is currently playing.
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "Joint")
-	class UJointNodeBase* PlayingJointNode;
+	TObjectPtr<UJointNodeBase> PlayingJointNode;
 
 public:
 
@@ -122,7 +128,7 @@ public:
 	 * This value is not replicated.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint", Transient)
-	TArray<UJointNodeBase*> KnownActiveNodes;
+	TArray<TObjectPtr<UJointNodeBase>> KnownActiveNodes;
 
 public:
 	
@@ -160,7 +166,7 @@ private:
 	 * Cached Joint nodes for the replication.
 	 */
 	UPROPERTY(Transient, Replicated, ReplicatedUsing = OnRep_CachedAllNodesForNetworking)
-	TArray<UJointNodeBase*> CachedAllNodesForNetworking;
+	TArray<TObjectPtr<UJointNodeBase>> CachedAllNodesForNetworking;
 
 	UFUNCTION()
 	void OnRep_CachedAllNodesForNetworking(const TArray<UJointNodeBase*>& PreviousCachedAllNodesForNetworking);
@@ -413,7 +419,7 @@ public:
 
 public:
 	//Executed when a new node has been requested to be begin played.
-	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node BeginPlayed")
+	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Begin Played")
 	FOnJointNodeRequestBeginPlay OnJointNodeBeginPlayDelegate;
 
 	//Executed when a new node has been requested to be end played.

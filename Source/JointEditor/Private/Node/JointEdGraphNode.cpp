@@ -121,7 +121,7 @@ void UJointEdGraphNode::ImplementPinDataPins()
 		if (GetPinForPinDataFromThis(Data) == nullptr)
 		{
 			const UEdGraphPin* NewPin = CreatePin(Data.Direction, Data.Type, Data.PinName);
-
+			
 			Data.ImplementedPinId = NewPin->PinId;
 		}
 	}
@@ -551,11 +551,23 @@ UEdGraphPin* UJointEdGraphNode::FindOriginalSubNodePin(UEdGraphPin* InReplicated
 	return nullptr;
 }
 
+UEdGraphPin* UJointEdGraphNode::FindOriginalPin(UEdGraphPin* InReplicatedPin)
+{
+	//First check if the pin is originated from this node.
+	if (CheckPinIsOriginatedFromThis(InReplicatedPin))
+	{
+		return InReplicatedPin;
+	}
+
+	//If not, check from the sub nodes.
+	return FindOriginalSubNodePin(InReplicatedPin);
+}
+
 FPinConnectionResponse UJointEdGraphNode::CanAttachThisAtParentNode(const UJointEdGraphNode* InParentNode) const
 {
 	if (const UJointNodeBase* CastedNode = GetCastedNodeInstance())
 	{
-		return ConvertToPinConnectionResponse(CastedNode->CanAttachThisAtParentNode(InParentNode));
+		return ConvertToPinConnectionResponse(CastedNode->CanAttachThisAtParentNode(InParentNode->GetNodeInstance()));
 	}
 
 
@@ -566,7 +578,7 @@ FPinConnectionResponse UJointEdGraphNode::CanAttachSubNodeOnThis(const UJointEdG
 {
 	if (const UJointNodeBase* CastedNode = GetCastedNodeInstance())
 	{
-		return ConvertToPinConnectionResponse(CastedNode->CanAttachSubNodeOnThis(InSubNode));
+		return ConvertToPinConnectionResponse(CastedNode->CanAttachSubNodeOnThis(InSubNode->GetNodeInstance()));
 	}
 
 	return FPinConnectionResponse(CONNECT_RESPONSE_MAKE, LOCTEXT("AllowedAttachmentMessage", "Allow Attaching"));
@@ -757,15 +769,16 @@ void UJointEdGraphNode::NodeConnectionListChanged()
 	return;
 }
 
-void UJointEdGraphNode::AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin)
+void UJointEdGraphNode::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
 	Nodes.Add(GetCastedNodeInstance());
 }
 
-
 UEdGraphPin* UJointEdGraphNode::FindReplicatedSubNodePin(const UEdGraphPin* InOriginalSubNodePin)
 {
-	return GetParentmostNodeOf(this)->FindPinById(InOriginalSubNodePin->PinId);
+	UJointEdGraphNode* ParentmostNode = GetParentmostNodeOf(this);
+	
+	return ParentmostNode->FindPinById(InOriginalSubNodePin->PinId);
 }
 
 void UJointEdGraphNode::ResetPinDataGuid()
@@ -795,7 +808,7 @@ void UJointEdGraphNode::GetPinDataToConnectionMap(TMap<FJointEdPinData, FJointNo
 			{
 				if (UJointEdGraphNode* LinkedPinOwner = CastPinOwnerToJointEdGraphNode(LinkedTo))
 				{
-					TArray<UJointNodeBase*> ActualNodes;
+					TArray<TObjectPtr<UJointNodeBase>> ActualNodes;
 
 					LinkedPinOwner->AllocateReferringNodeInstancesOnConnection(ActualNodes, LinkedTo);
 
@@ -821,6 +834,7 @@ UJointManager* UJointEdGraphNode::GetJointManager() const
 
 	return Manager;
 }
+
 
 UJointEdGraph* UJointEdGraphNode::GetCastedGraph() const
 {
@@ -903,6 +917,11 @@ FVector2D UJointEdGraphNode::GetSize() const
 	return FVector2D(NodeWidth, NodeHeight);
 }
 
+bool UJointEdGraphNode::GetShouldHideNameBox() const
+{
+	return false;
+}
+
 void UJointEdGraphNode::PostPlacedNewNode()
 {
 	PatchNodeInstanceFromClassDataIfNeeded();
@@ -912,54 +931,67 @@ void UJointEdGraphNode::PostPlacedNewNode()
 	GrabSlateDetailLevelFromNodeInstance();
 }
 
-void UJointEdGraphNode::PrepareForCopying()
+
+void UJointEdGraphNode::HoldOuterChainToCopy()
 {
+	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
+	if (ParentNode.Get() != nullptr)
+	{
+		SetOuterAs(ParentNode.Get());
+	}else
+	{
+		SetOuterAs(GetGraph());
+	}
+
 	//Hold the node instance to make sure it is copied as well.
 	SetNodeInstanceOuterAs(this);
+	
 
-	//Set this node's outer as nullptr to prevent the hash corruption.
-	SetOuterAs(nullptr);
-
-	//Cache the node instance's parent / sub nodes data prior to the copy action, and clear it to prevent the hash corruption.
-	//Ah, It also happens to the editor node too.
-	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance())
+	for (UJointEdGraphNode* SubNode : SubNodes)
 	{
-		CachedParentNodeForCopyPaste = ParentNode;
-		CachedSubNodesForCopyPaste = SubNodes;
+		if (!SubNode) continue;
 
-		ParentNode = nullptr;
-		SubNodes.Reset();
-
-		CachedNodeInstanceParentNodeForCopyPaste = CastedNodeInstance->ParentNode;
-		CachedNodeInstanceSubNodesForCopyPaste = CastedNodeInstance->SubNodes;
-
-		CastedNodeInstance->ParentNode = nullptr;
-		CastedNodeInstance->SubNodes.Reset();
+		SubNode->HoldOuterChainToCopy();
 	}
 }
+
+void UJointEdGraphNode::RestoreOuterChainFromCopy()
+{
+	if (ParentNode != nullptr)
+	{
+		SetOuterAs(ParentNode.Get()->GetGraph());
+	}
+
+	UpdateNodeInstanceOuterToJointManager();
+	
+	for (TObjectPtr<UJointEdGraphNode> SubNode : SubNodes)
+	{
+		if (!SubNode) continue;
+		
+		SubNode->RestoreOuterChainFromCopy();
+	}
+}
+
+void UJointEdGraphNode::PrepareForCopying()
+{
+	//Hold the outers to make it sure the copy-paste action works properly (make the objects reachable + duplicatable during the copy-paste action).
+	HoldOuterChainToCopy();
+}
+
 
 void UJointEdGraphNode::PostCopyNode()
 {
-	UpdateNodeInstanceOuter();
-
-	//Restore the node instance's parent / sub nodes properties with the cached data.
-	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance())
-	{
-		ParentNode = CachedParentNodeForCopyPaste;
-		SubNodes = CachedSubNodesForCopyPaste;
-
-		CastedNodeInstance->ParentNode = CachedNodeInstanceParentNodeForCopyPaste;
-		CastedNodeInstance->SubNodes = CachedNodeInstanceSubNodesForCopyPaste;
-	}
+	//Restore the outer chain after the copy action is done. TODO: see if we need to just replace with existing functions.
+	RestoreOuterChainFromCopy();
 }
-
 
 void UJointEdGraphNode::PostPasteNode()
 {
+	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
+	RestoreOuterChainFromCopy();
+	
 	ReallocateNodeInstanceGuid();
-
-	ResetPinDataGuid();
-
+	
 	UpdateNodeInstance();
 
 	//Since it has been allocated in different location, refresh the connection.
@@ -968,11 +1000,13 @@ void UJointEdGraphNode::PostPasteNode()
 
 void UJointEdGraphNode::PostEditImport()
 {
+	CreateNewGuid();
+
 	ReallocateNodeInstanceGuid();
+	
+	//ResetPinDataGuid();
 
-	ResetPinDataGuid();
-
-	UpdateNodeInstance();
+	//UpdateNodeInstance();
 }
 
 void UJointEdGraphNode::PostEditUndo()
@@ -1025,7 +1059,8 @@ void UJointEdGraphNode::DestroyNode()
 
 void UJointEdGraphNode::ImportCustomProperties(const TCHAR* SourceText, FFeedbackContext* Warn)
 {
-	//It won't copy-paste the old pins.
+	Super::ImportCustomProperties(SourceText, Warn);
+
 }
 
 void UJointEdGraphNode::ReconstructNodeInHierarchy()
@@ -1179,11 +1214,6 @@ void UJointEdGraphNode::RequestStartRenaming()
 	}
 }
 
-bool UJointEdGraphNode::GetShouldHideNameBox() const
-{
-	return false;
-}
-
 
 void UJointEdGraphNode::FeedEditorNodeToNodeInstance()
 {
@@ -1236,34 +1266,6 @@ void UJointEdGraphNode::ReallocatePins()
 
 	//Use this function to dynamically update the pin data.
 	//PinData.Add()...
-}
-
-void UJointEdGraphNode::UpdateNodeInstanceOuter() const
-{
-	UJointManager* Manager = GetJointManager();
-
-	SetNodeInstanceOuterAs(Manager);
-
-	//Propagate the execution to the children sub nodes to make sure all the sub nodes' instances are correctly assigned to its parent node.
-	UpdateSubNodesInstanceOuter();
-}
-
-void UJointEdGraphNode::UpdateSubNodesInstanceOuter() const
-{
-	if (this->NodeInstance == nullptr) return;
-
-	UJointManager* Manager = GetJointManager();
-
-	for (const UJointEdGraphNode* SubNode : SubNodes)
-	{
-		if (SubNode == nullptr) continue;
-
-		if (!SubNode->IsValidLowLevel()) continue;
-
-		SubNode->SetNodeInstanceOuterAs(Manager);
-
-		SubNode->UpdateSubNodesInstanceOuter();
-	}
 }
 
 void UJointEdGraphNode::AddSubNode(UJointEdGraphNode* SubNode, const bool bIsUpdateLocked)
@@ -1365,7 +1367,6 @@ void UJointEdGraphNode::RearrangeSubNodeAt(UJointEdGraphNode* SubNode, int32 Dro
 	if (!bIsUpdateLocked) Update();
 }
 
-
 void UJointEdGraphNode::RemoveSubNode(UJointEdGraphNode* SubNode, const bool bIsUpdateLocked)
 {
 	//MUST NOT HAVE any transaction to avoid the modify() being called multiple time.
@@ -1385,6 +1386,7 @@ void UJointEdGraphNode::RemoveAllSubNodes(bool bIsUpdateLocked = true)
 
 	if (!bIsUpdateLocked) Update();
 }
+
 
 void UJointEdGraphNode::SyncNodeInstanceSubNodeListFromGraphNode()
 {
@@ -1415,7 +1417,6 @@ void UJointEdGraphNode::SyncNodeInstanceSubNodeListFromGraphNode()
 	}
 }
 
-
 void UJointEdGraphNode::UpdateSubNodeChain()
 {
 	for (UJointEdGraphNode* SubNode : this->SubNodes)
@@ -1430,11 +1431,11 @@ void UJointEdGraphNode::UpdateSubNodeChain()
 	}
 }
 
-
 bool UJointEdGraphNode::IsSubNode() const
 {
 	return ParentNode == nullptr ? false : ParentNode->IsValidLowLevel();
 }
+
 
 EOrientation UJointEdGraphNode::GetSubNodeBoxOrientation()
 {
@@ -1479,7 +1480,6 @@ void UJointEdGraphNode::ResizeNode(const FVector2D& NewSize)
 	NodeWidth = NodeSize.X;
 	NodeHeight = NodeSize.Y;
 }
-
 
 FVector2D UJointEdGraphNode::GetNodeMaximumSize() const
 {
@@ -1595,6 +1595,7 @@ void UJointEdGraphNode::BindNodeInstancePropertyChangeEvents()
 	NodeBaseInstance->PropertyChangedNotifiers.AddUObject(this, &UJointEdGraphNode::OnNodeInstancePropertyChanged);
 }
 
+
 void UJointEdGraphNode::UnbindNodeInstancePropertyChangeEvents()
 {
 	UJointNodeBase* NodeBaseInstance = GetCastedNodeInstance();
@@ -1614,17 +1615,17 @@ void UJointEdGraphNode::OnNodeInstancePropertyChanged(const FPropertyChangedEven
 	NodeConnectionListChanged();
 }
 
-
 void UJointEdGraphNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	NotifyGraphNodePropertyChangeToGraphNodeWidget(PropertyChangedEvent);
-
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	
+	//Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 
 void UJointEdGraphNode::OnDebugDataChanged(const FJointNodeDebugData* DebugData)
 {
 }
+
 
 void UJointEdGraphNode::UpdateNodeInstance()
 {
@@ -1632,9 +1633,36 @@ void UJointEdGraphNode::UpdateNodeInstance()
 
 	BindNodeInstance();
 
-	UpdateNodeInstanceOuter();
+	UpdateNodeInstanceOuterToJointManager();
+
+	UpdateSubNodesInstanceOuterToJointManager();
 
 	SyncNodeInstanceSubNodeListFromGraphNode();
+}
+
+void UJointEdGraphNode::UpdateNodeInstanceOuterToJointManager() const
+{
+	UJointManager* Manager = GetJointManager();
+
+	SetNodeInstanceOuterAs(Manager);
+}
+
+void UJointEdGraphNode::UpdateSubNodesInstanceOuterToJointManager() const
+{
+	if (this->NodeInstance == nullptr) return;
+
+	UJointManager* Manager = GetJointManager();
+
+	for (const UJointEdGraphNode* SubNode : SubNodes)
+	{
+		if (SubNode == nullptr) continue;
+
+		if (!SubNode->IsValidLowLevel()) continue;
+
+		SubNode->SetNodeInstanceOuterAs(Manager);
+
+		SubNode->UpdateSubNodesInstanceOuterToJointManager();
+	}
 }
 
 bool UJointEdGraphNode::SetNodeInstanceOuterAs(UObject* NewOuter) const
@@ -1650,6 +1678,9 @@ bool UJointEdGraphNode::SetNodeInstanceOuterAs(UObject* NewOuter) const
 
 	//Revert if the node instance has the same outer as the given outer.
 	if (NodeInstance->GetOuter() == NewOuter) return false;
+
+	//Revert if the node instance is a Joint Manager.
+	if (NodeInstance->GetClass() == UJointManager::StaticClass()) return false;
 	
 	FString NewName = NodeInstance->GetName();
 
@@ -1796,11 +1827,6 @@ void CollectAllSubNodesOf(const UJointEdGraphNode* Node, TArray<UJointEdGraphNod
 	}
 }
 
-void UJointEdGraphNode::ClearCachedParentGuid()
-{
-	CachedParentGuidForCopyPaste.Invalidate();
-}
-
 TSubclassOf<UJointNodeBase> UJointEdGraphNode::SupportedNodeClass()
 {
 	return UJointNodeBase::StaticClass();
@@ -1859,6 +1885,11 @@ TArray<UJointEdGraphNode*> UJointEdGraphNode::GetAllSubNodesInHierarchy() const
 bool UJointEdGraphNode::CanHaveBreakpoint() const
 {
 	return true;
+}
+
+UObject* UJointEdGraphNode::GetNodeInstance() const
+{
+	return NodeInstance;
 }
 
 bool UJointEdGraphNode::CheckClassDataIsKnown()

@@ -14,7 +14,7 @@
 
 /**
  * This is the type of response the graph editor should take when making a connection
- * It has been introduced to support BP.
+ * It has been introduced to support BP, because the original ECanCreateConnectionResponse is not exposed to BP and Editor only.
  */
 
 UENUM(BlueprintType)
@@ -56,8 +56,11 @@ public:
 	GENERATED_BODY()
 
 public:
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Connection Response")
 	FText Message;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Connection Response")
 	TEnumAsByte<EJointEdCanCreateConnectionResponse::Type> Response;
 
 public:
