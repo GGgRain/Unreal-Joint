@@ -26,7 +26,7 @@ public:
 	 * The graph node reference that uses this debug data.
 	 */
 	UPROPERTY(EditAnywhere, Category="Debug")
-	UJointEdGraphNode* Node = nullptr;
+	TObjectPtr<UJointEdGraphNode> Node = nullptr;
 	
 public:
 

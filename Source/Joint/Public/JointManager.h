@@ -35,18 +35,18 @@ public:
 	 * Change this property to make it start from a specific node.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Data")
-	TArray<UJointNodeBase*> StartNodes;
+	TArray<TObjectPtr<UJointNodeBase>> StartNodes;
 
 	/**
 	 * The nodes this Joint manager contains.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Data")
-	TArray<UJointNodeBase*> Nodes;
+	TArray<TObjectPtr<UJointNodeBase>> Nodes;
 
 public:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Data")
-	TArray<UJointNodeBase*> ManagerFragments;
+	TArray<TObjectPtr<UJointNodeBase>> ManagerFragments;
 
 public:
 	/**
@@ -76,7 +76,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragment for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	class UJointFragment* FindManagerFragmentByClass(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
@@ -85,7 +85,7 @@ public:
 	 * @param FragmentClass Provided class for the search action.
 	 * @return Found fragments for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	const TArray<class UJointFragment*> FindManagerFragmentsByClass(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
@@ -98,27 +98,27 @@ public:
 
 	/**
 	 * Find a fragment with a given class.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @param FragmentClass Provided class for the search action.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @param FragmentClass Provided class for the search action
 	 * @return Found fragment for the class.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	class UJointFragment* FindManagerFragmentByClassOnLowerHierarchy(TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
 	 * Find all fragment with a given class.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @param FragmentClass Provided class for the search action.
-	 * @return Found fragments for the class.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @param FragmentClass Provided class for the search action
+	 * @return Found fragments for the class
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	const TArray<class UJointFragment*> FindManagerFragmentsByClassOnLowerHierarchy(
 		TSubclassOf<class UJointFragment> FragmentClass) const;
 
 	/**
 	 * Get all fragments attached on this node.
-	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes..
-	 * @return Found fragments.
+	 * This function searches for the whole hierarchy of the manager node (root node), which means, it includes a sub node's sub nodes' sub nodes.
+	 * @return Found fragments
 	 */
 	UFUNCTION(BlueprintPure, Category = "Fragment")
 	const TArray<class UJointFragment*> GetAllManagerFragmentsOnLowerHierarchy() const;
@@ -174,7 +174,7 @@ public:
 
 	/**
 	 * Find fragments by the provided tags while iterating through the lower hierarchy.
-	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all of the matching tags with the provided tags.
+	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all the matching tags with the provided tags.
 	 * @param bExact whether to force exact.
 	 * @return Found fragments for the tag.
 	 */
@@ -234,7 +234,7 @@ public:
 
 	/**
 	 * Find fragments by the provided tags.
-	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all of the matching tags with the provided tags.
+	 * @param InNodeTagContainer The tags to search. It will return all the nodes that has all the matching tags with the provided tags.
 	 * @param bExact whether to force exact.
 	 * @return Found fragments for the tag.
 	 */
@@ -247,7 +247,7 @@ public:
 
 	/** Editor Graph Data for Joint Manager. */
 	UPROPERTY(VisibleAnywhere, Category="Editor")
-	class UEdGraph* JointGraph;
+	TObjectPtr<class UEdGraph> JointGraph;
 
 	UPROPERTY()
 	TArray<FEditedDocumentInfo> LastEditedDocuments;

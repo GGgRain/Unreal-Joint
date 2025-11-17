@@ -22,7 +22,7 @@ void UVoltModuleItem::SetSubModulesVoltSlate(const TScriptInterface<IVoltInterfa
 	
 	if(IVoltSubModuleInterface* TheInterface = Cast<IVoltSubModuleInterface>(this))
 	{
-		TArray<UVoltModuleItem*>* Container = TheInterface->GetModuleContainer();
+		TArray<TObjectPtr<UVoltModuleItem>>* Container = TheInterface->GetModuleContainer();
 
 		if(!Container) return;
 
@@ -47,7 +47,7 @@ void UVoltModuleItem::ReloadModule()
 	//Propagate it to the children modules
 	if(IVoltSubModuleInterface* TheInterface = Cast<IVoltSubModuleInterface>(this))
 	{
-		TArray<UVoltModuleItem*>* Container = TheInterface->GetModuleContainer();
+		TArray<TObjectPtr<UVoltModuleItem>>* Container = TheInterface->GetModuleContainer();
 		
 		if(!Container) return;
 

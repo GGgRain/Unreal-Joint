@@ -65,11 +65,11 @@ public:
 
 public:
 
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin) override;
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void UpdateNodeInstance() override;
 	
-	virtual void UpdateNodeInstanceOuter() const override;
+	virtual void UpdateNodeInstanceOuterToJointManager() const override;
 
 	virtual void DestroyNode() override;
 
@@ -113,7 +113,7 @@ public:
 	 * Nodes that are connected to this node.
 	 */
 	UPROPERTY(EditAnywhere, Category="Connector Info")
-	TArray<UJointNodeBase*> ConnectedNodes;
+	TArray<TObjectPtr<UJointNodeBase>> ConnectedNodes;
 
 
 public:

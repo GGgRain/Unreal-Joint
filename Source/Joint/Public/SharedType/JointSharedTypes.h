@@ -119,6 +119,20 @@ public:
 	
 	bool operator==(const FJointNodePointer& Other) const;
 
+	/**
+	 * Check whether the node pointer has the same restrictions as the provided node pointer.
+	 */
+	bool HasSameRestrictionsAs(const FJointNodePointer& Other) const;
+
+	/**
+	 * Check whether the node pointer has the same restrictions as the provided set of allowed and disallowed types.
+	 */
+	bool CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const;
+	
+	/**
+	 * Check whether the node pointer is valid.
+	 * @return true if the node pointer is valid.
+	 */
 	bool IsValid() const;
 	
 };
@@ -147,7 +161,7 @@ public:
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Objects")
-	TArray<UJointNodeBase*> Nodes;
+	TArray<TObjectPtr<UJointNodeBase>> Nodes;
 };
 
 
@@ -366,11 +380,13 @@ public:
 	FJointEdPinDataSetting Settings;
 
 public:
+	
 	//Guid of the pin instance that has been implemented by this data.
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Editor Node")
 	FGuid ImplementedPinId;
 
 public:
+	
 	FJointEdPinData();
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection);
@@ -383,7 +399,7 @@ public:
 	                const FJointEdPinDataSetting& InSettings);
 
 	FJointEdPinData(const FName& InPinName, const EEdGraphPinDirection& InDirection, const FEdGraphPinType& InType,
-	                const FJointEdPinDataSetting& InSettings, const FGuid& InGuid);
+	                const FJointEdPinDataSetting& InSettings, const FGuid& InImplementedPinGuid);
 
 
 	FJointEdPinData(const FJointEdPinData& Other);
@@ -394,7 +410,7 @@ public:
 	bool HasSameSignature(const FJointEdPinData& Other) const;
 
 	void CopyPropertiesFrom(const FJointEdPinData& Other);
-
+	
 	bool operator==(const FJointEdPinData& Other) const;
 
 public:
@@ -419,6 +435,36 @@ FORCEINLINE uint32 GetTypeHash(const FJointEdPinData& Struct)
 
 inline bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B);
 
+
+// A wrapper struct for the pin data on the copy-paste actions.
+USTRUCT()
+struct JOINT_API FJointPinDataConnection
+{
+	GENERATED_BODY()
+
+	FJointPinDataConnection() {}
+	FJointPinDataConnection(const FGuid& InToNodeGuid, const FJointEdPinData& InToPinData)
+		: ToNodeGuid(InToNodeGuid), ToPinData(InToPinData)
+	{}
+
+public:
+
+	UPROPERTY(EditAnywhere, Category="Editor Node")
+	FGuid ToNodeGuid;
+
+	UPROPERTY(EditAnywhere, Category="Editor Node")
+	FJointEdPinData ToPinData;
+	
+};
+
+USTRUCT()
+struct JOINT_API FJointPinDataConnections
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category="Editor Node")
+	TArray<FJointPinDataConnection> Connections;
+};
 
 UENUM(BlueprintType)
 namespace EJointEdMessageSeverity

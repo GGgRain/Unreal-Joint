@@ -225,13 +225,13 @@ public:
 	/**
 	 * Find a fragment by the provided class while iterating through the lower hierarchy.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	UJointFragment* FindFragmentByClassOnLowerHierarchy(TSubclassOf<UJointFragment> FragmentClass);
 
 	/**
 	 * Find all fragments by the provided class while iterating through the lower hierarchy.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	TArray<UJointFragment*> FindFragmentsByClassOnLowerHierarchy(TSubclassOf<UJointFragment> FragmentClass);
 
 	/**
@@ -313,14 +313,14 @@ public:
 	 * Find a fragment with by class. It only searches the children nodes that are directly attached to this node.
 	 * Notice it will not search through the sub node's sub node.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	UJointFragment* FindFragmentByClass(TSubclassOf<UJointFragment> FragmentClass) const;
 
 	/**
 	 * Find all fragments with its class. It only searches the children nodes that are directly attached to this node.
 	 * Notice it will not search through the sub node's sub node.
 	 */
-	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UFUNCTION(BlueprintPure, Category = "Fragment", meta=(DeterminesOutputType="FragmentClass"))
 	TArray<UJointFragment*> FindFragmentsByClass(TSubclassOf<UJointFragment> FragmentClass) const;
 
 	/**
@@ -644,7 +644,19 @@ private:
 	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Networking")
 	bool bReplicates = false;
-
+	
+	/**
+	 * Joint 2.11.0
+	 * Whether to use the player controller's function callspace for the RPC function calls.
+	 * If you set this to true, then it will use the Player controller's function callspace instead of the Joint actor's one, allowing the RPC functions to be executed on the player controller side.
+	 * Which means that you don't need to implement some 'workaround' functions on the controller side to execute the RPC functions on the node instance.
+	 *
+	 * This is not enabled by default, because it can cause some unexpected issues we haven't foreseen yet. So please use this option with caution.
+	 * (If you experience any issues regarding this option, please report them to us so we can fix them asap.)
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Networking|Advanced (Experimental)")
+	bool bUsePlayerControllerAsRPCFunctionCallspace = false;
+	
 public:
 	
 	/**

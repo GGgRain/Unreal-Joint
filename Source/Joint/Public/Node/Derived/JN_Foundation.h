@@ -22,7 +22,7 @@ public:
 public:
 
 	UPROPERTY(AdvancedDisplay, BlueprintReadWrite, VisibleAnywhere, Category = "Nodes")
-	TArray<UJointNodeBase*> NextNode;
+	TArray<TObjectPtr<UJointNodeBase>> NextNode;
 
 public:
 

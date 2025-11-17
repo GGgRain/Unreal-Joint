@@ -6,12 +6,16 @@
 #include "EdGraphSchema_K2_Actions.h"
 #include "JointActor.h"
 #include "JointEdGraph.h"
+#include "JointEdGraphNode_Fragment.h"
+#include "JointEdGraphSchema.h"
 #include "JointEditorToolkit.h"
 #include "Modules/ModuleManager.h"
 
 #include "JointEditor.h"
 #include "JointEditorNameValidator.h"
+#include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
+#include "SNodePanel.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Internationalization/TextPackageNamespaceUtil.h"
@@ -20,6 +24,8 @@
 #include "Node/JointFragment.h"
 #include "Node/JointNodeBase.h"
 #include "Serialization/TextReferenceCollector.h"
+
+#include "Misc/EngineVersionComparison.h"
 
 
 #define LOCTEXT_NAMESPACE "JointEdUtils"
@@ -73,8 +79,8 @@ TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FJointGraphNode
 
 template <typename Type>
 bool FJointEdUtils::FNewNodeClassFilter<Type>::IsClassAllowed(const FClassViewerInitializationOptions& InInitOptions,
-                                                                 const UClass* InClass,
-                                                                 TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
+                                                              const UClass* InClass,
+                                                              TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
 {
 	if (InClass != nullptr) { return InClass->IsChildOf(Type::StaticClass()); }
 	return false;
@@ -89,28 +95,15 @@ bool FJointEdUtils::FNewNodeClassFilter<Type>::IsUnloadedClassAllowed(
 	return InUnloadedClassData->IsChildOf(Type::StaticClass()) && !InUnloadedClassData->HasAnyClassFlags(CLASS_Abstract);
 }
 
-template <typename PropertyType>
-PropertyType* FJointEdUtils::GetCastedPropertyFromClass(const UClass* Class, const FName& PropertyName)
-{
-	if(Class == nullptr || PropertyName.IsNone()) return nullptr;
-
-	if(FProperty* FoundProperty = Class->FindPropertyByName(PropertyName))
-	{
-		if(PropertyType* CastedProperty = CastField<PropertyType>(FoundProperty)) return CastedProperty;
-	}
-	
-	return nullptr;
-}
-
-
 bool FJointEdUtils::FJointAssetFilter::IsClassAllowed(const FClassViewerInitializationOptions& InInitOptions,
-                                                         const UClass* InClass, TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
+                                                      const UClass* InClass, TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
 {
 	if (InClass != nullptr) { 
 		return InClass == UJointFragment::StaticClass();
 	}
 	return false;
 }
+
 
 bool FJointEdUtils::FJointAssetFilter::IsUnloadedClassAllowed(
 	const FClassViewerInitializationOptions& InInitOptions,
@@ -138,10 +131,6 @@ inline bool FJointEdUtils::FJointFragmentFilter::IsUnloadedClassAllowed(
 	return InUnloadedClassData->IsA(UJointFragment::StaticClass());
 }
 
-
-
-
-
 inline bool FJointEdUtils::FJointNodeFilter::IsClassAllowed(
 	const FClassViewerInitializationOptions& InInitOptions, const UClass* InClass,
 	TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
@@ -153,6 +142,10 @@ inline bool FJointEdUtils::FJointNodeFilter::IsClassAllowed(
 	return false;
 }
 
+
+
+
+
 inline bool FJointEdUtils::FJointNodeFilter::IsUnloadedClassAllowed(
 	const FClassViewerInitializationOptions& InInitOptions,
 	const TSharedRef<const IUnloadedBlueprintData> InUnloadedClassData,
@@ -162,11 +155,11 @@ inline bool FJointEdUtils::FJointNodeFilter::IsUnloadedClassAllowed(
 }
 
 void FJointEdUtils::JointText_StaticStableTextId(UPackage* InPackage,
-	const IEditableTextProperty::ETextPropertyEditAction InEditAction, const FString& InTextSource,
-	const FString& InProposedNamespace, const FString& InProposedKey, FString& OutStableNamespace,
-	FString& OutStableKey)
+                                                 const IEditableTextProperty::ETextPropertyEditAction InEditAction, const FString& InTextSource,
+                                                 const FString& InProposedNamespace, const FString& InProposedKey, FString& OutStableNamespace,
+                                                 FString& OutStableKey)
 {
-		bool bPersistKey = false;
+	bool bPersistKey = false;
 
 	const FString PackageNamespace = TextNamespaceUtil::EnsurePackageNamespace(InPackage);
 	if (!PackageNamespace.IsEmpty())
@@ -208,15 +201,15 @@ void FJointEdUtils::JointText_StaticStableTextId(UPackage* InPackage,
 	}
 }
 
-
 void FJointEdUtils::JointText_StaticStableTextIdWithObj(UObject* InObject,
-                                                              const IEditableTextProperty::ETextPropertyEditAction InEditAction, const FString& InTextSource,
-                                                              const FString& InProposedNamespace, const FString& InProposedKey, FString& OutStableNamespace,
-                                                              FString& OutStableKey)
+                                                        const IEditableTextProperty::ETextPropertyEditAction InEditAction, const FString& InTextSource,
+                                                        const FString& InProposedNamespace, const FString& InProposedKey, FString& OutStableNamespace,
+                                                        FString& OutStableKey)
 {
 	UPackage* Package = InObject ? InObject->GetOutermost() : nullptr;
 	JointText_StaticStableTextId(Package, InEditAction, InTextSource, InProposedNamespace, InProposedKey, OutStableNamespace, OutStableKey);
 }
+
 
 void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* InClass)
 {
@@ -238,11 +231,11 @@ void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* In
 	{
 		// Create and init a new Blueprint
 		if (UBlueprint* NewBP = FKismetEditorUtilities::CreateBlueprint(InClass
-																		, Package
-																		, FName(*Name)
-																		, BPTYPE_Normal
-																		, UBlueprint::StaticClass()
-																		, UBlueprintGeneratedClass::StaticClass()))
+		                                                                , Package
+		                                                                , FName(*Name)
+		                                                                , BPTYPE_Normal
+		                                                                , UBlueprint::StaticClass()
+		                                                                , UBlueprintGeneratedClass::StaticClass()))
 		{
 			GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(NewBP);
 
@@ -267,7 +260,7 @@ void FJointEdUtils::OpenEditorFor(UJointManager* Manager, FJointEditorToolkit*& 
 	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Manager);
 
 	IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
-		FindEditorForAsset(Manager, true);
+	                                                FindEditorForAsset(Manager, true);
 
 	if (EditorInstance != nullptr)
 	{
@@ -439,6 +432,31 @@ UEdGraphNode* FJointEdUtils::FindGraphNodeForNodeInstance(const UJointNodeBase* 
 	return nullptr;
 }
 
+UJointEdGraphNode* FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(UJointManager* JointManager, const FGuid& NodeGuid)
+{
+	if (JointManager == nullptr) return nullptr;
+
+	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(JointManager);
+
+	for (UJointEdGraph* Graph : AllGraphs)
+	{
+		if (Graph == nullptr) continue;
+
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = Graph->GetCachedJointGraphNodes();
+
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		{
+			if (GraphNode == nullptr) continue;
+
+			UJointNodeBase* NodeInstance = GraphNode->GetCastedNodeInstance();
+			
+			if (NodeInstance && NodeInstance->NodeGuid == NodeGuid) return GraphNode.Get();
+		}
+	}
+
+	return nullptr;
+}
+
 
 UJointManager* FJointEdUtils::GetOriginalJointManager(UJointManager* InJointManager)
 {
@@ -504,33 +522,86 @@ UJointEdGraphNode* FJointEdUtils::GetOriginalJointGraphNodeFromJointGraphNode(UJ
 	return nullptr;
 }
 
-UJointEdGraphNode* FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(UJointManager* JointManager, const FGuid& NodeGuid)
+void FJointEdUtils::MarkNodesAsModifiedAndValidateName(
+	TSet<UEdGraphNode*> InNodes
+)
 {
-	if (JointManager == nullptr) return nullptr;
+	// Modify the nodes to prepare for reattachment of sub nodes.
 
-	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(JointManager);
-
-	for (UJointEdGraph* Graph : AllGraphs)
+	for (UEdGraphNode*& PreImportNode : InNodes)
 	{
-		if (Graph == nullptr) continue;
+		if (!PreImportNode) continue;
 
-		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = Graph->GetCachedJointGraphNodes();
-
-		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(PreImportNode))
 		{
-			if (GraphNode == nullptr) continue;
+			CastedGraphNode->Modify();
 
-			UJointNodeBase* NodeInstance = GraphNode->GetCastedNodeInstance();
-			
-			if (NodeInstance && NodeInstance->NodeGuid == NodeGuid) return GraphNode.Get();
+			if (!CastedGraphNode->GetCastedNodeInstance()) continue;
+
+			CastedGraphNode->GetCastedNodeInstance()->Modify();
 		}
 	}
 
-	return nullptr;
+	// rename the node instances to avoid name conflicts
+	for (UEdGraphNode* NewPastedGraphNode : InNodes)
+	{
+		if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(NewPastedGraphNode))
+		{
+			TObjectPtr<UObject>& Instance = CastedGraphNode->NodeInstance;
+
+			if (CastedGraphNode == nullptr || Instance == nullptr) continue;
+
+			FString Name = Instance->GetName();
+			
+			if (FJointEdUtils::GetSafeNameForObjectRenaming(Name, Instance, Instance->GetOuter()))
+			{
+				Instance->Rename(*Name, Instance->GetOuter(), REN_NonTransactional);
+			}else
+			{
+				ensureMsgf(false, TEXT("Failed to rename the node instance '%s' during paste operation. This is not admirable, and can break the asset."), *Instance->GetPathName());
+			}
+		}
+	}
+	
 }
 
 
-#include "Misc/EngineVersionComparison.h"
+void FJointEdUtils::MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& PasteLocation)
+{
+	// Recenter pasted nodes around PasteLocation
+	int64 SumX = 0, SumY = 0;
+	int32 Count = 0;
+		
+	for (UEdGraphNode* Node : InNodes)
+	{
+		UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node);
+		
+		//If it is UJointEdGraphNode type, then check whether it is a fragment to decide whether to add it on the avg point calculation.
+		//If it was a graph node but not a UJointEdGraphNode type node, then just add it to the calculation.
+		if (!CastedNode || (CastedNode && !Cast<UJointEdGraphNode_Fragment>(CastedNode)))
+		{
+			SumX += Node->NodePosX;
+			SumY += Node->NodePosY;
+			++Count;
+		}
+	}
+
+	if (Count > 0)
+	{
+		const int32 CenterX = static_cast<int32>(SumX / Count);
+		const int32 CenterY = static_cast<int32>(SumY / Count);
+		const FVector2D CurrentCenter((float)CenterX, (float)CenterY);
+		const FVector2D Offset = PasteLocation - CurrentCenter;
+
+		for (UEdGraphNode* Node : InNodes)
+		{
+			Node->NodePosX = static_cast<int32>(Node->NodePosX + Offset.X);
+			Node->NodePosY = static_cast<int32>(Node->NodePosY + Offset.Y);
+			Node->SnapToGrid(UJointEditorSettings::GetJointGridSnapSize());
+		}
+	}
+}
+
 
 UClass* FJointEdUtils::GetBlueprintClassWithClassPackageName(const FName& ClassName)
 {
@@ -551,6 +622,19 @@ UClass* FJointEdUtils::GetBlueprintClassWithClassPackageName(const FName& ClassN
 	if (UObjectRedirector* RenamedClassRedirector = FindFirstObjectSafe<UObjectRedirector>(*ClassName.ToString())) return CastChecked<UClass>(RenamedClassRedirector->DestinationObject);
 	
 #endif
+	return nullptr;
+}
+
+template <typename PropertyType>
+PropertyType* FJointEdUtils::GetCastedPropertyFromClass(const UClass* Class, const FName& PropertyName)
+{
+	if(Class == nullptr || PropertyName.IsNone()) return nullptr;
+
+	if(FProperty* FoundProperty = Class->FindPropertyByName(PropertyName))
+	{
+		if(PropertyType* CastedProperty = CastField<PropertyType>(FoundProperty)) return CastedProperty;
+	}
+	
 	return nullptr;
 }
 
