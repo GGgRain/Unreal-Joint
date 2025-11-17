@@ -262,7 +262,7 @@ void UJointEdGraphNode_Composite::PostPasteNode()
 
 bool UJointEdGraphNode_Composite::CanDuplicateNode() const
 {
-	return false;
+	return true; //Take care the occasion when there is another output node with the same Guid.
 }
 
 void UJointEdGraphNode_Composite::ReconstructNode()
@@ -274,10 +274,10 @@ void UJointEdGraphNode_Composite::ReconstructNode()
 	NodeConnectionListChanged();
 }
 
-void UJointEdGraphNode_Composite::CreateBoundGraphIfNeeded()
+void UJointEdGraphNode_Composite::PostPlacedNewNode()
 {
-	if (BoundGraph) return; //already created.
-	
+	UpdatePins();
+
 	// Create a new graph
 	BoundGraph = UJointEdGraph::CreateNewJointGraph(GetGraph(), GetJointManager(), FName("SubGraph"));
 	BoundGraph->bAllowDeletion = false;
@@ -308,13 +308,6 @@ void UJointEdGraphNode_Composite::CreateBoundGraphIfNeeded()
 
 	// Add the new graph as a child of our parent graph
 	GetGraph()->SubGraphs.Add(BoundGraph);
-}
-
-void UJointEdGraphNode_Composite::PostPlacedNewNode()
-{
-	UpdatePins();
-
-	CreateBoundGraphIfNeeded();
 
 	Super::PostPlacedNewNode();
 }
@@ -785,32 +778,6 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
 			]
 		];
 	}
-}
-
-void UJointEdGraphNode_Composite::PostPasteNode()
-{
-	if (BoundGraph)
-	{
-		//Duplicate the bound graph, and assign it to the new node.
-		UEdGraph* NewGraph = DuplicateObject<UEdGraph>(BoundGraph.Get(), GetGraph(), NAME_None);
-		NewGraph->SetFlags(RF_Transactional);
-
-		if (UJointEdGraph* NewJointEdGraph = Cast<UJointEdGraph>(NewGraph))
-		{
-			NewJointEdGraph->bAllowDeletion = false;
-			NewJointEdGraph->UpdateGraph();
-		}
-
-		BoundGraph = NewGraph;
-		
-		// Add the new graph as a child of our parent graph
-		GetGraph()->SubGraphs.Add(BoundGraph);
-	}else
-	{
-		CreateBoundGraphIfNeeded();
-	}
-	
-	Super::PostPasteNode();
 }
 
 

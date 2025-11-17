@@ -17,6 +17,7 @@
 #include "AIGraph/Classes/AIGraphTypes.h"
 #else
 
+class SGraphPanel;class SGraphPanel;
 #include "Editor/AIGraph/Classes/AIGraphTypes.h"
 #endif
 
@@ -28,7 +29,6 @@ class UJointEdGraph;
 class SJointGraphNodeBase;
 class UJointManager;
 class UJointEdGraphNode;
-class SGraphPanel;
 class FReply;
 
 /**

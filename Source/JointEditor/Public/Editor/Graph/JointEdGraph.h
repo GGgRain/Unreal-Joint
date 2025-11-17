@@ -10,7 +10,6 @@
 #include "JointEdGraph.generated.h"
 
 
-class SGraphPanel;
 class UJointEdGraphSchema;
 class FJointEditorToolkit;
 DECLARE_MULTICAST_DELEGATE(FOnGraphRequestUpdate);
