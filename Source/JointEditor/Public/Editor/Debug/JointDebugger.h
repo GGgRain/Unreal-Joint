@@ -20,7 +20,7 @@ struct JOINTEDITOR_API FJointDebuggerNodeSet
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TSet<TObjectPtr<UJointNodeBase>> JointNodes;
+	TSet<UJointNodeBase*> JointNodes;
 
 public:
 

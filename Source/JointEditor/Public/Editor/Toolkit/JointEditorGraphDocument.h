@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Editor/Graph/JointEdGraph.h"
+#include "JointEdGraph.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 #include "WorkflowOrientedApp/WorkflowUObjectDocuments.h"
 

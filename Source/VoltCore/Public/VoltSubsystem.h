@@ -141,7 +141,7 @@ private:
 	 * Any animation managers must be assigned on this array to prevent GC.
 	 */
 	UPROPERTY()
-	TArray<TObjectPtr<UVoltAnimationManager>> RegisteredAnimationManager;
+	TArray<UVoltAnimationManager*> RegisteredAnimationManager;
 	
 public:
 	
@@ -250,7 +250,7 @@ private:
 	 * Shared animation manager of the system that let the users use without implementing animation manager explicitly.
 	 */
 	UPROPERTY(Transient)
-	TObjectPtr<UVoltAnimationManager> SharedAnimationManager;
+	UVoltAnimationManager* SharedAnimationManager;
 	
 public:
 

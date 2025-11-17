@@ -7,9 +7,6 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "JointFunctionLibrary.generated.h"
 
-class UMovieSceneJointTrack;
-class UMovieSceneSequence;
-class UMovieSceneTrack;
 class UWidget;
 /**
  * 
@@ -86,51 +83,6 @@ public:
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Text Utilities")
 	static const bool AreBothPinHaveSameSignature(const FJointEdPinData& A, const FJointEdPinData& B);
 
-
-public:
-
 	
-	/**
-	 * Check whether the provided class implements the provided interface.
-	 * Note: Why doesn't Unreal Engine provide this.....?
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Function Library")
-	static bool DoesClassImplementInterface(TSubclassOf<UObject> ClassToCheck, TSubclassOf<UInterface> InterfaceToCheck);
-
-public:
-
-	/*
-	 * Resolve the Joint Node Pointer to get the actual Joint Node instance.
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Node Pointer", meta=(DeterminesOutputType="CastClass"))
-	static UJointNodeBase* CastAndResolveJointNodePointer(const FJointNodePointer& Pointer, TSubclassOf<UJointNodeBase> CastClass);
-
-	/**
-	 * Check whether the Joint Node Pointer is valid (has valid object reference)
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Node Pointer")
-	static bool IsValid(const FJointNodePointer& Pointer);
-
-	/**
-	 * Check whether two Joint Node Pointers has the same restrictions (Allowed and Disallowed Classes)
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Node Pointer")
-	static bool HasSameRestrictionsAs(const FJointNodePointer& A, const FJointNodePointer& B);
-
-	/**
-	 * Check whether the Joint Node Pointer has the same restrictions (Allowed and Disallowed Classes) as the provided ones.
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Node Pointer")
-	static bool CheckMatchRestrictions(const FJointNodePointer& Pointer, TSet<TSubclassOf<UJointNodeBase>> AllowedClass, TSet<TSubclassOf<UJointNodeBase>> DisallowedClasses);
-
-
-public:
-
-	/**
-	 * Get the Joint Movie Track (UMovieSceneJointTrack)
-	 * This function is introduced due to the version compatibility issues: the signature of the Find Track function has been changed over the versions.
-	 * This will abstract that issue away.
-	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Movie Track (UMovieSceneJointTrack)")
-	static TArray<UMovieSceneJointTrack*> FindJointMovieTrack(UMovieSceneSequence* Sequence);
+	
 };

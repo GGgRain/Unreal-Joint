@@ -35,7 +35,7 @@ bool CheckCanImplementProperty(FProperty* Property)
 	return false;
 }
 
-void AddPropertyInfo(TArray<FJointTreePropertyInfo>& Infos, UObject* SearchObj)
+void AddPropertyInfo(TArray<FPropertyInfo>& Infos, UObject* SearchObj)
 {
 	for (TFieldIterator<FProperty> It(SearchObj->GetClass()); It; ++It)
 	{
@@ -43,10 +43,10 @@ void AddPropertyInfo(TArray<FJointTreePropertyInfo>& Infos, UObject* SearchObj)
 
 		if (!CheckCanImplementProperty(Property)) continue;
 
-		Infos.Add(FJointTreePropertyInfo(Property, SearchObj));
+		Infos.Add(FPropertyInfo(Property, SearchObj));
 	}
 }
-void AddPropertyInfoForEditorNode(TArray<FJointTreePropertyInfo>& Infos, UEdGraphNode* SearchObj)
+void AddPropertyInfoForEditorNode(TArray<FPropertyInfo>& Infos, UEdGraphNode* SearchObj)
 {
 	if (!SearchObj) return;
 
@@ -60,7 +60,7 @@ void AddPropertyInfoForEditorNode(TArray<FJointTreePropertyInfo>& Infos, UEdGrap
 
 				if (!CheckCanImplementProperty(Property)) continue;
 
-				Infos.Add(FJointTreePropertyInfo(Property, NodeInstance, CastedEdNode));
+				Infos.Add(FPropertyInfo(Property, NodeInstance, CastedEdNode));
 			}
 		}
 	}
@@ -166,7 +166,7 @@ void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
 #endif
 }
 
-void FJointTreeBuilder::ReserveJointManagerInfo(TArray<FJointTreeJointManagerInfo>& ManagerInfos)
+void FJointTreeBuilder::ReserveJointManagerInfo(TArray<FJointManagerInfo>& ManagerInfos)
 {
 	ManagerInfos.Reserve(BuildTargetJointManagers.Num());
 
@@ -176,11 +176,13 @@ void FJointTreeBuilder::ReserveJointManagerInfo(TArray<FJointTreeJointManagerInf
 
 		if (!BuildTargetJointManagers.IsValidIndex(i) || !BuildTargetJointManagers[i]) continue;
 
-		ManagerInfos.Emplace(FJointTreeJointManagerInfo(BuildTargetJointManagers[i]));
+		ManagerInfos.Emplace(FJointManagerInfo(BuildTargetJointManagers[i]));
 	}
+
+	Algo::Sort(ManagerInfos);
 }
 
-void FJointTreeBuilder::ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs)
+void FJointTreeBuilder::ReserveGraphInfo(TArray<FGraphInfo>& Graphs)
 {
 	Graphs.Reserve(BuildTargetGraphs.Num());
 
@@ -190,11 +192,13 @@ void FJointTreeBuilder::ReserveGraphInfo(TArray<FJointTreeGraphInfo>& Graphs)
 
 		if (!BuildTargetGraphs.IsValidIndex(i) || !BuildTargetGraphs[i]) continue;
 
-		Graphs.Emplace(FJointTreeGraphInfo(BuildTargetGraphs[i]));
+		Graphs.Emplace(FGraphInfo(BuildTargetGraphs[i]));
 	}
+
+	Algo::Sort(Graphs);
 }
 
-void FJointTreeBuilder::ReserveNodeInfo(TArray<FJointTreeNodeInfo>& NodeInfos)
+void FJointTreeBuilder::ReserveNodeInfo(TArray<FNodeInfo>& NodeInfos)
 {
 	// Gather the nodes.
 	
@@ -208,7 +212,7 @@ void FJointTreeBuilder::ReserveNodeInfo(TArray<FJointTreeNodeInfo>& NodeInfos)
 	}
 }
 
-void FJointTreeBuilder::ReservePropertyInfo(TArray<FJointTreePropertyInfo>& Properties)
+void FJointTreeBuilder::ReservePropertyInfo(TArray<FPropertyInfo>& Properties)
 {
 	TArray<UEdGraphNode*> EditorNodes = BuildTargetEditorNodes;
 
@@ -228,11 +232,11 @@ void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
 		
 		if (Args.bShowJointManagers)
 		{
-			TArray<FJointTreeJointManagerInfo> Managers;
+			TArray<FJointManagerInfo> Managers;
 			
 			ReserveJointManagerInfo(Managers);
 
-			for (FJointTreeJointManagerInfo& Manager : Managers)
+			for (FJointManagerInfo& Manager : Managers)
 			{
 				if (GetShouldAbandonBuild()) break;
 
@@ -242,11 +246,11 @@ void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
 		
 		if (Args.bShowGraphs)
 		{
-			TArray<FJointTreeGraphInfo> Graphs;
+			TArray<FGraphInfo> Graphs;
 
 			ReserveGraphInfo(Graphs);
 
-			for (FJointTreeGraphInfo& Graph : Graphs)
+			for (FGraphInfo& Graph : Graphs)
 			{
 				if (GetShouldAbandonBuild()) break;
 
@@ -256,11 +260,11 @@ void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
 
 		if (Args.bShowNodes)
 		{
-			TArray<FJointTreeNodeInfo> NodeInfos;
+			TArray<FNodeInfo> NodeInfos;
 
 			ReserveNodeInfo(NodeInfos);
 
-			for (FJointTreeNodeInfo& NodeInfo : NodeInfos)
+			for (FNodeInfo& NodeInfo : NodeInfos)
 			{
 				if (GetShouldAbandonBuild()) break;
 				
@@ -270,11 +274,11 @@ void FJointTreeBuilder::Build(FJointTreeBuilderOutput& Output)
 		
 		if (Args.bShowProperties)
 		{
-			TArray<FJointTreePropertyInfo> Properties;
+			TArray<FPropertyInfo> Properties;
 
 			ReservePropertyInfo(Properties);
 
-			for (FJointTreePropertyInfo& Property : Properties)
+			for (FPropertyInfo& Property : Properties)
 			{
 				if (GetShouldAbandonBuild()) break;
 				
@@ -552,7 +556,7 @@ bool FJointTreeBuilder::GetIsNewBuildRequested() const
 	return bIsNewBuildRequested;
 }
 
-void FJointTreeBuilder::BuildJointManagerInfo(const FJointTreeJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output)
+void FJointTreeBuilder::BuildJointManagerInfo(const FJointManagerInfo& JointManagerInfo, FJointTreeBuilderOutput& Output)
 {
 	if (!JointManagerInfo.JointManager.Get()) return;
 
@@ -563,7 +567,7 @@ void FJointTreeBuilder::BuildJointManagerInfo(const FJointTreeJointManagerInfo& 
 	Output.Add(DisplayNode, NAME_None, FJointTreeItem_Manager::GetTypeId());
 }
 
-void FJointTreeBuilder::BuildGraphInfo(const FJointTreeGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output)
+void FJointTreeBuilder::BuildGraphInfo(const FGraphInfo& GraphInfo, FJointTreeBuilderOutput& Output)
 {
 	// Add the sorted bones to the skeleton tree
 
@@ -585,7 +589,7 @@ void FJointTreeBuilder::BuildGraphInfo(const FJointTreeGraphInfo& GraphInfo, FJo
 	}
 }
 
-void FJointTreeBuilder::BuildNodeInfo(const FJointTreeNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output)
+void FJointTreeBuilder::BuildNodeInfo(const FNodeInfo& NodeInfo, FJointTreeBuilderOutput& Output)
 {
 	if (!NodeInfo.EditorNode) return;
 
@@ -637,7 +641,19 @@ EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
 
 	InItem->GetFilteredChildren().Empty();
 
-	if (InArgs.TextFilter.IsValid())
+	if (InArgs.TextFilter.IsValid() && InArgs.bFlattenHierarchyOnFilter)
+	{
+		FilterResult = FilterItem(InArgs, InItem);
+		InItem->SetFilterResult(FilterResult);
+
+		if (FilterResult != EJointTreeFilterResult::Hidden) { OutFilteredItems.Add(InItem); }
+
+		for (const TSharedPtr<IJointTreeItem>& Item : InItem->GetChildren())
+		{
+			FilterRecursive(InArgs, Item, OutFilteredItems);
+		}
+	}
+	else if (InArgs.TextFilter.IsValid())
 	{
 		// check to see if we have any children that pass the filter
 		EJointTreeFilterResult DescendantsFilterResult = EJointTreeFilterResult::Hidden;
@@ -673,7 +689,7 @@ EJointTreeFilterResult FJointTreeBuilder::FilterRecursive(
 	return FilterResult;
 }
 
-void FJointTreeBuilder::BuildPropertyInfo(FJointTreePropertyInfo& PropertyInfo, FJointTreeBuilderOutput& Output)
+void FJointTreeBuilder::BuildPropertyInfo(FPropertyInfo& PropertyInfo, FJointTreeBuilderOutput& Output)
 {
 	if (!PropertyInfo.Object) return;
 

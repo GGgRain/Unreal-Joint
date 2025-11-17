@@ -54,11 +54,7 @@ public:
 
 	virtual void AllocateDefaultPins() override;
 
-	virtual void PrepareForCopying() override;
-	virtual void PostCopyNode() override;
-	virtual void PostPasteNode() override;
 	virtual bool CanDuplicateNode() const override;
-	
 	virtual void ReconstructNode() override;
 	virtual void PostPlacedNewNode() override;
 	virtual bool CanHaveSubNode() const override;
@@ -66,10 +62,10 @@ public:
 	virtual bool CanReplaceEditorNodeClass() override;
 	
 	virtual void NodeConnectionListChanged() override;
-	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin) override;
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<UJointNodeBase*>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void UpdateNodeInstance() override;
-	virtual bool CanUserDeleteNode() const override;
+	virtual void UpdateNodeInstanceOuter() const override;
 	virtual void DestroyNode() override;
 	virtual void ModifyGraphNodeSlate() override;
 

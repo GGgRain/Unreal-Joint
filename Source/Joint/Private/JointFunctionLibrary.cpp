@@ -3,18 +3,11 @@
 
 #include "JointFunctionLibrary.h"
 
-#include "MovieScene.h"
-#include "MovieSceneSequence.h"
 #include "SharedType/JointSharedTypes.h"
 #include "Components/RichTextBlock.h"
 #include "Components/Widget.h"
 #include "Engine/DataTable.h"
 #include "Framework/Text/RichTextMarkupProcessing.h"
-#include "Node/JointNodeBase.h"
-#include "Sequencer/MovieSceneJointTrack.h"
-
-#include "Misc/EngineVersionComparison.h"
-
 
 
 bool UJointFunctionLibrary::IsWidgetFocusable(UWidget* TargetWidget)
@@ -233,77 +226,3 @@ const bool UJointFunctionLibrary::AreBothPinHaveSameSignature(const FJointEdPinD
 {
 	return A.HasSameSignature(B);
 }
-
-bool UJointFunctionLibrary::DoesClassImplementInterface(TSubclassOf<UObject> ClassToCheck, TSubclassOf<UInterface> InterfaceToCheck)
-{
-	if (!ClassToCheck || !InterfaceToCheck) return false;
-
-	return ClassToCheck->ImplementsInterface(InterfaceToCheck);
-}
-
-UJointNodeBase* UJointFunctionLibrary::CastAndResolveJointNodePointer(const FJointNodePointer& Pointer, const TSubclassOf<UJointNodeBase> CastClass)
-{
-	if (!Pointer.IsValid()) return nullptr;
-
-	if (CastClass)
-	{
-		return RESOLVE_JOINT_POINTER(Pointer, UJointNodeBase) && Pointer.Node->IsA(CastClass) ? Pointer.Node.Get() : nullptr;
-	}else
-	{
-		return Pointer.Node.Get();
-	}
-}
-
-bool UJointFunctionLibrary::IsValid(const FJointNodePointer& Pointer)
-{
-	return Pointer.IsValid();
-}
-
-bool UJointFunctionLibrary::HasSameRestrictionsAs(const FJointNodePointer& A, const FJointNodePointer& B)
-{
-	return A.HasSameRestrictionsAs(B);
-}
-
-bool UJointFunctionLibrary::CheckMatchRestrictions(const FJointNodePointer& Pointer, TSet<TSubclassOf<UJointNodeBase>> AllowedClass, TSet<TSubclassOf<UJointNodeBase>> DisallowedClasses)
-{
-	return Pointer.CheckMatchRestrictions(AllowedClass, DisallowedClasses);
-}
-
-TArray<UMovieSceneJointTrack*> UJointFunctionLibrary::FindJointMovieTrack(UMovieSceneSequence* Sequence)
-{
-	auto FilterTracks = [](TArrayView<UMovieSceneTrack* const> InTracks, UClass* DesiredClass, bool bExactMatch) -> TArray<UMovieSceneJointTrack*>
-	{
-		TArray<UMovieSceneJointTrack*> Tracks;
-
-		for (UMovieSceneTrack* Track : InTracks)
-		{
-			if (!Track) continue;
-			UClass* TrackClass = Track->GetClass();
-
-			if (TrackClass == DesiredClass || (!bExactMatch && TrackClass->IsChildOf(DesiredClass)))
-			{
-				Tracks.Add(Cast<UMovieSceneJointTrack>(Track));
-			}
-		}
-
-		return Tracks;
-	};
-	
-	UMovieScene* MovieScene   = Sequence ? Sequence->GetMovieScene() : nullptr;
-	UClass*      DesiredClass = UMovieSceneJointTrack::StaticClass();
-
-	if (MovieScene && DesiredClass)
-	{
-		bool bExactMatch = false;
-
-#if UE_VERSION_OLDER_THAN(5, 3, 0)
-		TArray<UMovieSceneJointTrack*> MatchedTracks = FilterTracks(MovieScene->GetMasterTracks(), DesiredClass, bExactMatch);
-#else
-		TArray<UMovieSceneJointTrack*> MatchedTracks = FilterTracks(MovieScene->GetTracks(), DesiredClass, bExactMatch);
-#endif 
-		return MatchedTracks;
-	}
-
-	return TArray<UMovieSceneJointTrack*>();
-}
-

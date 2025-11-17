@@ -5,48 +5,12 @@
 #include "CoreMinimal.h"
 #include "JointEditorToolkit.h"
 
-JOINTEDITOR_API DECLARE_DELEGATE_OneParam(FOnNodePickingPerformed, UJointNodeBase* PickedNode)
-
-enum class EJointNodePickingType : uint8
-{
-	None = 0 UMETA(DisplayName="None"),
-	FromPropertyHandle = 1 UMETA(DisplayName="From PropertyHandle"),
-	FromJointNodePointerPtr = 2 UMETA(DisplayName="From JointNodePointer Ptr"),
-};
-
 class JOINTEDITOR_API FJointEditorNodePickingManagerRequest : public TSharedFromThis<FJointEditorNodePickingManagerRequest>
 {
 
 public:
 
 	FJointEditorNodePickingManagerRequest();
-	
-public:
-
-	// EJointNodePickingType::FromPropertyHandle
-	
-	TSharedPtr<IPropertyHandle> TargetJointNodePointerNodePropertyHandle;
-	
-	TSharedPtr<IPropertyHandle> TargetJointNodePointerEditorNodePropertyHandle;
-
-public:
-
-	// EJointNodePickingType::FromJointNodePointerPtr
-	TArray<FJointNodePointer*> TargetJointNodePointerStructures;
-	
-	TArray<UJointNodeBase*> ModifiedJointNodes;
-
-public:
-
-	//Node picking type
-	EJointNodePickingType NodePickingType = EJointNodePickingType::None;
-
-public:
-	
-	/**
-	 * Guid for the request. Use this to identify the request.
-	 */
-	FGuid RequestGuid;
 
 public:
 
@@ -54,8 +18,11 @@ public:
 
 public:
 
-	FOnNodePickingPerformed OnNodePickingPerformed;
-	
+	/**
+	 * Guid for the request. Use this to identify the request.
+	 */
+	FGuid RequestGuid;
+
 };
 
 FORCEINLINE bool operator==(const FJointEditorNodePickingManagerRequest& A, const FJointEditorNodePickingManagerRequest& B)
@@ -67,26 +34,6 @@ FORCEINLINE bool operator!=(const FJointEditorNodePickingManagerRequest& A, cons
 {
 	return !(A == B);
 }
-
-class JOINTEDITOR_API FJointEditorNodePickingManagerResult : public TSharedFromThis<FJointEditorNodePickingManagerResult>
-{
-
-public:
-
-	FJointEditorNodePickingManagerResult();
-	
-public:
-
-	TObjectPtr<UJointNodeBase> Node = nullptr;
-	
-	TObjectPtr<UJointEdGraphNode> OptionalEdNode = nullptr;
-	
-public:
-
-	static TSharedRef<FJointEditorNodePickingManagerResult> MakeInstance();
-	
-};
-
 
 class JOINTEDITOR_API FJointEditorNodePickingManager : public TSharedFromThis<FJointEditorNodePickingManager>
 {
@@ -112,25 +59,19 @@ public:
 	 * Start the node picking mode for the provided FJointNodePointer structures.
 	 * @param InNodePickingJointNodePointerStructures Provided Structures.
 	 */
-	TWeakPtr<FJointEditorNodePickingManagerRequest> StartNodePicking(const TArray<UJointNodeBase*>& InNodePickingJointNodes, const TArray<FJointNodePointer*>& InNodePickingJointNodePointerStructures);
+	TWeakPtr<FJointEditorNodePickingManagerRequest>StartNodePicking(const TArray<UJointNodeBase*>& InNodePickingJointNodes, const TArray<FJointNodePointer*>& InNodePickingJointNodePointerStructures);
 	
 	/**
 	 * Start the node picking mode for the provided FJointNodePointer structure pointer
 	 * @param InNodePointerStruct The direct pointer to the FJointNodePointer structure to fill out
 	 */
 	TWeakPtr<FJointEditorNodePickingManagerRequest> StartNodePicking(UJointNodeBase* InNode, FJointNodePointer* InNodePointerStruct);
-
-	/**
-	 * Start the node picking mode for the provided request.
-	 * @param InRequest The request to start the node picking mode.
-	 */
-	TWeakPtr<FJointEditorNodePickingManagerRequest> StartNodePicking(TWeakPtr<FJointEditorNodePickingManagerRequest> InRequest);
 	
 	/**
 	 * Pick and feed the provided node instance in the activating picking property handle.
 	 * @param Node Object to pick up in this action.
 	 */
-	void PerformNodePicking(TWeakPtr<FJointEditorNodePickingManagerResult> Result);
+	void PerformNodePicking(UJointNodeBase* Node, UJointEdGraphNode* OptionalEdNode = nullptr);
 
 	/**
 	 * End node picking action of the editor.
@@ -142,6 +83,7 @@ public:
 	 * @return whether the editor is performing the node picking action
 	 */
 	bool IsInNodePicking();
+
 
 public:
 
@@ -165,10 +107,13 @@ private:
 
 	bool bIsOnNodePickingMode = false;
 
+	TWeakPtr<IPropertyHandle> NodePickingJointNodePointerNodeHandle;
+	TWeakPtr<IPropertyHandle> NodePickingJointNodePointerEditorNodeHandle;
+	TArray<FJointNodePointer*> NodePickingJointNodePointerStructures;
+	TArray<UJointNodeBase*> NodePickingJointNodes;
+
+	UJointEdGraphNode* LastSelectedNode = nullptr;
 private:
 
-	/**
-	 * Pointer to the joint editor toolkit that owns this manager. (Node picking manager is per editor instance.)
-	 */
 	TWeakPtr<FJointEditorToolkit> JointEditorToolkitPtr;
 };

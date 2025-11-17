@@ -26,15 +26,6 @@ TSharedRef<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager
 	return MakeShareable(new FJointEditorNodePickingManagerRequest);
 }
 
-FJointEditorNodePickingManagerResult::FJointEditorNodePickingManagerResult()
-{
-}
-
-TSharedRef<FJointEditorNodePickingManagerResult> FJointEditorNodePickingManagerResult::MakeInstance()
-{
-	return MakeShareable(new FJointEditorNodePickingManagerResult);
-}
-
 FJointEditorNodePickingManager::FJointEditorNodePickingManager(TWeakPtr<FJointEditorToolkit> InJointEditorToolkitPtr)
 {
 	JointEditorToolkitPtr = InJointEditorToolkitPtr;
@@ -51,15 +42,25 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 	const TSharedPtr<IPropertyHandle>& InNodePickingJointNodePointerNodeHandle,
 	const TSharedPtr<IPropertyHandle>& InNodePickingJointNodePointerEditorNodeHandle)
 {
-	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = FJointEditorNodePickingManagerRequest::MakeInstance();
+	NodePickingJointNodePointerNodeHandle = InNodePickingJointNodePointerNodeHandle;
+	NodePickingJointNodePointerEditorNodeHandle = InNodePickingJointNodePointerEditorNodeHandle;
 
-	Request->NodePickingType = EJointNodePickingType::FromPropertyHandle;
-	Request->TargetJointNodePointerNodePropertyHandle = InNodePickingJointNodePointerNodeHandle;
-	Request->TargetJointNodePointerEditorNodePropertyHandle = InNodePickingJointNodePointerEditorNodeHandle;
-	Request->ModifiedJointNodes.Empty();
-	Request->TargetJointNodePointerStructures.Empty();
+	NodePickingJointNodePointerStructures.Empty();
 
-	return StartNodePicking(Request);
+	NodePickingJointNodes.Empty();
+
+	if (JointEditorToolkitPtr.IsValid())
+	{
+		JointEditorToolkitPtr.Pin()->PopulateNodePickingToastMessage();
+
+		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
+	}
+
+	bIsOnNodePickingMode = true;
+	
+	SetActiveRequest(FJointEditorNodePickingManagerRequest::MakeInstance());
+
+	return GetActiveRequest();
 }
 
 TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartNodePicking(
@@ -67,36 +68,17 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 	const TArray<FJointNodePointer*>&
 	InNodePickingJointNodePointerStructures)
 {
-	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = FJointEditorNodePickingManagerRequest::MakeInstance();
+	NodePickingJointNodePointerNodeHandle = nullptr;
+	NodePickingJointNodePointerEditorNodeHandle = nullptr;
 
-	Request->NodePickingType = EJointNodePickingType::FromJointNodePointerPtr;
-	Request->TargetJointNodePointerNodePropertyHandle = nullptr;
-	Request->TargetJointNodePointerEditorNodePropertyHandle = nullptr;
-	Request->ModifiedJointNodes = InNodePickingJointNodes;
-	Request->TargetJointNodePointerStructures = InNodePickingJointNodePointerStructures;
+	NodePickingJointNodes.Empty();
 
-	return StartNodePicking(Request);
-}
+	NodePickingJointNodes = InNodePickingJointNodes;
 
-TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartNodePicking(
-	UJointNodeBase* InNode,
-	FJointNodePointer* InNodePointerStruct)
-{
-	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = FJointEditorNodePickingManagerRequest::MakeInstance();
+	NodePickingJointNodePointerStructures.Empty();
 
-	Request->NodePickingType = EJointNodePickingType::FromJointNodePointerPtr;
-	Request->TargetJointNodePointerNodePropertyHandle = nullptr;
-	Request->TargetJointNodePointerEditorNodePropertyHandle = nullptr;
-	Request->ModifiedJointNodes.Empty();
-	Request->ModifiedJointNodes.Add(InNode);
-	Request->TargetJointNodePointerStructures.Empty();
-	Request->TargetJointNodePointerStructures.Add(InNodePointerStruct);
+	NodePickingJointNodePointerStructures = InNodePickingJointNodePointerStructures;
 
-	return StartNodePicking(Request);
-}
-
-TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartNodePicking(TWeakPtr<FJointEditorNodePickingManagerRequest> InRequest)
-{
 	if (JointEditorToolkitPtr.IsValid())
 	{
 		JointEditorToolkitPtr.Pin()->PopulateNodePickingToastMessage();
@@ -106,63 +88,72 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 
 	bIsOnNodePickingMode = true;
 
-	SetActiveRequest(InRequest.Pin());
+	SetActiveRequest(FJointEditorNodePickingManagerRequest::MakeInstance());
 
 	return GetActiveRequest();
 }
 
-void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNodePickingManagerResult> Result)
+TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartNodePicking(
+	UJointNodeBase* InNode,
+	FJointNodePointer* InNodePointerStruct)
+{
+	NodePickingJointNodePointerNodeHandle = nullptr;
+	NodePickingJointNodePointerEditorNodeHandle = nullptr;
+
+	NodePickingJointNodes.Empty();
+
+	NodePickingJointNodes.Add(InNode);
+
+	NodePickingJointNodePointerStructures.Empty();
+
+	NodePickingJointNodePointerStructures.Add(InNodePointerStruct);
+
+	if (JointEditorToolkitPtr.IsValid())
+	{
+		JointEditorToolkitPtr.Pin()->PopulateNodePickingToastMessage();
+
+		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
+	}
+
+	bIsOnNodePickingMode = true;
+	
+	SetActiveRequest(FJointEditorNodePickingManagerRequest::MakeInstance());
+
+	return GetActiveRequest();
+}
+
+void FJointEditorNodePickingManager::PerformNodePicking(UJointNodeBase* Node, UJointEdGraphNode* OptionalEdNode)
 {
 	if (!IsInNodePicking()) return;
 
-	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = GetActiveRequest().Pin();
+	if (Node == nullptr) return;
 
-	if (Result == nullptr || Result.Pin()->Node == nullptr || Request == nullptr) return;
-
-
-	auto PerformNodePicking_FromPropertyHandle = [this, Result, Request]()
+	//Only for the slate picking
+	if (!NodePickingJointNodePointerStructures.IsEmpty())
 	{
-		if (Result == nullptr || Request == nullptr) return;
+		const FScopedTransaction Transaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_PerformNodePicking", "Perform node picking"));
 
-		if (Request->TargetJointNodePointerNodePropertyHandle.IsValid())
-		{
-			Request->TargetJointNodePointerNodePropertyHandle->SetValue(Result.Pin()->Node);
-			//It doesn't need to notify it manually since the handle take care of it.
-		}
-
-		if (Result.Pin()->OptionalEdNode)
-		{
-			if (Request->TargetJointNodePointerEditorNodePropertyHandle.IsValid())
-			{
-				Request->TargetJointNodePointerEditorNodePropertyHandle->SetValue(Result.Pin()->OptionalEdNode);
-			}
-		}
-
-	};
-
-	auto PerformNodePicking_FromJointNodePointerPtr = [this, Result, Request]()
-	{
-		for (UJointNodeBase* NodePickingJointNode : Request->ModifiedJointNodes)
+		for (UJointNodeBase* NodePickingJointNode : NodePickingJointNodes)
 		{
 			if (NodePickingJointNode == nullptr) continue;
 
 			NodePickingJointNode->Modify();
 		}
 
-		for (FJointNodePointer* NodePickingJointNodePointerStructure : Request->TargetJointNodePointerStructures)
+		for (FJointNodePointer* NodePickingJointNodePointerStructure : NodePickingJointNodePointerStructures)
 		{
 			if (NodePickingJointNodePointerStructure == nullptr) continue;
 
 
 			if (FJointNodePointer::CanSetNodeOnProvidedJointNodePointer(
-				*NodePickingJointNodePointerStructure, Result.Pin()->Node))
+				*NodePickingJointNodePointerStructure, Node))
 			{
-				NodePickingJointNodePointerStructure->Node = Result.Pin()->Node;
+				NodePickingJointNodePointerStructure->Node = Node;
 
 				//Notify it to the owners.
 				TArray<UObject*> Outers;
 
-				for (UJointNodeBase* NodePickingJointNode : Request->ModifiedJointNodes)
+				for (UJointNodeBase* NodePickingJointNode : NodePickingJointNodes)
 				{
 					if (NodePickingJointNode == nullptr) continue;
 
@@ -208,23 +199,16 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 				FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 			}
 		}
-	};
-
-	switch (Request->NodePickingType)
-	{
-	case EJointNodePickingType::None:
-		break;
-	case EJointNodePickingType::FromPropertyHandle:
-		PerformNodePicking_FromPropertyHandle();
-		break;
-	case EJointNodePickingType::FromJointNodePointerPtr:
-		PerformNodePicking_FromJointNodePointerPtr();
-		break;
 	}
+	else
+	{
+		if (NodePickingJointNodePointerNodeHandle.IsValid())
+		{
+			NodePickingJointNodePointerNodeHandle.Pin()->SetValue(Node);
 
-	//Notify the request owner that the node picking is performed.
-	Request->OnNodePickingPerformed.ExecuteIfBound(Result.Pin()->Node);
-
+			//It doesn't need to notify it manually since the handle take care of it.
+		}
+	}
 
 	//Clear this at this time, it will prevent the toolkit to notify the node picking action again.
 	//TODO: make it more clear and clean.
@@ -235,12 +219,22 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 		if (JointEditorToolkitPtr.Pin()
 			&& JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()
 			&& JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()->GetGraphPanel()
-		)
+			)
 			JointEditorToolkitPtr.Pin()->GetFocusedGraphEditor()->GetGraphPanel()->SelectionManager.SetSelectionSet(SavedSelectionSet);
-
-		JointEditorToolkitPtr.Pin()->StartHighlightingNode(Result.Pin()->OptionalEdNode, true);
 	}
-	
+
+	if (OptionalEdNode)
+	{
+		LastSelectedNode = OptionalEdNode;
+		
+		if (JointEditorToolkitPtr.IsValid()) JointEditorToolkitPtr.Pin()->StartHighlightingNode(OptionalEdNode, true);
+
+		if (NodePickingJointNodePointerEditorNodeHandle.IsValid())
+		{
+			NodePickingJointNodePointerEditorNodeHandle.Pin()->SetValue(OptionalEdNode);
+		}
+	}
+
 	if (JointEditorToolkitPtr.IsValid())
 	{
 		JointEditorToolkitPtr.Pin()->CompileAllJointGraphs();
@@ -263,9 +257,15 @@ void FJointEditorNodePickingManager::EndNodePicking()
 		// 	JointEditorToolkitPtr.Pin()->StopHighlightingNode(OptionalPreviousNode);
 		// }
 	}
+	NodePickingJointNodePointerNodeHandle.Reset();
+	NodePickingJointNodePointerEditorNodeHandle.Reset();
+	NodePickingJointNodePointerStructures.Empty();
+	NodePickingJointNodes.Empty();
 	SavedSelectionSet.Empty();
 
 	ClearActiveRequest();
+	
+	LastSelectedNode = nullptr;
 
 	bIsOnNodePickingMode = false;
 }
