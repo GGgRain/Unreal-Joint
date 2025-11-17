@@ -1,3 +1,7 @@
+<div align="center">
+  <img width="410" height="84" alt="Epic_MegaGrants_Recipient_logo_horizontal" src="https://github.com/user-attachments/assets/4fe4edec-9264-4e13-a770-44b8a531028d" />
+</div>
+
 > [!NOTE]
 > **🎁 Now Joint is COMPLETELY FREE to use! (MIT LICENSE, 2025.9.12)**
 > 
@@ -52,13 +56,21 @@
 ## :sparkles: History ##
 
 <div align="center">
-  <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
+  <h3>🎉🎉 Joint received an Epic MegaGrant!!! (2025) 🎉🎉</h3>
+  <img width="400" height="400" alt="Epic_MegaGrants_Recipient_logo" src="https://github.com/user-attachments/assets/2e33708e-c739-4218-8ce6-4dd7d7a4918f" />
+  <br>
+  <a>Thank you for your all support and love for Joint!</a>
+  <br>
+  <a>We are committed to evolving this system into a powerful, free, and friendly standard for narrative creation in the game industry - accessible to everyone, just like Blender did for 3D creation! If you're interested in contributing to our journey in any way - whether through development, 3D art, animation, marketing, feedback, sponsorship, or anything else - please feel free to reach out to us!</a>
 </div>
 
 <div align="center">
   <h3>🎁 Now Joint is COMPLETELY FREE to use! (MIT LICENSE) (25.09.12)</h3>
 </div>
 
+<div align="center">
+  <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
+</div>
 
 ## :sparkles: Official Videos - Please click the images to watch! ##
 

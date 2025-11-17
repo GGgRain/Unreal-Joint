@@ -2,11 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "JointEdGraphNode.h"
+#include "PropertyEditorDelegates.h"
 #include "Node/JointNodeBase.h"
 #include "Widgets/SCompoundWidget.h"
 
 
-struct FPropertyAndParent;
 class IDetailsView;
 class SJointRetainerWidget;
 
