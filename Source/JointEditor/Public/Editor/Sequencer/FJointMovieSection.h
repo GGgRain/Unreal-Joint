@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "ISequencerSection.h"
+#include "VoltAnimationTrack.h"
 #include "Layout/Margin.h"
-#include "Node/JointNodeBase.h"
 
+#include "Misc/EngineVersionComparison.h"
+
+class SJointNodePointerSlate;
 class SBox;
 class AActor;
 class FMenuBuilder;
@@ -33,7 +36,19 @@ public:
 	// ISequencerSection interface
 	virtual void Tick(const FGeometry& AllottedGeometry, const FGeometry& ClippedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 	virtual FText GetSectionTitle() const override;
+	
+	/**
+	 * we keep GetSectionTitle clear to not render text over the section on the SSequencerSection and instead provide our own widget.
+	 * So we use this instead.
+	 */
+	virtual FText GetSectionTitleText_Internal() const;
+	
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
 	virtual float GetSectionHeight() const override;
+#else
+	virtual float GetSectionHeight(const UE::Sequencer::FViewDensityInfo& ViewDensity) const override;
+#endif
+	
 	virtual int32 OnPaintSection(FSequencerSectionPainter& InPainter) const override;
 	virtual FMargin GetContentPadding() const override;
 	virtual UMovieSceneSection* GetSectionObject() override;
@@ -45,12 +60,10 @@ public:
 	bool IsNodeValid() const;
 
 public:
-	
-	void PaintNodeName(FSequencerSectionPainter& Painter, int32 LayerId, const FString& InEventString, float PixelPos, bool bIsEventValid) const;
-
 	void UpdateSectionBox();
 
-	void OnNodePointerChanged();
+	void OnPreNodePointerChanged();
+	void OnPostNodePointerChanged();
 
 public:
 
@@ -86,4 +99,15 @@ public:
 public:
 
 	TSharedPtr<SBox> SectionWidgetBox;
+	TSharedPtr<STextBlock> SectionNameTextBlock;
+	TSharedPtr<SJointNodePointerSlate> SectionJointNodePointerSlate;
+
+public:
+	
+	void OnJointNodePointerSlateHovered();
+	void OnJointNodePointerSlateUnhovered();
+	
+	FVoltAnimationTrack HoverAnimationHandle;
+
+	
 };

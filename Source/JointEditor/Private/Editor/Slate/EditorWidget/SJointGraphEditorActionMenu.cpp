@@ -13,6 +13,8 @@
 #include "JointEdGraphSchema.h"
 #include "JointEditorStyle.h"
 
+#include "Misc/EngineVersionComparison.h"
+
 SJointGraphEditorActionMenu::~SJointGraphEditorActionMenu()
 {
 	OnClosedCallback.ExecuteIfBound();
@@ -131,7 +133,11 @@ TSharedRef<SExpanderArrow> SJointActionMenuExpander::CreateExpander(const FCusto
 void SJointActionMenuExpander::Construct(const FArguments& InArgs, const FCustomExpanderData& ActionMenuData)
 {
 	OwnerRowPtr  = ActionMenuData.TableRow;
+#if UE_VERSION_OLDER_THAN(5, 7, 0)
 	IndentAmount = InArgs._IndentAmount;
+#else
+	SetIndentAmount(InArgs._IndentAmount);
+#endif
 	ActionPtr    = ActionMenuData.RowAction;
 
 	if (!ActionPtr.IsValid())

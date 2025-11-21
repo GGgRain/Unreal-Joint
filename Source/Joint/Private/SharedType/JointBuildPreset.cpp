@@ -75,9 +75,12 @@ const bool UJointBuildPreset::AllowForBuildTarget(const ITargetPlatform* TargetP
 		
 		const FName PlatformName = FName(GetDefault<UProjectPackagingSettings>()->GetBuildTargetForPlatform(FName(TargetPlatform->IniPlatformName())));
 
-#else
+#elif UE_VERSION_OLDER_THAN(5, 7, 0)
 
 		const FName PlatformName = FName(GetDefault<UPlatformsMenuSettings>()->GetBuildTargetForPlatform(FName(TargetPlatform->IniPlatformName())));
+#else
+		
+		const FName PlatformName = FName(GetDefault<UPlatformsMenuSettings>()->PackageBuildTarget);
 
 #endif
 		

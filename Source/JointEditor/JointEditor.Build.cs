@@ -120,8 +120,7 @@ public class JointEditor : ModuleRules
 			"ClassViewer",
 			"Joint", 
 			"EditorWidgets",
-			"Sequencer" 
-			
+			"Sequencer",
 		});
 	}
 }

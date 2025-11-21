@@ -7,6 +7,8 @@
 #include "Node/JointNodeBase.h"
 #include "Sequencer/MovieSceneJointTrack.h"
 
+#include "Misc/EngineVersionComparison.h"
+
 DECLARE_CYCLE_STAT(
 	TEXT("Joint Track Token Execute"),
 	MovieSceneEval_JointTrack_TokenExecute,
@@ -121,8 +123,14 @@ void FMovieSceneJointSectionTemplate::EvaluateSwept(
 	
 	TArray<FMovieSceneJointExecutionData> JointDataToExecute;
 	
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
 	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().InverseLinearOnly() / Context.GetFrameRate();
-
+#elif UE_VERSION_OLDER_THAN(5, 5, 0)
+	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().InverseNoLooping() / Context.GetFrameRate();
+#else
+	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().Inverse().AsLinear() / Context.GetFrameRate();
+#endif
+	
 	for (const FJointMovieSectionPayload& Payload : Payloads)
 	{
 		// Does it overlap?
@@ -156,8 +164,14 @@ void FMovieSceneJointSectionTemplate::Evaluate(
 	
 	TArray<FMovieSceneJointExecutionData> JointDataToExecute;
 	
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
 	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().InverseLinearOnly() / Context.GetFrameRate();
-
+#elif UE_VERSION_OLDER_THAN(5, 5, 0)
+	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().InverseNoLooping() / Context.GetFrameRate();
+#else
+	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().Inverse().AsLinear() / Context.GetFrameRate();
+#endif
+	
 	for (const FJointMovieSectionPayload& Payload : Payloads)
 	{
 		if (Payload.bEverTriggered) continue;

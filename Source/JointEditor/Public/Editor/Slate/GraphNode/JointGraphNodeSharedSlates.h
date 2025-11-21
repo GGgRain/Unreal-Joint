@@ -241,8 +241,13 @@ public:
 	SLATE_ARGUMENT(FMargin, ContentMargin)
 	// The joint manager that is used for the pick and go operation.
 	SLATE_ARGUMENT(UJointManager*, PickingTargetJointManager)
+
+	SLATE_EVENT(FSimpleDelegate, OnHovered)
+	SLATE_EVENT(FSimpleDelegate, OnUnhovered)
+		
 	SLATE_EVENT(FOnNodePickingPerformed, OnNodePickingPerformed)
-	SLATE_EVENT(FSimpleDelegate, OnNodeChanged)
+	SLATE_EVENT(FSimpleDelegate, OnPreNodeChanged)
+	SLATE_EVENT(FSimpleDelegate, OnPostNodeChanged)
 
 	//Delagates
 	SLATE_END_ARGS()
@@ -286,8 +291,13 @@ private:
 
 public:
 
-	FOnNodePickingPerformed OnNodePointerPerformed;
-	FSimpleDelegate OnNodeChanged;
+	FOnNodePickingPerformed OnNodePointerPerformedDele;
+	
+	FSimpleDelegate OnPreNodeChangedDele;
+	FSimpleDelegate OnPostNodeChangedDele;
+	
+	FSimpleDelegate OnHoveredDele;
+	FSimpleDelegate OnUnhoveredDele;
 
 public:
 
@@ -310,6 +320,12 @@ public:
 	FReply OnPasteButtonPressed();
 
 	FReply OnClearButtonPressed();
+	
+public:
+	
+	void StartHighlightingNodeOnGraph();
+
+	void StopHighlightingNodeOnGraph();
 	
 };
 
