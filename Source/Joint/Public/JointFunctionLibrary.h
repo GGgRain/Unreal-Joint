@@ -127,10 +127,10 @@ public:
 public:
 
 	/**
-	 * Get the Joint Movie Track (UMovieSceneJointTrack)
+	 * Get the Joint Movie Tracks (UMovieSceneJointTrack)
 	 * This function is introduced due to the version compatibility issues: the signature of the Find Track function has been changed over the versions.
 	 * This will abstract that issue away.
 	 */
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Movie Track (UMovieSceneJointTrack)")
-	static TArray<UMovieSceneJointTrack*> FindJointMovieTrack(UMovieSceneSequence* Sequence);
+	static TArray<UMovieSceneJointTrack*> FindJointMovieTracks(UMovieSceneSequence* Sequence);
 };

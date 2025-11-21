@@ -590,8 +590,13 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 
 	bShouldShowDisplayName = InArgs._bShouldShowDisplayName;
 	bShouldShowNodeName = InArgs._bShouldShowNodeName;
-	OnNodePointerPerformed = InArgs._OnNodePickingPerformed;
-	OnNodeChanged = InArgs._OnNodeChanged;
+	
+	OnNodePointerPerformedDele = InArgs._OnNodePickingPerformed;
+	OnPreNodeChangedDele = InArgs._OnPreNodeChanged;
+	OnPostNodeChangedDele = InArgs._OnPostNodeChanged;
+	OnHoveredDele = InArgs._OnHovered;
+	OnUnhoveredDele = InArgs._OnUnhovered;
+	
 	
 	SetCanTick(false);
 
@@ -670,13 +675,8 @@ const FText SJointNodePointerSlate::GetRawName()
 	return FText::FromString(SavedCurrentNodeInstance->GetName());
 }
 
-void SJointNodePointerSlate::OnHovered()
+void SJointNodePointerSlate::StartHighlightingNodeOnGraph()
 {
-	//Overlay Show
-	BackgroundBox->SetRenderOpacity(0.5);
-
-	FeatureButtonsSlate->UpdateVisualOnHovered();
-
 	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
@@ -705,15 +705,66 @@ void SJointNodePointerSlate::OnHovered()
 
 				if (Node->GetCastedNodeInstance() == nullptr) continue;
 
-				if (Node->GetCastedNodeInstance() == NodeInstance)
-				{
-					Toolkit->StartHighlightingNode(Node.Get(), false);
+				if (Node->GetCastedNodeInstance() != NodeInstance) continue;
+				
+				Toolkit->StartHighlightingNode(Node.Get(), false);
 
-					break;
-				}
+				break;
 			}
 		}
 	}
+}
+
+void SJointNodePointerSlate::StopHighlightingNodeOnGraph()
+{
+	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
+
+	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
+
+	UJointManager* JointManager = GetTargetJointManager();
+
+	if (JointManager == nullptr) return;
+
+	IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(
+		JointManager, true);
+
+	if (EditorInstance == nullptr) return;
+
+
+	FJointEditorToolkit* Toolkit = static_cast<FJointEditorToolkit*>(EditorInstance);
+
+	if (Toolkit->GetJointManager() && Toolkit->GetJointManager()->JointGraph)
+	{
+		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
+		{
+			TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+
+			for (TWeakObjectPtr<UJointEdGraphNode> Node : GraphNodes)
+			{
+				if (!Node.IsValid()) continue;
+
+				if (Node->GetCastedNodeInstance() == nullptr) continue;
+
+				if (Node->GetCastedNodeInstance() != NodeInstance) continue;
+					
+				Toolkit->StopHighlightingNode(Node.Get());
+					
+				break;
+			}
+		}
+	}
+}
+
+void SJointNodePointerSlate::OnHovered()
+{
+	//Overlay Show
+	BackgroundBox->SetRenderOpacity(0.5);
+
+	FeatureButtonsSlate->UpdateVisualOnHovered();
+	OnHoveredDele.ExecuteIfBound();
+
+	StartHighlightingNodeOnGraph();
+	
 }
 
 void SJointNodePointerSlate::OnUnhovered()
@@ -721,51 +772,9 @@ void SJointNodePointerSlate::OnUnhovered()
 	BackgroundBox->SetRenderOpacity(1);
 
 	FeatureButtonsSlate->UpdateVisualOnUnhovered();
+	OnUnhoveredDele.ExecuteIfBound();
 
-	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
-
-	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
-
-	UJointManager* JointManager = GetTargetJointManager();
-
-	if (JointManager == nullptr) return;
-
-	IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(
-		JointManager, true);
-
-	if (EditorInstance == nullptr) return;
-
-
-	FJointEditorToolkit* Toolkit = static_cast<FJointEditorToolkit*>(EditorInstance);
-
-	if (Toolkit->GetJointManager() && Toolkit->GetJointManager()->JointGraph)
-	{
-		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Toolkit->GetJointManager()->JointGraph))
-		{
-			TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
-
-			for (TWeakObjectPtr<UJointEdGraphNode> Node : GraphNodes)
-			{
-				if (!Node.IsValid()) continue;
-
-				if (Node->GetCastedNodeInstance() == nullptr) continue;
-
-				if (Node->GetCastedNodeInstance() == NodeInstance)
-				{
-					Toolkit->StopHighlightingNode(Node.Get());
-
-					// if(!Toolkit->GetNodePickingManager().IsValid()) return;
-					//
-					// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
-					// {
-					// 	Toolkit->StopHighlightingNode(Node.Get());
-					// }
-
-					break;
-				}
-			}
-		}
-	}
+	StopHighlightingNodeOnGraph();
 }
 
 
@@ -788,15 +797,19 @@ FReply SJointNodePointerSlate::OnPickupButtonPressed()
 		Request.Pin()->OnNodePickingPerformed = FOnNodePickingPerformed::CreateLambda(
 			[this](UJointNodeBase* PickedNode)
 			{
-				if (OnNodePointerPerformed.IsBound())
+				GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerChanged",
+				                                    "Change Node Pointer"));
+				
+				OnPreNodeChangedDele.ExecuteIfBound();
+				
+				if (OnNodePointerPerformedDele.IsBound())
 				{
-					OnNodePointerPerformed.Execute(PickedNode);
+					OnNodePointerPerformedDele.Execute(PickedNode);
 				}
-
-				if (OnNodeChanged.IsBound())
-				{
-					OnNodeChanged.Execute();
-				}
+				
+				OnPostNodeChangedDele.ExecuteIfBound();
+				
+				GEditor->EndTransaction();
 			}
 		);
 	}
@@ -885,12 +898,14 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 FReply SJointNodePointerSlate::OnPasteButtonPressed()
 {
+	StopHighlightingNodeOnGraph();
+	
 	FString Value;
 
 	FPlatformApplicationMisc::ClipboardPaste(Value);
-
+	
 	GEditor->BeginTransaction(FGenericCommands::Get().Paste->GetDescription());
-
+	
 	if (StructureOwnerEdNode)
 	{
 		StructureOwnerEdNode->Modify();
@@ -898,14 +913,26 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 		if (StructureOwnerEdNode->GetCastedNodeInstance()) StructureOwnerEdNode->GetCastedNodeInstance()->Modify();
 	}
 
+	OnPreNodeChangedDele.ExecuteIfBound();
+	
 	if (Value.IsEmpty() || Value.Equals(TEXT("None"), ESearchCase::CaseSensitive) || !
 		FPackageName::IsShortPackageName(Value))
 	{
 		if (PointerToTargetStructure)
 		{
-			PointerToTargetStructure->Node = FSoftObjectPath(Value);
-
-			if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
+			TSoftObjectPtr<UJointNodeBase> Node;
+			Node = FSoftObjectPath(Value);
+			
+			// check if the node is originated from the same Joint Manager
+			UJointManager* InTargetJointManager = GetTargetJointManager();
+			if (InTargetJointManager && Node.Get())
+			{
+				if (Node.Get()->GetJointManager() == InTargetJointManager)
+				{
+					if (PointerToTargetStructure) PointerToTargetStructure->Node = FSoftObjectPath(Value);
+					if (PointerToTargetStructure->Node.Get()) PointerToTargetStructure->EditorNode = PointerToTargetStructure->Node.Get()->EdGraphNode.Get();
+				}
+			}
 		}
 	}
 
@@ -916,22 +943,23 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 
 	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
 
-	if (OnNodeChanged.IsBound())
-	{
-		OnNodeChanged.Execute();
-	}
+	OnPostNodeChangedDele.ExecuteIfBound();
 
 	GEditor->EndTransaction();
-
+	
+	StartHighlightingNodeOnGraph();
 
 	return FReply::Handled();
 }
 
 FReply SJointNodePointerSlate::OnClearButtonPressed()
 {
-	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset",
-	                                    "Reset Node Pointer to default"));
-
+	StopHighlightingNodeOnGraph();
+	
+	GEditor->BeginTransaction(NSLOCTEXT("JointEdTransaction", "TransactionTitle_NodePointerReset","Reset Node Pointer to default"));
+	
+	OnPreNodeChangedDele.ExecuteIfBound();
+	
 	if (StructureOwnerEdNode)
 	{
 		StructureOwnerEdNode->Modify();
@@ -947,12 +975,11 @@ FReply SJointNodePointerSlate::OnClearButtonPressed()
 
 	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
 
-	if (OnNodeChanged.IsBound())
-	{
-		OnNodeChanged.Execute();
-	}
+	OnPostNodeChangedDele.ExecuteIfBound();
 
 	GEditor->EndTransaction();
+
+	StartHighlightingNodeOnGraph();
 
 	return FReply::Handled();
 }

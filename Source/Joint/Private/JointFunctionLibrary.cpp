@@ -269,7 +269,7 @@ bool UJointFunctionLibrary::CheckMatchRestrictions(const FJointNodePointer& Poin
 	return Pointer.CheckMatchRestrictions(AllowedClass, DisallowedClasses);
 }
 
-TArray<UMovieSceneJointTrack*> UJointFunctionLibrary::FindJointMovieTrack(UMovieSceneSequence* Sequence)
+TArray<UMovieSceneJointTrack*> UJointFunctionLibrary::FindJointMovieTracks(UMovieSceneSequence* Sequence)
 {
 	auto FilterTracks = [](TArrayView<UMovieSceneTrack* const> InTracks, UClass* DesiredClass, bool bExactMatch) -> TArray<UMovieSceneJointTrack*>
 	{

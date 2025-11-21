@@ -79,7 +79,7 @@ public:
 	void OnJointManagerTrackAssetPressed(const TArray<FAssetData>& AssetDatas);
 	
 	void AddJointActorMenuExtension(FMenuBuilder& MenuBuilder);
-	UMovieSceneJointTrack* FindOrCreateJointTrack(UJointManager* NewManager);
+	UMovieSceneJointTrack* FindOrCreateJointTrackFor(UJointManager* NewManager);
 
 public:
 

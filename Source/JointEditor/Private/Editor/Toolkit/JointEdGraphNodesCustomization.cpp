@@ -1350,6 +1350,7 @@ FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 {
 	FString Value;
+	
 	if (NodeHandle->GetValueAsFormattedString(Value, PPF_Copy) == FPropertyAccess::Success)
 	{
 		FPlatformApplicationMisc::ClipboardCopy(*Value);
@@ -1378,10 +1379,18 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 	FString Value;
 
 	FPlatformApplicationMisc::ClipboardPaste(Value);
-
-	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
-
-	OnNodeDataChanged();
+	//Check if the provided node is from the same Joint manager.
+	
+	TSoftObjectPtr<UJointNodeBase> Node;
+	Node = FSoftObjectPath(Value);
+	
+	if (!Node.IsValid())
+	{
+		//Invalid node path provided.
+		return FReply::Handled();
+	}
+	
+	
 
 	bool bFromMultipleManager = false;
 	bool bFromInvalidJointManagerObject = false;
@@ -1392,6 +1401,18 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 
 	//Halt if the Joint manager is not valid.
 	if (FoundJointManager == nullptr) return FReply::Handled();
+	
+	if (FoundJointManager != Node->GetJointManager())
+	{
+		//The node is not from the same Joint manager.
+		return FReply::Handled();
+	}
+	
+	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
+
+	OnNodeDataChanged();
+	
+	
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(FoundJointManager))
 	{

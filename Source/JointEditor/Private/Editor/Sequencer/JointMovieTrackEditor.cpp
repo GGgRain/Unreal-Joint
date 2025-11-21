@@ -336,9 +336,23 @@ void FJointMovieTrackEditor::AddJointMovieTrackMenuExtension(FMenuBuilder& MenuB
 			for (int32 Index = 0; Index < MovieScene->GetPossessableCount(); Index++)
 			{
 				FMovieScenePossessable& Possessable = MovieScene->GetPossessable(Index);
-
+#if UE_VERSION_OLDER_THAN(5,5,0)
 				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
 				ExistingPossessedObjects.Append(MovieSceneSequence->LocateBoundObjects(Possessable.GetGuid(), GetSequencer()->GetPlaybackContext()));
+#else
+				
+				TWeakPtr<ISequencer> Sequencer = GetSequencer();
+				
+				TArray<UObject*, TInlineAllocator<1>> BoundObjects;
+				MovieSceneSequence->LocateBoundObjects(
+					Possessable.GetGuid(),
+					UE::UniversalObjectLocator::FResolveParams(Sequencer.Pin()->GetPlaybackContext()),
+					Sequencer.Pin()->GetSharedPlaybackState(),
+					BoundObjects);
+
+				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
+				ExistingPossessedObjects.Append(BoundObjects);
+#endif
 			}
 		}
 	}
@@ -418,7 +432,7 @@ void FJointMovieTrackEditor::OnJointManagerTrackAssetSelected(const FAssetData& 
 			{
 				FKeyPropertyResult KeyPropertyResult;
 
-				UMovieSceneSection* NewSection = FindOrCreateJointTrack(NewManager)->AddNewSection(nullptr, KeyTime);
+				UMovieSceneSection* NewSection = FindOrCreateJointTrackFor(NewManager)->AddNewSection(nullptr, KeyTime);
 				KeyPropertyResult.bTrackModified = true;
 				KeyPropertyResult.SectionsCreated.Add(NewSection);
 
@@ -459,7 +473,22 @@ void FJointMovieTrackEditor::AddJointActorMenuExtension(FMenuBuilder& MenuBuilde
 				FMovieScenePossessable& Possessable = MovieScene->GetPossessable(Index);
 
 				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
+#if UE_VERSION_OLDER_THAN(5,5,0)
 				ExistingPossessedObjects.Append(MovieSceneSequence->LocateBoundObjects(Possessable.GetGuid(), GetSequencer()->GetPlaybackContext()));
+#else
+				
+				TWeakPtr<ISequencer> Sequencer = GetSequencer();
+				
+				TArray<UObject*, TInlineAllocator<1>> BoundObjects;
+				MovieSceneSequence->LocateBoundObjects(
+					Possessable.GetGuid(),
+					UE::UniversalObjectLocator::FResolveParams(Sequencer.Pin()->GetPlaybackContext()),
+					Sequencer.Pin()->GetSharedPlaybackState(),
+					BoundObjects);
+
+				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
+				ExistingPossessedObjects.Append(BoundObjects);
+#endif
 			}
 		}
 	}
@@ -523,7 +552,7 @@ void FJointMovieTrackEditor::AddJointActorMenuExtension(FMenuBuilder& MenuBuilde
 }
 
 
-UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrack(UJointManager* NewManager)
+UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrackFor(UJointManager* NewManager)
 {
 	UMovieScene* FocusedMovieScene = GetFocusedMovieScene();
 	if (FocusedMovieScene->IsReadOnly())
@@ -541,13 +570,17 @@ UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrack(UJointMana
 
 #endif
 
+	// See if we already have a Joint Track for the Joint Manager
 	UMovieSceneTrack* JointTrack = nullptr;
 	
 	for (UMovieSceneTrack* Track : Tracks)
 	{
-		if (Track && Track->IsA(UMovieSceneJointTrack::StaticClass()))
+		if (Track == nullptr) continue;
+		
+		if (UMovieSceneJointTrack* TestJointTrack = Cast<UMovieSceneJointTrack>(Track); 
+			TestJointTrack && TestJointTrack->GetJointManager() == NewManager)
 		{
-			JointTrack = Track;
+			JointTrack = TestJointTrack;
 			break;
 		}
 	}

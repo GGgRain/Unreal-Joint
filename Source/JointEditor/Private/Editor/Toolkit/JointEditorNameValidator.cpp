@@ -7,6 +7,8 @@
 #include "UObject/Object.h"
 #include "UObject/UnrealType.h"
 
+#include "Misc/EngineVersionComparison.h"
+
 #define LOCTEXT_NAMESPACE "KismetNameValidators"
 
 //////////////////////////////////////////////////
@@ -181,7 +183,11 @@ EValidatorResult FJointEditorNameValidator::Validate(const FName& InName, FText&
 			ValidatorResult = EValidatorResult::Ok;
 
 			// Check for collision with an existing object.
-			if (UObject* ExistingObject = StaticFindObject(NULL, const_cast<UObject*>(Outer), *InName.ToString(), true))
+#if UE_VERSION_OLDER_THAN(5, 7, 0)
+			if (UObject* ExistingObject = StaticFindObject(NULL, const_cast<UObject*>(Outer), *InName.ToString(), false))
+#else
+			if (UObject* ExistingObject = StaticFindObject(NULL, const_cast<UObject*>(Outer), *InName.ToString(), EFindObjectFlags::None))
+#endif
 			{
 				// To allow the linker to resolve imports when dependent Blueprints are loaded, macro libraries
 				// will leave behind a redirector whenever one of its macro graph objects are renamed. These get

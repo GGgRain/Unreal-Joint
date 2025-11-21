@@ -12,6 +12,7 @@
 #include "ScopedTransaction.h"
 
 #include "MovieSceneTimeHelpers.h"
+#include "VoltDecl.h"
 #include "Editor/Slate/JointAdvancedWidgets.h"
 #include "Editor/Slate/GraphNode/JointGraphNodeSharedSlates.h"
 #include "Fonts/FontMeasure.h"
@@ -30,6 +31,17 @@
 #include "Sequencer/MovieSceneJointSectionTemplate.h"
 #include "Sequencer/MovieSceneJointTrack.h"
 
+#include "Misc/EngineVersionComparison.h"
+
+
+// UVolt_ASM_InterpWidgetTransform 
+#include "Module/Volt_ASM_InterpWidgetTransform.h"
+
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
+
+#else
+#include "MVVM/ViewModels/ViewDensity.h"
+#endif
 
 
 #define LOCTEXT_NAMESPACE "FJointMovieSection"
@@ -40,8 +52,8 @@
 
 FJointMovieSection::FJointMovieSection(TSharedPtr<ISequencer> InSequencer, UMovieSceneSection& InSection)
 	: Section(&InSection)
-	, SequencerPtr(InSequencer)
-	, TimeSpace(ETimeSpace::Global)
+	  , SequencerPtr(InSequencer)
+	  , TimeSpace(ETimeSpace::Global)
 {
 	AdditionalDrawEffect = ESlateDrawEffect::NoGamma;
 }
@@ -62,6 +74,7 @@ void FJointMovieSection::Tick(const FGeometry& AllottedGeometry, const FGeometry
 
 FText FJointMovieSection::GetSectionTitle() const
 {
+	/*
 	if (Section != nullptr)
 	{
 		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section))
@@ -71,14 +84,42 @@ FText FJointMovieSection::GetSectionTitle() const
 			return FText::FromString(NodePointer.Node ? NodePointer.Node->GetName() : TEXT("No Joint Node Specified") );
 		}
 	}
+	*/
 
 	return FText::GetEmpty();
 }
 
+FText FJointMovieSection::GetSectionTitleText_Internal() const
+{
+	if (Section != nullptr)
+	{
+		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section))
+		{
+			const FJointNodePointer NodePointer = JointSection->GetJointNodePointer();
+
+			return FText::FromString(NodePointer.Node ? NodePointer.Node->GetName() : TEXT("No Joint Node Specified"));
+		}
+	}
+
+	return FText::GetEmpty();
+}
+
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
+
 float FJointMovieSection::GetSectionHeight() const
 {
-	return 30.f;
+	return 50.f;
 }
+
+#else
+
+float FJointMovieSection::GetSectionHeight(const UE::Sequencer::FViewDensityInfo& ViewDensity) const
+{
+	return 50;
+}
+
+#endif
+
 
 FMargin FJointMovieSection::GetContentPadding() const
 {
@@ -92,14 +133,13 @@ UMovieSceneSection* FJointMovieSection::GetSectionObject()
 
 TSharedRef<SWidget> FJointMovieSection::GenerateSectionWidget()
 {
-	
-	SAssignNew(SectionWidgetBox,SBox)
+	SAssignNew(SectionWidgetBox, SBox)
 	.HAlign(HAlign_Fill)
 	.VAlign(VAlign_Fill)
-	.Padding(FMargin(1,4));
+	.Padding(FMargin(1, 4));
 
 	UpdateSectionBox();
-	
+
 	return SectionWidgetBox.ToSharedRef();
 }
 
@@ -124,11 +164,11 @@ bool FJointMovieSection::IsNodeValid() const
 
 int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) const
 {
-	if (Section == nullptr) 
+	if (Section == nullptr)
 	{
 		return InPainter.LayerId;
 	}
-	
+
 	UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section.Get());
 	if (!JointSection)
 	{
@@ -136,86 +176,15 @@ int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) co
 	}
 
 	//InPainter.SectionGeometry.Size = FVector2D(InPainter.SectionGeometry.Size.X + 30, GetSectionHeight());
-	
+
 	//float TextOffsetX = JointSection->GetRange().GetLowerBound().IsClosed() ? FMath::Max(0.f, InPainter.GetTimeConverter().FrameToPixel(JointSection->GetRange().GetLowerBoundValue())) : 0.f;
-	FString EventString = GetSectionTitle().ToString();
-	bool bIsEventValid = IsNodeValid();
+	//FString EventString = GetSectionTitle().ToString();
+	//bool bIsEventValid = IsNodeValid();
 	//PaintNodeName(InPainter, InPainter.LayerId + 1, EventString, TextOffsetX, bIsEventValid);
-	
+
 	return InPainter.LayerId;
 }
 
-
-void FJointMovieSection::PaintNodeName(FSequencerSectionPainter& Painter, int32 LayerId, const FString& InEventString, float PixelPos, bool bIsEventValid) const
-{
-	static const int32   FontSize      = 10;
-	static const float   BoxOffsetPx   = 10.f;
-	static const TCHAR*  WarningString = TEXT("\xf071");
-
-	const FSlateFontInfo FontAwesomeFont = FJointEditorStyle::GetUEEditorSlateStyleSet().GetFontStyle("FontAwesome.8");
-	const FSlateFontInfo SmallLayoutFont = FCoreStyle::GetDefaultFontStyle("Bold", 8);
-	const FLinearColor   DrawColor       = FLinearColor::White;
-
-	TSharedRef<FSlateFontMeasure> FontMeasureService = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-
-	// Set up the warning size. Static since it won't ever change
-	static FVector2D WarningSize    = FontMeasureService->Measure(WarningString, FontAwesomeFont);
-	const  FMargin   WarningPadding = (bIsEventValid || InEventString.Len() == 0) ? FMargin(0.f) : FMargin(0.f, 0.f, 4.f, 0.f);
-	const  FMargin   BoxPadding     = FMargin(2.0f, 4.0f);
-
-	const FVector2D  TextSize       = FontMeasureService->Measure(InEventString, SmallLayoutFont);
-	const FVector2D  IconSize       = bIsEventValid ? FVector2D::ZeroVector : WarningSize;
-	const FVector2D  PaddedIconSize = IconSize + WarningPadding.GetDesiredSize();
-	const FVector2D  BoxSize        = FVector2D(TextSize.X + PaddedIconSize.X, FMath::Max(TextSize.Y, PaddedIconSize.Y )) + BoxPadding.GetDesiredSize();
-
-	// Flip the text position if getting near the end of the view range
-	bool  bDrawLeft    = (Painter.SectionGeometry.Size.X - PixelPos) < (BoxSize.X + 18.f) - BoxOffsetPx;
-	float BoxPositionX = bDrawLeft ? PixelPos - BoxSize.X - BoxOffsetPx : PixelPos + BoxOffsetPx;
-	if (BoxPositionX < 0.f)
-	{
-		BoxPositionX = 0.f;
-	}
-
-	FVector2D BoxOffset  = FVector2D(BoxPositionX,                    Painter.SectionGeometry.Size.Y*.5f - BoxSize.Y*.5f);
-	FVector2D IconOffset = FVector2D(BoxPadding.Left,                 BoxSize.Y*.5f - IconSize.Y*.5f);
-	FVector2D TextOffset = FVector2D(IconOffset.X + PaddedIconSize.X, BoxSize.Y*.5f - TextSize.Y*.5f);
-
-	/*
-	// Draw the background box
-	FSlateDrawElement::MakeBox(
-		Painter.DrawElements,
-		LayerId + 4,
-		Painter.SectionGeometry.ToPaintGeometry(BoxOffset, BoxSize),
-		FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("WhiteBrush"),
-		ESlateDrawEffect::None,
-		FLinearColor::Black.CopyWithNewOpacity(0.5f)
-	);
-	*/
-
-	if (!bIsEventValid)
-	{
-		// Draw a warning icon for unbound repeaters
-		FSlateDrawElement::MakeText(
-			Painter.DrawElements,
-			LayerId + 5,
-			Painter.SectionGeometry.ToPaintGeometry(BoxOffset + IconOffset, IconSize),
-			WarningString,
-			FontAwesomeFont,
-			ESlateDrawEffect::None,
-			FJointEditorStyle::GetUEEditorSlateStyleSet().GetWidgetStyle<FTextBlockStyle>("Log.Warning").ColorAndOpacity.GetSpecifiedColor()
-		);
-	}
-
-	FSlateDrawElement::MakeText(
-		Painter.DrawElements,
-		LayerId + 5,
-		Painter.SectionGeometry.ToPaintGeometry(BoxOffset + TextOffset, TextSize),
-		InEventString,
-		SmallLayoutFont,
-		ESlateDrawEffect::None,
-		bIsEventValid ? DrawColor : FLinearColor(1.f, 0.5f, 0.f)
-	);
-}
 
 void FJointMovieSection::UpdateSectionBox()
 {
@@ -223,14 +192,13 @@ void FJointMovieSection::UpdateSectionBox()
 	{
 		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section))
 		{
-
 			FLinearColor NormalColor;
 			FLinearColor HoverColor;
 			FLinearColor OutlineNormalColor;
 			FLinearColor OutlineHoverColor;
-			
+
 			GetColorScheme(NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
-			
+
 			if (JointSection->SectionType == EJointMovieSectionType::Range)
 			{
 				SectionWidgetBox.Get()->SetHAlign(HAlign_Fill);
@@ -253,24 +221,39 @@ void FJointMovieSection::UpdateSectionBox()
 					]
 					+ SOverlay::Slot()
 					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Fill)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SJointNodePointerSlate)
-						.ContentMargin(FMargin(0))
-						.PointerToStructure(&JointSection->NodePointer)
-						.PickingTargetJointManager(JointSection->GetTypedOuterJointTrack()->GetJointManager())
-						.bShouldShowDisplayName(false)
-						.bShouldShowNodeName(false)
-						.OnNodeChanged(this, &FJointMovieSection::OnNodePointerChanged)  // simply just repopulate the box.
-						.BorderArgs(SJointOutlineBorder::FArguments()
-							.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
-							.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
-							.ContentPadding(FMargin(0))
-							.HAlign(HAlign_Fill)
-							.VAlign(VAlign_Center)
-						)
+						SAssignNew(SectionNameTextBlock, STextBlock)
+							.Text(this, &FJointMovieSection::GetSectionTitleText_Internal)
+							.Justification(ETextJustify::Center)
+							.ColorAndOpacity(FLinearColor::White)
+					]
+					+ SOverlay::Slot()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					[
+					
+							SAssignNew(SectionJointNodePointerSlate, SJointNodePointerSlate)
+							.ContentMargin(FMargin(0))
+							.PointerToStructure(&JointSection->NodePointer)
+							.PickingTargetJointManager(JointSection->GetTypedOuterJointTrack()->GetJointManager())
+							.bShouldShowDisplayName(false)
+							.bShouldShowNodeName(false)
+							.OnPreNodeChanged(this, &FJointMovieSection::OnPreNodePointerChanged) // simply just repopulate the box.
+							.OnHovered(this, &FJointMovieSection::OnJointNodePointerSlateHovered)
+							.OnUnhovered(this, &FJointMovieSection::OnJointNodePointerSlateUnhovered)
+							.BorderArgs(SJointOutlineBorder::FArguments()
+										.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
+										.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
+										.ContentPadding(FMargin(0))
+										.HAlign(HAlign_Fill)
+										.VAlign(VAlign_Center)
+							)
 					]);
-			}else
+				
+			}
+			else
 			{
 				SectionWidgetBox.Get()->SetHAlign(HAlign_Left);
 				SectionWidgetBox.Get()->SetContent(
@@ -292,29 +275,50 @@ void FJointMovieSection::UpdateSectionBox()
 					]
 					+ SOverlay::Slot()
 					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Fill)
+					.VAlign(VAlign_Center)
+					.Padding(FJointEditorStyle::Margin_Normal)
 					[
-						SNew(SJointNodePointerSlate)
-						.ContentMargin(FMargin(0))
-						.PickingTargetJointManager(JointSection->GetTypedOuterJointTrack()->GetJointManager())
-						.PointerToStructure(&JointSection->NodePointer)
-						.bShouldShowDisplayName(false)
-						.bShouldShowNodeName(false)
-						.OnNodeChanged(this, &FJointMovieSection::OnNodePointerChanged) // simply just repopulate the box.
-						.BorderArgs(SJointOutlineBorder::FArguments()
-							.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
-							.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
-							.ContentPadding(FMargin(0))
-							.HAlign(HAlign_Fill)
-							.VAlign(VAlign_Center)
-						)
+						SAssignNew(SectionNameTextBlock, STextBlock)
+							.Text(this, &FJointMovieSection::GetSectionTitleText_Internal)
+							.Justification(ETextJustify::Center)
+							.ColorAndOpacity(FLinearColor::White)
+					]
+					+ SOverlay::Slot()
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Center)
+					[
+						SAssignNew(SectionJointNodePointerSlate, SJointNodePointerSlate)
+							.ContentMargin(FMargin(0))
+							.PickingTargetJointManager(JointSection->GetTypedOuterJointTrack()->GetJointManager())
+							.PointerToStructure(&JointSection->NodePointer)
+							.bShouldShowDisplayName(false)
+							.bShouldShowNodeName(false)
+							.OnPreNodeChanged(this, &FJointMovieSection::OnPreNodePointerChanged) // simply just repopulate the box.
+							.OnPostNodeChanged(this, &FJointMovieSection::OnPostNodePointerChanged)
+							.OnHovered(this, &FJointMovieSection::OnJointNodePointerSlateHovered)
+							.OnUnhovered(this, &FJointMovieSection::OnJointNodePointerSlateUnhovered)
+							.BorderArgs(SJointOutlineBorder::FArguments()
+							            .OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
+							            .InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
+							            .ContentPadding(FMargin(0))
+							            .HAlign(HAlign_Fill)
+							            .VAlign(VAlign_Center)
+							)
 					]);
 			}
 		}
 	}
 }
 
-void FJointMovieSection::OnNodePointerChanged()
+void FJointMovieSection::OnPreNodePointerChanged()
+{
+	if (Section.IsValid())
+	{
+		Section->Modify();
+	}
+}
+
+void FJointMovieSection::OnPostNodePointerChanged()
 {
 	UpdateSectionBox();
 }
@@ -326,15 +330,15 @@ void FJointMovieSection::GetColorScheme(FLinearColor& OutNormalColor, FLinearCol
 		OutNormalColor = FLinearColor(0.10, 0.40, 0.30);
 		OutHoverColor = FLinearColor(0.20, 0.80, 0.70);
 		OutOutlineNormalColor = FLinearColor(0.10, 0.60, 0.50);
-		OutOutlineHoverColor = FLinearColor(0.80, 0.90, 0.90);	
-	}else
+		OutOutlineHoverColor = FLinearColor(0.80, 0.90, 0.90);
+	}
+	else
 	{
 		OutNormalColor = FLinearColor(0.80, 0.10, 0.10);
 		OutHoverColor = FLinearColor(0.80, 0.20, 0.20);
 		OutOutlineNormalColor = FLinearColor(0.90, 0.10, 0.10);
 		OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
 	}
-	
 }
 
 
@@ -358,8 +362,8 @@ TRange<double> FJointMovieSection::GetVisibleRange() const
 
 TRange<double> FJointMovieSection::GetTotalRange() const
 {
-	TRange<FFrameNumber> SectionRange   = Section->GetRange();
-	FFrameRate           TickResolution = Section->GetTypedOuter<UMovieScene>()->GetTickResolution();
+	TRange<FFrameNumber> SectionRange = Section->GetRange();
+	FFrameRate TickResolution = Section->GetTypedOuter<UMovieScene>()->GetTickResolution();
 
 	if (TimeSpace == ETimeSpace::Global)
 	{
@@ -369,11 +373,55 @@ TRange<double> FJointMovieSection::GetTotalRange() const
 	{
 		const bool bHasDiscreteSize = SectionRange.GetLowerBound().IsClosed() && SectionRange.GetUpperBound().IsClosed();
 		TRangeBound<double> UpperBound = bHasDiscreteSize
-			? TRangeBound<double>::Exclusive(FFrameNumber(UE::MovieScene::DiscreteSize(SectionRange)) / TickResolution)
-			: TRangeBound<double>::Open();
+			                                 ? TRangeBound<double>::Exclusive(FFrameNumber(UE::MovieScene::DiscreteSize(SectionRange)) / TickResolution)
+			                                 : TRangeBound<double>::Open();
 
 		return TRange<double>(0, UpperBound);
 	}
+}
+
+void FJointMovieSection::OnJointNodePointerSlateHovered()
+{
+	// Play anim for the text
+	
+	VOLT_STOP_ANIM(HoverAnimationHandle);
+	
+	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+			.TargetWidgetTransform(
+				FWidgetTransform(
+			FVector2D(0,-20),
+			FVector2D(1,1),
+			FVector2D::ZeroVector,
+			0)
+			)
+			.RateBasedInterpSpeed(7)
+	);
+	
+	HoverAnimationHandle = VOLT_PLAY_ANIM(SectionNameTextBlock, Anim);
+}
+
+void FJointMovieSection::OnJointNodePointerSlateUnhovered()
+{
+	// Play anim for the text
+	
+	VOLT_STOP_ANIM(HoverAnimationHandle);
+	
+	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+			.TargetWidgetTransform(
+				FWidgetTransform(
+			FVector2D(0,0),
+			FVector2D(1,1),
+			FVector2D::ZeroVector,
+			0)
+			)
+			.RateBasedInterpSpeed(7)
+	);
+	
+	HoverAnimationHandle = VOLT_PLAY_ANIM(SectionNameTextBlock, Anim);
 }
 
 
