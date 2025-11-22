@@ -11,6 +11,8 @@
 
 class SJointNodePointerSlate;
 class SBox;
+class STextBlock;
+
 class AActor;
 class FMenuBuilder;
 class FSequencerSectionPainter;

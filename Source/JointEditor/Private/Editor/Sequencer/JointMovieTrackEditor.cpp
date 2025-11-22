@@ -22,6 +22,7 @@
 #include "Editor/Style/JointEditorStyle.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Framework/Commands/Commands.h"
 #include "Sequencer/MovieSceneJointTrack.h"
 

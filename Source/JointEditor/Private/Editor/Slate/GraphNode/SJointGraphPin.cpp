@@ -8,6 +8,7 @@
 
 #include "JointEditorStyle.h"
 #include "VoltDecl.h"
+#include "Components/HorizontalBox.h"
 #include "Module/Volt_ASM_InterpRenderOpacity.h"
 #include "Node/JointNodeBase.h"
 #include "Widgets/Input/SButton.h"
