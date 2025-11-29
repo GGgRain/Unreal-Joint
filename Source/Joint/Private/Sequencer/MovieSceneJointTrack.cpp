@@ -20,12 +20,12 @@ UMovieSceneJointTrack::UMovieSceneJointTrack(const FObjectInitializer& ObjectIni
 	TrackTint = FColor::Turquoise;
 	TrackTint.A = 80;
 	bSupportsDefaultSections = false;
+	DisplayOptions.bShowVerticalFrames = false;
 #endif
 	
 	//SupportedBlendTypes.Add(EMovieSceneBlendType::);
 
 	EvalOptions.bEvaluateNearestSection_DEPRECATED = EvalOptions.bCanEvaluateNearestSection = true;
-	DisplayOptions.bShowVerticalFrames = false;
 }
 
 bool UMovieSceneJointTrack::SupportsType(TSubclassOf<UMovieSceneSection> SectionClass) const
@@ -84,6 +84,8 @@ FMovieSceneEvalTemplatePtr UMovieSceneJointTrack::CreateTemplateForSection(const
 	return FMovieSceneJointSectionTemplate(*CastChecked<UMovieSceneJointSection>(&InSection), *this);
 }
 
+#if WITH_EDITOR
+
 UMovieSceneJointSection* UMovieSceneJointTrack::AddNewSection(FJointNodePointer* InJointNodePointer, FFrameNumber Time)
 {
 	return AddNewSectionOnRow(InJointNodePointer, Time, INDEX_NONE);
@@ -124,6 +126,7 @@ void UMovieSceneJointTrack::SetJointManager(UJointManager* InJointManager)
 		SetDisplayName(NewDisplayName);
 	}
 }
+#endif
 
 AJointActor* UMovieSceneJointTrack::GetJointActor() const
 {

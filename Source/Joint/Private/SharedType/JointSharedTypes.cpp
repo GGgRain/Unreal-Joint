@@ -34,8 +34,9 @@ FJointNodePointer::~FJointNodePointer()
 
 bool FJointNodePointer::operator==(const FJointNodePointer& Other) const
 {
-	return GetTypeHash(this) == GetTypeHash(&Other);
+	return Node.ToSoftObjectPath() == Other.Node.ToSoftObjectPath() && HasSameRestrictionsAs(Other);
 }
+
 
 bool FJointNodePointer::HasSameRestrictionsAs(const FJointNodePointer& Other) const
 {
@@ -47,14 +48,14 @@ bool FJointNodePointer::HasSameRestrictionsAs(const FJointNodePointer& Other) co
 				if (!Other.AllowedType.Contains(Type)) return false;
 			}
 			return true;
-		}() &&
-		[&]() {
-			for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
-			{
-				if (!Other.DisallowedType.Contains(Type)) return false;
-			}
-			return true;
-		}();
+	}() &&
+	[&]() {
+		for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
+		{
+			if (!Other.DisallowedType.Contains(Type)) return false;
+		}
+		return true;
+	}();
 }
 
 bool FJointNodePointer::CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const
@@ -76,6 +77,7 @@ bool FJointNodePointer::CheckMatchRestrictions(const TSet<TSubclassOf<UJointNode
 			return true;
 		}();
 }
+
 
 bool FJointNodePointer::IsValid() const
 {
