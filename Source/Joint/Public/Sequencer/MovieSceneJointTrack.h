@@ -36,7 +36,7 @@ public:
 	// ~IMovieSceneTrackTemplateProducer interface
 	virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection& InSection) const override;
 
-#if WITH_EDITORONLY_DATA
+#if WITH_EDITOR
 
 public:
 
@@ -47,11 +47,9 @@ public:
 
 	UJointManager* GetJointManager() const;
 	void SetJointManager(UJointManager* InJointManager);
-
-	AJointActor* GetJointActor() const;
 	
 #endif
-
+	
 protected:
 
 	/** All the sections in this track */
@@ -62,6 +60,9 @@ protected:
 	TObjectPtr<UJointManager> JointManager;
 
 public:
+	
+	UFUNCTION(BlueprintPure, Category="Runtime")
+	AJointActor* GetJointActor() const;
 	
 	/**
 	 * The Joint Actor used for runtime playback.

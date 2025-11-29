@@ -55,6 +55,8 @@ enum class EJointBuildPresetBehavior : uint8
 /**
  * A wrapper struct for the Joint node instance reference on the graph.
  * This is useful when you have to create a node that requires a reference to a specific node on the graph.
+ * 
+ * NOTE: Notice that == operator will use the GetTypeHash() function to compare the two structures - which will make two different instances with the same data to be treated as different.
  */
 USTRUCT(BlueprintType)
 struct JOINT_API FJointNodePointer
@@ -87,14 +89,13 @@ public:
 #endif
 
 public:
-#if WITH_EDITORONLY_DATA
 
 	/**
 	 * The node instance classes that can be picked up on this structure.
 	 * This is useful when want to make a filter for this instance.
 	 * This property will be exposed in the detail tab and be editable for the possible modification.
 	 */
-	UPROPERTY(AdvancedDisplay, EditAnywhere, Category = "Node")
+	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Node")
 	TSet<TSubclassOf<UJointNodeBase>> AllowedType;
 
 	/**
@@ -102,23 +103,17 @@ public:
 	 * This is useful when want to make a filter for this instance.
 	 * This property will be exposed in the detail tab and be editable for the possible modification.
 	 */
-	UPROPERTY(AdvancedDisplay, EditAnywhere, Category = "Node")
+	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Node")
 	TSet<TSubclassOf<UJointNodeBase>> DisallowedType;
 
-#endif
+	bool operator==(const FJointNodePointer& Other) const;
 
-
-#if WITH_EDITOR
-
+	
 	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
 
 	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node,
 	                                                                const FString& OptionalStructurePropertyName);
-
-#endif
 	
-	bool operator==(const FJointNodePointer& Other) const;
-
 	/**
 	 * Check whether the node pointer has the same restrictions as the provided node pointer.
 	 */
@@ -128,6 +123,7 @@ public:
 	 * Check whether the node pointer has the same restrictions as the provided set of allowed and disallowed types.
 	 */
 	bool CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const;
+	
 	
 	/**
 	 * Check whether the node pointer is valid.
