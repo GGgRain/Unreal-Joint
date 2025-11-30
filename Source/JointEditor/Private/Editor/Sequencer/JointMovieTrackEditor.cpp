@@ -342,13 +342,13 @@ void FJointMovieTrackEditor::AddJointMovieTrackMenuExtension(FMenuBuilder& MenuB
 				ExistingPossessedObjects.Append(MovieSceneSequence->LocateBoundObjects(Possessable.GetGuid(), GetSequencer()->GetPlaybackContext()));
 #else
 				
-				TWeakPtr<ISequencer> Sequencer = GetSequencer();
+				TWeakPtr<ISequencer> InSequencer = GetSequencer();
 				
 				TArray<UObject*, TInlineAllocator<1>> BoundObjects;
 				MovieSceneSequence->LocateBoundObjects(
 					Possessable.GetGuid(),
-					UE::UniversalObjectLocator::FResolveParams(Sequencer.Pin()->GetPlaybackContext()),
-					Sequencer.Pin()->GetSharedPlaybackState(),
+					UE::UniversalObjectLocator::FResolveParams(InSequencer.Pin()->GetPlaybackContext()),
+					InSequencer.Pin()->GetSharedPlaybackState(),
 					BoundObjects);
 
 				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
@@ -478,13 +478,13 @@ void FJointMovieTrackEditor::AddJointActorMenuExtension(FMenuBuilder& MenuBuilde
 				ExistingPossessedObjects.Append(MovieSceneSequence->LocateBoundObjects(Possessable.GetGuid(), GetSequencer()->GetPlaybackContext()));
 #else
 				
-				TWeakPtr<ISequencer> Sequencer = GetSequencer();
+				TWeakPtr<ISequencer> InSequencer = GetSequencer();
 				
 				TArray<UObject*, TInlineAllocator<1>> BoundObjects;
 				MovieSceneSequence->LocateBoundObjects(
 					Possessable.GetGuid(),
-					UE::UniversalObjectLocator::FResolveParams(Sequencer.Pin()->GetPlaybackContext()),
-					Sequencer.Pin()->GetSharedPlaybackState(),
+					UE::UniversalObjectLocator::FResolveParams(InSequencer.Pin()->GetPlaybackContext()),
+					InSequencer.Pin()->GetSharedPlaybackState(),
 					BoundObjects);
 
 				// A possession guid can apply to more than one object, so we get all bound objects for the GUID and add them to our set.
