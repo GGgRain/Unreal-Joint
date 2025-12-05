@@ -213,10 +213,15 @@ https://github.com/user-attachments/assets/518d5277-c973-4d04-b099-d87d0d3e97f2
 ## :inbox_tray: Installation ##
 
 ### Steps:
+0. If the plugin is source build version, you have to change your project to C++ supported project. Open your editor and try adding a dummy C++ class to convert your project to BP & C++ from BP only project. 
 1. Download this repository as a zip file or clone it to your workstation, then unzip the folder and rename it to `Joint`.
-2. Place the unzipped `Joint` folder into the `Plugins` directory of your Unreal project. If this directory doesn’t exist, create it.
-3. Open `Joint.uplugin` with notepad, and change "EngineVersion" to your Unreal Engine version. For example, if you are using Unreal Engine 5.5.3, change it to `"EngineVersion": "5.5"`.
-4. Launch your project and confirm it runs successfully. If you see a prompt asking about building modules, click **Yes**.
+3. Place the unzipped `Joint` folder into the `Plugins` directory of your Unreal **project (not the engine itself)**. If this directory doesn’t exist, create it.
+4. Open `Joint.uplugin` with notepad, and change "EngineVersion" to your Unreal Engine version. For example, if you are using Unreal Engine 5.5.3, change it to `"EngineVersion": "5.5"`.
+5. Delete pre-existing **/intermediate, /Saved, /Binaries folder** on your project's root directory if you have.
+6. Right click xxxx.uproject, and press 'Generate Visual Studio File'
+7. **Open .sin file, and press F5 to execute "build and run"- this step is crucial - it will build the actual program binaries from the source code of the plugin.**
+8. See the Unreal Editor for your project getting opened. And close the editor if you want.
+9. Now you can launch your project anywhere - from Epic Games Launcher and IDE.
 
 > [!TIP] 
 > Check this out, especially if you've never compiled or used C++ code on your Unreal Engine before:
