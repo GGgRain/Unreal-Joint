@@ -218,7 +218,7 @@ https://github.com/user-attachments/assets/518d5277-c973-4d04-b099-d87d0d3e97f2
 3. Place the unzipped `Joint` folder into the `Plugins` directory of your Unreal **project (not the engine itself)**. If this directory doesn’t exist, create it.
 4. Open `Joint.uplugin` with notepad, and change "EngineVersion" to your Unreal Engine version. For example, if you are using Unreal Engine 5.5.3, change it to `"EngineVersion": "5.5"`.
 5. Delete pre-existing **/intermediate, /Saved, /Binaries folder** on your project's root directory if you have.
-6. Right click xxxx.uproject, and press 'Generate Visual Studio File'
+6. Right click xxxx.uproject file on your project's root directory, and press 'Generate Visual Studio File'
 7. **Open .sin file, and press F5 to execute "build and run"- this step is crucial - it will build the actual program binaries from the source code of the plugin.**
 8. See the Unreal Editor for your project getting opened. And close the editor if you want.
 9. Now you can launch your project anywhere - from Epic Games Launcher and IDE.
