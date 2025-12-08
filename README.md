@@ -39,7 +39,7 @@
   <a href="https://discord.gg/DzNFax2aBS">
     <img src="https://img.shields.io/discord/977755047557496882?logo=discord&logoColor=white" alt="Chat on Discord">
   </a>
-  <a href="https://gggrain.github.io/Unreal-Joint-Documentation/docs/category/joint-1">
+  <a href="https://unrealjoint.com/docs/category/joint-1">
     <img src="https://img.shields.io/badge/release%20notes-00B2EE.svg" alt="Release Notes">
   </a>
 </p>
@@ -51,7 +51,7 @@
   <a href="#clipboard-main-features">Main Features</a> &#xa0; | &#xa0;
   <a href="#inbox_tray-installation">Installation</a> &#xa0; | &#xa0;
   <a href="#loudspeaker-supports">Supports</a> &#xa0 | &#xa0;
-  <a href="https://gggrain.github.io/Unreal-Joint-Documentation/docs/category/joint-1">Release Note</a>
+  <a href="https://unrealjoint.com/docs/category/joint-1">Release Note</a>
 </p>
 
 ## :sparkles: History ##
@@ -247,7 +247,7 @@ If you have an issue on installing our plugin, please join [our official support
 
 ## Official Webpage ##
 
-Joint provides [official documentation page](https://gggrain.github.io/Unreal-Joint-Documentation/) that contains tutorial & release notes & news for the updates!
+Joint provides [official documentation page](https://unrealjoint.com/) that contains tutorial & release notes & news for the updates!
 
 Come along to find further details for the lastest updates and how to use the system or to see how the system has evolved!
 
