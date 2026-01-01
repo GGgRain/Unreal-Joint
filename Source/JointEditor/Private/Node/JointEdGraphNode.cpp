@@ -987,6 +987,8 @@ void UJointEdGraphNode::PostCopyNode()
 
 void UJointEdGraphNode::PostPasteNode()
 {
+	ResetPinDataGuid();
+	
 	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
 	RestoreOuterChainFromCopy();
 	
@@ -1434,6 +1436,22 @@ void UJointEdGraphNode::UpdateSubNodeChain()
 bool UJointEdGraphNode::IsSubNode() const
 {
 	return ParentNode == nullptr ? false : ParentNode->IsValidLowLevel();
+}
+
+TArray<UJointEdGraphNode*> UJointEdGraphNode::GetAllParentNodesInHierarchy() const
+{
+	TArray<UJointEdGraphNode*> ParentNodes;
+
+	UJointEdGraphNode* CurrentParentNode = ParentNode.Get();
+
+	while (CurrentParentNode != nullptr && CurrentParentNode->IsValidLowLevel())
+	{
+		ParentNodes.Add(CurrentParentNode);
+
+		CurrentParentNode = CurrentParentNode->ParentNode.Get();
+	}
+
+	return ParentNodes;
 }
 
 

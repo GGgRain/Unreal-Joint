@@ -207,12 +207,13 @@ bool FJointMovieTrackEditor::SupportsSequence(UMovieSceneSequence* InSequence) c
 
 void FJointMovieTrackEditor::Tick(float DeltaTime)
 {
+	/*
 	TSharedPtr<ISequencer> SequencerPin = GetSequencer();
 	if (!SequencerPin.IsValid())
 	{
 		return;
 	}
-
+	
 	EMovieScenePlayerStatus::Type PlaybackState = SequencerPin->GetPlaybackStatus();
 
 	if (FSlateThrottleManager::Get().IsAllowingExpensiveTasks() && PlaybackState != EMovieScenePlayerStatus::Playing && PlaybackState != EMovieScenePlayerStatus::Scrubbing)
@@ -228,6 +229,7 @@ void FJointMovieTrackEditor::Tick(float DeltaTime)
 
 		SequencerPin->ExitSilentMode();
 	}
+	*/
 }
 
 const FSlateBrush* FJointMovieTrackEditor::GetIconBrush() const

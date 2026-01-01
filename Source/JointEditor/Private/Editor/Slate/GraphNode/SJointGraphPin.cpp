@@ -156,7 +156,7 @@ TSharedRef<SWidget> SJointGraphPinBase::GetLabelWidget(const FName& InLabelStyle
 	
 	return SAssignNew(TextBlock, STextBlock)
 		.RenderOpacity(ShouldAlwaysDisplayNameText() ? 0.6 : 0)
-		.Text(GetPinLabel())
+		.Text(GraphPinObj && GraphPinObj->GetOwningNode() && GraphPinObj->GetOwningNode()->GetSchema() ? GetPinLabel() : FText::GetEmpty())
 		.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
 		.Visibility(bShowLabel ? EVisibility::HitTestInvisible : EVisibility::Collapsed)
 		.ColorAndOpacity(this, &SJointGraphPinBase::GetPinTextColor);

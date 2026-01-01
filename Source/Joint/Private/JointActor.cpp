@@ -110,19 +110,21 @@ UJointNodeBase* AJointActor::GetPlayingJointNode()
 	return PlayingJointNode;
 }
 
-void AJointActor::OnRep_CachedAllNodesForNetworking(
-	const TArray<UJointNodeBase*>& PreviousCachedAllNodesForNetworking)
+void AJointActor::OnRep_CachedNodesForNetworking(
+	const TArray<UJointNodeBase*>& PreviousCachedNodesForNetworking)
 {
+	// ATM, CachedNodesForNetworking is already updated with the new value when this function is called - so we can compare it with the previous value.
+	
 #if USE_NEW_REPLICATION
 	
 	if (IsUsingRegisteredSubObjectList())
 	{
 		// Find the attributes that got removed
-		for (UJointNodeBase* PreviousNode : PreviousCachedAllNodesForNetworking)
+		for (UJointNodeBase* PreviousNode : PreviousCachedNodesForNetworking)
 		{
 			if (PreviousNode)
 			{
-				const bool bWasRemoved = CachedAllNodesForNetworking.Find(PreviousNode) == INDEX_NONE;
+				const bool bWasRemoved = CachedNodesForNetworking.Find(PreviousNode) == INDEX_NONE;
 				
 				if (bWasRemoved)
 				{
@@ -132,15 +134,17 @@ void AJointActor::OnRep_CachedAllNodesForNetworking(
 		}
 
 		// Find the attributes that got added
-		for (UJointNodeBase* NewPreviousNode : PreviousCachedAllNodesForNetworking)
+		for (UJointNodeBase* CurNodes : CachedNodesForNetworking)
 		{
-			if (IsValid(NewPreviousNode))
+			if (IsValid(CurNodes))
 			{
-				const bool bIsAdded = PreviousCachedAllNodesForNetworking.Find(NewPreviousNode) == INDEX_NONE;
+				//Check whether it is added newly.
+				const bool bIsAdded = PreviousCachedNodesForNetworking.Find(CurNodes) == INDEX_NONE;
 				
+				//If it is added newly, register it.
 				if (bIsAdded)
 				{
-					AddReplicatedSubObject(NewPreviousNode);
+					AddReplicatedSubObject(CurNodes);
 				}
 			}
 		}
@@ -149,9 +153,9 @@ void AJointActor::OnRep_CachedAllNodesForNetworking(
 #endif
 
 	/* Clean Up code for removed nodes.
-	for (UJointNodeBase* PreviousNode : PreviousCachedAllNodesForNetworking)
+	for (UJointNodeBase* PreviousNode : PreviousCachedNodesForNetworking)
 	{
-		if (PreviousNode && CachedAllNodesForNetworking.Find(PreviousNode) == INDEX_NONE)
+		if (PreviousNode && CachedNodesForNetworking.Find(PreviousNode) == INDEX_NONE)
 		{
 
 		}
@@ -937,7 +941,7 @@ void AJointActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	Params.bIsPushBased = true;
 
 	Params.Condition = COND_None;
-	DOREPLIFETIME_WITH_PARAMS_FAST(AJointActor, CachedAllNodesForNetworking, Params);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AJointActor, CachedNodesForNetworking, Params);
 	//DOREPLIFETIME(AJointActor, JointManager);
 }
 
@@ -957,7 +961,7 @@ bool AJointActor::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, 
 	bool WroteSomething = false;
 
 
-	for (UJointNodeBase* NodeForNetworking : CachedAllNodesForNetworking)
+	for (UJointNodeBase* NodeForNetworking : CachedNodesForNetworking)
 	{
 		if (IsValid(NodeForNetworking))
 		{
@@ -996,7 +1000,7 @@ void AJointActor::CacheNodesForNetworking()
 
 #if USE_NEW_REPLICATION
 		
-		for (UJointNodeBase* NodesForNetworking : CachedAllNodesForNetworking)
+		for (UJointNodeBase* NodesForNetworking : CachedNodesForNetworking)
 		{
 			if(IsValid(NodesForNetworking))
 			{
@@ -1007,7 +1011,7 @@ void AJointActor::CacheNodesForNetworking()
 #endif
 
 
-		CachedAllNodesForNetworking.Empty();
+		CachedNodesForNetworking.Empty();
 
 		TArray<UJointNodeBase*> Nodes;
 
@@ -1044,12 +1048,13 @@ void AJointActor::CacheNodesForNetworking()
 			}
 		}
 
-		CachedAllNodesForNetworking = Nodes;
+		CachedNodesForNetworking = Nodes;
 		
 #if USE_NEW_REPLICATION
 		
-		// This must be called after the hasing
-		for (UJointNodeBase* AllNodesForNetworking : CachedAllNodesForNetworking)
+		// This must be called after the caching
+		
+		for (UJointNodeBase* AllNodesForNetworking : CachedNodesForNetworking)
 		{
 			if(IsValid(AllNodesForNetworking))
 			{
@@ -1071,7 +1076,7 @@ void AJointActor::AddNodeForNetworking(UJointNodeBase* InNode)
 		if (InNode->GetHostingJointInstance() != this || InNode->GetJointManager() != this->GetJointManager())
 			return;
 
-		if (CachedAllNodesForNetworking.Contains(InNode)) return;
+		if (CachedNodesForNetworking.Contains(InNode)) return;
 
 #if USE_NEW_REPLICATION
 	
@@ -1079,7 +1084,7 @@ void AJointActor::AddNodeForNetworking(UJointNodeBase* InNode)
 
 #endif
 
-		CachedAllNodesForNetworking.Add(InNode);
+		CachedNodesForNetworking.Add(InNode);
 	}
 }
 
@@ -1092,15 +1097,15 @@ void AJointActor::RemoveNodeForNetworking(UJointNodeBase* InNode)
 		if (InNode->GetHostingJointInstance() != this || InNode->GetJointManager() != this->GetJointManager())
 			return;
 
-		if (!CachedAllNodesForNetworking.Contains(InNode)) return;
+		if (!CachedNodesForNetworking.Contains(InNode)) return;
 
 #if USE_NEW_REPLICATION
 	
-		RemoveNodeForNetworking(InNode);
+		RemoveReplicatedSubObject(InNode);
 
 #endif
 
-		CachedAllNodesForNetworking.Remove(InNode);
+		CachedNodesForNetworking.Remove(InNode);
 	}
 }
 
