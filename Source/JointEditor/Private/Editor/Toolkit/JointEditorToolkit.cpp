@@ -2915,6 +2915,24 @@ void FJointEditorToolkit::CopySelectedNodes()
 		}
 	}
 	
+	// Remove the nodes that are contained within other selected nodes - we only want to copy the top-level nodes
+	for (int i = NodesToCopy.Num() - 1; i >= 0; --i)
+	{
+		UObject* NodeToCheck = NodesToCopy.Array()[i];
+
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCheck))
+		{
+			for (UJointEdGraphNode* SubNode : CastedNode->GetAllSubNodesInHierarchy())
+			{
+				if (NodesToCopy.Contains(SubNode))
+				{
+					NodesToCopy.Remove(SubNode);
+				}
+			}
+		}
+	}
+		
+	
 	for (UObject* NodeToCopy : NodesToCopy)
 	{
 		if (UEdGraphNode* CastedNode = Cast<UEdGraphNode>(NodeToCopy))
@@ -3095,6 +3113,17 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 				AttachTargetNode->AddSubNode(CastedPastedNode);
 
 				// Remove the Paste Node from the graph.
+				CastedGraph->RemoveNode(CastedPastedNode);
+			}
+		}
+	}else
+	{
+		for (UEdGraphNode* InEdGraphNode : PastedNodes)
+		{
+			if (InEdGraphNode == nullptr) continue;
+		
+			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
+			{
 				CastedGraph->RemoveNode(CastedPastedNode);
 			}
 		}

@@ -495,6 +495,9 @@ public:
 	
 	//Check if node is sub node. It will return if the parent node instance is valid.
 	virtual bool IsSubNode() const;
+	
+	//Grab all the parent nodes in the hierarchy.
+	virtual TArray<UJointEdGraphNode*> GetAllParentNodesInHierarchy() const;
 
 	//Grab all the sub nodes in the hierarchy.
 	virtual TArray<UJointEdGraphNode*> GetAllSubNodesInHierarchy() const;

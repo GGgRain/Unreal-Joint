@@ -165,11 +165,11 @@ private:
 	/**
 	 * Cached Joint nodes for the replication.
 	 */
-	UPROPERTY(Transient, Replicated, ReplicatedUsing = OnRep_CachedAllNodesForNetworking)
-	TArray<TObjectPtr<UJointNodeBase>> CachedAllNodesForNetworking;
+	UPROPERTY(Transient, Replicated, ReplicatedUsing = OnRep_CachedNodesForNetworking)
+	TArray<TObjectPtr<UJointNodeBase>> CachedNodesForNetworking;
 
 	UFUNCTION()
-	void OnRep_CachedAllNodesForNetworking(const TArray<UJointNodeBase*>& PreviousCachedAllNodesForNetworking);
+	void OnRep_CachedNodesForNetworking(const TArray<UJointNodeBase*>& PreviousCachedNodesForNetworking);
 
 
 public:
@@ -367,12 +367,9 @@ public:
 
 	void EndManagerFragments();
 public:
+	
 	/**
 	 * Networking of the Joint instance actor.
-	 * Joint instance will replicate only following 3 properties by itself:
-	 * JointGuid, JointManager, PlayingJointNode.
-	 *
-	 * The most important one is the Playing Joint node. Instance doesn't replicate the begin play event of the other nodes, but it replicates the change on the base node and its play action.
 	 */
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
