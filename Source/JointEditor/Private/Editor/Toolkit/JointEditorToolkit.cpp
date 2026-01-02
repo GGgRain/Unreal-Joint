@@ -2915,6 +2915,7 @@ void FJointEditorToolkit::CopySelectedNodes()
 		}
 	}
 	
+	
 	// Remove the nodes that are contained within other selected nodes - we only want to copy the top-level nodes
 	for (int i = NodesToCopy.Num() - 1; i >= 0; --i)
 	{
@@ -2931,6 +2932,7 @@ void FJointEditorToolkit::CopySelectedNodes()
 			}
 		}
 	}
+	
 		
 	
 	for (UObject* NodeToCopy : NodesToCopy)
@@ -3128,6 +3130,9 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 			}
 		}
 	}
+	
+	// Explicitly call PostProcessPastedNodes on the pasted nodes one more time since we modified attachment. (FEdGraphUtilities::ImportNodesFromText already called it once)
+	FEdGraphUtilities::PostProcessPastedNodes(PastedNodes);
 	
 	// Notify the graph that graph nodes have been pasted.
 	if (CastedGraph)
