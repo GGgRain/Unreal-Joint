@@ -11,6 +11,14 @@
 #define LOCTEXT_NAMESPACE "FJointNodePointer"
 
 
+FJointActorExecutionElement::FJointActorExecutionElement() : ExecutionType(EJointActorExecutionType::None)
+{
+}
+
+FJointActorExecutionElement::FJointActorExecutionElement(const EJointActorExecutionType InExecutionType, UJointNodeBase* InTargetNode) : ExecutionType(InExecutionType), TargetNode(InTargetNode)
+{
+}
+
 FJointGraphNodePropertyData::FJointGraphNodePropertyData() : PropertyName(NAME_None)
 {
 }

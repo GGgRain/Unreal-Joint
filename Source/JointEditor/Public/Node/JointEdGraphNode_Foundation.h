@@ -19,6 +19,11 @@ public:
 	UJointEdGraphNode_Foundation();
 
 public:
+	
+	UPROPERTY(EditAnywhere, Category = "Nodes")
+	bool bMakeOutputPinAlways = false;
+
+public:
 
 	virtual TSubclassOf<UJointNodeBase> SupportedNodeClass() override;
 	
@@ -28,5 +33,8 @@ public:
 
 	virtual void NodeConnectionListChanged() override;
 	
+public:
+	
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	
 };

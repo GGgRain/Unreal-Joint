@@ -2,6 +2,7 @@
 
 #include "EditorWidget/SJointFragmentPalette.h"
 
+#include "JointEditorLogChannels.h"
 #include "JointEditorToolkit.h"
 #include "EditorWidget/SJointGraphEditorActionMenu.h"
 
@@ -69,7 +70,7 @@ void SJointFragmentPalette::RebuildWidget()
 
 	if (ToolKitPtr.Pin() == nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Failed to find a valid editor reference. can not create a fragment palette."));
+		UE_LOG(LogJointEditor, Log, TEXT("Failed to find a valid editor reference. can not create a fragment palette."));
 
 		return;
 	}

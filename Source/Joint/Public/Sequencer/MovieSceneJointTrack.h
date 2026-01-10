@@ -62,7 +62,7 @@ protected:
 public:
 	
 	UFUNCTION(BlueprintPure, Category="Runtime")
-	AJointActor* GetJointActor() const;
+	AJointActor* GetRuntimeJointActor() const;
 	
 	/**
 	 * The Joint Actor used for runtime playback.

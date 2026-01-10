@@ -7,6 +7,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "JointFunctionLibrary.generated.h"
 
+class UJointManager;
 class UMovieSceneJointTrack;
 class UMovieSceneSequence;
 class UMovieSceneTrack;
@@ -18,6 +19,18 @@ UCLASS()
 class JOINT_API UJointFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
+	
+public:
+
+	/**
+	 * Return the corresponding Joint node from the provided Joint node for the target Joint manager.
+	 * @param SearchFor Key object to use
+	 * @param TargetManager Target Joint manager to find the corresponding node for.
+	 * @return Corresponding Joint Graph Node.
+	 */
+	static UJointNodeBase* GetCorrespondingJointNodeForJointManager(UJointNodeBase* SearchFor, UJointManager* TargetManager);
+
+public:
 	
 	/*
 	 * Check if the provided widget is focusable.
@@ -85,7 +98,6 @@ public:
 
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Text Utilities")
 	static const bool AreBothPinHaveSameSignature(const FJointEdPinData& A, const FJointEdPinData& B);
-
 
 public:
 

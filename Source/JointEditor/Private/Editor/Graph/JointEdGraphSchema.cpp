@@ -359,7 +359,7 @@ bool UJointEdGraphSchema::PruneGatewayNode(UJointEdGraphNode_Composite* InNode, 
 			if (BoundaryPin->LinkedTo.Num() > 0 && BoundaryPin->ParentPin == nullptr)
 			{
 				UE_LOG(
-					LogTemp,
+					LogJointEditor,
 					Warning,
 					TEXT("%s"),
 					*FText::Format(
@@ -705,23 +705,17 @@ const FPinConnectionResponse UJointEdGraphSchema::CanMergeNodes(const UEdGraphNo
 		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW,
 		                              TEXT("This node can not have any sub node."));
 
-	const FPinConnectionResponse& AResponse = CastedANode->CanAttachThisAtParentNode(CastedBNode);
-
-	const FPinConnectionResponse& BResponse = CastedBNode->CanAttachSubNodeOnThis(CastedANode);
-
+	FPinConnectionResponse Response;
+	CastedBNode->CheckCanAddSubNode(CastedANode,Response, false);
+	
 	//Disallow it if it has been denied on the graph node side.
-	if (AResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW || BResponse.Response ==
-		ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
+	if (Response.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
 	{
 		FString NewResponseText;
 
-		if (AResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
-			NewResponseText += AResponse.
-			                   Message.ToString();
-		if (BResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
-			NewResponseText += BResponse.
-			                   Message.ToString();
-
+		if (Response.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
+			NewResponseText += Response.Message.ToString();
+		
 		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, FText::FromString(NewResponseText));
 	}
 

@@ -3,7 +3,6 @@
 
 #include "Editor/Debug/JointDebugger.h"
 
-#include "AssetViewUtils.h"
 #include "JointActor.h"
 #include "JointEdGraph.h"
 #include "JointEditorToolkit.h"
@@ -11,6 +10,7 @@
 #include "Joint.h"
 
 #include "JointEditor.h"
+#include "JointEditorLogChannels.h"
 #include "JointEditorSettings.h"
 #include "JointEdUtils.h"
 #include "UnrealEdGlobals.h"
@@ -42,35 +42,6 @@ UJointDebugger::~UJointDebugger()
 	FEditorDelegates::SingleStepPIE.RemoveAll(this);
 }
 
-void UJointDebugger::RegisterJointLifecycleEvents()
-{
-#if WITH_EDITOR
-
-	//Make sure to grab the module in this way if it is not in the Joint module itself,
-	//because it is not always sure whether we can access the module anytime.
-	//It indeed made a issue on the packaging stage with validation, even if it is on the editor module.
-
-	if (IModuleInterface* Module = FModuleManager::Get().GetModule(FName("Joint")); Module != nullptr)
-	{
-		if (FJointModule* CastedModule = static_cast<FJointModule*>(Module))
-		{
-			CastedModule->OnJointExecutionExceptionDelegate.BindUObject(
-				this, &UJointDebugger::CheckWhetherToBreakExecution);
-			CastedModule->OnJointDebuggerMentionJointBeginPlay.
-			              BindUObject(this, &UJointDebugger::OnJointBegin);
-			CastedModule->OnJointDebuggerMentionJointEndPlay.BindUObject(this, &UJointDebugger::OnJointEnd);
-			CastedModule->OnJointDebuggerMentionNodeBeginPlay.BindUObject(
-				this, &UJointDebugger::OnJointNodeBeginPlayed);
-			CastedModule->OnJointDebuggerMentionNodeEndPlay.BindUObject(
-				this, &UJointDebugger::OnJointNodeEndPlayed);
-			CastedModule->OnJointDebuggerMentionNodePending.
-			              BindUObject(this, &UJointDebugger::OnJointNodePending);
-		}
-	}
-
-#endif
-}
-
 void UJointDebugger::UnregisterJointLifecycleEvents()
 {
 #if WITH_EDITOR
@@ -84,11 +55,35 @@ void UJointDebugger::UnregisterJointLifecycleEvents()
 		if (FJointModule* CastedModule = static_cast<FJointModule*>(Module))
 		{
 			CastedModule->OnJointExecutionExceptionDelegate.Unbind();
-			CastedModule->OnJointDebuggerMentionJointBeginPlay.Unbind();
-			CastedModule->OnJointDebuggerMentionJointEndPlay.Unbind();
-			CastedModule->OnJointDebuggerMentionNodeBeginPlay.Unbind();
-			CastedModule->OnJointDebuggerMentionNodeEndPlay.Unbind();
-			CastedModule->OnJointDebuggerMentionNodePending.Unbind();
+			CastedModule->JointDebuggerJointBeginPlayNotification.Unbind();
+			CastedModule->JointDebuggerJointEndPlayNotification.Unbind();
+			CastedModule->JointDebuggerNodeBeginPlayNotification.Unbind();
+			CastedModule->JointDebuggerNodeEndPlayNotification.Unbind();
+			CastedModule->JointDebuggerNodePendingNotification.Unbind();
+		}
+	}
+
+#endif
+}
+
+void UJointDebugger::RegisterJointLifecycleEvents()
+{
+#if WITH_EDITOR
+
+	//Make sure to grab the module in this way if it is not in the Joint module itself,
+	//because it is not always sure whether we can access the module anytime.
+	//It indeed made a issue on the packaging stage with validation, even if it is on the editor module.
+
+	if (IModuleInterface* Module = FModuleManager::Get().GetModule(FName("Joint")); Module != nullptr)
+	{
+		if (FJointModule* CastedModule = static_cast<FJointModule*>(Module))
+		{
+			CastedModule->OnJointExecutionExceptionDelegate.BindUObject(this, &UJointDebugger::CheckWhetherToBreakExecution);
+			CastedModule->JointDebuggerJointBeginPlayNotification.BindUObject(this, &UJointDebugger::OnJointBegin);
+			CastedModule->JointDebuggerJointEndPlayNotification.BindUObject(this, &UJointDebugger::OnJointEnd);
+			CastedModule->JointDebuggerNodeBeginPlayNotification.BindUObject(this, &UJointDebugger::OnJointNodeBeginPlayed);
+			CastedModule->JointDebuggerNodeEndPlayNotification.BindUObject(this, &UJointDebugger::OnJointNodeEndPlayed);
+			CastedModule->JointDebuggerNodePendingNotification.BindUObject(this, &UJointDebugger::OnJointNodePending);
 		}
 	}
 
@@ -110,12 +105,12 @@ void UJointDebugger::OnPausePIE(bool bArg)
 
 void UJointDebugger::OnResumePIE(bool bArg)
 {
-	RestartRequestedBeginPlayExecutionWhileInDebuggingSession();
+	RestartExecutionOfPausedJointActors();
 }
 
 void UJointDebugger::OnSingleStepPIE(bool bArg)
 {
-	RestartRequestedBeginPlayExecutionWhileInDebuggingSession();
+	RestartExecutionOfPausedJointActors();
 }
 
 void UJointDebugger::OnJointBegin(AJointActor* JointInstance, const FGuid& JointGuid)
@@ -360,6 +355,58 @@ void UJointDebugger::NotifyDebugDataChanged(const UJointManager* Manager)
 
 		Graph->UpdateDebugData();
 	}
+	
+	// If there are some debugging actor for the manager, we need to refresh their toolkits too.
+	
+	/*
+	TArray<AJointActor*> MatchingInstances;
+	UJointDebugger::Get()->GetMatchingInstances(const_cast<UJointManager*>(Manager), MatchingInstances);
+	
+	for (AJointActor* Instance : MatchingInstances)
+	{
+		if (FJointEditorToolkit* InToolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(Instance->GetJointManager(), false, false))
+		{
+			InToolkit->RequestManagerViewerRefresh();
+		}
+	}
+	*/
+	
+}
+
+void UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(UJointEdGraphNode* Changed, FJointNodeDebugData* Data)
+{
+	if (Changed == nullptr) return;
+	
+	UJointManager* ChangedManager = Changed->GetJointManager();
+	UJointManager* OriginalJointManager = FJointEdUtils::GetOriginalJointManager(Changed->GetJointManager());
+	
+	// when changed node is from an asset...
+		
+	// change the original asset node's widget first.
+	if (UJointEdGraphNode* FoundEdGraphNode = FJointEdUtils::GetCorrespondingJointGraphNodeForJointManager(Changed, OriginalJointManager))
+	{
+		if (TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = FoundEdGraphNode->GetGraphNodeSlate().Pin())
+		{
+			GraphNodeSlate->OnDebugDataChanged(Data);
+		}
+	}
+	
+	// find joint actor instances that are debugging this node and notify their toolkits too.
+	
+	TArray<AJointActor*> MatchingInstances;
+	UJointDebugger::Get()->GetMatchingInstances(OriginalJointManager, MatchingInstances);
+	
+	for (AJointActor* Instance : MatchingInstances)
+	{
+		UJointEdGraphNode* FoundEdGraphNode = FJointEdUtils::GetCorrespondingJointGraphNodeForJointManager(Changed, Instance->GetJointManager());
+		
+		if (!FoundEdGraphNode) continue;
+		
+		if (TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = FoundEdGraphNode->GetGraphNodeSlate().Pin())
+		{
+			GraphNodeSlate->OnDebugDataChanged(Data);
+		}
+	}
 }
 
 TArray<FJointNodeDebugData>* UJointDebugger::GetCorrespondingDebugDataForGraph(UJointEdGraph* Graph)
@@ -414,266 +461,11 @@ FJointNodeDebugData* UJointDebugger::GetDebugDataForInstance(UJointNodeBase* Nod
 	return GetDebugDataForInstanceFrom(GetCorrespondingDebugDataForGraph(Graph), Node);
 }
 
-/*
-TArray<FJointNodeDebugData>* UJointDebugger::GetDebugDataFromOriginalJointManager(UJointManager* Manager)
-{
-	TArray<FJointNodeDebugData>* OutDebugData = nullptr;
-
-	if (Manager == nullptr) return OutDebugData;
-
-	UJointManager* JointManagerToSearchFrom = GetOriginalJointManager(Manager);
-
-	if (JointManagerToSearchFrom == nullptr) return OutDebugData;
-
-	//todo: FIX THIS SHIT FOR SUB GRAPHS
-	if (JointManagerToSearchFrom->JointGraph == nullptr) return OutDebugData;
-
-	if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(JointManagerToSearchFrom->JointGraph))
-	{
-		OutDebugData = &CastedGraph->DebugData;
-	}
-
-	return OutDebugData;
-}
-*/
-
-FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointEdGraphNode* Node)
-{
-	FJointNodeDebugData* OutDebugData = nullptr;
-
-	if (!Node || !TargetDataArrayPtr) return nullptr;
-
-	UJointNodeBase* InNode = Node->GetCastedNodeInstance();
-
-	if (!InNode) return nullptr;
-
-	FString RelPath = InNode->GetPathName(InNode->GetJointManager());
-
-	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
-	{
-		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr) continue;
-
-		//UE_LOG(LogTemp,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
-
-		if (Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()) != RelPath) continue;
-
-		OutDebugData = &Data;
-
-		break;
-	}
-	
-	return OutDebugData;
-}
-
-FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointNodeBase* NodeInstance)
-{
-	FJointNodeDebugData* OutDebugData = nullptr;
-	
-	if (!NodeInstance || !TargetDataArrayPtr) return nullptr;
-
-	FString RelPath = NodeInstance->GetPathName(NodeInstance->GetJointManager());
-
-	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
-	{
-		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr)
-			continue;
-
-		//UE_LOG(LogTemp,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
-
-		if (Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()) != RelPath) continue;
-
-		OutDebugData = &Data;
-
-		break;
-	}
-	
-	return OutDebugData;
-}
-
-bool UJointDebugger::CheckWhetherToBreakExecution(AJointActor* Instance, UJointNodeBase* NodeToCheck)
-{
-	UJointNodeBase* NodeToCheckInOriginalAsset = NodeToCheck;
-
-	FString NodeToCheckPath = NodeToCheck->GetPathName(Instance->GetJointManager());
-
-	if (Instance && Instance->OriginalJointManager)
-	{
-		for (UJointNodeBase* Node : Instance->OriginalJointManager->Nodes)
-		{
-			if (Node->GetPathName(Instance->OriginalJointManager) != NodeToCheckPath) continue;
-
-			NodeToCheckInOriginalAsset = Node;
-
-			break;
-		}
-	}
-
-	if (!UJointEditorSettings::Get()->bDebuggerEnabled) return false;
-
-	bool Result = false;
-
-	if (Instance != nullptr)
-	{
-		if (IsDebugging())
-		{
-			//If it was already debugging, then store that node and return true to prevent the execution.
-
-			AssignNodeToDelayedNodeCache(NodeToCheck);
-
-			Result = true;
-		}
-		else
-		{
-			//Do not interrupt if we already broke with the node.
-			if (PausedJointNodeBase == NodeToCheck) return false;
-
-			UJointEdGraph* EdGraph = FJointEdUtils::FindGraphForNodeInstance(NodeToCheckInOriginalAsset);
-			
-			TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(EdGraph);
-
-			//Check whether we have any debug data for the node that can cause the pause action.
-			if (FJointNodeDebugData* DebugData = GetDebugDataForInstanceFrom(DebugDataArr, NodeToCheckInOriginalAsset); DebugData != nullptr)
-			{
-				if (DebugData->bDisabled)
-				{
-					//This node is disabled, so notify that this node will not be played.
-					Result = true;
-
-					return Result;
-				}
-				else if (DebugData->bHasBreakpoint && DebugData->bIsBreakpointEnabled)
-				{
-					Result = true;
-
-					ClearStepActionRequest();
-
-					AssignInstanceToLookUp(Instance);
-
-					PausedJointNodeBase = NodeToCheck;
-
-					FocusGraphOnNode(NodeToCheck);
-
-					AssignNodeToDelayedNodeCache(NodeToCheck);
-
-					PausePlaySession();
-
-					UE_LOG(LogTemp, Warning,
-					       TEXT(
-						       "Session paused due to the Joint debugger requested the pause for the the Joint node '%s' in Joint instance '%s'"
-					       ), *PausedJointNodeBase->GetName(), *Instance->GetName());
-
-					return Result;
-				}
-			}
-
-
-			//Check for the steps
-			if (CheckHasStepForwardIntoRequest())
-			{
-				UJointNodeBase* CurrentParentNode = NodeToCheck;
-
-				if (CurrentParentNode->GetParentNode() == PausedJointNodeBase
-					|| PausedJointNodeBase->SubNodes.IsEmpty()
-					|| PausedJointNodeBase->IsNodeEndedPlay()) // for the conditions and possible reverting nodes.
-				{
-					ClearStepActionRequest();
-
-					Result = true;
-
-					AssignInstanceToLookUp(Instance);
-
-					PausedJointNodeBase = NodeToCheck;
-
-					FocusGraphOnNode(NodeToCheck);
-
-					AssignNodeToDelayedNodeCache(NodeToCheck);
-
-					PausePlaySession();
-
-					UE_LOG(LogTemp, Warning,
-					       TEXT(
-						       "Session paused due to the Joint debugger requested the pause for the the Joint node '%s' in Joint instance '%s' due to the continue to step forward into action"
-					       ), *PausedJointNodeBase->GetName(), *Instance->GetName());
-				}
-			}
-			else if (CheckHasStepForwardOverRequest())
-			{
-				UJointNodeBase* CurrentParentNode = NodeToCheck;
-
-				bool bShouldBreak = false;
-
-				while (CurrentParentNode != nullptr && !bShouldBreak)
-				{
-					if (CurrentParentNode == PausedJointNodeBase)
-					{
-						bShouldBreak = false;
-
-						break;
-					}
-
-					if (CurrentParentNode == PausedJointNodeBase->GetParentNode()) bShouldBreak = true;
-
-					CurrentParentNode = CurrentParentNode->GetParentNode();
-				}
-
-				if (bShouldBreak)
-				{
-					ClearStepActionRequest();
-
-					Result = true;
-
-					AssignInstanceToLookUp(Instance);
-
-					PausedJointNodeBase = NodeToCheck;
-
-					FocusGraphOnNode(NodeToCheck);
-
-					AssignNodeToDelayedNodeCache(NodeToCheck);
-
-					PausePlaySession();
-
-					UE_LOG(LogTemp, Warning,
-					       TEXT(
-						       "Session paused due to the Joint debugger requested the pause for the the Joint node '%s' in Joint instance '%s' due to the continue to step forward into action"
-					       ), *PausedJointNodeBase->GetName(), *Instance->GetName());
-				}
-			}
-			else if (CheckHasStepOutRequest())
-			{
-				if (NodeToCheck->GetParentNode() == nullptr)
-				{
-					ClearStepActionRequest();
-
-					Result = true;
-
-					AssignInstanceToLookUp(Instance);
-
-					PausedJointNodeBase = NodeToCheck;
-
-					FocusGraphOnNode(NodeToCheck);
-
-					AssignNodeToDelayedNodeCache(NodeToCheck);
-
-					PausePlaySession();
-
-					UE_LOG(LogTemp, Warning,
-					       TEXT(
-						       "Session paused due to the Joint debugger requested the pause for the the Joint node '%s' in Joint instance '%s' due to the continue to step forward into action"
-					       ), *PausedJointNodeBase->GetName(), *Instance->GetName());
-				}
-			}
-		}
-	}
-
-	return Result;
-}
-
-
 void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeBase* JointNodeBase)
 {
-	if (CheckHasInstanceInLookUp(JointActor))
+	if (IsInstanceDebugging(JointActor))
 	{
-		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false, false); !Toolkit) return;
 
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
@@ -681,8 +473,30 @@ void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeB
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
 				{
-					OriginalNode->GetGraphNodeSlate().Pin()->PlayHighlightAnimation(true);
-					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerPlayingNodeColor, true);
+					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
+					
+					GraphNodeSlate->PlayDebuggerAnimation(false,true, false, false);
+				}
+			}
+		}
+	}
+}
+
+void UJointDebugger::OnJointNodeEndPlayed(AJointActor* JointActor, UJointNodeBase* JointNodeBase)
+{
+	if (IsInstanceDebugging(JointActor))
+	{
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false, false); !Toolkit) return;
+
+		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
+		{
+			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			{
+				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
+				{
+					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
+					
+					GraphNodeSlate->PlayDebuggerAnimation(false,false, false, true);
 				}
 			}
 		}
@@ -691,110 +505,161 @@ void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeB
 
 void UJointDebugger::OnJointNodePending(AJointActor* JointActor, UJointNodeBase* JointNodeBase)
 {
-	if (CheckHasInstanceInLookUp(JointActor))
+	if (IsInstanceDebugging(JointActor))
 	{
-		FJointEditorToolkit* Toolkit = nullptr;
-
-		FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false);
-
-		if (!Toolkit) return;
-
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false, false); !Toolkit) return;
+		
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
 			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
-					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerPendingNodeColor, true);
+				{
+					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
+					
+					if (UJointNodeBase* Node = OriginalNode->GetCastedNodeInstance())
+					{
+						/**
+						 * WE ONLY show pending animation if the node is not ended yet.
+						 * 
+						 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+						 * !!!!!!!Don't delete this comment block - it is here to remind why this check is needed.!!!!!!!!!!
+						 * I spend 3 hours debugging why the nodes are not showing the ended play animation again....
+						 * It happened like, 3th time. for every refactoring I do (shh)
+						 * 
+						 * 
+						 * Nodes can be marked as pending after the endplay event. Because the pending state is a state that represent that the node is done doing its job, so basically it still make sense to mark it as pending after ended play.
+						 * But for the debugger animation, we don't want to show pending state after ended play, because it looks like as if the node is still running, while it is ended already. (which is confusing).
+						 * (This happens because pending state is more like a, flag, rather than a state - and here we are representing it as a state for the better visualization in the debugger)
+						 */
+						
+						// dumbass, check this always. nodes can be marked as pending after the endplay event.
+						if (!Node->IsNodeEndedPlay()) 
+						{
+							GraphNodeSlate->PlayDebuggerAnimation(false,false, true, false);
+						}
+					}
+				}
 			}
 		}
 	}
 }
 
-void UJointDebugger::OnJointNodeEndPlayed(AJointActor* JointActor, UJointNodeBase* JointNodeBase)
-{
-	if (CheckHasInstanceInLookUp(JointActor))
-	{
-		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false); !Toolkit) return;
 
-		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
+bool UJointDebugger::CheckWhetherToBreakExecution(AJointActor* Instance, const FJointActorExecutionElement& Element)
+{
+	// If bDebuggerEnabled is false, we do not break execution at all.
+	if (!UJointEditorSettings::Get()->bDebuggerEnabled) return false;
+	
+	// We only break on BeginPlay execution types currently. (not sure if anything else makes sense)
+	if (Element.ExecutionType != EJointActorExecutionType::BeginPlay) return false;
+	
+	UJointNodeBase* NodeToCheck = Element.TargetNode.Get();
+	UJointNodeBase* NodeToCheckInOriginalAsset = FJointEdUtils::GetOriginalJointNodeFromJointNode(NodeToCheck);
+	const FJointActorExecutionElement* LastPausedExecution = JointActorToLastPausedExecutedMap.Find(Instance);
+	
+	// If we are re-executing the last paused node, do not break again.
+	if (LastPausedExecution != nullptr && *LastPausedExecution == Element) return false;
+	
+	// If no instance, we can't debug.
+	if (Instance == nullptr) return false;
+	
+	// If node information is missing we can't evaluate break conditions.
+	if (NodeToCheck == nullptr || NodeToCheckInOriginalAsset == nullptr) return false;
+	
+	
+	// Helper to perform the common pause actions and return true (break execution).
+	auto DoPause = [&](UJointNodeBase* Node) -> bool
+	{
+		ClearStepActionRequest();
+		AssignDebuggingInstance(Instance);
+		SetLastPausedExecutionForJointActor(Instance, Element);
+		FocusGraphOnNode(Node);
+		PausePlaySession();
+		PlayPauseNodeAnimation(Node);
+		return true;
+	};
+	
+	
+	UJointEdGraph* EdGraph = FJointEdUtils::FindGraphForNodeInstance(NodeToCheckInOriginalAsset);
+	TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(EdGraph);
+
+	// Check whether we have any debug data for the node that can cause the pause action.
+	if (FJointNodeDebugData* DebugData = GetDebugDataForInstanceFrom(DebugDataArr, NodeToCheckInOriginalAsset); DebugData != nullptr)
+	{
+		if (DebugData->bDisabled)
+		{
+			// This node is disabled, so notify that this node will not be played.
+			return true;
+		}
+		if (DebugData->bHasBreakpoint && DebugData->bIsBreakpointEnabled)
+		{
+			// Hit a breakpoint: always stop here.
+			return DoPause(NodeToCheck);
+		}
+	}
+
+	// Check step requests.
+	
+	// Check step into requests. If present, always stop.
+	if (CheckHasStepForwardIntoRequest())
+	{
+		return DoPause(NodeToCheck);
+	}
+
+	// Check step over requests. If present, stop only if we are not entering a child node.
+	if (CheckHasStepForwardOverRequest())
+	{
+		// Stop if the current node is not a child of the last paused node.
+		UJointNodeBase* LastPaused = nullptr;
+		if (const FJointActorExecutionElement* Found = JointActorToLastPausedExecutedMap.Find(Instance))
+		{
+			LastPaused = Found->TargetNode.Get();
+		}
+		if (NodeToCheck->GetParentNode() != LastPaused)
+		{
+			return DoPause(NodeToCheck);
+		}
+	}
+
+	// Check step out requests. If present, stop when we reach a base node.
+	if (CheckHasStepOutRequest())
+	{
+		// Stop when we reach a base node (no parent).
+		if (NodeToCheck->GetParentNode() == nullptr)
+		{
+			return DoPause(NodeToCheck);
+		}
+	}
+
+	// No break conditions met.
+	return false;
+}
+
+void UJointDebugger::PlayPauseNodeAnimation(const UJointNodeBase* Node)
+{
+	AJointActor* JointActor = Node->GetHostingJointInstance();
+	
+	if (IsInstanceDebugging(JointActor))
+	{
+		if (const FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointActor->GetJointManager(), false, false); !Toolkit) return;
+
+		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), Node->GetNodeGuid()))
 		{
 			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
 			{
 				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
-					OriginalNode->GetGraphNodeSlate().Pin()->PlayNodeBodyColorAnimation(EditorSettings->DebuggerEndedNodeColor, false);
+				{
+					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
+					
+					GraphNodeSlate->PlayDebuggerAnimation(true,false, false, false);
+				}
 			}
 		}
 	}
 }
 
-
-void UJointDebugger::AssignNodeToDelayedNodeCache(TWeakObjectPtr<UJointNodeBase> Node)
-{
-	//Reallocate the elements.
-	DelayedBeginPlayedJointNodeBases.RemoveAll([](const TWeakObjectPtr<UJointNodeBase>& Elem)
-	{
-		return Elem.Get() == nullptr;
-	});
-
-	if (Node == nullptr) return;
-
-	//If it is already assigned, then ignore it.
-	if (DelayedBeginPlayedJointNodeBases.Contains(Node)) return;
-
-	if (Node->GetParentNode() == nullptr)
-	{
-		// If the parent node of the provided node was not present, then attach it to the tail because it means that this node is another base node on the graph.
-
-		UE_LOG(LogTemp, Warning,
-		       TEXT(
-			       "The begin play action of the Joint node '%s' has been delayed due to the active debug session, and it will be triggered by the debugger when you resume the PIE"
-		       ), *Node->GetName());
-
-		DelayedBeginPlayedJointNodeBases.Add(Node);
-	}
-	else if (Node->GetParentNode() != nullptr && DelayedBeginPlayedJointNodeBases.Contains(Node->GetParentNode()))
-	{
-		// If the parent node of the provided node exists in the delayed execution array, then insert it to that point since it must be played prior to the other nodes in higher hierarchy level.
-
-		const int ParentNodeIndex = DelayedBeginPlayedJointNodeBases.Find(Node->GetParentNode());
-
-		//Try to find the nodes that are sharing the same parent node and attach our node on the tail of those nodes.
-
-		int SameParentNodeOffset = 1;
-
-		while (DelayedBeginPlayedJointNodeBases.IsValidIndex(ParentNodeIndex + SameParentNodeOffset))
-		{
-			if (DelayedBeginPlayedJointNodeBases[ParentNodeIndex + SameParentNodeOffset] != nullptr &&
-				DelayedBeginPlayedJointNodeBases[ParentNodeIndex + SameParentNodeOffset].Get()->GetParentNode() ==
-				Node->GetParentNode())
-			{
-				SameParentNodeOffset++;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		DelayedBeginPlayedJointNodeBases.Insert(Node, ParentNodeIndex + SameParentNodeOffset);
-
-		UE_LOG(LogTemp, Warning,
-		       TEXT(
-			       "The begin play action of the Joint node '%s' has been delayed due to the active debug session, and it will be triggered by the debugger when you resume the PIE"
-		       ), *Node->GetName());
-	}
-	else if (Node->GetParentNode() != nullptr && !DelayedBeginPlayedJointNodeBases.Contains(Node->GetParentNode()))
-	{
-		DelayedBeginPlayedJointNodeBases.Add(Node);
-
-		UE_LOG(LogTemp, Warning,
-		       TEXT(
-			       "The begin play action of the Joint node '%s' has been delayed due to the active debug session, and it will be triggered by the debugger when you resume the PIE"
-		       ), *Node->GetName());
-	}
-}
-
-void UJointDebugger::AssignInstanceToLookUp(AJointActor* Instance)
+void UJointDebugger::AssignDebuggingInstance(AJointActor* Instance)
 {
 	if (!DebuggingJointInstances.Contains(Instance))
 	{
@@ -804,7 +669,7 @@ void UJointDebugger::AssignInstanceToLookUp(AJointActor* Instance)
 	}
 }
 
-void UJointDebugger::RemoveInstanceFromLookUp(AJointActor* Instance)
+void UJointDebugger::RemoveDebuggingInstance(AJointActor* Instance)
 {
 	if (DebuggingJointInstances.Contains(Instance))
 	{
@@ -814,9 +679,20 @@ void UJointDebugger::RemoveInstanceFromLookUp(AJointActor* Instance)
 	}
 }
 
-bool UJointDebugger::CheckHasInstanceInLookUp(AJointActor* Instance)
+
+bool UJointDebugger::IsInstanceDebugging(AJointActor* Instance)
 {
 	return DebuggingJointInstances.Contains(Instance);
+}
+
+void UJointDebugger::SetLastPausedExecutionForJointActor(AJointActor* Instance, const FJointActorExecutionElement& Execution)
+{
+	JointActorToLastPausedExecutedMap.Add(Instance, Execution);
+}
+
+void UJointDebugger::ClearLastPausedExecutionForJointActor(AJointActor* Instance)
+{
+	JointActorToLastPausedExecutedMap.Remove(Instance);
 }
 
 void UJointDebugger::OnInstanceAddedToLookUp(AJointActor* Instance)
@@ -867,11 +743,9 @@ void UJointDebugger::ClearDebugSessionData()
 {
 	DebuggingJointInstances.Empty();
 	KnownJointInstances.Empty();
-	PausedJointNodeBase.Reset();
 
 	ClearStepActionRequest();
 }
-
 
 void UJointDebugger::FocusGraphOnNode(UJointNodeBase* NodeToFocus)
 {
@@ -898,6 +772,7 @@ void UJointDebugger::StepForwardInto()
 
 	ResumePlaySession();
 }
+
 
 bool UJointDebugger::CanStepForwardInto() const
 {
@@ -955,58 +830,68 @@ void UJointDebugger::ClearStepActionRequest()
 	bRequestedStepOut = false;
 }
 
-
-void UJointDebugger::RestartRequestedBeginPlayExecutionWhileInDebuggingSession()
+void UJointDebugger::RestartExecutionOfPausedJointActors()
 {
-	if (DelayedBeginPlayedJointNodeBases.IsEmpty()) return;
-
-	TArray<TWeakObjectPtr<UJointNodeBase>> SavedDelayedBeginPlayedJointNodeBases =
-		DelayedBeginPlayedJointNodeBases;
-
-	UE_LOG(LogTemp, Warning, TEXT("Joint debugger is restarting the delayed nodes in the debugger session..."));
-
-
-	for (TWeakObjectPtr<UJointNodeBase> SavedDelayedBeginPlayedJointNodeBase :
-	     SavedDelayedBeginPlayedJointNodeBases)
+	for (TWeakObjectPtr<class AJointActor> JointActor : DebuggingJointInstances)
 	{
-		if (!SavedDelayedBeginPlayedJointNodeBase.IsValid()) continue;
-
-		UE_LOG(LogTemp, Warning, TEXT("Joint debugger is requesting the restart of the Joint node '%s'.... : "),
-		       *SavedDelayedBeginPlayedJointNodeBase->GetName());
-
-
-		SavedDelayedBeginPlayedJointNodeBase->RequestNodeBeginPlay(
-			SavedDelayedBeginPlayedJointNodeBase->GetHostingJointInstance());
-
-		//Remove it from the list if it has been played successfully.
-		//Have to check with IsNodeBegunPlay() because IsPlaySessionPaused() can be triggered by the other nodes that has been started while this node's RequestNodeBeginPlay().
-		if (SavedDelayedBeginPlayedJointNodeBase->IsNodeBegunPlay())
-		{
-			UE_LOG(LogTemp, Warning,
-			       TEXT(
-				       "Joint node '%s' has been successfully restarted. The node has been removed from the debugger cache."
-			       ), *SavedDelayedBeginPlayedJointNodeBase->GetName());
-
-			DelayedBeginPlayedJointNodeBases.Remove(SavedDelayedBeginPlayedJointNodeBase);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning,
-			       TEXT(
-				       "Joint node '%s' has been failed to be restarted. This might be caused by some of sub nodes's interruption."
-			       ), *SavedDelayedBeginPlayedJointNodeBase->GetName());
-		}
-
-		//While the execution of the node the debugging has been started again. Stop the iteration in this case.
-		if (IsDebugging())
-		{
-			UE_LOG(LogTemp, Warning,
-			       TEXT("Restart iteration canceled with %s because the sub node requested another debug session."),
-			       *SavedDelayedBeginPlayedJointNodeBase.Get()->GetName());
-
-			break;
-		}
+		if (!JointActor.IsValid()) continue;
+		
+		JointActor->ProcessExecutionQueue();
 	}
+}
+
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointEdGraphNode* Node)
+{
+	FJointNodeDebugData* OutDebugData = nullptr;
+
+	if (!Node || !TargetDataArrayPtr) return nullptr;
+
+	UJointNodeBase* InNode = Node->GetCastedNodeInstance();
+
+	if (!InNode) return nullptr;
+
+	FString RelPath = InNode->GetPathName(InNode->GetJointManager());
+
+	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
+	{
+		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr) continue;
+
+		//UE_LOG(LogJointEditor,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
+
+		if (Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()) != RelPath) continue;
+
+		OutDebugData = &Data;
+
+		break;
+	}
+	
+	return OutDebugData;
+}
+
+
+FJointNodeDebugData* UJointDebugger::GetDebugDataForInstanceFrom(TArray<FJointNodeDebugData>* TargetDataArrayPtr, UJointNodeBase* NodeInstance)
+{
+	FJointNodeDebugData* OutDebugData = nullptr;
+	
+	if (!NodeInstance || !TargetDataArrayPtr) return nullptr;
+
+	FString RelPath = NodeInstance->GetPathName(NodeInstance->GetJointManager());
+
+	for (FJointNodeDebugData& Data : *TargetDataArrayPtr)
+	{
+		if (Data.Node == nullptr || Data.Node->GetCastedNodeInstance() == nullptr || Data.Node->GetCastedNodeInstance()->GetJointManager() == nullptr)
+			continue;
+
+		//UE_LOG(LogJointEditor,Log,TEXT("Path1 %s, Path2 %s"),*Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()), *RelPath);
+
+		if (Data.Node->GetCastedNodeInstance()->GetPathName(Data.Node->GetJointManager()) != RelPath) continue;
+
+		OutDebugData = &Data;
+
+		break;
+	}
+	
+	return OutDebugData;
 }
 
 #undef LOCTEXT_NAMESPACE

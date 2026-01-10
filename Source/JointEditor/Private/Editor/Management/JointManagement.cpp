@@ -2,6 +2,7 @@
 
 #include "JointManagement.h"
 
+#include "JointEditorLogChannels.h"
 #include "JointEditorStyle.h"
 #include "Framework/Docking/LayoutService.h"
 #include "Framework/Docking/TabManager.h"
@@ -147,7 +148,7 @@ void FJointManagementTabHandler::AddSubTab(const TSharedRef<IJointManagementSubT
 
 	if (TabId == IJointManagementSubTab::TAB_ID_INVALID)
 	{
-		UE_LOG(LogTemp, Error,
+		UE_LOG(LogJointEditor, Error,
 		       TEXT(
 			       "FJointManagementTabHandler : Detected a sub tab with TAB_ID_INVALID id. You must specify its id to be unique one. This tab will not be added."
 		       ));

@@ -69,7 +69,11 @@ public:
 	
 	void OnJointNodePending(AJointActor* JointActor, UJointNodeBase* JointNodeBase);
 	
-	bool CheckWhetherToBreakExecution(AJointActor* Instance, UJointNodeBase* NodeToCheck);
+	bool CheckWhetherToBreakExecution(AJointActor* Instance, const FJointActorExecutionElement& Element);
+
+public:
+	
+	void PlayPauseNodeAnimation(const UJointNodeBase* Node);
 
 public:
 
@@ -79,38 +83,15 @@ public:
 	 */
 	UPROPERTY(Transient)
 	TSet<TWeakObjectPtr<class AJointActor>> DebuggingJointInstances;
-
 	
 	/**
 	 * all known Joint instances in the world, cached for dropdown list.
 	 */
 	UPROPERTY(Transient)
 	TSet<TWeakObjectPtr<class AJointActor>> KnownJointInstances;
-
-public:
-
 	
-	/**
-	 * A Pointer to the last Joint node that has been look up by the debugger.
-	 */
 	UPROPERTY(Transient)
-	TWeakObjectPtr<UJointNodeBase> PausedJointNodeBase;
-
-
-public:
-
-	/**
-	 * The Joint nodes that has been requested to begin while on the debugging pause.
-	 * It will be restarted when the resume action has been executed, but can be delayed again due to the another debugging session.
-	 * 
-	 */
-	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<UJointNodeBase>> DelayedBeginPlayedJointNodeBases;
-	
-	
-public:
-
-	void AssignNodeToDelayedNodeCache(TWeakObjectPtr<UJointNodeBase> Node);
+	TMap<TWeakObjectPtr<AJointActor>, FJointActorExecutionElement> JointActorToLastPausedExecutedMap;
 
 public:
 	
@@ -118,20 +99,25 @@ public:
 	 * Assign a Joint instance to look up in the debug session.
 	 * @param Instance The Joint instance to add.
 	 */
-	void AssignInstanceToLookUp(AJointActor* Instance);
+	void AssignDebuggingInstance(AJointActor* Instance);
 
 	/**
 	 * Remove a Joint instance from look up in the debug session.
 	 * @param Instance The Joint instance to remove.
 	 */
-	void RemoveInstanceFromLookUp(AJointActor* Instance);
-
-
+	void RemoveDebuggingInstance(AJointActor* Instance);
+	
 	/**
 	 * Check whether we have that instance in the look up set.
 	 * @param Instance The Joint instance to check.
 	 */
-	bool CheckHasInstanceInLookUp(AJointActor* Instance);
+	bool IsInstanceDebugging(AJointActor* Instance);
+	
+public:
+	
+	void SetLastPausedExecutionForJointActor(AJointActor* Instance, const FJointActorExecutionElement& Execution);
+	
+	void ClearLastPausedExecutionForJointActor(AJointActor* Instance);
 	
 public:
 
@@ -206,7 +192,7 @@ private:
 
 public:
 	
-	void RestartRequestedBeginPlayExecutionWhileInDebuggingSession();
+	void RestartExecutionOfPausedJointActors();
 
 public:
 
@@ -251,6 +237,10 @@ public:
 
 
 	static void NotifyDebugDataChanged(const UJointManager* Manager);
+	
+public:
+
+	static void NotifyDebugDataChangedToGraphNodeWidget(UJointEdGraphNode* Changed, FJointNodeDebugData* Data);
 
 	/**
 	 * Get the debug data for the provided Joint manager

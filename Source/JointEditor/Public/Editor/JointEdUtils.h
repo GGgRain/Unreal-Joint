@@ -55,7 +55,6 @@ public:
 	};
 
 public:
-	
 
 	/**
 	 * StaticStableTextId implementation for the system.
@@ -93,7 +92,7 @@ public:
 	 * @param bOpenIfNotPresent If not present, open up.
 	 * @return Found toolkit for the provided asset.
 	 */
-	static FJointEditorToolkit* FindOrOpenJointEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent = true);
+	static FJointEditorToolkit* FindOrOpenJointEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent = true, const bool& bFocusIfOpen = true);
 
 public:
 
@@ -120,7 +119,17 @@ public:
 	static UJointEdGraphNode* FindGraphNodeWithProvidedNodeInstanceGuid(UJointManager* JointManager, const FGuid& NodeGuid);
 
 public:
+	
+	/**
+	 * Return the corresponding Joint graph node from the provided Joint graph node for the target Joint manager.
+	 * @param SearchFor Key object to use
+	 * @param TargetManager Target Joint manager to find the corresponding node for.
+	 * @return Corresponding Joint Graph Node.
+	 */
+	static UJointEdGraphNode* GetCorrespondingJointGraphNodeForJointManager(UJointEdGraphNode* SearchFor, UJointManager* TargetManager);
 
+public:
+	
 	/**
 	 * Return the Joint manager asset from the provided Joint manager object instance (transient - copied one). If itself is an asset, then it will return itself.
 	 * @param InJointManager Key object to use
@@ -134,6 +143,14 @@ public:
 	 * @return Original Joint Graph Node.
 	 */
 	static UJointEdGraphNode* GetOriginalJointGraphNodeFromJointGraphNode(UJointEdGraphNode* InJointEdGraphNode);
+	
+	
+	/**
+	 * Return the Joint node from the provided Joint node from Joint manager object instance (transient - copied one). If itself is from an asset, then it will return itself.
+	 * @param InJointNode Key object to use
+	 * @return Original Joint Node.
+	 */
+	static UJointNodeBase* GetOriginalJointNodeFromJointNode(UJointNodeBase* InJointNode);
 
 public:
 	

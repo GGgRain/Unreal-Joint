@@ -1,6 +1,8 @@
 #include "Sequencer/MovieSceneJointSectionTemplate.h"
 
 #include "JointActor.h"
+#include "JointFunctionLibrary.h"
+#include "JointLogChannels.h"
 #include "JointManager.h"
 #include "MovieSceneExecutionToken.h"
 #include "Node/JointFragment.h"
@@ -63,27 +65,42 @@ struct FJointTrackExecutionToken : IMovieSceneExecutionToken
 		if (!InExecutionData.ParentTrack.IsValid() || !InExecutionData.JointNode.IsValid()) return;
 
 		UJointNodeBase* FoundNode = nullptr;
-
+		
+		// it will always refer to the asset node
 		UJointNodeBase* AssetNode = InExecutionData.JointNode.Get();
 		
-		if (AJointActor* JointActor = InExecutionData.ParentTrack->GetJointActor())
+		// early out if no asset node (it can be happened when the users forgot to set the node in the section)
+		if ( !AssetNode ) return;
+		
+		if (AJointActor* JointActor = InExecutionData.ParentTrack->GetRuntimeJointActor())
 		{
-			if (UJointManager* JointManager = JointActor->GetJointManager())
+			// find the corresponding node for the Joint manager of the actor.
+			FoundNode = UJointFunctionLibrary::GetCorrespondingJointNodeForJointManager(
+				AssetNode,
+				JointActor->GetJointManager()
+			);
+			
+			if (!FoundNode) return;
+			
+			//Joint's node state is not reversible in any circumstances unless the node is reloaded.
+			//So we don't have to care about checking the state of the node before calling the functions below.
+			
+			switch (InExecutionData.SectionType)
 			{
-				FoundNode = JointManager->FindFragmentWithGuid(AssetNode->NodeGuid);
-
-				if (!FoundNode)
-				{
-					FoundNode = JointManager->FindBaseNodeWithGuid(AssetNode->NodeGuid);
-				}
-			}
-
-			if (FoundNode)
-			{
+			case EJointMovieSectionType::BeginPlay:
+				FoundNode->RequestNodeBeginPlay(JointActor);	
+				break;
+			case EJointMovieSectionType::ActiveForRange:
 				FoundNode->RequestNodeBeginPlay(JointActor);
-				
-				UE_LOG(LogTemp, Warning, TEXT("FJointTrackExecutionToken::TriggerNode: Triggering Joint Node %s at time %f, Actor %s"), *FoundNode->GetName(), InExecutionData.GlobalPosition, *JointActor->GetName());
+				break;
+			case EJointMovieSectionType::EndPlay:
+				FoundNode->RequestNodeEndPlay();
+				break;
+			case EJointMovieSectionType::MarkAsPending:
+				FoundNode->MarkNodePendingByForce();
+				break;
 			}
+			
 		}
 	}
 
@@ -96,15 +113,6 @@ FMovieSceneJointSectionTemplate::FMovieSceneJointSectionTemplate(
 	const UMovieSceneJointTrack& Track)
 {
 	EnableOverrides(RequiresTearDownFlag);
-	
-	FJointMovieSectionPayload Payload = FJointMovieSectionPayload();
-
-	Payload.ParentTrack = &Track;
-	Payload.JointNodePointer = Section.GetJointNodePointer();
-	Payload.SectionRange = Section.GetRange();
-	Payload.SectionType = Section.SectionType;
-
-	Payloads.Add(Payload);
 
 	ParentTrack = &Track;
 }
@@ -130,21 +138,20 @@ void FMovieSceneJointSectionTemplate::EvaluateSwept(
 #else
 	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().Inverse().AsLinear() / Context.GetFrameRate();
 #endif
-	
-	for (const FJointMovieSectionPayload& Payload : Payloads)
+
+	if (const UMovieSceneJointSection* CastedSection = GetSourceSection() ? Cast<UMovieSceneJointSection>(GetSourceSection()) : nullptr)
 	{
-		// Does it overlap?
-		if (TRange<FFrameNumber>::Intersection(Payload.SectionRange, SweptRange).Size<FFrameNumber>() > 0)
+		if (TRange<FFrameNumber>::Intersection(CastedSection->GetRange(), SweptRange).Size<FFrameNumber>() > 0)
 		{
 			JointDataToExecute.Add(FMovieSceneJointExecutionData(
-				Payload.ParentTrack.Get(),
-				Payload.JointNodePointer.Node.Get(),
-				Payload.SectionType,
+				ParentTrack.Get(),
+				CastedSection->GetJointNodePointer().Node.Get(),
+				CastedSection->SectionType,
 				PositionInSeconds)
 			);
 		}
 	}
-
+	
 	if (JointDataToExecute.Num())
 	{
 		ExecutionTokens.Add(FJointTrackExecutionToken(MoveTemp(JointDataToExecute)));
@@ -172,22 +179,18 @@ void FMovieSceneJointSectionTemplate::Evaluate(
 	const float PositionInSeconds = Context.GetTime() * Context.GetRootToSequenceTransform().Inverse().AsLinear() / Context.GetFrameRate();
 #endif
 	
-	for (const FJointMovieSectionPayload& Payload : Payloads)
+	//UE_LOG(LogJoint, Log, TEXT("FMovieSceneJointSectionTemplate::SourceSection: %s, Time: %f"), *GetSourceSection()->GetName(), PositionInSeconds);
+	
+	if (const UMovieSceneJointSection* CastedSection = GetSourceSection() ? Cast<UMovieSceneJointSection>(GetSourceSection()) : nullptr)
 	{
-		if (Payload.bEverTriggered) continue;
-		// Does it overlap?
-		if (Payload.SectionRange.Contains(Context.GetTime().FloorToFrame()))
+		if (CastedSection->GetRange().Contains(Context.GetTime().FloorToFrame()))
 		{
 			JointDataToExecute.Add(FMovieSceneJointExecutionData(
-				Payload.ParentTrack.Get(),
-				Payload.JointNodePointer.Node.Get(),
-				Payload.SectionType,
+				ParentTrack.Get(),
+				CastedSection->GetJointNodePointer().Node.Get(),
+				CastedSection->SectionType,
 				PositionInSeconds)
 			);
-
-			Payload.bEverTriggered = true;
-			
-			//UE_LOG(LogTemp, Warning, TEXT("FMovieSceneJointSectionTemplate::Evaluate: Triggering Joint Node %s at time %f"), Payload.JointNodePointer.Node ? *Payload.JointNodePointer.Node->GetName() : *FString("INVALID"), PositionInSeconds);
 		}
 	}
 
@@ -201,14 +204,32 @@ void FMovieSceneJointSectionTemplate::TearDown(
 	FPersistentEvaluationData& PersistentData,
 	IMovieScenePlayer& Player) const
 {
-	for (const FJointMovieSectionPayload& Payload : Payloads)
+	
+	const UMovieSceneJointSection* CastedSection = GetSourceSection() ? Cast<UMovieSceneJointSection>(GetSourceSection()) : nullptr;
+	
+	if (!CastedSection) return;
+	
+	if (CastedSection->SectionType == EJointMovieSectionType::ActiveForRange)
 	{
-		if (Payload.bEverTriggered && Payload.SectionType == EJointMovieSectionType::Range)
+		// it will always refer to the asset node
+		UJointNodeBase* AssetNode = CastedSection->GetJointNodePointer().Node.Get();
+		
+		// early out if no asset node (it can be happened when the users forgot to set the node in the section)
+		if ( !AssetNode ) return;
+		
+		if (AJointActor* JointActor = ParentTrack.Get()->GetRuntimeJointActor())
 		{
-			if (UJointNodeBase* Node = Payload.JointNodePointer.Node.Get())
-			{
-				Node->RequestNodeEndPlay();
-			}
+			// find the corresponding node for the Joint manager of the actor.
+
+			UJointNodeBase* FoundNode = UJointFunctionLibrary::GetCorrespondingJointNodeForJointManager(
+				AssetNode,
+				JointActor->GetJointManager()
+			);
+			
+			if (!FoundNode) return;
+			
+			FoundNode->RequestNodeEndPlay();
+			
 		}
 	}
 }

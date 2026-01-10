@@ -128,7 +128,7 @@ void UMovieSceneJointTrack::SetJointManager(UJointManager* InJointManager)
 }
 #endif
 
-AJointActor* UMovieSceneJointTrack::GetJointActor() const
+AJointActor* UMovieSceneJointTrack::GetRuntimeJointActor() const
 {
 	return RuntimePlaybackActor.Get();
 }

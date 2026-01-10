@@ -36,7 +36,6 @@
 
 #define LOCTEXT_NAMESPACE "JointEditorModule"
 
-
 TSharedPtr<FExtensibilityManager> FJointEditorModule::GetMenuExtensibilityManager()
 {
 	return MenuExtensibilityManager;

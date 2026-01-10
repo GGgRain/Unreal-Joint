@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Actor.h"
+#include "SharedType/JointSharedTypes.h"
 #include "JointActor.generated.h"
 
 
@@ -119,6 +120,44 @@ private:
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "Joint")
 	TObjectPtr<UJointNodeBase> PlayingJointNode;
+	
+public:
+
+	/**
+	 * The execution queue for the Joint playback. It holds the list of nodes with corresponding execution data (begin play, end play, pending, etc).
+	 * Joint 2.12.0 : now it uses queues for the playback. 
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint", Transient)
+	TArray<FJointActorExecutionElement> ExecutionQueue;
+	
+	
+private:
+	
+	/**
+	 * ExecutionQueue handling - uses a semaphore to prevent re-entrance
+	 * Simple bool flag will do the job here (no multi-threading expected)
+	 */
+	UPROPERTY(Transient)
+	bool bIsProcessingExecutionQueue = false;
+	
+public:
+	
+	/**
+	 * Pop the queued execution elements and process it until the queue gets empty.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Playback")
+	void ProcessExecutionQueue();
+	
+	
+	UFUNCTION(BlueprintCallable, Category="Joint Playback")
+	void EnqueueExecutionElement(const FJointActorExecutionElement& NewElement);
+	
+	/**
+	 * Pop the queued execution elements and process it.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Playback")
+	void PopExecutionQueue();
+
 
 public:
 
@@ -355,6 +394,12 @@ public:
 	void RequestReloadNode(UJointNodeBase* InNode, const bool bPropagateToSubNodes = true, const bool bAllowPropagationEvenParentFails = true);
 
 public:
+	
+	void ProcessNodeBeginPlay(UJointNodeBase* InNode);
+	void ProcessNodeEndPlay(UJointNodeBase* InNode);
+	void ProcessMarkNodeAsPending(UJointNodeBase* InNode);
+	
+public:
 
 	void NotifyNodeBeginPlay(UJointNodeBase* InNode);
 
@@ -399,7 +444,7 @@ private:
 	 * @param InNode Node to provide and check whether the debugger must start debugging with.
 	 * @return Whether the debugging has been started.
 	 */
-	bool CheckDebuggerCanProceed(UJointNodeBase* InNode);
+	bool CheckDebuggerWantToHaltExecution(const FJointActorExecutionElement& NodeExecutionElement);
 
 #endif
 

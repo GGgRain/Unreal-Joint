@@ -9,6 +9,7 @@
 
 #include "Misc/EngineVersionComparison.h"
 
+enum class EJointMovieSectionType : uint8;
 class SJointNodePointerSlate;
 class SBox;
 class STextBlock;
@@ -62,6 +63,7 @@ public:
 	bool IsNodeValid() const;
 
 public:
+	
 	void UpdateSectionBox();
 
 	void OnPreNodePointerChanged();
@@ -69,7 +71,7 @@ public:
 
 public:
 
-	void GetColorScheme(FLinearColor& OutNormalColor, FLinearColor& OutHoverColor, FLinearColor& OutOutlineNormalColor, FLinearColor& OutOutlineHoverColor) const;
+	void GetColorScheme(EJointMovieSectionType SectionType, FLinearColor& OutNormalColor, FLinearColor& OutHoverColor, FLinearColor& OutOutlineNormalColor, FLinearColor& OutOutlineHoverColor) const;
 	
 public:
 
@@ -78,6 +80,10 @@ public:
 
 	/** Get the total range that thumbnails are to be generated for in the section's time space */
 	TRange<double> GetTotalRange() const;
+	
+public:
+
+	void OnSectionObjectEdited();
 
 public:
 

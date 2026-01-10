@@ -56,6 +56,15 @@ FJointMovieSection::FJointMovieSection(TSharedPtr<ISequencer> InSequencer, UMovi
 	  , TimeSpace(ETimeSpace::Global)
 {
 	AdditionalDrawEffect = ESlateDrawEffect::NoGamma;
+	
+	if (Section != nullptr)
+	{
+		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section))
+		{
+			JointSection->OnPropertyChanged.Unbind();
+			JointSection->OnPropertyChanged.BindRaw(this, &FJointMovieSection::OnSectionObjectEdited);
+		}
+	}
 }
 
 FJointMovieSection::~FJointMovieSection()
@@ -74,18 +83,6 @@ void FJointMovieSection::Tick(const FGeometry& AllottedGeometry, const FGeometry
 
 FText FJointMovieSection::GetSectionTitle() const
 {
-	/*
-	if (Section != nullptr)
-	{
-		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(Section))
-		{
-			const FJointNodePointer NodePointer = JointSection->GetJointNodePointer();
-		
-			return FText::FromString(NodePointer.Node ? NodePointer.Node->GetName() : TEXT("No Joint Node Specified") );
-		}
-	}
-	*/
-
 	return FText::GetEmpty();
 }
 
@@ -174,14 +171,7 @@ int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) co
 	{
 		return InPainter.LayerId;
 	}
-
-	//InPainter.SectionGeometry.Size = FVector2D(InPainter.SectionGeometry.Size.X + 30, GetSectionHeight());
-
-	//float TextOffsetX = JointSection->GetRange().GetLowerBound().IsClosed() ? FMath::Max(0.f, InPainter.GetTimeConverter().FrameToPixel(JointSection->GetRange().GetLowerBoundValue())) : 0.f;
-	//FString EventString = GetSectionTitle().ToString();
-	//bool bIsEventValid = IsNodeValid();
-	//PaintNodeName(InPainter, InPainter.LayerId + 1, EventString, TextOffsetX, bIsEventValid);
-
+	
 	return InPainter.LayerId;
 }
 
@@ -197,9 +187,9 @@ void FJointMovieSection::UpdateSectionBox()
 			FLinearColor OutlineNormalColor;
 			FLinearColor OutlineHoverColor;
 
-			GetColorScheme(NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+			GetColorScheme(JointSection->SectionType, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
-			if (JointSection->SectionType == EJointMovieSectionType::Range)
+			if (JointSection->SectionType == EJointMovieSectionType::ActiveForRange)
 			{
 				SectionWidgetBox.Get()->SetHAlign(HAlign_Fill);
 				SectionWidgetBox.Get()->SetContent(
@@ -253,7 +243,7 @@ void FJointMovieSection::UpdateSectionBox()
 					]);
 				
 			}
-			else
+			else if (JointSection->SectionType == EJointMovieSectionType::BeginPlay || JointSection->SectionType == EJointMovieSectionType::EndPlay || JointSection->SectionType == EJointMovieSectionType::MarkAsPending)
 			{
 				SectionWidgetBox.Get()->SetHAlign(HAlign_Left);
 				SectionWidgetBox.Get()->SetContent(
@@ -323,14 +313,35 @@ void FJointMovieSection::OnPostNodePointerChanged()
 	UpdateSectionBox();
 }
 
-void FJointMovieSection::GetColorScheme(FLinearColor& OutNormalColor, FLinearColor& OutHoverColor, FLinearColor& OutOutlineNormalColor, FLinearColor& OutOutlineHoverColor) const
+void FJointMovieSection::GetColorScheme(EJointMovieSectionType SectionType, FLinearColor& OutNormalColor, FLinearColor& OutHoverColor, FLinearColor& OutOutlineNormalColor, FLinearColor& OutOutlineHoverColor) const
 {
+	
 	if (IsNodeValid())
 	{
-		OutNormalColor = FLinearColor(0.10, 0.40, 0.30);
-		OutHoverColor = FLinearColor(0.20, 0.80, 0.70);
-		OutOutlineNormalColor = FLinearColor(0.10, 0.60, 0.50);
-		OutOutlineHoverColor = FLinearColor(0.80, 0.90, 0.90);
+		if (SectionType == EJointMovieSectionType::BeginPlay || SectionType == EJointMovieSectionType::ActiveForRange)
+		{
+			OutNormalColor = FLinearColor(0.10, 0.40, 0.30);
+			OutHoverColor = FLinearColor(0.20, 0.80, 0.70);
+			OutOutlineNormalColor = FLinearColor(0.10, 0.60, 0.50);
+			OutOutlineHoverColor = FLinearColor(0.80, 0.90, 0.90);
+			return;
+		}
+		else if (SectionType == EJointMovieSectionType::EndPlay)
+		{
+			OutNormalColor = FLinearColor(0.35, 0.35, 0.35);
+			OutHoverColor = FLinearColor(0.50, 0.50, 0.50);    
+			OutOutlineNormalColor = FLinearColor(0.65, 0.65, 0.65);
+			OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
+			return;
+		}
+		else if (SectionType == EJointMovieSectionType::MarkAsPending)
+		{
+			OutNormalColor = FLinearColor(0.60, 0.60, 0.30);
+			OutHoverColor = FLinearColor(0.80, 0.80, 0.40);
+			OutOutlineNormalColor = FLinearColor(0.80, 0.80, 0.20);
+			OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
+			return;
+		}
 	}
 	else
 	{
@@ -378,6 +389,11 @@ TRange<double> FJointMovieSection::GetTotalRange() const
 
 		return TRange<double>(0, UpperBound);
 	}
+}
+
+void FJointMovieSection::OnSectionObjectEdited()
+{
+	UpdateSectionBox();
 }
 
 void FJointMovieSection::OnJointNodePointerSlateHovered()

@@ -3,6 +3,7 @@
 
 #include "JointFunctionLibrary.h"
 
+#include "JointManager.h"
 #include "MovieScene.h"
 #include "MovieSceneSequence.h"
 #include "SharedType/JointSharedTypes.h"
@@ -232,6 +233,69 @@ TArray<FJointEdPinData> UJointFunctionLibrary::ImplementPins(const TArray<FJoint
 const bool UJointFunctionLibrary::AreBothPinHaveSameSignature(const FJointEdPinData& A, const FJointEdPinData& B)
 {
 	return A.HasSameSignature(B);
+}
+
+UJointNodeBase* UJointFunctionLibrary::GetCorrespondingJointNodeForJointManager(UJointNodeBase* SearchFor, UJointManager* TargetManager)
+{
+	if (SearchFor != nullptr && SearchFor->GetJointManager() != nullptr)
+	{
+		UJointManager* JointManager = SearchFor->GetJointManager();
+		
+		//if this node is from the target Joint manager : return itself.
+		if (JointManager == TargetManager) return SearchFor;
+
+		if (!TargetManager) return nullptr;
+		
+		// JointManager->Nodes contains only the base node on the graph, not sub nodes. So we need to iterate through all nodes to find the matching one - but in a clever way.
+		// Cache the hierarchy paths of the provided node of the attachment tree, from base node to itself.
+		TArray<FString> InJointNodeHierarchyPaths;
+		
+		UJointNodeBase* CurrentNode = SearchFor;
+		while (CurrentNode != nullptr)
+		{
+			FString CurrentPath = CurrentNode->GetPathName(JointManager);
+			InJointNodeHierarchyPaths.Insert(CurrentPath, 0); // insert at the beginning to maintain order from base to leaf.
+
+			CurrentNode = CurrentNode->GetParentNode();
+		}
+		
+		// Now iterate the actual nodes on the asset side and 'step-in' for the hierarchy path stages to find the matching node.
+		
+		TArray<UJointNodeBase*> CandidateNodes = TargetManager->Nodes;
+		while (CandidateNodes.Num() > 0 && InJointNodeHierarchyPaths.Num() > 0)
+		{
+			FString TargetPath = InJointNodeHierarchyPaths[0];
+			InJointNodeHierarchyPaths.RemoveAt(0);
+
+			TArray<UJointNodeBase*> NextCandidateNodes;
+
+			for (UJointNodeBase* Node : CandidateNodes)
+			{
+				if (Node == nullptr) continue;
+
+				FString NodePath = Node->GetPathName(Node->GetJointManager());
+
+				if (NodePath == TargetPath)
+				{
+					// if this is the last stage, we found it.
+					if (InJointNodeHierarchyPaths.Num() == 0)
+					{
+						return Node;
+					}
+					else
+					{
+						// step into children for next stage.
+						TArray<UJointNodeBase*> ChildNodes = Node->SubNodes;
+						NextCandidateNodes.Append(ChildNodes);
+					}
+				}
+			}
+
+			CandidateNodes = NextCandidateNodes;
+		}
+	}
+	
+	return nullptr;
 }
 
 bool UJointFunctionLibrary::DoesClassImplementInterface(TSubclassOf<UObject> ClassToCheck, TSubclassOf<UInterface> InterfaceToCheck)

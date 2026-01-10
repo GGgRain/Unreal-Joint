@@ -22,10 +22,7 @@ struct JOINT_API FMovieSceneJointSectionTemplate : public FMovieSceneEvalTemplat
 	FMovieSceneJointSectionTemplate(const UMovieSceneJointSection& Section, const UMovieSceneJointTrack& Track);
 
 public:
-
-	UPROPERTY()
-	TArray<FJointMovieSectionPayload> Payloads;
-
+	
 	UPROPERTY()
 	TWeakObjectPtr<const UMovieSceneJointTrack> ParentTrack = nullptr;
 	

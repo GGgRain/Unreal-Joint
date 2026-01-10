@@ -25,6 +25,62 @@ class UDataTable;
 class IPropertyHandle;
 
 
+
+/**
+ * enum for the execution context of the Joint actor.
+ */
+UENUM(BlueprintType)
+enum class EJointActorExecutionType : uint8
+{
+	None UMETA(DisplayName="None"), // Default value - helps to abort any execution.
+	BeginPlay UMETA(DisplayName="Begin Play"),
+	Pending UMETA(DisplayName="Pending"),
+	EndPlay UMETA(DisplayName="End Play"),
+};
+
+/**
+ * Struct for the execution context of the Joint actor.
+ * Joint 2.12.0 : introduced it to support multiple queue based execution (as a replacement of the previous version's direct node playing system).
+ */
+USTRUCT(BlueprintType)
+struct FJointActorExecutionElement
+{
+	GENERATED_BODY()
+	
+public:
+	
+	FJointActorExecutionElement();
+	
+	FJointActorExecutionElement(const EJointActorExecutionType InExecutionType, UJointNodeBase* InTargetNode);
+	
+public:
+	 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Joint")
+	EJointActorExecutionType ExecutionType;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Joint")
+	TWeakObjectPtr<class UJointNodeBase> TargetNode;
+	
+public:
+	
+	/**
+	 * A unique identifier for this execution element.
+	 * Used for the debugger to identify the execution element.
+	 * Note: This is cheap - Guid is 16 bytes only.
+	 */
+	UPROPERTY(Transient)
+	FGuid ExecutionElementGuid = FGuid::NewGuid();
+	
+public:
+	
+	bool operator==(const FJointActorExecutionElement& Other) const
+	{
+		return ExecutionElementGuid == Other.ExecutionElementGuid;
+	}
+	
+};
+
+
 /**
  * A data structure that contains the setting data for a property that will be used to display on the graph node by automatically generated slates.
  */
@@ -533,3 +589,4 @@ public:
 	 */
 	virtual TArray<FJointEdPinData> JointEdNodeInterface_GetPinData();
 };
+

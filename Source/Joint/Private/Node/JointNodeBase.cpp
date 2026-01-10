@@ -5,6 +5,7 @@
 #include "UObject/ConstructorHelpers.h"
 
 #include "JointActor.h"
+#include "JointLogChannels.h"
 #include "Node/JointFragment.h"
 #include "JointManager.h"
 
@@ -26,7 +27,7 @@
 
 UJointNodeBase::UJointNodeBase()
 {
-
+	
 #if WITH_EDITORONLY_DATA
 
 	EdNodeSetting.IconicNodeImageBrush = FSlateBrush();
@@ -92,12 +93,20 @@ TArray<UJointNodeBase*> UJointNodeBase::GetParentNodesOnHierarchy() const
 
 UJointManager* UJointNodeBase::GetJointManager() const
 {
-	if (this->IsValidLowLevel() && GetOuter() && GetOuter()->IsValidLowLevel())
+	if (!this->IsValidLowLevel()) return nullptr;
+	
+	UObject* Outer = GetOuter(); 
+	
+	while (Outer && Outer->IsValidLowLevel())
 	{
-		if (UJointManager* Manager = Cast<UJointManager>(GetOuter()))
+		// Move upwards until we find the Joint manager.
+
+		if (UJointManager* JointManager = Cast<UJointManager>(Outer))
 		{
-			return Manager;
+			return JointManager;
 		}
+
+		Outer = Outer->GetOuter();
 	}
 
 	return nullptr;
@@ -761,7 +770,10 @@ bool UJointNodeBase::CheckCanMarkNodeAsPending_Implementation()
 
 UWorld* UJointNodeBase::GetWorld() const
 {
-	if (GetHostingJointInstance()) return GetHostingJointInstance()->GetWorld();
+	if (const AJointActor* Instance = const_cast<AJointActor*>(GetHostingJointInstance()))
+	{
+		return GetHostingJointInstance()->GetWorld();
+	}
 
 	return nullptr;
 }
@@ -808,7 +820,7 @@ void UJointNodeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 bool UJointNodeBase::CallRemoteFunction(UFunction* Function, void* Parms, FOutParmRec* OutParms, FFrame* Stack)
 {
 	
-	if (!HostingJointInstance.IsValid()) return false;
+	if (!GetHostingJointInstance()) return false;
 	
 	/**
 	 * If bUsePlayerControllerAsRPCFunctionCallspace is true and the client does not have authority over the Joint Instance, it will try to retrieve the PlayerController's NetDriver to process the remote function.
@@ -898,7 +910,16 @@ void UJointNodeBase::SetHostingJointInstance(const TWeakObjectPtr<AJointActor>& 
 
 AJointActor* UJointNodeBase::GetHostingJointInstance() const
 {
-	return HostingJointInstance.IsValid() ? HostingJointInstance.Get() : nullptr;
+	if (HostingJointInstance.IsValid()) return HostingJointInstance.Get();
+	
+	UJointManager* Manager = GetJointManager();
+	
+	if (!Manager) return nullptr;
+	
+	// Cache the instance for future use.
+	HostingJointInstance = Manager->GetHostingJointActor();
+	
+	return HostingJointInstance.Get();
 }
 
 void UJointNodeBase::ReloadNode()
@@ -906,7 +927,7 @@ void UJointNodeBase::ReloadNode()
 	if (!CanReloadNode()){
 
 #if WITH_EDITOR
-		UE_LOG(LogTemp, Error, TEXT("Joint: Tried to reload Joint node %s but it is not allowed to reload. Aborting the action... (If you want to make it playable multiple times,"), *this->GetName());
+		UE_LOG(LogJoint, Error, TEXT("Joint: Tried to reload Joint node %s but it is not allowed to reload. Aborting the action... (If you want to make it playable multiple times,"), *this->GetName());
 #endif
 		
 		return;
@@ -941,7 +962,7 @@ void UJointNodeBase::NodeEndPlay()
 {
 	//Don't end again if once ended before.
 	if (IsNodeEndedPlay()) return;
-
+	
 	bIsNodeEndedPlay = true;
 
 	MarkNodePendingByForce();

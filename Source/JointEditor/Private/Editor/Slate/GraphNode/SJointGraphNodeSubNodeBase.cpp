@@ -166,7 +166,7 @@ TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateSubNodePanelSection()
 
 void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 {
-	ClearSlates();
+	//ClearSlates();
 
 	TSharedPtr<STextBlock> DescriptionText;
 
@@ -572,6 +572,9 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 
 		InitializeVoltVariables();
 	}
+	
+	//Modify the graph node slates from the editor graph node instance.
+	ModifySlateFromGraphNode();
 }
 
 FVector2D SJointGraphNodeSubNodeBase::GetNodeMinimumSize() const

@@ -694,7 +694,7 @@ FReply SJointEditorUtilityTab::UpdateBPNodeEdSettings()
 		{
 			if (Blueprint->GeneratedClass && Blueprint->GeneratedClass->IsChildOf(UJointNodeBase::StaticClass()))
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Modifying Blueprint: %s"), *Blueprint->GetName());
+				UE_LOG(LogJointEditor, Warning, TEXT("Modifying Blueprint: %s"), *Blueprint->GetName());
 
 				// 1. Blueprint의 기본 CDO (Class Default Object) 가져오기
 				UObject* DefaultObject = Blueprint->GeneratedClass->GetDefaultObject();

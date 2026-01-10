@@ -15,6 +15,7 @@
 
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "JointEditorLogChannels.h"
 #include "JointManager.h"
 
 #include "Editor/Sequencer/FJointMovieSection.h"
@@ -240,7 +241,7 @@ const FSlateBrush* FJointMovieTrackEditor::GetIconBrush() const
 
 bool FJointMovieTrackEditor::OnAllowDrop(const FDragDropEvent& DragDropEvent, FSequencerDragDropParams& DragDropParams)
 {
-	UE_LOG(LogTemp, Warning, TEXT("FJointMovieTrackEditor::OnAllowDrop called"));
+	UE_LOG(LogJointEditor, Warning, TEXT("FJointMovieTrackEditor::OnAllowDrop called"));
 
 	/*
 	if (!DragDropParams.Track.IsValid() || !DragDropParams.Track.Get()->IsA(UMovieSceneCameraCutTrack::StaticClass()))
@@ -283,7 +284,7 @@ bool FJointMovieTrackEditor::OnAllowDrop(const FDragDropEvent& DragDropEvent, FS
 FReply FJointMovieTrackEditor::OnDrop(const FDragDropEvent& DragDropEvent, const FSequencerDragDropParams& DragDropParams)
 {
 
-	//UE_LOG(LogTemp, Warning, TEXT("FJointMovieTrackEditor::OnDrop called"));
+	//UE_LOG(LogJointEditor, Warning, TEXT("FJointMovieTrackEditor::OnDrop called"));
 	/*
 	if (!DragDropParams.Track.IsValid() || !DragDropParams.Track.Get()->IsA(UMovieSceneCameraCutTrack::StaticClass()))
 	{
@@ -639,23 +640,41 @@ TSharedRef<SWidget> FJointMovieTrackEditor::BuildAddSectionSubMenu(UMovieSceneTr
 	FMenuBuilder MenuBuilder(true, nullptr);
 
 	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewTriggerTrack", "Trigger"),
-		LOCTEXT("AddNewTriggerTrackTooltip", "Adds a new section that can start off a specific node at a specific time"),
+		LOCTEXT("AddNewBeginPlayTrack", "Begin Play"),
+		LOCTEXT("AddNewBeginPlayTrackTooltip", "Adds a new section that triggers the begin play of a node."),
 		FSlateIcon(),
 		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::Trigger)
+			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::BeginPlay)
 		)
 	);
 
 	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewRangeTrack", "Range"),
+		LOCTEXT("AddNewActiveForRangeTrack", "Active For Range"),
 		LOCTEXT("AddNewRangeTrackTooltip", "Adds a new section that starts off a node, and force it to stop after the duration."),
 		FSlateIcon(),
 		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::Range)
+			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::ActiveForRange)
 		)
 	);
-
+	
+	MenuBuilder.AddMenuEntry(
+		LOCTEXT("AddNewEndPlayTrack", "End Play"),
+		LOCTEXT("AddNewEndPlayTrackTooltip", "Adds a new section that triggers the end play of a node."),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::EndPlay)
+		)
+	);
+	
+	MenuBuilder.AddMenuEntry(
+		LOCTEXT("AddNewMarkAsPendingTrack", "Mark As Pending"),
+		LOCTEXT("AddNewMarkAsPendingTrackTooltip", "Adds a new section that marks the node as pending."),
+		FSlateIcon(),
+		FUIAction(
+			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::MarkAsPending)
+		)
+	);
+	
 	return MenuBuilder.MakeWidget();
 }
 

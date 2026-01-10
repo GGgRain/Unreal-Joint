@@ -53,9 +53,10 @@ namespace JointEditorDefaultSettings
 	static const bool bDrawRecursiveConnection(true);
 
 	//Graph Editor - Debugger
-	static const FLinearColor DebuggerPlayingNodeColor(FLinearColor(0, 1, 0.2));
-	static const FLinearColor DebuggerPendingNodeColor(FLinearColor(1, 0.8, 0.0));
-	static const FLinearColor DebuggerEndedNodeColor(FLinearColor(0.6, 0.6, 0.6));
+	static const FLinearColor DebuggerPausedNodeColor(FLinearColor(1, 1, 1));
+	static const FLinearColor DebuggerPlayingNodeColor(FLinearColor(0.2, 0.8, 0.2));
+	static const FLinearColor DebuggerPendingNodeColor(FLinearColor(0.8, 0.5, 0.2));
+	static const FLinearColor DebuggerEndedNodeColor(FLinearColor(0.2, 0.2, 0.2));
 
 	//Graph Editor - Node
 	static const FLinearColor DefaultNodeColor(FLinearColor(0.026715, 0.025900, 0.035, 1));
@@ -326,6 +327,11 @@ public:
 	FWiggleWireConfig PreviewConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 
 public:
+	
+	/** Specifies the color applied to nodes that are currently active and executing in the debugger. */
+	UPROPERTY(Config, EditAnywhere, Category = "Debugger Color", meta = (DisplayName = "Debugger Playing Node Color"))
+	FLinearColor DebuggerPausedNodeColor = JointEditorDefaultSettings::DebuggerPausedNodeColor;
+	
 	/** Specifies the color applied to nodes that are currently active and executing in the debugger. */
 	UPROPERTY(Config, EditAnywhere, Category = "Debugger Color", meta = (DisplayName = "Debugger Playing Node Color"))
 	FLinearColor DebuggerPlayingNodeColor = JointEditorDefaultSettings::DebuggerPlayingNodeColor;

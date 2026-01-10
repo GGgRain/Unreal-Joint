@@ -753,8 +753,10 @@ void FJointEditorToolkit::OnEndPIE(bool bArg)
 			if (CachedJointGraphNode == nullptr) continue;
 
 			if (!CachedJointGraphNode->GetGraphNodeSlate().IsValid()) continue;
+			
+			TSharedPtr<SJointGraphNodeBase> GraphNodeSlatePtr = CachedJointGraphNode->GetGraphNodeSlate().Pin();
 
-			CachedJointGraphNode->GetGraphNodeSlate().Pin()->ResetNodeBodyColorAnimation();
+			GraphNodeSlatePtr->ResetNodeBodyColorAnimation();
 		}
 	}
 }
@@ -2805,7 +2807,9 @@ void FJointEditorToolkit::StartHighlightingNode(UJointEdGraphNode* NodeToHighlig
 
 	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
 
-	NodeToHighlight->GetGraphNodeSlate().Pin()->PlayHighlightAnimation(bBlinkForOnce);
+	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
+
+	GraphNodeSlate->PlayHighlightAnimation(bBlinkForOnce);
 }
 
 void FJointEditorToolkit::StopHighlightingNode(UJointEdGraphNode* NodeToHighlight)
@@ -2814,7 +2818,10 @@ void FJointEditorToolkit::StopHighlightingNode(UJointEdGraphNode* NodeToHighligh
 
 	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
 
-	NodeToHighlight->GetGraphNodeSlate().Pin()->StopHighlightAnimation();
+	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
+
+	GraphNodeSlate->StopHighlightAnimation();
+
 }
 
 void FJointEditorToolkit::JumpToNode(UEdGraphNode* Node, const bool bRequestRename)
@@ -3183,7 +3190,7 @@ void FJointEditorToolkit::OnEnableBreakpoint()
 		if (DebugData && DebugData->bHasBreakpoint == true)
 		{
 			DebugData->bIsBreakpointEnabled = true;
-			DebugData->Node->NotifyDebugDataChangedToGraphNodeWidget(DebugData);
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
 		}
 	}
 
@@ -3237,15 +3244,15 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 				{
 					Data->bHasBreakpoint = false;
 					Data->bIsBreakpointEnabled = false;
-					if (Data->Node) Data->Node->NotifyDebugDataChangedToGraphNodeWidget(Data);
-					if (SelectedNode) SelectedNode->NotifyDebugDataChangedToGraphNodeWidget(Data);
+					
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
 				}
 				else //add breakpoint - but with the existing debug data instance.
 				{
 					Data->bHasBreakpoint = true;
 					Data->bIsBreakpointEnabled = true;
-					if (Data->Node) Data->Node->NotifyDebugDataChangedToGraphNodeWidget(Data);
-					if (SelectedNode) SelectedNode->NotifyDebugDataChangedToGraphNodeWidget(Data);
+					
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
 				}
 			}
 			else
@@ -3264,17 +3271,13 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 
 					DebugDataArr->Add(NewDebugData);
 
-					NewDebugData.Node->NotifyDebugDataChangedToGraphNodeWidget(&NewDebugData);}
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, &NewDebugData);
+				}
 			}
 		}
 	}
-
-	//iterate through the modified graphs and notify the changes.
-
-	for (UJointEdGraph* Graph : ModifiedGraphs)
-	{
-		UJointDebugger::NotifyDebugDataChanged(Graph);
-	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 	
 }
 
@@ -3313,7 +3316,7 @@ void FJointEditorToolkit::OnDisableBreakpoint()
 		if (DebugData && DebugData->bHasBreakpoint == true && DebugData->bIsBreakpointEnabled == true)
 		{
 			DebugData->bIsBreakpointEnabled = false;
-			DebugData->Node->NotifyDebugDataChangedToGraphNodeWidget(DebugData);
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
 		}
 	}
 	
@@ -3401,7 +3404,7 @@ void FJointEditorToolkit::OnAddBreakpoint()
 			{
 				Data->bHasBreakpoint = true;
 				Data->bIsBreakpointEnabled = false;
-				Data->Node->NotifyDebugDataChangedToGraphNodeWidget(Data);
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
 			}
 			else
 			{
@@ -3412,7 +3415,7 @@ void FJointEditorToolkit::OnAddBreakpoint()
 				NewDebugData.bIsBreakpointEnabled = true;
 
 				DebugDataArr->Add(NewDebugData);
-				NewDebugData.Node->NotifyDebugDataChangedToGraphNodeWidget(Data);
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
 			}
 		}
 	}
@@ -3457,7 +3460,7 @@ void FJointEditorToolkit::OnRemoveBreakpoint()
 			{
 				Data->bHasBreakpoint = false;
 				Data->bIsBreakpointEnabled = false;
-				Data->Node->NotifyDebugDataChangedToGraphNodeWidget(Data);
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
 			}
 		}
 	}
@@ -3497,9 +3500,11 @@ void FJointEditorToolkit::OnRemoveAllBreakpoints()
 		for (FJointNodeDebugData& DebugData : Graph->DebugData)
 		{
 			DebugData.bHasBreakpoint = false;
-			DebugData.Node->NotifyDebugDataChangedToGraphNodeWidget(&DebugData);
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
 		}
 	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
 
 bool FJointEditorToolkit::CanRemoveAllBreakpoints() const
@@ -3527,9 +3532,11 @@ void FJointEditorToolkit::OnEnableAllBreakpoints()
 		for (FJointNodeDebugData& DebugData : Graph->DebugData)
 		{
 			DebugData.bIsBreakpointEnabled = true;
-			DebugData.Node->NotifyDebugDataChangedToGraphNodeWidget(&DebugData);
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
 		}
 	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
 
 bool FJointEditorToolkit::CanEnableAllBreakpoints() const
@@ -3562,9 +3569,11 @@ void FJointEditorToolkit::OnDisableAllBreakpoints()
 		for (FJointNodeDebugData& DebugData : Graph->DebugData)
 		{
 			DebugData.bIsBreakpointEnabled = false;
-			DebugData.Node->NotifyDebugDataChangedToGraphNodeWidget(&DebugData);
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
 		}
 	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
 
 bool FJointEditorToolkit::CanDisableAllBreakpoints() const
@@ -3951,7 +3960,7 @@ void FJointEditorToolkit::OnDebuggerActorSelected(TWeakObjectPtr<AJointActor> In
 	{
 		FJointEditorToolkit* Toolkit = nullptr;
 
-		UJointDebugger::Get()->AssignInstanceToLookUp(InstanceToDebug.Get());
+		UJointDebugger::Get()->AssignDebuggingInstance(InstanceToDebug.Get());
 
 		FJointEdUtils::FindOrOpenJointEditorInstanceFor(InstanceToDebug->GetJointManager(), true);
 	}

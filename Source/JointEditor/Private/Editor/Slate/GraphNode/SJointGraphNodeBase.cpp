@@ -40,9 +40,10 @@
 #include "GraphNode/SJointGraphNodeCompileResult.h"
 #include "GraphNode/SJointGraphNodeSubNodeBase.h"
 #include "GraphNode/SJointDetailsView.h"
-//VOLT
+
 
 #include "JointAdvancedWidgets.h"
+#include "JointEditorLogChannels.h"
 #include "SlateOptMacros.h"
 #include "VoltAnimation.h"
 #include "VoltAnimationManager.h"
@@ -567,6 +568,9 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	CreateBelowWidgetControls(CenterContentBox);
 
 	InitializeVoltVariables();
+	
+	//Modify the graph node slates from the editor graph node instance.
+	ModifySlateFromGraphNode();
 }
 
 TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
@@ -587,7 +591,16 @@ TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 
 	NodeBodyBorderImage = InBorderImage;
 
-	return SAssignNew(NodeBody, SBorder)
+	// If NodeBody already exists, update its brush and padding and return it to avoid destroying/recreating the widget
+	if (NodeBody.IsValid())
+	{
+		NodeBody->SetBorderImage(InBorderImage);
+		// SetPadding is available on SBorder; update if necessary
+		NodeBody->SetPadding(*InPadding);
+		return NodeBody.ToSharedRef();
+	}
+
+	NodeBody = SNew(SBorder)
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
@@ -597,6 +610,8 @@ TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 		.BorderImage(InBorderImage)
 		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
 		.Padding(*InPadding);
+	
+	return NodeBody.ToSharedRef();
 }
 
 TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const bool bSphere)
@@ -663,8 +678,7 @@ void SJointGraphNodeBase::ClearSlates()
 	this->RemoveSlot(ENodeZone::Center);
 	this->RemoveSlot(ENodeZone::Right);
 	this->RemoveSlot(ENodeZone::TopCenter);
-
-	//Resets inner shared ptrs
+	
 	RightNodeBox.Reset();
 	LeftNodeBox.Reset();
 	CenterContentBox.Reset();
@@ -735,9 +749,6 @@ void SJointGraphNodeBase::UpdateGraphNode()
 
 	//Update the name box.
 	UpdateNameBox();
-
-	//Modify the graph node slates from the editor graph node instance.
-	ModifySlateFromGraphNode();
 
 	//Update the debugger slate for the need.
 	if (UJointDebugger::IsPIESimulating())
@@ -845,6 +856,7 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 		if (EdFragment->CheckGraphNodeSlateReusableOn(OwnerPanel))
 		{
 			SubNodeSlateToAdd = EdFragment->GetGraphNodeSlate().Pin();
+			//SubNodeSlateToAdd->SetOwner(OwnerPanel.ToSharedRef());
 		}
 		else //if not, make a new one.
 		{
@@ -982,15 +994,25 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 					GraphNode->GetGraph()->NotifyGraphChanged();
 				}
 				
-				DraggedNode->GetGraphNodeSlate().Pin()->PlayDropAnimation();
-
-				DraggedNode->GetGraphNodeSlate().Pin()->PlayNodeBackgroundColorResetAnimationIfPossible();
+				if (DraggedNode->GetGraphNodeSlate().IsValid())
+				{
+					TSharedPtr<SJointGraphNodeBase> DraggedNodeSlate = DraggedNode->GetGraphNodeSlate().Pin();
+				
+					DraggedNodeSlate->PlayDropAnimation();
+					DraggedNodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();	
+				}
 
 				TArray<UJointEdGraphNode*> SubSubNodes = DraggedNode->GetAllSubNodesInHierarchy();
 
 				for (UJointEdGraphNode* SubSubNode : SubSubNodes)
 				{
-					SubSubNode->GetGraphNodeSlate().Pin()->PlayNodeBackgroundColorResetAnimationIfPossible();
+					TSharedPtr<SJointGraphNodeBase> SubSubNodeSlate = SubSubNode->GetGraphNodeSlate().Pin();
+					
+					if (SubSubNodeSlate)
+					{
+						SubSubNodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();
+					}
+					
 				}
 			}
 		}
@@ -1599,7 +1621,7 @@ void SJointGraphNodeBase::OnGraphSelectionChanged(const TSet<UObject*>& NewSelec
 	PlaySelectionAnimation();
 }
 
-void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce)
+void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce, float SpeedMultiplier)
 {
 	if (!NodeBackground || !NodeBackground->InnerBorder) return;
 
@@ -1612,10 +1634,10 @@ void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce)
 		//.bShouldLoop(false)
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-			.RateBasedInterpSpeed(25)
+			.RateBasedInterpSpeed(25 * SpeedMultiplier)
 			.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3)),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-			.RateBasedInterpSpeed(16)
+			.RateBasedInterpSpeed(16 * SpeedMultiplier)
 			.TargetColor(GetNodeBodyBackgroundColor())
 		)
 	);
@@ -1660,39 +1682,82 @@ void SJointGraphNodeBase::PlayNodeBackgroundColorResetAnimationIfPossible(bool b
 void SJointGraphNodeBase::PlaySelectionAnimation()
 {
 	if (!NodeBackground.IsValid()) return;
-
-	//Update animation.
-	if (CheckWhetherNodeSelected())
+	
+	if (NodeBackground)
 	{
-		FLinearColor NormalColor;
-		FLinearColor HoverColor;
-		FLinearColor OutlineNormalColor;
-		FLinearColor OutlineHoverColor;
+		//Update animation.
+		if (CheckWhetherNodeSelected())
+		{
+			FLinearColor NormalColor;
+			FLinearColor HoverColor;
+			FLinearColor OutlineNormalColor;
+			FLinearColor OutlineHoverColor;
 
-		GetNodeColorScheme(true, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+			GetNodeColorScheme(true, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
 
-		NodeBackground->NormalColor = NormalColor;
-		NodeBackground->HoverColor = HoverColor;
-		NodeBackground->OutlineNormalColor = OutlineNormalColor;
-		NodeBackground->OutlineHoverColor = OutlineHoverColor;
+			NodeBackground->NormalColor = NormalColor;
+			NodeBackground->HoverColor = HoverColor;
+			NodeBackground->OutlineNormalColor = OutlineNormalColor;
+			NodeBackground->OutlineHoverColor = OutlineHoverColor;
 
-		NodeBackground->PlayUnHoverAnimation();
+			NodeBackground->PlayUnHoverAnimation();
+		}
+		else
+		{
+			FLinearColor NormalColor;
+			FLinearColor HoverColor;
+			FLinearColor OutlineNormalColor;
+			FLinearColor OutlineHoverColor;
+
+			GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
+
+			NodeBackground->NormalColor = NormalColor;
+			NodeBackground->HoverColor = HoverColor;
+			NodeBackground->OutlineNormalColor = OutlineNormalColor;
+			NodeBackground->OutlineHoverColor = OutlineHoverColor;
+
+			NodeBackground->PlayUnHoverAnimation();
+		}
 	}
-	else
+}
+
+void SJointGraphNodeBase::PlayDebuggerAnimation(bool bIsPausedFrom, bool bIsBeginPlay, bool bIsPending, bool bIsEndPlay)
+{
+	if (bIsPausedFrom)
 	{
-		FLinearColor NormalColor;
-		FLinearColor HoverColor;
-		FLinearColor OutlineNormalColor;
-		FLinearColor OutlineHoverColor;
-
-		GetNodeColorScheme(false, NormalColor, HoverColor, OutlineNormalColor, OutlineHoverColor);
-
-		NodeBackground->NormalColor = NormalColor;
-		NodeBackground->HoverColor = HoverColor;
-		NodeBackground->OutlineNormalColor = OutlineNormalColor;
-		NodeBackground->OutlineHoverColor = OutlineHoverColor;
-
-		NodeBackground->PlayUnHoverAnimation();
+		PlayNodeBodyColorAnimation(
+			UJointEditorSettings::Get()->DebuggerPausedNodeColor,
+			UJointEditorSettings::Get()->DebuggerPausedNodeColor * 0.2f,
+			0.8f,
+			true);
+	}
+	else if (bIsBeginPlay)
+	{
+		PlayNodeBodyScaleAnimation(1.035f, 0.22f);
+		SetNodeBodyToDebuggerExecutedImage();
+		PlayNodeBodyColorAnimation(
+			UJointEditorSettings::Get()->DebuggerPlayingNodeColor,
+			UJointEditorSettings::Get()->DebuggerPlayingNodeColor * 0.90f,
+			0.4f,
+			true);
+	}
+	else if (bIsPending)
+	{
+		SetNodeBodyToDebuggerExecutedImage();
+		PlayNodeBodyColorAnimation(
+			UJointEditorSettings::Get()->DebuggerPendingNodeColor,
+			UJointEditorSettings::Get()->DebuggerPendingNodeColor * 0.90f,
+			0.4f,
+			true);
+	}
+	else if (bIsEndPlay)
+	{
+		SetNodeBodyToDebuggerExecutedImage();
+		PlayNodeBodyColorAnimation(
+		UJointEditorSettings::Get()->DebuggerEndedNodeColor,
+		UJointEditorSettings::Get()->DebuggerEndedNodeColor,
+			0.4f,
+			false);
 	}
 }
 
@@ -1706,124 +1771,185 @@ void SJointGraphNodeBase::UpdateDebuggerAnimationByState()
 
 			if (NodeInstance->IsNodeBegunPlay() && !NodeInstance->IsNodePending() && !NodeInstance->IsNodeEndedPlay())
 			{
-				PlayNodeBodyColorAnimation(EditorSettings->DebuggerPlayingNodeColor, true);
+				PlayDebuggerAnimation(false, true, false, false);
 			}
 			else if (NodeInstance->IsNodeBegunPlay() && NodeInstance->IsNodePending() && !NodeInstance->
 				IsNodeEndedPlay())
 			{
-				PlayNodeBodyColorAnimation(EditorSettings->DebuggerPendingNodeColor, true);
+				PlayDebuggerAnimation(false, false, true, false);
 			}
 			else if (NodeInstance->IsNodeBegunPlay() && NodeInstance->IsNodePending() && NodeInstance->
 				IsNodeEndedPlay())
 			{
-				PlayNodeBodyColorAnimation(EditorSettings->DebuggerEndedNodeColor, false);
+				PlayDebuggerAnimation(false, false, false, true);
 			}
 		}
 	}
 }
 
-void SJointGraphNodeBase::PlayNodeBodyColorAnimation(const FLinearColor Color, const bool bBlink = false)
+void SJointGraphNodeBase::SetNodeBodyToDebuggerExecutedImage()
 {
-	if (!NodeBody.IsValid())
+	if (!NodeBody.IsValid()) return;
+	
+	if (NodeBody.IsValid())
 	{
-		PopulateNodeSlates();
+		const FSlateBrush* InBorderImage = FJointEditorStyle::Get().GetBrush(
+			GetSlateDetailLevel() == EJointEdSlateDetailLevel::SlateDetailLevel_Stow 
+				? "JointUI.Border.Sphere" 
+				: "JointUI.Border.Round"
+		);
+	
+		NodeBody->SetBorderImage(InBorderImage);
 	}
+}
 
-	VOLT_STOP_ANIM(NodeBodyColorTrack);
-
-	UVoltAnimation* ColorAnimation = nullptr;
-
-	if (bBlink)
+void SJointGraphNodeBase::PlayNodeBodyScaleAnimation(float Scale, float Duration)
+{
+	if (!NodeBody.IsValid()) return;
+	
+	if (NodeBody.IsValid())
 	{
-		ColorAnimation = VOLT_MAKE_ANIMATION()
-		(
-			VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
-			.bShouldLoop(true)
+		VOLT_STOP_ANIM(NodeBodyColorTrack);
+
+		if (NodeBody)
+		{
+			UVoltAnimation* Animation = nullptr;
+
+			Animation = VOLT_MAKE_ANIMATION()
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+					.bShouldLoop(false)
+					(
+						VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+						.InterpolationMode(EVoltInterpMode::AlphaBased)
+						.AlphaBasedDuration(Duration * 0.5)
+						.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
+						.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(Scale, Scale), FVector2D::ZeroVector, 0)),
+						VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+						.InterpolationMode(EVoltInterpMode::AlphaBased)
+						.AlphaBasedDuration(Duration * 0.5)
+						.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
+						.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
+					)
+				);
+
+			NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, Animation);
+		}
+	}
+}
+
+void SJointGraphNodeBase::PlayNodeBodyColorAnimation(const FLinearColor Color, const FLinearColor BlinkTargetColor, float Duration, const bool bBlink = false)
+{
+	if (!NodeBody.IsValid()) return;
+
+	if (NodeBody.IsValid())
+	{
+		VOLT_STOP_ANIM(NodeBodyColorTrack);
+
+		UVoltAnimation* ColorAnimation = nullptr;
+
+		if (bBlink)
+		{
+			ColorAnimation = VOLT_MAKE_ANIMATION()
+			(
+				VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+				.bShouldLoop(true)
+				(
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(Duration * 0.5)
+					.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
+					.TargetColor(Color),
+					VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+					.InterpolationMode(EVoltInterpMode::AlphaBased)
+					.AlphaBasedDuration(Duration * 0.5)
+					.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
+					.TargetColor(BlinkTargetColor)
+				)
+			);
+		}
+		else
+		{
+			ColorAnimation = VOLT_MAKE_ANIMATION()
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.3)
+				.AlphaBasedDuration(Duration)
 				.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
-				.TargetColor(Color),
-				VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.3)
-				.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
-				.TargetColor(Color + FLinearColor(0.1, 0.1, 0.1))
-			)
-		);
+				.TargetColor(BlinkTargetColor)
+			);
+		}
+
+		NodeBodyColorTrack = VOLT_PLAY_ANIM(NodeBody, ColorAnimation);
 	}
-	else
+}
+
+void SJointGraphNodeBase::ResetNodeBodyColorAnimation()
+{
+	if (!NodeBackground.IsValid()) return;
+
+	if (NodeBackground.IsValid())
 	{
-		ColorAnimation = VOLT_MAKE_ANIMATION()
+		VOLT_STOP_ANIM(NodeBodyColorTrack);
+
+		UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
 			.AlphaBasedDuration(0.3)
 			.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
-			.TargetColor(Color)
+			.TargetColor(FJointEditorStyle::Color_Node_Shadow)
 		);
+
+		NodeBodyColorTrack = VOLT_PLAY_ANIM(NodeBody, ColorAnimation);
 	}
-
-	NodeBodyColorTrack = VOLT_PLAY_ANIM(NodeBody, ColorAnimation);
-}
-
-void SJointGraphNodeBase::ResetNodeBodyColorAnimation()
-{
-	if (!NodeBackground.IsValid())
-	{
-		PopulateNodeSlates();
-	}
-
-	VOLT_STOP_ANIM(NodeBodyColorTrack);
-
-	UVoltAnimation* ColorAnimation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-		.InterpolationMode(EVoltInterpMode::AlphaBased)
-		.AlphaBasedDuration(0.3)
-		.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
-		.TargetColor(FJointEditorStyle::Color_Node_Shadow)
-	);
-
-	NodeBodyColorTrack = VOLT_PLAY_ANIM(NodeBody, ColorAnimation);
 }
 
 void SJointGraphNodeBase::PlayDropAnimation()
 {
-	PlayHighlightAnimation(true);
+	if (!NodeBody.IsValid()) return;
 
-	VOLT_STOP_ANIM(NodeBodyTransformTrack);
+	if (NodeBody.IsValid())
+	{
+		PlayHighlightAnimation(true);
 
-	const UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.bUseStartWidgetTransform(true)
-		.RateBasedInterpSpeed(8)
-		.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector, 0))
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
-	);
+		VOLT_STOP_ANIM(NodeBodyTransformTrack);
 
-	NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
+		const UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+			.bUseStartWidgetTransform(true)
+			.RateBasedInterpSpeed(8)
+			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector, 0))
+			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
+		);
+
+		NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
+	}
 }
 
 void SJointGraphNodeBase::PlayInsertAnimation()
 {
-	PlayHighlightAnimation(true);
+	if (!NodeBody.IsValid()) return;
+	
+	if (NodeBody.IsValid())
+	{
+		PlayHighlightAnimation(true);
 
-	VOLT_STOP_ANIM(NodeBodyTransformTrack);
+		VOLT_STOP_ANIM(NodeBodyTransformTrack);
 
-	const UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
-	(
-		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.bUseStartWidgetTransform(true)
-		.RateBasedInterpSpeed(8)
-		.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector,
-		                                       (FMath::FRand() - 0.5f) * 20))
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
-	);
+		const UVoltAnimation* ExpandAnimation = VOLT_MAKE_ANIMATION()
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
+			.bUseStartWidgetTransform(true)
+			.RateBasedInterpSpeed(8)
+			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector,
+												   (FMath::FRand() - 0.5f) * 20))
+			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
+		);
 
-	NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
+		NodeBodyTransformTrack = VOLT_PLAY_ANIM(NodeBody, ExpandAnimation);
+	}
 }
 
 

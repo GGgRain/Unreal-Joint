@@ -394,8 +394,11 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 				//Update Sub node slates list of the RemoveFrom node.
 
 				if (RemoveFrom->GetGraphNodeSlate().IsValid())
-					RemoveFrom->GetGraphNodeSlate().Pin()->
-					            PopulateSubNodeSlates();
+				{
+					const TSharedPtr<SJointGraphNodeBase> RemoveFromCastedWidget = RemoveFrom->GetGraphNodeSlate().Pin();
+				
+					RemoveFromCastedWidget->PopulateSubNodeSlates();
+				}
 
 				//Add Sub node to the AddedTo node.
 
@@ -416,9 +419,9 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 
 			for (UJointEdGraphNode* SubSubNode : SubSubNodes)
 			{
-				if (SubSubNode && SubSubNode->GetGraphNodeSlate().IsValid())
-					SubSubNode->GetGraphNodeSlate().Pin()->
-					            PlayNodeBackgroundColorResetAnimationIfPossible();
+				const TSharedPtr<SJointGraphNodeBase> Widget = SubSubNode->GetGraphNodeSlate().Pin();
+
+				if (Widget) Widget->PlayNodeBackgroundColorResetAnimationIfPossible();
 			}
 		}
 

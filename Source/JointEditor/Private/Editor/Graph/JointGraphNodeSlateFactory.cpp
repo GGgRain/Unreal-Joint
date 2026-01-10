@@ -17,9 +17,11 @@ TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNode(class UEdGr
 		//Reuse the old one.
 		if(SubNode->GetGraphNodeSlate().IsValid())
 		{
-			SubNode->GetGraphNodeSlate().Pin()->UpdateGraphNode();
+			TSharedPtr<SJointGraphNodeBase> ExistingSlate = SubNode->GetGraphNodeSlate().Pin();
 			
-			return SubNode->GetGraphNodeSlate().Pin();
+			ExistingSlate->UpdateGraphNode();
+			
+			return ExistingSlate;
 		}
 		return SNew(SJointGraphNodeSubNodeBase, SubNode);
 	}
@@ -29,9 +31,11 @@ TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNode(class UEdGr
 		//Reuse the old one.
 		if (BaseNode->GetGraphNodeSlate().IsValid())
 		{
-			BaseNode->GetGraphNodeSlate().Pin()->UpdateGraphNode();
-		
-			return BaseNode->GetGraphNodeSlate().Pin();
+			TSharedPtr<SJointGraphNodeBase> ExistingSlate = BaseNode->GetGraphNodeSlate().Pin();
+			
+			ExistingSlate->UpdateGraphNode();
+			
+			return ExistingSlate;
 		}
 		
 		return SNew(SJointGraphNodeBase, BaseNode);

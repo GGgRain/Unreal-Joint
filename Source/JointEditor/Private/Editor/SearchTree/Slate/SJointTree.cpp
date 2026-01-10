@@ -347,7 +347,7 @@ EJointTreeFilterResult SJointTree::HandleFilterJointPropertyTreeItem(
 		{
 			bool bFound = InArgs.GraphsToShow.Contains(Obj);
 
-			//UE_LOG(LogTemp, Log, TEXT("Filtering graph: %s, found: %s"), *Obj->GetName(), bFound ? TEXT("true") : TEXT("false"));
+			//UE_LOG(LogJointEditor, Log, TEXT("Filtering graph: %s, found: %s"), *Obj->GetName(), bFound ? TEXT("true") : TEXT("false"));
 			// if the graph is not in the list, hide it
 			return bFound ? EJointTreeFilterResult::Shown : EJointTreeFilterResult::Hidden;
 		}

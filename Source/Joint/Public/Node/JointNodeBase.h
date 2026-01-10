@@ -622,14 +622,21 @@ private:
 	 */
 
 private:
-	//The reference for the object that is hosting the Joint.
+	
 	UPROPERTY(transient)
-	TWeakObjectPtr<AJointActor> HostingJointInstance;
+	mutable TWeakObjectPtr<AJointActor> HostingJointInstance;
 
 public:
+	
 	void SetHostingJointInstance(const TWeakObjectPtr<AJointActor>& InHostingJointInstance);
 
-	UFUNCTION(BlueprintCallable, Category = "Joint")
+	/**
+	 * Get the Joint instance that is hosting this node.
+	 * This is safe to call even when the node is not being played; if the node is originated from a runtime instance of Joint Manager that has Joint Actor instance as its outer, then it will return the Joint Actor instance. (a little bit slower than the cached one.)
+	 * TODO: Is this safe?
+	 * @return The Joint instance that is hosting this node.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Joint")
 	AJointActor* GetHostingJointInstance() const;
 
 public:
