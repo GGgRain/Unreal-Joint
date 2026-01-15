@@ -64,6 +64,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="Visual")
 	FLinearColor PresetColor;
+	
+	UPROPERTY(EditAnywhere, Category="Visual")
+	int PresetFontSize;
 
 	UPROPERTY(EditAnywhere, Category="Visual")
 	FText PresetInitial;

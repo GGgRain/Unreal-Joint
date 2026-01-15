@@ -382,6 +382,8 @@ public:
 	void ToggleShowRecursiveConnection();
 	bool IsShowRecursiveConnectionChecked() const;
 
+	void StartQuickPicking();
+
 public:
 
 	//Breakpoint action
@@ -415,11 +417,17 @@ public:
 	void OnToggleDebuggerExecution();
 	bool GetCheckedToggleDebuggerExecution() const;
 
-	void OnDissolveSubNode();
-	bool CheckCanDissolveSubNode() const;
+	void OnDissolveSubNodes();
+	bool CheckCanDissolveSubNodes() const;
 
-	void OnSolidifySubNode();
-	bool CheckCanSolidifySubNode() const;
+	void OnDissolveExactSubNode();
+	bool CheckCanDissolveExactSubNode() const;
+	
+	void OnDissolveOnlySubNodes();
+	bool CheckCanDissolveOnlySubNodes() const;
+	
+	void OnSolidifySubNodes();
+	bool CheckCanSolidifySubNodes() const;
 
 	void OnToggleVisibilityChangeModeForSimpleDisplayProperty();
 	bool GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const;
@@ -433,7 +441,9 @@ public:
 public:
 	
 	void PopulateNodePickingToastMessage();
-
+	
+	void PopulateQuickNodePickingToastMessage();
+	
 	void PopulateTransientEditingWarningToastMessage();
 
 	void PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();

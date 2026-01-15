@@ -363,20 +363,46 @@ private:
 	/**
 	 * Play this node's playback. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's being play action, or execute RequestNodeBeginPlay() instead.
+	 * Joint 2.12: Deprecated. We're using ProcessPreNodeBeginPlay() and ProcessPostNodeBeginPlay() instead.
 	 */
-	void NodeBeginPlay();
+	//void NodeBeginPlay();
 
 	/**
 	 * End this node's playback. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's end play action, or execute RequestNodeEndPlay() instead.
+	 * Joint 2.12: Deprecated. We're using ProcessPreNodeEndPlay() and ProcessPostNodeEndPlay() instead.
 	 */
-	void NodeEndPlay();
+	//void NodeEndPlay();
 
 	/**
 	 * Mark this node as pending. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's end play action, or execute RequestMarkNodeAsPending() instead.
+	 * Joint 2.12: Deprecated. We're using ProcessPreMarkNodePending() and ProcessPostMarkNodePending() instead.
 	 */
-	void MarkNodePending();
+	//void MarkNodePending();
+	
+private:
+
+	void ProcessPreNodeBeginPlay();
+	void ProcessPostNodeBeginPlay();
+	void ProcessPreNodeEndPlay();
+	void ProcessPostNodeEndPlay();
+	void ProcessPreMarkNodePending();
+	void ProcessPostMarkNodePending();
+	
+private:
+	
+	/**
+	 * Joint 2.12.0 : We decided to deprecate NodeBeginPlay / NodeEndPlay / MarkNodePending functions because we want to separate Pre / Post actions' entrance.
+	 * This created an issue that the system don't know if the pre - post action has been executed with pair, or maybe some cheaters are trying to call only one of them.
+	 * So we're storing the execution id for the actions to verify the matching end play / pending action.
+	 * TODO: Or should we just separate bIsNodeBegunPlay into two variables for Pre / Post action, and verify them instead?
+	 */ 
+	
+	UPROPERTY()
+	FGuid BeginPlayExecutionId;
+	
+
 
 
 	friend AJointActor;
@@ -466,7 +492,7 @@ protected:
 	 * Pre-defined action of this node when it finished end playing.
 	 * This event will be executed before other events and delegate.
 	 * Override this function to implement the action you desire.
-	 * By default, It does nothing.
+	 * By default, it will do nothing.
 	 */
 	UFUNCTION(BlueprintNativeEvent, Category = "Node")
 	void PreNodeEndPlay();
@@ -836,8 +862,10 @@ public:
 	
 public:
 
-	bool GetAllowNodeInstancePinControl();
-
+#if WITH_EDITOR
+	bool GetAllowEditingOfPinDataOnDetailsPanel();
+#endif
+	
 public:
 
 #if WITH_EDITORONLY_DATA

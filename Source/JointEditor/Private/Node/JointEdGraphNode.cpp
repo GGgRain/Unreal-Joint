@@ -1334,7 +1334,8 @@ void UJointEdGraphNode::RearrangeSubNodeAt(UJointEdGraphNode* SubNode, int32 Dro
 	//This can result an unexpected action. (ex, calling AddSubNode() right after the RemoveSubNode() -> Can corrupt the caches badly.)
 	//Make only the highest execution for the action (ex, SGraphNode, Toolkit) can modify the objects.
 
-	if (!SubNodes.IsValidIndex(DropIndex)) return;
+	//Validate the drop index. if the index is invalid, revert the action but if the index is equal to the num, it means add to last, so allow it.
+	if (!SubNodes.IsValidIndex(DropIndex) && DropIndex != SubNodes.Num() ) return;
 
 	if (!SubNodes.Contains(SubNode)) return;
 

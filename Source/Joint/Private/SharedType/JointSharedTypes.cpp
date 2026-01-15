@@ -389,7 +389,7 @@ void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
 	SimplifiedClassFriendlyNameText = Node->SimplifiedClassFriendlyNameText;
 	DefaultEdSlateDetailLevel = Node->DefaultEdSlateDetailLevel;
 	PropertyDataForSimpleDisplayOnGraphNode = Node->PropertyDataForSimpleDisplayOnGraphNode;
-	bAllowNodeInstancePinControl = Node->bAllowNodeInstancePinControl;
+	bAllowEditingOfPinDataOnDetailsPanel = Node->bAllowNodeInstancePinControl;
 	
 #endif
 }

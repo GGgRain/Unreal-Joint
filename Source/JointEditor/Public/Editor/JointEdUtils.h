@@ -23,7 +23,7 @@ public:
 
 	//Find and return the first EditorGraphNode for the provided Joint node class. If there is no class for the node, returns nullptr;
 	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FJointGraphNodeClassData Class);
-	
+
 
 	template <typename Type>
 	class JOINTEDITOR_API FNewNodeClassFilter : public IClassViewerFilter

@@ -10,6 +10,7 @@
 #include "SGraphPanel.h"
 #include "EditorWidget/JointGraphEditor.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorNodePickingManager"
@@ -107,6 +108,30 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 	bIsOnNodePickingMode = true;
 
 	SetActiveRequest(InRequest.Pin());
+
+	return GetActiveRequest();
+}
+
+TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartQuickPicking()
+{
+	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = FJointEditorNodePickingManagerRequest::MakeInstance();
+
+	Request->NodePickingType = EJointNodePickingType::QuickPickSelection;
+	Request->TargetJointNodePointerNodePropertyHandle = nullptr;
+	Request->TargetJointNodePointerEditorNodePropertyHandle = nullptr;
+	Request->ModifiedJointNodes.Empty();
+	Request->TargetJointNodePointerStructures.Empty();
+
+	if (JointEditorToolkitPtr.IsValid())
+	{
+		JointEditorToolkitPtr.Pin()->PopulateQuickNodePickingToastMessage();
+
+		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
+	}
+
+	bIsOnNodePickingMode = true;
+
+	SetActiveRequest(Request);
 
 	return GetActiveRequest();
 }
@@ -219,6 +244,10 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 		break;
 	case EJointNodePickingType::FromJointNodePointerPtr:
 		PerformNodePicking_FromJointNodePointerPtr();
+		break;
+	case EJointNodePickingType::QuickPickSelection:
+		//Set to clipboard.
+		FPlatformApplicationMisc::ClipboardCopy(*Result.Pin()->Node->GetPathName());
 		break;
 	}
 

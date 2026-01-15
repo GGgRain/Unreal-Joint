@@ -38,6 +38,7 @@ void FJointEditorCommands::RegisterCommands()
 
 	UI_COMMAND(JumpToSelection, "Jump To Selection", "Jump To Selected Node. It will boost your development speed, especially when you want to go back to the original node after node picking.", EUserInterfaceActionType::Button, FInputChord(EKeys::SpaceBar));
 
+	UI_COMMAND(QuickPickSelection, "Quick Pick Selection", "Pick a reference to the target node directly, so you can paste it on the Joint Node Pointer.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control, EKeys::Q));
 	UI_COMMAND(EscapeNodePickingMode, "Escape Node Picking Mode", "Escape node picking mode without selecting any of the nodes.",  EUserInterfaceActionType::Button, FInputChord(EKeys::Escape));
 
 	//It's a bit mask with shift op - you can use + to combine multiple modifier keys.
@@ -49,8 +50,11 @@ void FJointEditorCommands::RegisterCommands()
 
 	UI_COMMAND(ToggleDebuggerExecution, "Toggle Debugger Execution", "Toggle the debugger's execution to prevent any exection halting by the breakpoints on any Joint.",  EUserInterfaceActionType::ToggleButton, FInputChord(EModifierKey::FromBools(1,1,1,0), EKeys::F11));
 	
-	UI_COMMAND(DissolveSubNodeIntoParentNode, "Dissolve Sub Node", "Dissolve this sub node with its parent node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift,EKeys::D));
-	UI_COMMAND(SolidifySubNodesFromParentNode, "Solidify Sub Nodes", "Solidify all the sub nodes from this node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::S));
+	UI_COMMAND(DissolveSubNodesIntoParentNode, "Dissolve Sub Nodes", "Dissolve the selected node and all its sub node with its parent node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift,EKeys::D));
+	UI_COMMAND(DissolveExactSubNodeIntoParentNode, "Dissolve Exact Sub Node Only", "Dissolve only the selected node with its parent node, without dissolving it's children.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift,EKeys::E));
+	UI_COMMAND(DissolveOnlySubNodesIntoParentNode, "Dissolve Only Sub Nodes, Not itself", "Dissolve all the sub nodes of this node, without dissolving itself.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift,EKeys::F));
+	
+	UI_COMMAND(SolidifySubNodesFromParentNode, "Solidify Sub Nodes", "Solidify all the sub nodes of this node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::S));
 	
 	UI_COMMAND(ShowIndividualVisibilityButtonForSimpleDisplayProperty, "Show Individual Visibility Button For Simple Display Property", "Show Individual Visibility Button For Simple Display Property.",  EUserInterfaceActionType::ToggleButton, FInputChord(EKeys::X));
 

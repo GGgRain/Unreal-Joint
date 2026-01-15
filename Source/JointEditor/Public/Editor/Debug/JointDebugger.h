@@ -241,17 +241,7 @@ public:
 public:
 
 	static void NotifyDebugDataChangedToGraphNodeWidget(UJointEdGraphNode* Changed, FJointNodeDebugData* Data);
-
-	/**
-	 * Get the debug data for the provided Joint manager
-	 * In Joint 2.3.0, This function now returns the original asset's debug data since now the debug data only available on the stored asset side, not on transient objects.
-	 * @param Manager The Manager that it will find debug data from.
-	 * @return found debug data. If not present, returns nullptr.
-	 *
-	 * Joint 2.10: this function is removed due to the subgraph support. Please use GetDebugDataForInstanceFromOriginalJointManager instead.
-	 */
-	//static TArray<FJointNodeDebugData>* GetDebugDataFromOriginalJointManager(UJointManager* Manager);
-
+	
 	/**
 	 * Get the debug data for the provided graph.
 	 * In Joint 2.3.0, This function now returns the original asset's debug data since now the debug data only available on the stored asset side, not on transient objects.

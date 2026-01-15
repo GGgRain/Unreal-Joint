@@ -62,6 +62,35 @@ FText UJointEdGraphNode_Connector::GetNodeTitle(ENodeTitleType::Type TitleType) 
 void UJointEdGraphNode_Connector::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	UpdatePins();
+	
+	if (!bEditedInDetailsPanel)
+	{
+		bEditedInDetailsPanel = true;
+	
+		if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(UJointEdGraphNode_Connector, ConnectorName))
+		{
+			//Make sure the paired connector has the same Guid.
+			if (Direction == EEdGraphPinDirection::EGPD_Input)
+			{
+				if (UJointEdGraphNode_Connector* OutputConnector = GetPairOutputConnector())
+				{
+					OutputConnector->ConnectorName = ConnectorName;
+				}
+			}
+			else
+			{
+				for (UJointEdGraphNode_Connector* InputConnector : GetPairInputConnector())
+				{
+					if (InputConnector)
+					{
+						InputConnector->ConnectorName = ConnectorName;
+					}
+				}
+			}
+		}
+	}
+	
+	bEditedInDetailsPanel = false;
 
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }

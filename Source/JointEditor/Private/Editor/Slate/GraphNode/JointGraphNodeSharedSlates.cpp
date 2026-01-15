@@ -25,6 +25,7 @@
 #include "JointEdUtils.h"
 #include "SGraphPanel.h"
 #include "SLevelOfDetailBranchNode.h"
+#include "SourceCodeNavigation.h"
 #include "VoltAnimationManager.h"
 #include "VoltDecl.h"
 #include "Async/Async.h"
@@ -49,6 +50,7 @@
 #include "Widgets/SInvalidationPanel.h"
 #include "Widgets/Images/SImage.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Module/Volt_ASM_InterpBackgroundColor.h"
 
 class UVolt_ASM_InterpWidgetTransform;
 
@@ -498,24 +500,30 @@ void SJointBuildPreset::PopulateSlate()
 		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
 		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
 		OutlineHoverColor.A = 0.1;
-
+		
+		
+		FTextBlockStyle PresetTextStyle = FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Black.h3");
+		PresetTextStyle.SetFontSize(Preset->PresetFontSize);
+		
 		this->ChildSlot
 		[
 			SAssignNew(PresetBorder, SJointOutlineBorder)
-			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.NormalColor(NormalColor)
-			.HoverColor(HoverColor)
-			.OutlineNormalColor(OutlineNormalColor)
-			.OutlineHoverColor(OutlineHoverColor)
-			.OnHovered(this, &SJointBuildPreset::OnHovered)
-			.OnUnhovered(this, &SJointBuildPreset::OnUnHovered)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
-			[
-				SAssignNew(PresetTextBlock, STextBlock)
-				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h1")
-				.Text(Preset->PresetInitial)
-			]
+					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.NormalColor(NormalColor)
+					.HoverColor(HoverColor)
+					.OutlineNormalColor(OutlineNormalColor)
+					.OutlineHoverColor(OutlineHoverColor)
+					.OnHovered(this, &SJointBuildPreset::OnHovered)
+					.OnUnhovered(this, &SJointBuildPreset::OnUnHovered)
+					.ContentPadding(FJointEditorStyle::Margin_Small)
+					//.RenderTransform(FTransform2D(Preset->PresetVisualScale, FVector2D(0.f,0.f)))
+					[
+						SAssignNew(PresetTextBlock, STextBlock)
+						.TextStyle(&PresetTextStyle)
+						.Text(Preset->PresetInitial)
+					]
+				
 		];
 	}
 }
@@ -539,6 +547,7 @@ void SJointBuildPreset::Update()
 			PresetBorder->OutlineHoverColor = OutlineHoverColor;
 
 			PresetBorder->PlayUnHoverAnimation();
+			
 		}
 		if (PresetTextBlock.IsValid())
 		{
@@ -600,7 +609,6 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 	OnHoveredDele = InArgs._OnHovered;
 	OnUnhoveredDele = InArgs._OnUnhovered;
 	
-	
 	SetCanTick(false);
 
 	SJointOutlineBorder::FArguments BorderArgs = InArgs._BorderArgs;
@@ -656,12 +664,12 @@ void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 
 	this->ChildSlot.DetachWidget();
 
-	TSharedRef<SJointOutlineBorder> BorderWidget = SNew(SJointOutlineBorder).Me() = BorderArgs;
+	BorderWidget = SNew(SJointOutlineBorder).Me() = BorderArgs;
 
 	this->ChildSlot
 	    .Padding(InArgs._ContentMargin)
 	[
-		BorderWidget
+		BorderWidget.ToSharedRef()
 	];	
 	
 }
@@ -758,6 +766,41 @@ void SJointNodePointerSlate::StopHighlightingNodeOnGraph()
 	}
 }
 
+void SJointNodePointerSlate::BlinkSelf()
+{
+	if (BorderWidget == nullptr || BorderWidget->InnerBorder == nullptr) return;
+	
+	VOLT_STOP_ANIM(BlinkAnimTrack);
+
+	//play blink animation with background color change
+	const UVoltAnimation* BlinkAnimation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+		.bShouldLoop(true)
+		.MaxLoopCount(1)
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(0.16)
+			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+			.AlphaBasedBlendExp(6)
+			.bUseStartColor(true)
+			.StartColor(BorderWidget->NormalColor)
+			.TargetColor(FLinearColor(1, 1, 1, 0.5)),
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(0.16)
+			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+			.AlphaBasedBlendExp(6)
+			.bUseStartColor(true)
+			.StartColor(FLinearColor(1, 1, 1, 0.5))
+			.TargetColor(BorderWidget->NormalColor)
+		)
+	);
+
+	BlinkAnimTrack = VOLT_PLAY_ANIM(BorderWidget->InnerBorder, BlinkAnimation);
+}
+
 void SJointNodePointerSlate::OnHovered()
 {
 	//Overlay Show
@@ -813,6 +856,8 @@ FReply SJointNodePointerSlate::OnPickupButtonPressed()
 				OnPostNodeChangedDele.ExecuteIfBound();
 				
 				GEditor->EndTransaction();
+				
+				BlinkSelf();
 			}
 		);
 	}
@@ -895,6 +940,8 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 	{
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
+	
+	BlinkSelf();
 
 	return FReply::Handled();
 }
@@ -943,7 +990,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 	{
 		Toolkit->PopulateNodePickerPastedToastMessage();
 	}
-
+	
 	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
 
 	OnPostNodeChangedDele.ExecuteIfBound();
@@ -951,6 +998,9 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 	GEditor->EndTransaction();
 	
 	StartHighlightingNodeOnGraph();
+	
+	BlinkSelf();
+
 
 	return FReply::Handled();
 }
@@ -984,6 +1034,8 @@ FReply SJointNodePointerSlate::OnClearButtonPressed()
 
 	StartHighlightingNodeOnGraph();
 
+	BlinkSelf();
+	
 	return FReply::Handled();
 }
 
@@ -1366,7 +1418,7 @@ void SJointNodeDescription::PopulateSlate()
 	this->ChildSlot.DetachWidget();
 
 	this->ChildSlot
-	    .Padding(FJointEditorStyle::Margin_Normal)
+		.Padding(FJointEditorStyle::Margin_Normal)
 	[
 		SNew(SJointOutlineBorder)
 		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
@@ -1437,17 +1489,36 @@ void SJointNodeDescription::PopulateSlate()
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 					.ContentPadding(FJointEditorStyle::Margin_Normal)
-					.IsEnabled(ClassToDescribe && ClassToDescribe->ClassGeneratedBy)
 					.ToolTipText(ClassToDescribe && ClassToDescribe->ClassGeneratedBy
-						             ? LOCTEXT("OpenEditorTooltip",
-						                       "Open Blueprint Editor for the node class asset.")
-						             : LOCTEXT("CantOpenEditorOnNative",
-						                       "Cannot open an editor for a native node class."))
+									 ? LOCTEXT("OpenEditorTooltip",
+											   "Open Blueprint Editor for the node class.")
+									 : LOCTEXT("OpenEditorIDETooltip",
+											   "Open IDE for the node C++ class."))
 					.OnClicked(this, &SJointNodeDescription::OnOpenEditorButtonPressed)
 					[
-						SNew(SImage)
-						.Visibility(EVisibility::SelfHitTestInvisible)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.OpenInExternalEditor"))
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.Padding(FJointEditorStyle::Margin_Small)
+						[
+							SNew(SImage)
+							.Visibility(EVisibility::SelfHitTestInvisible)
+							.Image(ClassToDescribe && ClassToDescribe->ClassGeneratedBy
+										 ? FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Blueprints")
+										 : FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.C++"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						.Padding(FJointEditorStyle::Margin_Small)
+						[
+							SNew(SImage)
+							.Visibility(EVisibility::SelfHitTestInvisible)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.OpenInExternalEditor"))
+						]
 					]
 				]
 			]
@@ -1480,11 +1551,17 @@ void SJointNodeDescription::PopulateSlate()
 
 FReply SJointNodeDescription::OnOpenEditorButtonPressed()
 {
-	if (ClassToDescribe && ClassToDescribe->ClassGeneratedBy)
+	if (ClassToDescribe)
 	{
-		if (UBlueprint* Blueprint = Cast<UBlueprint>(ClassToDescribe->ClassGeneratedBy))
+		if (ClassToDescribe->ClassGeneratedBy)
 		{
-			GEditor->EditObject(Blueprint);
+			if (UBlueprint* Blueprint = Cast<UBlueprint>(ClassToDescribe->ClassGeneratedBy))
+			{
+				GEditor->EditObject(Blueprint);
+			}
+		}else
+		{
+			FSourceCodeNavigation::NavigateToClass(ClassToDescribe);
 		}
 	}
 

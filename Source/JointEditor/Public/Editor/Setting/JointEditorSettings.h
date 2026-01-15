@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JointManagementTabs.h"
 #include "Engine/DeveloperSettings.h"
 #include "SharedType/JointEditorSharedTypes.h"
 #include "JointGraphConnectionDrawingPolicy.h"
@@ -63,10 +62,10 @@ namespace JointEditorDefaultSettings
 	static const FLinearColor NodeDepthAdditiveColor(DefaultNodeColor * 0.25);
 
 	//Context Text Editor
-	static const float ContextTextEditorFontSizeMultiplier(0.33);
+	static const float ContextTextEditorFontSizeMultiplier(0.35f);
 	static const float ContextTextAutoTextWrapAt(500);
 	static const FLinearColor ContextTextEditorBackgroundColor(FLinearColor(0.007, 0.007, 0.012, 1));
-
+	static const bool bOverrideDefaultStyleFromDataTable(true);
 
 	static const float ForwardSplineHorizontalDeltaRange(1000.0f);
 	static const float ForwardSplineVerticalDeltaRange(1000.0f);
@@ -194,6 +193,10 @@ public:
 	/** Determines the background color used in the context text editor for improved readability. */
 	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",meta = (DisplayName = "Context Text Editor Background Color"))
 	FLinearColor ContextTextEditorBackgroundColor = JointEditorDefaultSettings::ContextTextEditorBackgroundColor;
+	
+	/** Whether to override the default style from the data table. If false, it will use the default text style for Joint Editor.*/
+	UPROPERTY(Config, EditAnywhere, Category = "Context Text Editor",meta = (DisplayName = "Override Default Style From Data Table"))
+	bool bOverrideDefaultStyleFromDataTable = JointEditorDefaultSettings::bOverrideDefaultStyleFromDataTable;
 
 public:
 	/** The color used for rendering normal (default) pin connections between nodes. */

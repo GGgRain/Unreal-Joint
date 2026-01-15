@@ -7,6 +7,7 @@
 #include "JointActor.h"
 #include "JointEdGraph.h"
 #include "JointEdGraphNode_Fragment.h"
+#include "JointEdGraphNode_Reroute.h"
 #include "JointEdGraphSchema.h"
 #include "JointEditorToolkit.h"
 #include "Modules/ModuleManager.h"
@@ -972,6 +973,5 @@ void FJointEdUtils::GetGraphIconFor(const UEdGraph* Graph, FSlateBrush const*& I
 	if (IconOut == nullptr) IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
 	
 }
-
 
 #undef LOCTEXT_NAMESPACE

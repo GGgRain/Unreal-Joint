@@ -30,6 +30,7 @@
 #include "JointEdUtils.h"
 #include "PropertyCustomizationHelpers.h"
 #include "ScopedTransaction.h"
+#include "VoltDecl.h"
 
 #include "Styling/CoreStyle.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -42,6 +43,9 @@
 
 #include "Widgets/Notifications/SNotificationList.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Module/Volt_ASM_InterpColor.h"
+#include "Module/Volt_ASM_Sequence.h"
+#include "Module/Volt_ASM_InterpBackgroundColor.h"
 
 
 #define LOCTEXT_NAMESPACE "JointManagerEditor"
@@ -253,7 +257,7 @@ bool FJointEdGraphNodesCustomizationBase::CheckIfEveryNodeAllowPinDataControl(TA
 		if (!NodeInstanceObj) continue;
 
 		if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(NodeInstanceObj); NodeBase && !NodeBase->
-			GetAllowNodeInstancePinControl())
+			GetAllowEditingOfPinDataOnDetailsPanel())
 		{
 			bCanShowPinDataProperty = false;
 
@@ -1206,7 +1210,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 	             .WholeRowContent()
 	             .HAlign(HAlign_Fill)
 	[
-		SNew(SJointOutlineBorder)
+		SAssignNew(BorderWidget, SJointOutlineBorder)
 		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
@@ -1259,7 +1263,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 
 	FSimpleDelegate OnNodeResetTo = FSimpleDelegate::CreateSP(
 		this, &FJointNodePointerStructCustomization::OnNodeResetToDefault);
-
+	
 	NodeHandle.Get()->SetOnPropertyValueChanged(OnDataChanged);
 	NodeHandle.Get()->SetOnPropertyResetToDefault(OnNodeResetTo);
 }
@@ -1343,6 +1347,8 @@ FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 			}
 		}
 	}
+	
+	BlinkSelf();
 
 	return FReply::Handled();
 }
@@ -1371,6 +1377,8 @@ FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 		Toolkit->PopulateNodePickerCopyToastMessage();
 	}
 
+	BlinkSelf();
+	
 	return FReply::Handled();
 }
 
@@ -1510,6 +1518,8 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
 	}
+	
+	BlinkSelf();
 }
 
 void FJointNodePointerStructCustomization::OnNodeResetToDefault()
@@ -1659,6 +1669,41 @@ void FJointNodePointerStructCustomization::OnMouseUnhovered()
 			}
 		}
 	}
+}
+
+void FJointNodePointerStructCustomization::BlinkSelf()
+{
+	if (BorderWidget == nullptr) return; 
+	
+	VOLT_STOP_ANIM(BlinkAnimTrack);
+
+	//play blink animation with background color change
+	const UVoltAnimation* BlinkAnimation = VOLT_MAKE_ANIMATION()
+	(
+		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
+		.bShouldLoop(true)
+		.MaxLoopCount(1)
+		(
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(0.16)
+			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+			.AlphaBasedBlendExp(6)
+			.bUseStartColor(true)
+			.StartColor(BorderWidget->NormalColor)
+			.TargetColor(FLinearColor(1, 1, 1, 0.5)),
+			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.AlphaBasedDuration(0.16)
+			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
+			.AlphaBasedBlendExp(6)
+			.bUseStartColor(true)
+			.StartColor(FLinearColor(1, 1, 1, 0.5))
+			.TargetColor(BorderWidget->NormalColor)
+		)
+	);
+
+	BlinkAnimTrack = VOLT_PLAY_ANIM(BorderWidget->InnerBorder, BlinkAnimation);
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -258,10 +258,15 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 			.SetDisabledForeground(Color_Disabled)
 			.SetNormalPadding(FMargin(0))
 			.SetPressedPadding(FMargin(0));
-
+		
+		auto DownArrowImage = *GetUEEditorSlateStyleSet().GetBrush("Icons.ChevronDown");
+		
+		//rescale the down arrow image to 8 x 8
+		DownArrowImage.ImageSize = FVector2D(8.f, 8.f);
+		
 		FComboButtonStyle SimpleComboButton = FComboButtonStyle()
 			.SetButtonStyle(SimpleButton)
-			.SetDownArrowImage(*GetUEEditorSlateStyleSet().GetBrush("Icons.ChevronDown"))
+			.SetDownArrowImage(DownArrowImage)
 			.SetShadowOffset(FVector2D(0.0f, 0.0f))
 			.SetMenuBorderBrush(FSlateRoundedBoxBrush(Color_Hover, 0.0f, Color_Hover, 1.0f))
 			.SetContentPadding(0.f)

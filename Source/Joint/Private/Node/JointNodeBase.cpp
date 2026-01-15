@@ -326,17 +326,14 @@ const FJointEdPinConnectionResponse UJointNodeBase::CanAttachSubNodeOnThis_Imple
 }
 
 
+#if WITH_EDITOR
 
-bool UJointNodeBase::GetAllowNodeInstancePinControl()
+bool UJointNodeBase::GetAllowEditingOfPinDataOnDetailsPanel()
 {
-	
-#if WITH_EDITOR  
-	return EdNodeSetting.bAllowNodeInstancePinControl;  
-#else  
-	return false;  
-#endif
-	
+	return EdNodeSetting.bAllowEditingOfPinDataOnDetailsPanel;  
 }
+#endif
+
 
 void UJointNodeBase::OnCompileNode_Implementation(TArray<FJointEdLogMessage>& LogMessages)
 {
@@ -938,6 +935,9 @@ void UJointNodeBase::ReloadNode()
 	bIsNodePending = false;
 }
 
+
+/*
+
 void UJointNodeBase::NodeBeginPlay()
 {
 	//Don't play again if once played before.
@@ -995,10 +995,99 @@ void UJointNodeBase::MarkNodePending()
 		OnJointNodeMarkedAsPendingDelegate.Broadcast(this);
 	}
 	
-	GetHostingJointInstance()->NotifyNodePending(this);
+	GetHostingJointInstance()->NotifyNodeMarkedAsPending(this);
 
 	PostNodeMarkedAsPending();
 	
+	if (ParentNode) ParentNode->MarkNodePendingIfNeeded();
+}
+*/
+void UJointNodeBase::ProcessPreNodeBeginPlay()
+{
+	//Don't play again if once played before.
+	if (IsNodeBegunPlay()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+	
+	bIsNodeBegunPlay = true;
+
+	PreNodeBeginPlay();
+	
+	if (OnJointNodeBeginDelegate.IsBound())
+	{
+		OnJointNodeBeginDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeBeginPlay(this);
+	
+	Actor->RequestPostNodeBeginPlay(this);
+}
+
+
+void UJointNodeBase::ProcessPostNodeBeginPlay()
+{
+	PostNodeBeginPlay();
+}
+
+void UJointNodeBase::ProcessPreNodeEndPlay()
+{
+	//Don't end again if once ended before.
+	if (IsNodeEndedPlay()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+	
+	bIsNodeEndedPlay = true;
+
+	MarkNodePendingByForce();
+	
+	PreNodeEndPlay();
+	
+	//Broadcast OnJointNodeEndDelegate Action.
+	if (OnJointNodeEndDelegate.IsBound())
+	{
+		OnJointNodeEndDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeEndPlay(this);
+	
+	Actor->RequestPostNodeEndPlay(this);
+}
+
+void UJointNodeBase::ProcessPostNodeEndPlay()
+{
+	PostNodeEndPlay();
+}
+
+void UJointNodeBase::ProcessPreMarkNodePending()
+{
+	//Don't end again if once ended before.
+	if (IsNodePending()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+
+	bIsNodePending = true;
+
+	PreNodeMarkedAsPending();
+
+	//Broadcast OnJointNodeMarkedAsPendingDelegate Action.
+	if (OnJointNodeMarkedAsPendingDelegate.IsBound())
+	{
+		OnJointNodeMarkedAsPendingDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeMarkedAsPending(this);
+	
+	Actor->RequestPostMarkNodeAsPending(this);
+}
+
+void UJointNodeBase::ProcessPostMarkNodePending()
+{
 	if (ParentNode) ParentNode->MarkNodePendingIfNeeded();
 }
 

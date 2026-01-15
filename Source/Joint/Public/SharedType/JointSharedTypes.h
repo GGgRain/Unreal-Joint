@@ -33,9 +33,12 @@ UENUM(BlueprintType)
 enum class EJointActorExecutionType : uint8
 {
 	None UMETA(DisplayName="None"), // Default value - helps to abort any execution.
-	BeginPlay UMETA(DisplayName="Begin Play"),
-	Pending UMETA(DisplayName="Pending"),
-	EndPlay UMETA(DisplayName="End Play"),
+	PreBeginPlay UMETA(DisplayName="Pre Begin Play"),
+	PostBeginPlay UMETA(DisplayName="Post Begin Play"),
+	PrePending UMETA(DisplayName="Pre Pending"),
+	PostPending UMETA(DisplayName="Post Pending"),
+	PreEndPlay UMETA(DisplayName="Pre End Play"),
+	PostEndPlay UMETA(DisplayName="Post End Play"),
 };
 
 /**
@@ -376,16 +379,13 @@ public:
 	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
 
 public:
+	
 	/**
 	 * If true, The detail tab of the node will show off the editor node's pin data property.
-	 * You can control it to make a new pin, or control the existing pins.
-	 * This works best with the fragments that you created by yourself.
-	 *
-	 * You must check this true to use OnPinConnectionChanged(), OnUpdatePinData() properly.
+	 * Note: Joint 2.12: It no longer prohibits the execution of OnPinDataChanged, OnPinConnectionChanged delegates. It only controls whether to show the pin data property on the detail tab.
 	 */
-
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Pin")
-	bool bAllowNodeInstancePinControl = false;
+	bool bAllowEditingOfPinDataOnDetailsPanel = false;
 
 public:
 	void UpdateFromNode(const UJointNodeBase* Node);

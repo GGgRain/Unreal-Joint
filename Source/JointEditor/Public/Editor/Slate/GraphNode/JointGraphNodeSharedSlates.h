@@ -171,18 +171,20 @@ public:
 public:
 
 	void Construct(const FArguments& InArgs);
-
+	
 	void PopulateSlate();
 
 public:
 
 	void Update();
-	
+
 public:
 
 	class UJointBuildPreset* GetBuildTargetPreset();
 
 public:
+	
+	TSharedPtr<SBox> PresetBox;
 
 	TSharedPtr<SJointOutlineBorder> PresetBorder;
 
@@ -326,6 +328,18 @@ public:
 	void StartHighlightingNodeOnGraph();
 
 	void StopHighlightingNodeOnGraph();
+	
+public:
+	
+	void BlinkSelf();
+	
+public:
+	
+	TSharedPtr<SJointOutlineBorder> BorderWidget = nullptr;
+	
+public:
+	
+	FVoltAnimationTrack BlinkAnimTrack;
 	
 };
 

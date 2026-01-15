@@ -552,7 +552,7 @@ bool UJointDebugger::CheckWhetherToBreakExecution(AJointActor* Instance, const F
 	if (!UJointEditorSettings::Get()->bDebuggerEnabled) return false;
 	
 	// We only break on BeginPlay execution types currently. (not sure if anything else makes sense)
-	if (Element.ExecutionType != EJointActorExecutionType::BeginPlay) return false;
+	if (Element.ExecutionType != EJointActorExecutionType::PreBeginPlay) return false;
 	
 	UJointNodeBase* NodeToCheck = Element.TargetNode.Get();
 	UJointNodeBase* NodeToCheckInOriginalAsset = FJointEdUtils::GetOriginalJointNodeFromJointNode(NodeToCheck);

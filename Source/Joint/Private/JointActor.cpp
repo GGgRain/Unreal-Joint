@@ -34,12 +34,38 @@
 #define DEBUG_ShowJointEvent_DestroyJoint 0 && DEBUG_ShowJointEvent
 #define DEBUG_ShowJointEvent_PlayNextNode 1 && DEBUG_ShowJointEvent
 #define DEBUG_ShowJointEvent_SetPlayingNode 1 && DEBUG_ShowJointEvent
+#define DEBUG_ShowJointEvent_PopExecutionQueue 1 && DEBUG_ShowJointEvent
 
 
 #define DEBUG_ShowReplication 0 && WITH_EDITOR
 
 // Define to use new replication system introduced in UE 5.1.0.
 #define USE_NEW_REPLICATION !UE_VERSION_OLDER_THAN(5, 1, 0) && true
+
+#define JOINT_NET_CONTEXT(Object) \
+	(UKismetSystemLibrary::IsStandalone(Object) ? TEXT("Standalone") : \
+	UKismetSystemLibrary::IsDedicatedServer(Object) ? TEXT("Dedicated Server") : \
+	UKismetSystemLibrary::IsServer(Object) ? TEXT("Listen Server (Client_Host)") : \
+	TEXT("Client"))
+
+#define JOINT_DEBUG_LOG(Object, Color, Format, ...) \
+	do { \
+		if (UWorld* World = (Object)->GetWorld()) { \
+			if (APlayerController* PC = UGameplayStatics::GetPlayerController(World, 0)) { \
+				const FString Msg = FString::Printf( \
+					Format, \
+					JOINT_NET_CONTEXT(Object), \
+					*PC->GetName(), \
+					*(Object)->GetName(), \
+					##__VA_ARGS__ \
+				); \
+				if (GEngine) { \
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, Color, Msg); \
+				} \
+				UE_LOG(LogJoint, Log, TEXT("%s"), *Msg); \
+			} \
+		} \
+	} while (0)
 
 
 // Sets default values
@@ -78,46 +104,28 @@ void AJointActor::OnRep_JointManager(const UJointManager* PreviousJointManager)
 {
 #if DEBUG_ShowReplication
 	
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Orange, FString::Printf(
-				                                 TEXT("%s, %s, %s: OnRep_JointManager, Previous Joint Manager : %s, New Joint Manager : %s"),
-				                                 UKismetSystemLibrary::IsStandalone(this)
-					                                 ? *FString("Standalone")
-					                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-					                                 ? *FString("Dedicated Server")
-					                                 : UKismetSystemLibrary::IsServer(this)
-					                                 ? *FString("Listen Server (Client_Host)")
-					                                 : *FString("Client"),
-				                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-				                                 *this->GetName(),
-				                                 PreviousJointManager ? *PreviousJointManager->GetName() : *FString("None"),
-				                                 JointManager ? *JointManager->GetName() : *FString("None")));
-	}
+	JOINT_DEBUG_LOG(this, FColor::Orange, TEXT("%s, %s, %s: OnRep_JointManager, Previous Joint Manager : %s, New Joint Manager : %s"),
+	               PreviousJointManager ? *PreviousJointManager->GetName() : *FString("None"),
+	               JointManager ? *JointManager->GetName() : *FString("None"));
+
 #endif
 	RequestSetJointManager(JointManager);
 }
 
-void AJointActor::ProcessExecutionQueue()
+void AJointActor::ProcessExecutionQueue(bool bForceTakeHandle)
 {
+	// if bForceTakeHandle is true, we allow re-entrance into this function. This is useful when we want to process the queue right now even if it is already being processed.
+	// set bIsProcessingExecutionQueue to false if we have to force take the handle.
+	bIsProcessingExecutionQueue = !bForceTakeHandle && bIsProcessingExecutionQueue;
+	 
 	if ( bIsProcessingExecutionQueue ) return;
 	
 	bIsProcessingExecutionQueue = true;
 	
-	int32 MaxProcessCount = 2000; //To prevent infinite loop.
-	int32 ProcessedCount = 0;
-	
 	// check bIsProcessingExecutionQueue here to let it stop 
-	while (ExecutionQueue.Num() > 0 && bIsProcessingExecutionQueue && ProcessedCount < MaxProcessCount )
+	while (ExecutionQueue.Num() > 0 && bIsProcessingExecutionQueue )
 	{
 		PopExecutionQueue();
-		ProcessedCount++;
-	}
-	
-	if (ProcessedCount >= MaxProcessCount)
-	{
-		UE_LOG(LogJoint, Warning, TEXT("AJointActor::ProcessExecutionQueue: Reached maximum process count (%d). Possible infinite loop detected in execution queue processing."), MaxProcessCount);
 	}
 	
 	bIsProcessingExecutionQueue = false;
@@ -143,25 +151,76 @@ void AJointActor::PopExecutionQueue()
 	}
 #endif
 	
+#if DEBUG_ShowJointEvent_PopExecutionQueue
+	
+	FString LeftInQueue;
+	for (int32 i = 1; i < ExecutionQueue.Num(); i++)
+	{
+		LeftInQueue += FString::Printf(TEXT("%s ( %s ), "), 
+			ExecutionQueue[i].TargetNode.IsValid() ? *ExecutionQueue[i].TargetNode->GetName() : *FString("None"),
+			*UEnum::GetValueAsString(ExecutionQueue[i].ExecutionType));
+	}
+	
+	JOINT_DEBUG_LOG(this, FColor::Silver, TEXT("%s, %s, %s: PopExecutionQueue - Begin, Node : %s, Execution Type : %s, Left in Queue : ( %s )"),
+	               Item.TargetNode.IsValid() ? *Item.TargetNode->GetName() : *FString("None"),
+	               *UEnum::GetValueAsString(Item.ExecutionType),
+	               *LeftInQueue);
+
+#endif
+	
 	switch (Item.ExecutionType)
 	{
-	case EJointActorExecutionType::BeginPlay:
+	case EJointActorExecutionType::PreBeginPlay:
 		ExecutionQueue.RemoveAt(0);
-		ProcessNodeBeginPlay(Item.TargetNode.Get());
+		ProcessPreNodeBeginPlay(Item.TargetNode.Get());
 		break;
-	case EJointActorExecutionType::Pending:
+	case EJointActorExecutionType::PostBeginPlay:
 		ExecutionQueue.RemoveAt(0);
-		ProcessMarkNodeAsPending(Item.TargetNode.Get());
+		ProcessPostNodeBeginPlay(Item.TargetNode.Get());
 		break;
-	case EJointActorExecutionType::EndPlay:
+	case EJointActorExecutionType::PrePending:
 		ExecutionQueue.RemoveAt(0);
-		ProcessNodeEndPlay(Item.TargetNode.Get());
+		ProcessPreMarkNodeAsPending(Item.TargetNode.Get());
+		break;
+	case EJointActorExecutionType::PostPending:
+		ExecutionQueue.RemoveAt(0);
+		ProcessPostMarkNodeAsPending(Item.TargetNode.Get());
+		break;
+	case EJointActorExecutionType::PreEndPlay:
+		ExecutionQueue.RemoveAt(0);
+		ProcessPreNodeEndPlay(Item.TargetNode.Get());
+		break;
+	case EJointActorExecutionType::PostEndPlay:
+		ExecutionQueue.RemoveAt(0);
+		ProcessPostNodeEndPlay(Item.TargetNode.Get());
 		break;
 	case EJointActorExecutionType::None:
 		break;
 	}
 	
+#if DEBUG_ShowJointEvent_PopExecutionQueue
 	
+	FString LeftInQueue_After;
+	for (int32 i = 0; i < ExecutionQueue.Num(); i++)
+	{
+		LeftInQueue_After += FString::Printf(TEXT("%s ( %s ), "), 
+			ExecutionQueue[i].TargetNode.IsValid() ? *ExecutionQueue[i].TargetNode->GetName() : *FString("None"),
+			*UEnum::GetValueAsString(ExecutionQueue[i].ExecutionType));
+	}
+	
+	JOINT_DEBUG_LOG(this, FColor::Silver, TEXT("%s, %s, %s: PopExecutionQueue - End, Node : %s, Execution Type : %s, Left in Queue : ( %s )"),
+	               Item.TargetNode.IsValid() ? *Item.TargetNode->GetName() : *FString("None"),
+	               *UEnum::GetValueAsString(Item.ExecutionType),
+	               *LeftInQueue_After);
+	
+#endif
+	
+	
+}
+
+void AJointActor::ClearExecutionQueue()
+{
+	ExecutionQueue.Empty();
 }
 
 void AJointActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -248,27 +307,11 @@ void AJointActor::RequestSetJointManager_Implementation(UJointManager* NewJointM
 		// Cache nodes for networking here because the Joint Manager has changed.
 		// This is also necessary because sometimes we need to start replicating nodes before the Joint starts playing (especially for the participants)
 		CacheNodesForNetworking();
-		
 
 #if DEBUG_ShowJointEvent_SetJoint
 		
-		if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-		{
-			if (GEngine)
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(
-					                                 TEXT("%s, %s, %s: Joint Setted, Joint Manager : %s"),
-					                                 UKismetSystemLibrary::IsStandalone(this)
-						                                 ? *FString("Standalone")
-						                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-						                                 ? *FString("Dedicated Server")
-						                                 : UKismetSystemLibrary::IsServer(this)
-						                                 ? *FString("Listen Server (Client_Host)")
-						                                 : *FString("Client"),
-					                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-					                                 *this->GetName(),
-					                                 *JointManager->GetName()));
-		}
-		
+		JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: Joint Setted, Joint Manager : %s"),*JointManager->GetName());
+
 #endif
 	}
 }
@@ -281,19 +324,10 @@ UJointManager* AJointActor::GetJointManager()
 void AJointActor::OnNotifiedCurrentNodePending(UJointNodeBase* Node)
 {
 #if DEBUG_ShowNodeEvent_Pending
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(
-			                                 TEXT("%s, %s, %s: OnNotifiedCurrentNodePending, Node : %s "),
-			                                 UKismetSystemLibrary::IsStandalone(this)
-				                                 ? *FString("Standalone")
-				                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                 ? *FString("Dedicated Server")
-				                                 : UKismetSystemLibrary::IsServer(this)
-				                                 ? *FString("Listen Server (Client_Host)")
-				                                 : *FString("Client"),
-			                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                 *this->GetName(),
-			                                 Node ? *Node->GetName() : *FString()));
+	
+	JOINT_DEBUG_LOG(this, FColor::Yellow, TEXT("%s, %s, %s: OnNotifiedCurrentNodePending, Node : %s "),
+	               Node ? *Node->GetName() : *FString("None"));
+
 #endif
 
 	//On Client side, stop the current playing Joint.
@@ -348,32 +382,9 @@ void AJointActor::SetPlayingJointNode_Implementation(UJointNodeBase* NewPlayingJ
 	if (PlayingJointNode) RequestReloadNode(PlayingJointNode, true);
 
 #if DEBUG_ShowJointEvent_SetPlayingNode
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(
-			                                 TEXT("%s, %s, %s: Joint Set PlayingNode, Joint Manager : %s"),
-			                                 UKismetSystemLibrary::IsStandalone(this)
-				                                 ? *FString("Standalone")
-				                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                 ? *FString("Dedicated Server")
-				                                 : UKismetSystemLibrary::IsServer(this)
-				                                 ? *FString("Listen Server (Client_Host)")
-				                                 : *FString("Client"),
-			                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                 *this->GetName(),
-			                                 PlayingJointNode ? *PlayingJointNode->GetName() : *FString("Null")));
-
-
-	UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: Joint Set PlayingNode, Joint Manager : %s"),
-	                                                   UKismetSystemLibrary::IsStandalone(this)
-		                                                   ? *FString("Standalone")
-		                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-		                                                   ? *FString("Dedicated Server")
-		                                                   : UKismetSystemLibrary::IsServer(this)
-		                                                   ? *FString("Listen Server (Client_Host)")
-		                                                   : *FString("Client"),
-	                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-	                                                   *this->GetName(),
-	                                                   *JointManager->GetName()));
+	
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: Joint Set PlayingNode, New Node : %s"),
+	               PlayingJointNode ? *PlayingJointNode->GetName() : *FString("Null"));
 
 #endif
 }
@@ -428,31 +439,7 @@ void AJointActor::StartJoint_Implementation()
 
 #if DEBUG_ShowJointEvent_StartJoint
 
-	if (GEngine)
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(
-			                                 TEXT("%s, %s, %s: JointStarted, Joint Manager : %s"),
-			                                 UKismetSystemLibrary::IsStandalone(this)
-				                                 ? *FString("Standalone")
-				                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                 ? *FString("Dedicated Server")
-				                                 : UKismetSystemLibrary::IsServer(this)
-				                                 ? *FString("Listen Server (Client_Host)")
-				                                 : *FString("Client"),
-			                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                 *this->GetName(),
-			                                 *JointManager->GetName()));
-
-	UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: JointStarted, Joint Manager : %s"),
-	                                                   UKismetSystemLibrary::IsStandalone(this)
-		                                                   ? *FString("Standalone")
-		                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-		                                                   ? *FString("Dedicated Server")
-		                                                   : UKismetSystemLibrary::IsServer(this)
-		                                                   ? *FString("Listen Server (Client_Host)")
-		                                                   : *FString("Client"),
-	                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-	                                                   *this->GetName(),
-	                                                   *JointManager->GetName()));
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: JointStarted, Joint Manager : %s"), *JointManager->GetName());
 
 #endif
 
@@ -494,32 +481,8 @@ void AJointActor::EndJoint_Implementation()
 
 #if DEBUG_ShowJointEvent_EndJoint
 
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(TEXT("%s, %s, %s: JointEnded"),
-			                                                                             UKismetSystemLibrary::IsStandalone(this)
-				                                                                             ? *FString("Standalone")
-				                                                                             : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                                                             ? *FString("Dedicated Server")
-				                                                                             : UKismetSystemLibrary::IsServer(this)
-				                                                                             ? *FString("Listen Server (Client_Host)")
-				                                                                             : *FString("Client"),
-			                                                                             *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                                                             *this->GetName()));
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: JointEnded"));
 
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: JointEnded"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName()));
-	}
 #endif
 
 	ReleaseEventsFromPlayingJointNode();
@@ -561,33 +524,9 @@ void AJointActor::ForceEndAllKnownActiveNodes()
 void AJointActor::DiscardJoint_Implementation()
 {
 #if DEBUG_ShowJointEvent_DiscardJoint
+	
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: DiscardJoint"));
 
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(TEXT("%s, %s, %s: DiscardJoint"),
-			                                                                             UKismetSystemLibrary::IsStandalone(this)
-				                                                                             ? *FString("Standalone")
-				                                                                             : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                                                             ? *FString("Dedicated Server")
-				                                                                             : UKismetSystemLibrary::IsServer(this)
-				                                                                             ? *FString("Listen Server (Client_Host)")
-				                                                                             : *FString("Client"),
-			                                                                             (GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0)) ? *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName() : *FString(),
-			                                                                             *this->GetName()));
-
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: DiscardJoint"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   (GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0)) ? *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName() : *FString(),
-		                                                   *this->GetName()));
-	}
 #endif
 
 	ReleaseEventsFromPlayingJointNode();
@@ -599,33 +538,8 @@ void AJointActor::DiscardJoint_Implementation()
 void AJointActor::DestroyJoint_Implementation()
 {
 #if DEBUG_ShowJointEvent_DestroyJoint
-
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(TEXT("%s, %s, %s: DestroyJoint"),
-			                                                                             UKismetSystemLibrary::IsStandalone(this)
-				                                                                             ? *FString("Standalone")
-				                                                                             : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                                                             ? *FString("Dedicated Server")
-				                                                                             : UKismetSystemLibrary::IsServer(this)
-				                                                                             ? *FString("Listen Server (Client_Host)")
-				                                                                             : *FString("Client"),
-			                                                                             *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                                                             *this->GetName()));
-
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: DestroyJoint"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName()));
-	}
+	
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: DestroyJoint"));
 	
 #endif
 	
@@ -698,41 +612,19 @@ void AJointActor::PlayNextNode_Implementation()
 
 #if DEBUG_ShowJointEvent_PlayNextNode
 
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Emerald, FString::Printf(TEXT("%s, %s, %s: PlayNextNode"),
-			                                                                             UKismetSystemLibrary::IsStandalone(this)
-				                                                                             ? *FString("Standalone")
-				                                                                             : UKismetSystemLibrary::IsDedicatedServer(this)
-				                                                                             ? *FString("Dedicated Server")
-				                                                                             : UKismetSystemLibrary::IsServer(this)
-				                                                                             ? *FString("Listen Server (Client_Host)")
-				                                                                             : *FString("Client"),
-			                                                                             *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-			                                                                             *this->GetName()));
-
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: PlayNextNode"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName()));
-	}
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: PlayNextNode - Begin"));
 	
 #endif
 
-	EndPlayPlayingJointNode();
-
 	ReleaseEventsFromPlayingJointNode();
-
+	
+	EndPlayPlayingJointNode();
+	
 	//Select new node from the last node.
 	if (PlayingJointNode) SetPlayingJointNode(PickUpNewNodeFrom(PlayingJointNode->SelectNextNodes(this)));
+	
+	// Clear the execution queue to avoid any pending actions on the previous node.
+	//ClearExecutionQueue();
 
 	if (PlayingJointNode == nullptr)
 	{
@@ -743,6 +635,12 @@ void AJointActor::PlayNextNode_Implementation()
 
 		BeginPlayPlayingJointNode();	
 	}
+	
+#if DEBUG_ShowJointEvent_PlayNextNode
+	
+	JOINT_DEBUG_LOG(this, FColor::Emerald, TEXT("%s, %s, %s: PlayNextNode - End"));	
+	
+#endif
 }
 
 void AJointActor::ProcessPlayNextNode_Implementation()
@@ -752,35 +650,50 @@ void AJointActor::ProcessPlayNextNode_Implementation()
 
 void AJointActor::RequestNodeBeginPlay(UJointNodeBase* InNode)
 {
+	//check if the node can be begun play.
+	if (!InNode) return;
+	
+	if (InNode->IsNodeBegunPlay()) return;
+	
 	EnqueueExecutionElement(
 		FJointActorExecutionElement(
-			EJointActorExecutionType::BeginPlay,
+			EJointActorExecutionType::PreBeginPlay,
 			InNode)
 	);
 	
-	ProcessExecutionQueue();
+	ProcessExecutionQueue(false);
 }
 
 void AJointActor::RequestNodeEndPlay(UJointNodeBase* InNode)
 {
+	//check if the node can be ended play.
+	if (!InNode) return;
+	
+	if (!InNode->IsNodeBegunPlay() || InNode->IsNodeEndedPlay()) return;
+	
 	EnqueueExecutionElement(
 		FJointActorExecutionElement(
-			EJointActorExecutionType::EndPlay,
+			EJointActorExecutionType::PreEndPlay,
 			InNode)
 	);
 	
-	ProcessExecutionQueue();
+	ProcessExecutionQueue(false);
 }
 
 void AJointActor::RequestMarkNodeAsPending(UJointNodeBase* InNode)
 {
+	//check if the node can be ended play.
+	if (!InNode) return;
+	
+	if (!InNode->IsNodeBegunPlay() || InNode->IsNodePending()) return;
+	
 	EnqueueExecutionElement(
 		FJointActorExecutionElement(
-			EJointActorExecutionType::Pending,
+			EJointActorExecutionType::PrePending,
 			InNode)
 	);
 	
-	ProcessExecutionQueue();
+	ProcessExecutionQueue(false);
 }
 
 void AJointActor::RequestReloadNode(UJointNodeBase* InNode, const bool bPropagateToSubNodes, const bool bAllowPropagationEvenParentFails)
@@ -800,7 +713,40 @@ void AJointActor::RequestReloadNode(UJointNodeBase* InNode, const bool bPropagat
 	}
 }
 
-void AJointActor::ProcessNodeBeginPlay(UJointNodeBase* InNode)
+void AJointActor::RequestPostNodeBeginPlay(UJointNodeBase* InNode)
+{
+	EnqueueExecutionElement(
+		FJointActorExecutionElement(
+			EJointActorExecutionType::PostBeginPlay,
+			InNode)
+	);
+	
+	ProcessExecutionQueue(false);
+}
+
+void AJointActor::RequestPostNodeEndPlay(UJointNodeBase* InNode)
+{
+	EnqueueExecutionElement(
+		FJointActorExecutionElement(
+			EJointActorExecutionType::PostEndPlay,
+			InNode)
+	);
+	
+	ProcessExecutionQueue(false);
+}
+
+void AJointActor::RequestPostMarkNodeAsPending(UJointNodeBase* InNode)
+{
+	EnqueueExecutionElement(
+		FJointActorExecutionElement(
+			EJointActorExecutionType::PostPending,
+			InNode)
+	);
+	
+	ProcessExecutionQueue(false);
+}
+
+void AJointActor::ProcessPreNodeBeginPlay(UJointNodeBase* InNode)
 {
 	if (!InNode) return;
 
@@ -808,35 +754,8 @@ void AJointActor::ProcessNodeBeginPlay(UJointNodeBase* InNode)
 
 
 #if DEBUG_ShowNodeEvent_BeginPlay
-
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(
-				                                 TEXT("%s, %s, %s: RequestNodeBeginPlay, Node : %s"),
-				                                 UKismetSystemLibrary::IsStandalone(this)
-					                                 ? *FString("Standalone")
-					                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-					                                 ? *FString("Dedicated Server")
-					                                 : UKismetSystemLibrary::IsServer(this)
-					                                 ? *FString("Listen Server (Client_Host)")
-					                                 : *FString("Client"),
-				                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-				                                 *this->GetName(),
-				                                 *InNode->GetName()));
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: RequestNodeBeginPlay, Node : %s"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName(),
-		                                                   *InNode->GetName()));
-	}
+	
+	JOINT_DEBUG_LOG(this, FColor::Yellow, TEXT("%s, %s, %s: RequestNodeBeginPlay, Node : %s"), *InNode->GetName());
 
 #endif
 	
@@ -866,10 +785,19 @@ void AJointActor::ProcessNodeBeginPlay(UJointNodeBase* InNode)
 
 	KnownActiveNodes.Add(InNode);
 
-	InNode->NodeBeginPlay();
+	InNode->ProcessPreNodeBeginPlay();
 }
 
-void AJointActor::ProcessNodeEndPlay(UJointNodeBase* InNode)
+void AJointActor::ProcessPostNodeBeginPlay(UJointNodeBase* InNode)
+{
+	if (!InNode) return;
+
+	if (!InNode->IsNodeBegunPlay()) return;
+
+	InNode->ProcessPostNodeBeginPlay();
+}
+
+void AJointActor::ProcessPreNodeEndPlay(UJointNodeBase* InNode)
 {
 	if (!InNode) return;
 
@@ -877,39 +805,13 @@ void AJointActor::ProcessNodeEndPlay(UJointNodeBase* InNode)
 
 #if DEBUG_ShowNodeEvent_EndPlay
 	
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(
-				                                 TEXT("%s, %s, %s: RequestNodeEndPlay, Node : %s"),
-				                                 UKismetSystemLibrary::IsStandalone(this)
-					                                 ? *FString("Standalone")
-					                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-					                                 ? *FString("Dedicated Server")
-					                                 : UKismetSystemLibrary::IsServer(this)
-					                                 ? *FString("Listen Server (Client_Host)")
-					                                 : *FString("Client"),
-				                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-				                                 *this->GetName(), *InNode->GetName()));
-
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: RequestNodeEndPlay, Node : %s"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName(),
-		                                                   *InNode->GetName()));
-	}
+	JOINT_DEBUG_LOG(this, FColor::Yellow, TEXT("%s, %s, %s: RequestNodeEndPlay, Node : %s"), *InNode->GetName());
 		
 #endif
 
 	KnownActiveNodes.Remove(InNode);
 
-	InNode->NodeEndPlay();
+	InNode->ProcessPreNodeEndPlay();
 
 #if WITH_EDITOR
 
@@ -922,17 +824,24 @@ void AJointActor::ProcessNodeEndPlay(UJointNodeBase* InNode)
 #endif
 }
 
-void AJointActor::ProcessMarkNodeAsPending(UJointNodeBase* InNode)
+void AJointActor::ProcessPostNodeEndPlay(UJointNodeBase* InNode)
+{
+	if (!InNode) return;
+
+	if (!InNode->IsNodeEndedPlay()) return;
+
+	InNode->ProcessPostNodeEndPlay();
+}
+
+void AJointActor::ProcessPreMarkNodeAsPending(UJointNodeBase* InNode)
 {
 	if (!InNode) return;
 
 	if (InNode->IsNodePending()) return;
 
 #if WITH_EDITOR
-
-
-	if (FJointModule* Module = &FModuleManager::GetModuleChecked<FJointModule>("Joint"); Module != nullptr && Module->
-	                                                                                                          JointDebuggerNodePendingNotification.IsBound())
+	
+	if (FJointModule* Module = &FModuleManager::GetModuleChecked<FJointModule>("Joint"); Module != nullptr && Module->JointDebuggerNodePendingNotification.IsBound())
 	{
 		Module->JointDebuggerNodePendingNotification.ExecuteIfBound(this, InNode);
 	}
@@ -941,57 +850,37 @@ void AJointActor::ProcessMarkNodeAsPending(UJointNodeBase* InNode)
 
 #if DEBUG_ShowNodeEvent_Pending
 
-	if(GetWorld() && UGameplayStatics::GetPlayerController(GetWorld(), 0))
-	{
-		if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(
-				                                 TEXT("%s, %s, %s: RequestMarkNodeAsPending, Node : %s"),
-				                                 UKismetSystemLibrary::IsStandalone(this)
-					                                 ? *FString("Standalone")
-					                                 : UKismetSystemLibrary::IsDedicatedServer(this)
-					                                 ? *FString("Dedicated Server")
-					                                 : UKismetSystemLibrary::IsServer(this)
-					                                 ? *FString("Listen Server (Client_Host)")
-					                                 : *FString("Client"),
-				                                 *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-				                                 *this->GetName(), *InNode->GetName()));
+	JOINT_DEBUG_LOG(this, FColor::Yellow, TEXT("%s, %s, %s: RequestMarkNodeAsPending, Node : %s"), *InNode->GetName());
 
-		UE_LOG(LogJoint, Log, TEXT("%s"), *FString::Printf(TEXT("%s, %s, %s: RequestMarkNodeAsPending, Node : %s"),
-		                                                   UKismetSystemLibrary::IsStandalone(this)
-			                                                   ? *FString("Standalone")
-			                                                   : UKismetSystemLibrary::IsDedicatedServer(this)
-			                                                   ? *FString("Dedicated Server")
-			                                                   : UKismetSystemLibrary::IsServer(this)
-			                                                   ? *FString("Listen Server (Client_Host)")
-			                                                   : *FString("Client"),
-		                                                   *UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetName(),
-		                                                   *this->GetName(),
-		                                                   *InNode->GetName()));
-	}
-	
 #endif
 
-	InNode->MarkNodePending();
+	InNode->ProcessPreMarkNodePending();
+}
+
+void AJointActor::ProcessPostMarkNodeAsPending(UJointNodeBase* InNode)
+{
+	if (!InNode) return;
+
+	if (!InNode->IsNodePending()) return;
+
+	InNode->ProcessPostMarkNodePending();
 }
 
 void AJointActor::NotifyNodeBeginPlay(UJointNodeBase* InNode)
 {
 	if (IsValidLowLevel() && OnJointNodeBeginPlayDelegate.IsBound()) OnJointNodeBeginPlayDelegate.Broadcast(this, InNode);
-	//OnJointNodeBeginPlayDelegate.Broadcast(this, InNode);
 }
-
 
 void AJointActor::NotifyNodeEndPlay(UJointNodeBase* InNode)
 {
 	if (IsValidLowLevel() && OnJointNodeEndPlayDelegate.IsBound()) OnJointNodeEndPlayDelegate.Broadcast(this, InNode);
-	//OnJointNodeEndPlayDelegate.Broadcast(this, InNode);
 }
 
-void AJointActor::NotifyNodePending(UJointNodeBase* InNode)
+void AJointActor::NotifyNodeMarkedAsPending(UJointNodeBase* InNode)
 {
-	if (IsValidLowLevel() && OnJointNodePendingDelegate.IsBound()) OnJointNodePendingDelegate.Broadcast(this, InNode);
-	//OnJointNodePendingDelegate.Broadcast(this, InNode);
+	if (IsValidLowLevel() && OnJointNodeMarkedAsPendingDelegate.IsBound()) OnJointNodeMarkedAsPendingDelegate.Broadcast(this, InNode);
 }
+
 
 void AJointActor::BeginManagerFragments()
 {

@@ -37,6 +37,8 @@ public:
 	TSharedPtr<FUICommandInfo> JumpToSelection;
 
 public:
+	
+	TSharedPtr<FUICommandInfo> QuickPickSelection;
 	TSharedPtr<FUICommandInfo> EscapeNodePickingMode;
 
 public:
@@ -48,7 +50,10 @@ public:
 
 public:
 
-	TSharedPtr<FUICommandInfo> DissolveSubNodeIntoParentNode;
+	TSharedPtr<FUICommandInfo> DissolveSubNodesIntoParentNode;
+	TSharedPtr<FUICommandInfo> DissolveExactSubNodeIntoParentNode;
+	TSharedPtr<FUICommandInfo> DissolveOnlySubNodesIntoParentNode;
+
 	TSharedPtr<FUICommandInfo> SolidifySubNodesFromParentNode;
 
 public:
@@ -63,9 +68,10 @@ public:
 
 	TSharedPtr<FUICommandInfo> DeleteEntry;
 
-
 public:
+	
 	TSharedPtr<FUICommandList> PluginCommands;
+	
 };
 
 class JOINTEDITOR_API FJointDebuggerCommands : public TCommands<FJointDebuggerCommands>
