@@ -13,6 +13,7 @@
 
 //An asset class for storaging data and some functions.
 
+
 class AJointActor;
 class UDataTable;
 class UJointNodeBase;
@@ -48,6 +49,14 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	TArray<TObjectPtr<UJointNodeBase>> ManagerFragments;
 
+public:
+	
+	/**
+	 * Return the Joint actor that is hosting this Joint manager.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Joint")
+	AJointActor* GetHostingJointActor() const;
+	
 public:
 	/**
 	 * Find a node with a given node Guid.
@@ -296,6 +305,10 @@ public:
 	virtual bool IsSupportedForNetworking() const override;
 
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags);
+	
+public:
+	
+	virtual UWorld* GetWorld() const override;
 
 public:
 

@@ -23,9 +23,8 @@ public:
 
 	UPROPERTY(AdvancedDisplay, BlueprintReadWrite, VisibleAnywhere, Category = "Nodes")
 	TArray<TObjectPtr<UJointNodeBase>> NextNode;
-
+	
 public:
-
 
 	virtual TArray<UJointNodeBase*> SelectNextNodes_Implementation(AJointActor* InHostingJointInstance) override;
 

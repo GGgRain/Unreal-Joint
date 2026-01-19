@@ -3,6 +3,7 @@
 #include "VoltAnimationManager.h"
 #include "VoltAnimation.h"
 #include "VoltAnimationTrack.h"
+#include "VoltCoreLogChannels.h"
 #include "VoltInterface.h"
 #include "VoltModuleItem.h"
 #include "VoltVariableBase.h"
@@ -15,7 +16,7 @@ FVoltAnimationTrack UVoltAnimationManager::PlayAnimationFor(TScriptInterface<IVo
 	if (Animation == nullptr)
 	{
 #if WITH_EDITOR
-		UE_LOG(LogTemp, Error, TEXT("An empty animation has been requested to be played. Reverted the action."));
+		UE_LOG(LogVoltCore, Error, TEXT("An empty animation has been requested to be played. Reverted the action."));
 #endif
 		return FVoltAnimationTrack::NullTrack; // Revert of there is no animation to play.
 	}
@@ -23,7 +24,7 @@ FVoltAnimationTrack UVoltAnimationManager::PlayAnimationFor(TScriptInterface<IVo
 	if (TargetVoltInterface == nullptr || !TargetVoltInterface.GetInterface())
 	{
 #if WITH_EDITOR
-		UE_LOG(LogTemp, Error,
+		UE_LOG(LogVoltCore, Error,
 		       TEXT("An invalid slate interface has been requested to play an animation for. Reverted the action."));
 #endif
 		return FVoltAnimationTrack::NullTrack; // Revert of there is no animation to play.
@@ -323,7 +324,7 @@ void UVoltAnimationManager::ProcessModuleUpdate(float DeltaTime)
 			if (!Module)
 			{
 #if WITH_EDITOR
-				UE_LOG(LogTemp, Log, TEXT("There is a empty module slot in the %s. Please check out the asset.")
+				UE_LOG(LogVoltCore, Log, TEXT("There is a empty module slot in the %s. Please check out the asset.")
 					   , *AnimationTrack.TargetAnimation.Get()->GetPathName());
 #endif
 
@@ -333,7 +334,7 @@ void UVoltAnimationManager::ProcessModuleUpdate(float DeltaTime)
 			if (!AnimationTrack.TargetSlateInterface.GetObject())
 			{
 #if WITH_EDITOR
-				UE_LOG(LogTemp, Log,
+				UE_LOG(LogVoltCore, Log,
 					   TEXT(
 						   "VoltAnimationManager %s detected a slate interface that was not derived from UObject has been provided. Make sure to derive it from UObject."
 					   ), *this->GetName());

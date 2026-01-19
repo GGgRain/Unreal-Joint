@@ -16,6 +16,12 @@ UJointManager::UJointManager()
 	
 }
 
+AJointActor* UJointManager::GetHostingJointActor() const
+{
+	// cast outer to Joint actor
+	return GetOuter() ? Cast<AJointActor>(GetOuter()) : nullptr;
+}
+
 UJointNodeBase* UJointManager::FindBaseNodeWithGuid(FGuid NodeGuid) const
 {
 	for (UJointNodeBase* Node : Nodes)
@@ -506,6 +512,16 @@ bool UJointManager::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch
 	}
 
 	return WroteSomething;
+}
+
+UWorld* UJointManager::GetWorld() const
+{
+	if (GetOuter())
+	{
+		return GetOuter()->GetWorld();
+	}
+	
+	return nullptr;
 }
 
 void UJointManager::Serialize(FArchive& Ar)

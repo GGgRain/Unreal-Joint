@@ -7,6 +7,7 @@
 #include "IDetailCustomization.h"
 #include "JointEditorNodePickingManager.h"
 #include "JointEditorToolkit.h"
+#include "VoltAnimationTrack.h"
 
 
 class SJointNodePointerSlateFeatureButtons;
@@ -255,5 +256,17 @@ private:
 	TSharedPtr<SVerticalBox> BackgroundBox;
 	TSharedPtr<SHorizontalBox> ButtonBox;
 	TSharedPtr<SJointNodePointerSlateFeatureButtons> FeatureButtonsSlate;
+	
+public:
+	
+	void BlinkSelf();
+	
+public:
+	
+	TSharedPtr<class SJointOutlineBorder> BorderWidget = nullptr;
+	
+public:
+	
+	FVoltAnimationTrack BlinkAnimTrack;
 	
 };

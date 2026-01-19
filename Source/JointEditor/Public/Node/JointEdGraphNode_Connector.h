@@ -114,7 +114,11 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, Category="Connector Info")
 	TArray<TObjectPtr<UJointNodeBase>> ConnectedNodes;
-
+	
+private:
+	
+	UPROPERTY(Transient)
+	bool bEditedInDetailsPanel = false;
 
 public:
 

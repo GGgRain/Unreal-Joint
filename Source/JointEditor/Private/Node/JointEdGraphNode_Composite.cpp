@@ -443,10 +443,9 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
 {
 	
 	if (!BoundGraph) return;
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-
+	
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
+	if (!NodeSlate) return;
 
 	if (!NodeSlate->CenterWholeBox.IsValid()) return;
 	if (!NodeSlate->CenterContentBox.IsValid()) return;

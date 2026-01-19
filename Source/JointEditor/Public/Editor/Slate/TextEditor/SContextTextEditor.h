@@ -171,8 +171,10 @@ public:
 		SLATE_ATTRIBUTE(FText, Text)
 		/** Hint text that appears when there is no text in the text box */
 		SLATE_ATTRIBUTE(FText, HintText)
+		
 		/** Whether to use the styling feature.*/
 		SLATE_ATTRIBUTE(bool, bUseStyling)
+		
 		//Override target table assets that will be applied to the text when the bShouldOverrideTable is true 
 		SLATE_ATTRIBUTE(class UDataTable*, TableToEdit)
 
@@ -202,7 +204,7 @@ public:
 	TAttribute<FText> TextAttr;
 
 	TAttribute<FText> HintTextAttr;
-
+	
 	TAttribute<bool> bUseStylingAttr;
 	
 	TAttribute<UDataTable*> TextDataTableAttr;
@@ -212,9 +214,7 @@ public:
 	const FEditableTextBoxStyle* TextBoxStyle;
 	
 	FMargin BorderMargin;
-	
 	FMargin InnerBorderMargin;
-
 	FMargin TextblockMargin;
 	FMargin TextblockPadding;
 	
@@ -239,6 +239,8 @@ public:
 	TSharedPtr<SComboBox<TSharedPtr<FName>>> StyleComboBox;
 	
 	TSharedPtr<SContextTextStyler> ContextTextStyler;
+	
+	TSharedPtr<SBox> ContextTextStylerBox;
 
 public:
 	

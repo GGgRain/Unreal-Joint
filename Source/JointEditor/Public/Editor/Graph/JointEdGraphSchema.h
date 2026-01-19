@@ -136,6 +136,9 @@ public:
 	virtual void BreakNodeLinks(UEdGraphNode& TargetNode) const override;
 
 	virtual void ReconstructNode(UEdGraphNode& TargetNode, bool bIsBatchRequest=false) const override;
+	
+	virtual void OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const override;
+
 
 public:
 	

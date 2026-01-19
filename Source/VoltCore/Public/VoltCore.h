@@ -5,8 +5,6 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-
-
 class FVoltCoreModule : public IModuleInterface
 {
 public:

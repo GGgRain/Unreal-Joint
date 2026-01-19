@@ -19,6 +19,8 @@
 #include "SharedType/JointSharedTypes.h"
 #include "MovieSceneJointSection.generated.h"
 
+class UMovieSceneSequencePlayer;
+class UMovieSceneJointSection;
 class UMovieSceneJointTrack;
 class UJointManager;
 class USoundBase;
@@ -26,53 +28,11 @@ class USoundBase;
 UENUM()
 enum class EJointMovieSectionType : uint8
 {
-	Trigger = 0 UMETA(DisplayName="Trigger"),
-	Range = 1 UMETA(DisplayName="Range"),
+	BeginPlay = 0 UMETA(DisplayName="Begin Play"),
+	ActiveForRange = 1 UMETA(DisplayName="Active For Range"),
+	EndPlay = 2 UMETA(DisplayName="End Play"),
+	MarkAsPending = 3 UMETA(DisplayName="Mark As Pending"),
 };
-
-
-
-
-
-USTRUCT(BlueprintType)
-struct JOINT_API FJointMovieSectionPayload
-{
-	GENERATED_BODY()
-
-	FJointMovieSectionPayload() : SectionType(EJointMovieSectionType::Trigger) {}
-
-	friend bool operator==(const FJointMovieSectionPayload& A, const FJointMovieSectionPayload& B)
-	{
-		return A.SectionRange == B.SectionRange && A.JointNodePointer == B.JointNodePointer && A.SectionType == B.SectionType;
-	}
-
-	friend bool operator!=(const FJointMovieSectionPayload& A, const FJointMovieSectionPayload& B)
-	{
-		return !(A == B);
-	}
-	
-public:
-	
-	TRange<FFrameNumber> SectionRange;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Section Payload")
-	FJointNodePointer JointNodePointer;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Section Payload")
-	EJointMovieSectionType SectionType;
-
-public:
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Section Payload")
-	TWeakObjectPtr<const UMovieSceneJointTrack> ParentTrack = nullptr;
-
-public:
-
-	UPROPERTY()
-	mutable bool bEverTriggered = false;
-	
-};
-
 
 
 /**
@@ -146,5 +106,20 @@ public:
 	/* The section type. determine the behavior and look of the section. */
 	UPROPERTY(EditAnywhere, Category="Joint")
 	EJointMovieSectionType SectionType;
+	
+public:
+	
+#if WITH_EDITOR
+	
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	
+#endif
+	
+#if WITH_EDITORONLY_DATA
+	
+	/** Delegate called when a property is changed in the editor */
+	FSimpleDelegate OnPropertyChanged;
+	
+#endif
 	
 };

@@ -550,7 +550,7 @@ public:
 	 * Play highlighting animation on the node body.
 	 * @param bBlinkForOnce Whether to highlight the node once for once or play it endlessly until StopHighlightAnimation() executed.
 	 */
-	void PlayHighlightAnimation(bool bBlinkForOnce);
+	void PlayHighlightAnimation(bool bBlinkForOnce, float SpeedMultiplier = 1.0f);
 	
 	/**
 	 * Stop highlighting animation.
@@ -570,10 +570,16 @@ public:
 	 */
 	void PlaySelectionAnimation();
 
+	void PlayDebuggerAnimation(bool bIsPausedFrom, bool bIsBeginPlay, bool bIsPending, bool bIsEndPlay);
+	
 	void UpdateDebuggerAnimationByState();
+	
+	void SetNodeBodyToDebuggerExecutedImage();
 
 	
-	void PlayNodeBodyColorAnimation(const FLinearColor Color, const bool bBlink);
+	void PlayNodeBodyScaleAnimation(float Scale = 1.1f, float Duration = 0.3f);
+	
+	void PlayNodeBodyColorAnimation(const FLinearColor Color, const FLinearColor BlinkTargetColor, float Duration, const bool bBlink);
 	
 	void ResetNodeBodyColorAnimation();
 
@@ -592,6 +598,9 @@ public:
 	FVoltAnimationTrack NodeBodyTransformTrack;
 	
 	FVoltAnimationTrack NodeBodyColorTrack;
+	
+	FVoltAnimationTrack HighlightInnerBorderBackgroundColorTrack;
+
 
 public:
 	

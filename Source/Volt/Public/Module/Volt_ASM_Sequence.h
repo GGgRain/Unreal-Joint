@@ -10,8 +10,8 @@
 #include "Volt_ASM_Sequence.generated.h"
 
 /**
- * A module for the sequence animation playback.
- * This class is highly experimental.
+ * A module for the sequential playback of child modules.
+ * You can set whether to loop the playback and how many times to loop.
  */
 UCLASS(EditInlineNew, Blueprintable, BlueprintType)
 class VOLT_API UVolt_ASM_Sequence : public UVoltModuleItem, public IVoltSubModuleInterface
@@ -25,6 +25,7 @@ public:
 		_bShouldLoop(false)
 	{}
 	VOLT_MODULE_ARGUMENT( bool, bShouldLoop )
+	VOLT_MODULE_ARGUMENT( int, MaxLoopCount )
 	VOLT_SUBMODULE_CONTAINER_ARGUMENT(SubModules) //It let you use () operator on the declaration to grab other modules and pass them into the InArgs in Construct().
 	VOLT_MODULE_END_ARGS()
 
@@ -65,6 +66,17 @@ public:
 	 */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Module Property")
 	bool bShouldLoop = false;
+	
+	/**
+	 * Number of times to loop the playback. 0 means infinite looping.
+	 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Module Property")
+	int MaxLoopCount = 0;
+	
+private:
+	
+	UPROPERTY(Transient)
+	int CurrentLoopedCount = 0;
 	
 };
 

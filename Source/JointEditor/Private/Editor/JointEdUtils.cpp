@@ -7,6 +7,7 @@
 #include "JointActor.h"
 #include "JointEdGraph.h"
 #include "JointEdGraphNode_Fragment.h"
+#include "JointEdGraphNode_Reroute.h"
 #include "JointEdGraphSchema.h"
 #include "JointEditorToolkit.h"
 #include "Modules/ModuleManager.h"
@@ -15,6 +16,7 @@
 #include "JointEditorNameValidator.h"
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
+#include "JointFunctionLibrary.h"
 #include "SNodePanel.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Framework/Application/SlateApplication.h"
@@ -268,85 +270,34 @@ void FJointEdUtils::OpenEditorFor(UJointManager* Manager, FJointEditorToolkit*& 
 	}
 }
 
-FJointEditorToolkit* FJointEdUtils::FindOrOpenJointEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent)
+FJointEditorToolkit* FJointEdUtils::FindOrOpenJointEditorInstanceFor(UObject* ObjectRelatedTo, const bool& bOpenIfNotPresent, const bool& bFocusIfOpen)
 {
-	if (ObjectRelatedTo != nullptr)
+	if (!ObjectRelatedTo) return nullptr;
+	
+	UAssetEditorSubsystem* EditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+
+	auto FindOrOpenEditor = [&](UJointManager* Manager) -> FJointEditorToolkit*
 	{
-		if (UJointManager* Manager = Cast<UJointManager>(ObjectRelatedTo))
+		if (!Manager) return nullptr;
+		
+		if (IAssetEditorInstance* Editor = EditorSubsystem->FindEditorForAsset(Manager, bFocusIfOpen)) return static_cast<FJointEditorToolkit*>(Editor);
+
+		if (!bOpenIfNotPresent) return nullptr;
+		
+		EditorSubsystem->OpenEditorForAsset(Manager);
+
+		if (IAssetEditorInstance* Editor = EditorSubsystem->FindEditorForAsset(Manager, bFocusIfOpen))
 		{
-			IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
-			                                                FindEditorForAsset(Manager, true);
-
-			if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
-
-			if (bOpenIfNotPresent)
-			{
-				GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Manager);
-
-				EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(Manager, true);
-
-				return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
-			}
+			return static_cast<FJointEditorToolkit*>(Editor);
 		}
 
-		if (UJointEdGraph* Graph = Cast<UJointEdGraph>(ObjectRelatedTo))
-		{
-			if (UJointManager* FoundManager = Graph->GetJointManager())
-			{
-				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
-				                                                FindEditorForAsset(FoundManager, true);
+		return nullptr;
+	};
 
-				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
-
-				if (bOpenIfNotPresent)
-				{
-					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
-
-					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
-
-					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
-				}
-			}
-		}
-		if (UJointEdGraphNode* EdNode = Cast<UJointEdGraphNode>(ObjectRelatedTo))
-		{
-			if (UJointManager* FoundManager = EdNode->GetJointManager())
-			{
-				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
-				                                                FindEditorForAsset(FoundManager, true);
-
-				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
-
-				if (bOpenIfNotPresent)
-				{
-					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
-
-					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
-
-					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
-				}
-			}
-		}
-		if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(ObjectRelatedTo))
-		{
-			if (UJointManager* FoundManager = NodeBase->GetJointManager())
-			{
-				IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->
-				                                                FindEditorForAsset(FoundManager, true);
-
-				if (EditorInstance != nullptr) return static_cast<FJointEditorToolkit*>(EditorInstance);
-
-				if (bOpenIfNotPresent)
-				{
-					GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(FoundManager);
-
-					EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(FoundManager, true);
-
-					return (EditorInstance != nullptr) ? static_cast<FJointEditorToolkit*>(EditorInstance) : nullptr;
-				}
-			}
-		}
-	}
+	if (UJointManager* Manager = Cast<UJointManager>(ObjectRelatedTo)) return FindOrOpenEditor(Manager);
+	if (UJointEdGraph* Graph = Cast<UJointEdGraph>(ObjectRelatedTo)) return FindOrOpenEditor(Graph->GetJointManager());
+	if (UJointEdGraphNode* EdNode = Cast<UJointEdGraphNode>(ObjectRelatedTo)) return FindOrOpenEditor(EdNode->GetJointManager());
+	if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(ObjectRelatedTo)) return FindOrOpenEditor(NodeBase->GetJointManager());
 
 	return nullptr;
 }
@@ -457,6 +408,90 @@ UJointEdGraphNode* FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(UJoi
 	return nullptr;
 }
 
+UJointEdGraphNode* FJointEdUtils::GetCorrespondingJointGraphNodeForJointManager(UJointEdGraphNode* SearchFor, UJointManager* TargetManager)
+{
+	if (SearchFor != nullptr && SearchFor->GetJointManager() != nullptr)
+	{
+		UJointManager* SearchForJointManager = SearchFor->GetJointManager();
+		
+		//if this node is from the target Joint manager : return itself.
+		if (SearchForJointManager == TargetManager) return SearchFor;
+		
+		if (!TargetManager || !TargetManager->JointGraph) return nullptr;
+		
+		// UJointEdGraph::Nodes contains only the base node on the graph, not sub nodes. So we need to iterate through all nodes to find the matching one - but in a clever way.
+		// Cache the hierarchy paths of the provided node of the attachment tree, from base node to itself.
+			
+		TArray<FString> InJointNodeHierarchyPaths;
+			
+		UJointEdGraphNode* CurrentNode = SearchFor;
+		while (CurrentNode != nullptr)
+		{
+			FString CurrentPath = CurrentNode->GetPathName(SearchForJointManager);
+			InJointNodeHierarchyPaths.Insert(CurrentPath, 0); // insert at the beginning to maintain order from base to leaf.
+
+			CurrentNode = CurrentNode->ParentNode;
+		}
+			
+			
+		// Now iterate the actual nodes on the asset side and 'step-in' for the hierarchy path stages to find the matching node.
+			
+		TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(TargetManager);
+			
+		TArray<UEdGraphNode*> CandidateNodes;
+			
+		// initialize candidate nodes from all graphs' base nodes.
+		for (UJointEdGraph* Graph : AllGraphs)
+		{
+			if (Graph == nullptr) continue;
+
+			for (TObjectPtr<class UEdGraphNode> EdGraphNode : Graph->Nodes)
+			{
+				CandidateNodes.Add(EdGraphNode);
+			}
+		}
+			
+		while (CandidateNodes.Num() > 0 && InJointNodeHierarchyPaths.Num() > 0)
+		{
+			FString TargetPath = InJointNodeHierarchyPaths[0];
+			InJointNodeHierarchyPaths.RemoveAt(0);
+				
+			TArray<UEdGraphNode*> NextCandidateNodes;
+			for (UEdGraphNode* Node : CandidateNodes)
+			{
+				if (Node == nullptr) continue;
+
+				FString NodePath = Node->GetPathName(TargetManager);
+
+				if (NodePath == TargetPath)
+				{
+					// if this is the last stage, we found it.
+					if (InJointNodeHierarchyPaths.Num() == 0)
+					{
+						return Cast<UJointEdGraphNode>(Node);
+					}
+					else
+					{
+						// step into children for next stage.
+						if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(Node))
+						{
+							TArray<TObjectPtr<UJointEdGraphNode>> SubNodes = CastedNode->SubNodes;
+								
+							for (TObjectPtr<UJointEdGraphNode> JointEdGraphNode : SubNodes)
+							{
+								NextCandidateNodes.Add(JointEdGraphNode);
+							}
+						}
+					}
+				}
+			}
+			
+			CandidateNodes = NextCandidateNodes;
+		}
+	}
+	
+	return nullptr;
+}
 
 UJointManager* FJointEdUtils::GetOriginalJointManager(UJointManager* InJointManager)
 {
@@ -483,43 +518,17 @@ UJointManager* FJointEdUtils::GetOriginalJointManager(UJointManager* InJointMana
 
 UJointEdGraphNode* FJointEdUtils::GetOriginalJointGraphNodeFromJointGraphNode(UJointEdGraphNode* InJointEdGraphNode)
 {
-	if (InJointEdGraphNode != nullptr && InJointEdGraphNode->GetJointManager() != nullptr)
-	{
-		UJointManager* OriginalAssetJointManager = FJointEdUtils::GetOriginalJointManager(InJointEdGraphNode->GetJointManager());
-		
-		//if this node is from the original Joint manager : return itself.
-		if (InJointEdGraphNode->GetJointManager() == OriginalAssetJointManager) return InJointEdGraphNode;
+	
+	//use GetCorrespondingJointGraphNodeForJointManager
+	
+	return GetCorrespondingJointGraphNodeForJointManager(InJointEdGraphNode, FJointEdUtils::GetOriginalJointManager(InJointEdGraphNode->GetJointManager()));
+}
 
-		if (OriginalAssetJointManager && OriginalAssetJointManager->JointGraph)
-		{
-			TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(OriginalAssetJointManager);
-
-			for (UJointEdGraph*& AllGraph : AllGraphs)
-			{
-				if (AllGraph == nullptr) continue;
-				
-				// All cached nodes, including sub nodes.
-				TSet<TWeakObjectPtr<UJointEdGraphNode>> Nodes = AllGraph->GetCachedJointGraphNodes(true);
-
-				for (TWeakObjectPtr<UJointEdGraphNode> EdGraphNode : Nodes)
-				{
-					if (!EdGraphNode.IsValid() || EdGraphNode.Get() == nullptr) continue;
-
-					FString Path1 = InJointEdGraphNode->GetPathName(InJointEdGraphNode->GetJointManager());
-					FString Path2 = EdGraphNode->GetPathName(EdGraphNode->GetJointManager());
-
-					//const FString& Path1 = InJointEdGraphNode->GetPathName(InJointEdGraphNode->GetJointManager());
-					//const FString& Path2 = CastedJointEdGraphNode->GetPathName(CastedJointEdGraphNode->GetJointManager());
-
-					if (Path1 != Path2) continue;
-
-					return EdGraphNode.Get();
-				}	
-			}
-		}
-	}
-
-	return nullptr;
+UJointNodeBase* FJointEdUtils::GetOriginalJointNodeFromJointNode(UJointNodeBase* InJointNode)
+{
+	// use GetCorrespondingJointNodeForJointManager
+	
+	return UJointFunctionLibrary::GetCorrespondingJointNodeForJointManager(InJointNode, FJointEdUtils::GetOriginalJointManager(InJointNode->GetJointManager()));
 }
 
 void FJointEdUtils::MarkNodesAsModifiedAndValidateName(
@@ -964,6 +973,5 @@ void FJointEdUtils::GetGraphIconFor(const UEdGraph* Graph, FSlateBrush const*& I
 	if (IconOut == nullptr) IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
 	
 }
-
 
 #undef LOCTEXT_NAMESPACE

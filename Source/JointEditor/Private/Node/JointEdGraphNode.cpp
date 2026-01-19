@@ -652,18 +652,6 @@ void UJointEdGraphNode::NotifyGraphNodePropertyChangeToGraphNodeWidget(
 	}
 }
 
-void UJointEdGraphNode::NotifyDebugDataChangedToGraphNodeWidget(const FJointNodeDebugData* Data)
-{
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate.IsValid())
-	{
-		NodeSlate->OnDebugDataChanged(Data);
-	}
-}
-
 void UJointEdGraphNode::ReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class)
 {
 	if (CanReplaceNodeClass() && CanPerformReplaceNodeClassTo(Class))
@@ -1272,7 +1260,8 @@ void UJointEdGraphNode::ReallocatePins()
 
 void UJointEdGraphNode::AddSubNode(UJointEdGraphNode* SubNode, const bool bIsUpdateLocked)
 {
-	if (!CheckCanAddSubNode(SubNode)) return;
+	FPinConnectionResponse DummyResponse;
+	if (!CheckCanAddSubNode(SubNode, DummyResponse)) return;
 
 	//MUST NOT HAVE any transaction to avoid the modify() being called multiple time.
 	//This can result an unexpected action. (ex, calling AddSubNode() right after the RemoveSubNode() -> Can corrupt the caches badly.)
@@ -1345,7 +1334,8 @@ void UJointEdGraphNode::RearrangeSubNodeAt(UJointEdGraphNode* SubNode, int32 Dro
 	//This can result an unexpected action. (ex, calling AddSubNode() right after the RemoveSubNode() -> Can corrupt the caches badly.)
 	//Make only the highest execution for the action (ex, SGraphNode, Toolkit) can modify the objects.
 
-	if (!SubNodes.IsValidIndex(DropIndex)) return;
+	//Validate the drop index. if the index is invalid, revert the action but if the index is equal to the num, it means add to last, so allow it.
+	if (!SubNodes.IsValidIndex(DropIndex) && DropIndex != SubNodes.Num() ) return;
 
 	if (!SubNodes.Contains(SubNode)) return;
 
@@ -1510,25 +1500,73 @@ FVector2D UJointEdGraphNode::GetNodeMinimumSize() const
 }
 
 
-bool UJointEdGraphNode::CheckCanAddSubNode(UJointEdGraphNode* SubNode)
+bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPinConnectionResponse& OutResponse, bool bAllowNotification) const
 {
+	
+	TArray<UJointEdGraphNode*> SubNodesOfSubNodes = SubNode->GetAllSubNodesInHierarchy();
+
+	//Joint 2.12: Now check with the sub nodes 
+	//not the parent nodes - can't figure out how to make it work without breaking the existing logic.
+	
+	// upward check
+	
 	FPinConnectionResponse ThisNodeResponse = CanAttachSubNodeOnThis(SubNode);
+	
+	if (ThisNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE)
+	{
+		TArray<UJointEdGraphNode*> ParentNodes = GetAllParentNodesInHierarchy();
+		
+		for (UJointEdGraphNode* ParentNodeOfThis : ParentNodes)
+		{
+			FPinConnectionResponse ParentNodeResponse = ParentNodeOfThis->CanAttachSubNodeOnThis(SubNode);
+			
+			if (ParentNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
+			{
+				ThisNodeResponse = ParentNodeResponse;
+				break;
+			}
+		}
+	}
+	
+	// downward check
+	
 	FPinConnectionResponse SubNodeResponse = SubNode->CanAttachThisAtParentNode(this);
+	
+	if (SubNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_MAKE)
+	{
+		for (UJointEdGraphNode* SubNodeOfSubNode : SubNodesOfSubNodes)
+		{
+			FPinConnectionResponse SubNodeOfSubNodeResponse = SubNodeOfSubNode->CanAttachThisAtParentNode(this);
+			
+			if (SubNodeOfSubNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
+			{
+				SubNodeResponse = SubNodeOfSubNodeResponse;
+				break;
+			}
+		}
+	}
+	
 
 	if (!CanHaveSubNode())
 	{
-		FText NotificationText = FText::FromString("Sub node add action has been denied");
-		FText NotificationSubText = FText::FromString(this->GetName() + ":\n\n" + "Can not have sub nodes.");
+		if (bAllowNotification)
+		{
+			FText NotificationText = FText::FromString("Sub node add action has been denied");
+			FText NotificationSubText = FText::FromString(this->GetName() + ":\n\n" + "Can not have sub nodes.");
 
-		FNotificationInfo NotificationInfo(NotificationText);
-		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
+			FNotificationInfo NotificationInfo(NotificationText);
+			NotificationInfo.SubText = NotificationSubText;
+			NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+			NotificationInfo.bFireAndForget = true;
+			NotificationInfo.FadeInDuration = 0.3f;
+			NotificationInfo.FadeOutDuration = 1.3f;
+			NotificationInfo.ExpireDuration = 4.5f;
 
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		}
+		
+		
+		OutResponse = FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, FText::FromString("This node can not have sub nodes."));
 
 
 		return false;
@@ -1537,43 +1575,54 @@ bool UJointEdGraphNode::CheckCanAddSubNode(UJointEdGraphNode* SubNode)
 
 	if (ThisNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
 	{
-		FText NotificationText = FText::FromString("Sub node add action has been denied");
-		FText NotificationSubText = FText::FromString(this->GetName() + ":\n\n" + ThisNodeResponse.Message.ToString());
+		if (bAllowNotification)
+		{
+			FText NotificationText = FText::FromString("Sub node add action has been denied");
+			FText NotificationSubText = FText::FromString(this->GetName() + ":\n\n" + ThisNodeResponse.Message.ToString());
 
-		FNotificationInfo NotificationInfo(NotificationText);
-		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
+			FNotificationInfo NotificationInfo(NotificationText);
+			NotificationInfo.SubText = NotificationSubText;
+			NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+			NotificationInfo.bFireAndForget = true;
+			NotificationInfo.FadeInDuration = 0.3f;
+			NotificationInfo.FadeOutDuration = 1.3f;
+			NotificationInfo.ExpireDuration = 4.5f;
 
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		}
 
+		OutResponse = ThisNodeResponse;
 
 		return false;
 	}
 
 	if (SubNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
 	{
-		//DisallowMessage
-		FText NotificationText = FText::FromString("Sub node add action has been denied");
-		FText NotificationSubText =
-			FText::FromString(SubNode->GetName() + ":\n\n" + SubNodeResponse.Message.ToString());
+		if (bAllowNotification)
+		{
+			//DisallowMessage
+			FText NotificationText = FText::FromString("Sub node add action has been denied");
+			FText NotificationSubText =
+				FText::FromString(SubNode->GetName() + ":\n\n" + SubNodeResponse.Message.ToString());
 
-		FNotificationInfo NotificationInfo(NotificationText);
-		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
+			FNotificationInfo NotificationInfo(NotificationText);
+			NotificationInfo.SubText = NotificationSubText;
+			NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+			NotificationInfo.bFireAndForget = true;
+			NotificationInfo.FadeInDuration = 0.3f;
+			NotificationInfo.FadeOutDuration = 1.3f;
+			NotificationInfo.ExpireDuration = 4.5f;
 
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		}
 
+		OutResponse = SubNodeResponse;
 
 		return false;
 	}
+	
+	OutResponse = ThisNodeResponse; // Since it has ALLOW response.
+	
 	return true;
 }
 
@@ -2013,7 +2062,12 @@ void UJointEdGraphNode::CompileNode(const TSharedPtr<class IMessageLogListing>& 
 		}
 	}
 
-	if (GetGraphNodeSlate().IsValid()) GetGraphNodeSlate().Pin()->UpdateErrorInfo();
+	if (!GetGraphNodeSlate().IsValid()) return;
+	
+	TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
+	
+	NodeSlate->UpdateErrorInfo();
+	
 }
 
 void UJointEdGraphNode::OnCompileNode()

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Actor.h"
+#include "SharedType/JointSharedTypes.h"
 #include "JointActor.generated.h"
 
 
@@ -36,14 +37,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointBaseNodePlayed, AJointActor
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJointEnded, AJointActor*, JointInstance);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointNodeRequestBeginPlay, AJointActor*, JointInstance,
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FJointNodePlaybackEvent, AJointActor*, JointInstance,
                                              UJointNodeBase*, Node);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointNodeRequestEndPlay, AJointActor*, JointInstance,
-                                             UJointNodeBase*, Node);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJointNodeRequestPending, AJointActor*, JointInstance,
-											 UJointNodeBase*, Node);
 
 
 class UJointSubsystem;
@@ -119,6 +114,44 @@ private:
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "Joint")
 	TObjectPtr<UJointNodeBase> PlayingJointNode;
+	
+public:
+
+	/**
+	 * The execution queue for the Joint playback. It holds the list of nodes with corresponding execution data (begin play, end play, pending, etc).
+	 * Joint 2.12.0 : now it uses queues for the playback. 
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint", Transient)
+	TArray<FJointActorExecutionElement> ExecutionQueue;
+	
+	
+private:
+	
+	/**
+	 * ExecutionQueue handling - uses a semaphore to prevent re-entrance
+	 * Simple bool flag will do the job here (no multi-threading expected)
+	 */
+	UPROPERTY(Transient)
+	bool bIsProcessingExecutionQueue = false;
+	
+private:
+	
+	/**
+	 * Pop the queued execution elements and process it until the queue gets empty.
+	 */
+	void ProcessExecutionQueue(bool bForceTakeHandle = false);
+	
+	void EnqueueExecutionElement(const FJointActorExecutionElement& NewElement);
+	
+	/**
+	 * Pop the queued execution elements and process it.
+	 */
+	void PopExecutionQueue();
+	
+	/**
+	 * Clear the execution queue.
+	 */
+	void ClearExecutionQueue();
 
 public:
 
@@ -354,14 +387,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Joint Playback")
 	void RequestReloadNode(UJointNodeBase* InNode, const bool bPropagateToSubNodes = true, const bool bAllowPropagationEvenParentFails = true);
 
+private:
+	
+	void RequestPostNodeBeginPlay(UJointNodeBase* InNode);
+	void RequestPostNodeEndPlay(UJointNodeBase* InNode);
+	void RequestPostMarkNodeAsPending(UJointNodeBase* InNode);
+	
+	friend UJointNodeBase;
+
+public:
+	
+	void ProcessPreNodeBeginPlay(UJointNodeBase* InNode);
+	void ProcessPreNodeEndPlay(UJointNodeBase* InNode);
+	void ProcessPreMarkNodeAsPending(UJointNodeBase* InNode);
+
+	void ProcessPostNodeBeginPlay(UJointNodeBase* InNode);
+	void ProcessPostNodeEndPlay(UJointNodeBase* InNode);
+	void ProcessPostMarkNodeAsPending(UJointNodeBase* InNode);
+	
 public:
 
 	void NotifyNodeBeginPlay(UJointNodeBase* InNode);
-
 	void NotifyNodeEndPlay(UJointNodeBase* InNode);
+	void NotifyNodeMarkedAsPending(UJointNodeBase* InNode);
 	
-	void NotifyNodePending(UJointNodeBase* InNode);
-
 public:
 	void BeginManagerFragments();
 
@@ -399,7 +448,7 @@ private:
 	 * @param InNode Node to provide and check whether the debugger must start debugging with.
 	 * @return Whether the debugging has been started.
 	 */
-	bool CheckDebuggerCanProceed(UJointNodeBase* InNode);
+	bool CheckDebuggerWantToHaltExecution(const FJointActorExecutionElement& NodeExecutionElement);
 
 #endif
 
@@ -415,18 +464,14 @@ public:
 	FOnJointBaseNodePlayed OnJointBaseNodePlayedDelegate;
 
 public:
-	//Executed when a new node has been requested to be begin played.
-	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Begin Played")
-	FOnJointNodeRequestBeginPlay OnJointNodeBeginPlayDelegate;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Pre Begin Played")
+	FJointNodePlaybackEvent OnJointNodeBeginPlayDelegate;
 
-	//Executed when a new node has been requested to be end played.
-	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node End Play")
-	FOnJointNodeRequestEndPlay OnJointNodeEndPlayDelegate;
+	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Pre End Play")
+	FJointNodePlaybackEvent OnJointNodeEndPlayDelegate;
 
-	//Executed when a new node has been requested to be pending.
-	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Pending")
-	FOnJointNodeRequestPending OnJointNodePendingDelegate;
-
-public:
+	UPROPERTY(BlueprintAssignable, Category = "Joint", DisplayName="On Joint Node Pre Marked As Pending")
+	FJointNodePlaybackEvent OnJointNodeMarkedAsPendingDelegate;
 	
 };

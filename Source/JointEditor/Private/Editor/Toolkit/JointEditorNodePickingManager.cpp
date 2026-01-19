@@ -10,6 +10,7 @@
 #include "SGraphPanel.h"
 #include "EditorWidget/JointGraphEditor.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorNodePickingManager"
@@ -111,6 +112,30 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 	return GetActiveRequest();
 }
 
+TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::StartQuickPicking()
+{
+	TSharedPtr<FJointEditorNodePickingManagerRequest> Request = FJointEditorNodePickingManagerRequest::MakeInstance();
+
+	Request->NodePickingType = EJointNodePickingType::QuickPickSelection;
+	Request->TargetJointNodePointerNodePropertyHandle = nullptr;
+	Request->TargetJointNodePointerEditorNodePropertyHandle = nullptr;
+	Request->ModifiedJointNodes.Empty();
+	Request->TargetJointNodePointerStructures.Empty();
+
+	if (JointEditorToolkitPtr.IsValid())
+	{
+		JointEditorToolkitPtr.Pin()->PopulateQuickNodePickingToastMessage();
+
+		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
+	}
+
+	bIsOnNodePickingMode = true;
+
+	SetActiveRequest(Request);
+
+	return GetActiveRequest();
+}
+
 void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNodePickingManagerResult> Result)
 {
 	if (!IsInNodePicking()) return;
@@ -192,17 +217,17 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 				FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
 				FText FailedNotificationSubText = FText::Format(
 					LOCTEXT("NotJointNodeInstanceType_Sub",
-					        "Current structure can not have the provided node type. Pointer reseted.\n\nAllowd Types: {0}\nDisallowed Types: {1}"),
+					        "Current structure can not accept the provided node instance.\nAllowed Types: {0}\nDisallowed Types: {1}"),
 					FText::FromString(AllowedTypeStr),
 					FText::FromString(DisallowedTypeStr));
 
 				FNotificationInfo NotificationInfo(FailedNotificationText);
 				NotificationInfo.SubText = FailedNotificationSubText;
-				NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+				NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
 				NotificationInfo.bFireAndForget = true;
 				NotificationInfo.FadeInDuration = 0.2f;
 				NotificationInfo.FadeOutDuration = 0.2f;
-				NotificationInfo.ExpireDuration = 2.5f;
+				NotificationInfo.ExpireDuration = 4.5f;
 				NotificationInfo.bUseThrobber = true;
 
 				FSlateNotificationManager::Get().AddNotification(NotificationInfo);
@@ -219,6 +244,10 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 		break;
 	case EJointNodePickingType::FromJointNodePointerPtr:
 		PerformNodePicking_FromJointNodePointerPtr();
+		break;
+	case EJointNodePickingType::QuickPickSelection:
+		//Set to clipboard.
+		FPlatformApplicationMisc::ClipboardCopy(*Result.Pin()->Node->GetPathName());
 		break;
 	}
 

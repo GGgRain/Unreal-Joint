@@ -59,10 +59,13 @@ void SContextTextStyler::PopulateWidget()
 				SAssignNew(TextStyleComboBox, SComboBox<TSharedPtr<FName>>)
 				.ComboBoxStyle(FJointEditorStyle::Get(), "JointUI.ComboBox.Round")
 				.OptionsSource(&TextStyleRows)
-				.ContentPadding(FJointEditorStyle::Margin_Normal)
+				.ContentPadding(FJointEditorStyle::Margin_Small)
 				.OnSelectionChanged(this, &SContextTextStyler::OnActiveTextStyleRowNameChanged)
 				.OnGenerateWidget(this, &SContextTextStyler::OnGenerateTextStyleRowComboEntry)
 				.InitiallySelectedItem(ActiveTextStyleRowName)
+				.ToolTipText(LOCTEXT("ActiveTextStyleToolTip"
+							 , "It displays the row, which is referenced from the text style table, that is currently using on text editing."
+							 "\nYou can style any section of the text by selecting a part of the text and pressing SHIFT + CONTROL + S(Style)."))
 				[
 					SAssignNew(ActiveTextStyleRowBorder, SBorder)
 					.Visibility(EVisibility::HitTestInvisible)
@@ -80,15 +83,15 @@ void SContextTextStyler::PopulateWidget()
 		.AutoWidth()
 		[
 			SAssignNew(PipetteButton, SJointOutlineButton)
-			.ContentPadding(FJointEditorStyle::Margin_Normal)
+			.ContentPadding(FJointEditorStyle::Margin_Small)
 			.ToolTipText(LOCTEXT("StylePipetteToolTip","click the text to grab the style of the text after activating it."))
 			.OnPressed(this, &SContextTextStyler::OnStylePipettePressed)
 			.NormalColor(FLinearColor::Transparent)
 			.OutlineNormalColor(FLinearColor::Transparent)
 			[
 				SNew(SBox)
-				.WidthOverride(16)
-				.HeightOverride(16)
+				.WidthOverride(12)
+				.HeightOverride(12)
 				.Visibility(EVisibility::HitTestInvisible)
 				[
 					SNew(SImage)
@@ -136,7 +139,7 @@ void SContextTextStyler::OnActiveTextStyleRowNameChanged(TSharedPtr<FName> Name,
 TSharedRef<SWidget> SContextTextStyler::OnGenerateTextStyleRowComboEntry(TSharedPtr<FName> SourceEntry)
 {
 	return SNew(STextBlock)
-		.Margin(FMargin(4))
+		.Margin(FJointEditorStyle::Margin_Small)
 		.Text(FText::FromName(*SourceEntry))
 		.TextStyle(GetTextStyleFor(*SourceEntry));
 }
@@ -233,6 +236,17 @@ void SContextTextStyler::StoreTextStyleData()
 		const TSharedPtr<FName> DefaultRow = MakeShareable(new FName(TEXT("Default")));
 
 		TextStyleRows.Add(DefaultRow);
+	}
+}
+
+void SContextTextStyler::FeedDefaultStyleToTargetRichEditableTextBox()
+{
+	if (TargetRichEditableTextBox.IsValid())
+	{
+		if ( UJointEditorSettings::Get() && UJointEditorSettings::Get()->bOverrideDefaultStyleFromDataTable)
+		{
+			TargetRichEditableTextBox.Pin()->SetTextStyle(GetDefaultTextStyle());
+		}
 	}
 }
 

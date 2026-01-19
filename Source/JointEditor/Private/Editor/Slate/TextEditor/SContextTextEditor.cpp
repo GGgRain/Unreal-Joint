@@ -32,6 +32,8 @@ BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SContextTextEditor::Construct(const FArguments& InArgs)
 {
+	SetCanTick(false);
+
 	//default font for the editor.
 	TextStyles.AvailableFontFamilies.Emplace(MakeShareable(new FTextStyles::FFontFamily(
 		LOCTEXT("RobotoFontFamily", "Roboto")
@@ -46,25 +48,17 @@ void SContextTextEditor::Construct(const FArguments& InArgs)
 	FontColor = FLinearColor::Black;
 
 	TextAttr = InArgs._Text;
-
 	HintTextAttr = InArgs._HintText;
-
 	TextDataTableAttr = InArgs._TableToEdit;
-
 	bUseStylingAttr = InArgs._bUseStyling;
-
 	TextBoxStyle = InArgs._TextBoxStyle;
-
 	InnerBorderMargin = InArgs._InnerBorderMargin;
-	
 	BorderMargin = InArgs._BorderMargin;
-
 	TextblockPadding = InArgs._TextblockPadding;
 	TextblockMargin = InArgs._TextblockMargin;
 	
 	bUseCustomBorderColor = InArgs._bUseCustomBorderColor;
 	CustomBorderColor = InArgs._CustomBorderColor;
-	
 	
 	OnTextChanged = InArgs._OnTextChanged;
 	OnTextCommitted = InArgs._OnTextCommitted;
@@ -73,103 +67,23 @@ void SContextTextEditor::Construct(const FArguments& InArgs)
 	SyntaxHighlighterMarshaller = FRichTextSyntaxHighlighterTextLayoutMarshaller::Create(
 		FRichTextSyntaxHighlighterTextLayoutMarshaller::FSyntaxTextStyle()
 	);
-
-	SetCanTick(false);
-
+	
 	RebuildWidget();
-}
-
-void SContextTextEditor::AssignContextTextStyler()
-{
-	const TAttribute<EVisibility> VisibilityAttr = TAttribute<EVisibility>::CreateLambda([this]
-		{
-			return bUseStylingAttr.Get() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
-		});
-
-	SAssignNew(ContextTextStyler, SContextTextStyler)
-	.Visibility(VisibilityAttr)
-	.TextStyleTable(TextDataTableAttr)
-	.TargetRichEditableTextBox(ContextTextBox);
-}
-
-void SContextTextEditor::AssignContextTextBox()
-{
-	const TAttribute<float> ContextTextAutoTextWrapAt_Attr = TAttribute<float>::CreateLambda([this]
-		{
-			return (UJointEditorSettings::Get())
-				       ? UJointEditorSettings::Get()->ContextTextAutoTextWrapAt
-				       : 100;
-		});
-
-	SAssignNew(ContextTextBox, SMultiLineEditableTextBox)
-	.Visibility(EVisibility::SelfHitTestInvisible)
-	//.Font(ContextTextStyler->GetDefaultTextStyle()->Font)
-	.Text(TextAttr)
-	.HintText(HintTextAttr)
-	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
-	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
-	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
-	.OnCursorMoved(this, &SContextTextEditor::HandleRichEditableTextCursorMoved)
-	.OnKeyDownHandler(this, &SContextTextEditor::HandleContextTextBoxKeyDown)
-	.Marshaller(RichTextMarshaller)
-#if UE_VERSION_OLDER_THAN(5,1,0)
-	.TextStyle(ContextTextStyler->GetDefaultTextStyle())
-#endif
-	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
-	.AutoWrapText(false)
-	.Margin(TextblockMargin)
-	.LineHeightPercentage(1.1f)
-	.BackgroundColor(FLinearColor(0, 0, 0, 0))
-	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
-	.Padding(TextblockPadding)
-	.Style(TextBoxStyle)
-	.ToolTipText(LOCTEXT("TextEditor_ToolTip",
-	                     "It displays the final visual result of this node's context text."));
-}
-
-
-void SContextTextEditor::AssignRawContextTextBox()
-{
-	const TAttribute<float> ContextTextAutoTextWrapAt_Attr = TAttribute<float>::CreateLambda([this]
-		{
-			return (UJointEditorSettings::Get())
-				       ? UJointEditorSettings::Get()->ContextTextAutoTextWrapAt
-				       : 100;
-		});
-
-	SAssignNew(RawContextTextBox, SMultiLineEditableTextBox)
-	.Visibility(EVisibility::SelfHitTestInvisible)
-	//.Font(SContextTextStyler::GetSystemDefaultTextStyle()->Font)
-	.Text(TextAttr)
-	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
-	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
-	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
-	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
-	.AutoWrapText(false)
-	.Margin(TextblockMargin)
-	.LineHeightPercentage(1.1f)
-	.BackgroundColor(FLinearColor(0, 0, 0, 0))
-	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
-	.Style(TextBoxStyle)
-	.Padding(TextblockPadding)
-	.ToolTipText(LOCTEXT("RawEditor_ToolTip"
-	                     , "It displays the raw text without the styles and decoration. You can hide this editor on the visibility section on the toolbar."));
-	//+ SRichTextBlock::WidgetDecorator( TEXT("RichText.WidgetDecorator"), this, &SRichTextTest::OnCreateWidgetDecoratorWidget )
 }
 
 void SContextTextEditor::RebuildWidget()
 {
 	TAttribute<FSlateColor> EditorBackgroundColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
-		{
-			const FLinearColor& Color = bUseCustomBorderColor ? CustomBorderColor : (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
+	{
+		const FLinearColor& Color = bUseCustomBorderColor ? CustomBorderColor : (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
 
-			return (IsReadOnly() ? Color + FLinearColor(0.03,0.03,0.03,0.03) : Color); 
-		});
+		return (IsReadOnly() ? Color + FLinearColor(0.03,0.03,0.03,0.03) : Color); 
+	});
 	
 	const TAttribute<EVisibility> VisibilityAttr = TAttribute<EVisibility>::CreateLambda([this]
-		{
-			return bUseStylingAttr.Get() ? EVisibility::Visible : EVisibility::Collapsed;
-		});
+	{
+		return bUseStylingAttr.Get() ? EVisibility::Visible : EVisibility::Collapsed;
+	});
 
 	TAttribute<EVisibility> MainBoxVisibility_Attr = TAttribute<EVisibility>::CreateLambda([this]
 	{
@@ -177,9 +91,9 @@ void SContextTextEditor::RebuildWidget()
 	});
 	
 	TAttribute<EVisibility> RawBoxVisibility_Attr = TAttribute<EVisibility>::CreateLambda([this]
-		{
-			return RawContextEditorSwapVisibility == ERawContextEditorSwapVisibility::Show_RawContextTextEditor ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
-		});
+	{
+		return RawContextEditorSwapVisibility == ERawContextEditorSwapVisibility::Show_RawContextTextEditor ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
+	});
 	
 
 	ContextTextStyler.Reset();
@@ -187,16 +101,19 @@ void SContextTextEditor::RebuildWidget()
 	RawContextTextBox.Reset();
 
 	AssignContextTextStyler();
-
+	// make it rebuild its text style
 	ContextTextStyler->RebuildTextStyle();
-
+	// Rebuild the marshaller to use the new text style set
 	RebuildMarshaller();
-
+	
+	
 	AssignContextTextBox();
-
 	AssignRawContextTextBox();
 
+	// Link the text styler to the text box
 	ContextTextStyler->SetTargetRichEditableTextBox(ContextTextBox);
+	ContextTextStyler->FeedDefaultStyleToTargetRichEditableTextBox();
+	
 
 	OnCursorMoved.BindSP(ContextTextStyler.ToSharedRef(), &SContextTextStyler::OnTextBoxCursorMoved);
 
@@ -220,14 +137,18 @@ void SContextTextEditor::RebuildWidget()
 				.VAlign(VAlign_Center)
 				.AutoWidth()
 				[
-					ContextTextStyler.ToSharedRef()
+					SAssignNew(ContextTextStylerBox, SBox)
+					.Visibility(VisibilityAttr)
+					[
+						ContextTextStyler.ToSharedRef()
+					]
 				]
 				+ SHorizontalBox::Slot()
 				.HAlign(HAlign_Left)
 				.VAlign(VAlign_Center)
 				[
 					SAssignNew(SwapButton, SJointOutlineButton)
-					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.ContentPadding(FJointEditorStyle::Margin_Small)
 					.HAlign(HAlign_Center)
 					.Visibility(VisibilityAttr)
 					.NormalColor(FLinearColor::Transparent)
@@ -237,8 +158,8 @@ void SContextTextEditor::RebuildWidget()
 					[
 						SNew(SBox)
 						.Visibility(EVisibility::HitTestInvisible)
-						.WidthOverride(16)
-						.HeightOverride(16)
+						.WidthOverride(12)
+						.HeightOverride(12)
 						[
 							SNew(SImage)
 							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Find"))
@@ -283,30 +204,76 @@ void SContextTextEditor::RebuildWidget()
 
 }
 
+void SContextTextEditor::AssignContextTextStyler()
+{
+	const TAttribute<EVisibility> VisibilityAttr = TAttribute<EVisibility>::CreateLambda([this]
+	{
+		return bUseStylingAttr.Get() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
+	});
+
+	SAssignNew(ContextTextStyler, SContextTextStyler)
+	.Visibility(VisibilityAttr)
+	.TextStyleTable(TextDataTableAttr)
+	.TargetRichEditableTextBox(ContextTextBox);
+}
+
+
+void SContextTextEditor::AssignContextTextBox()
+{
+	const TAttribute<float> ContextTextAutoTextWrapAt_Attr = TAttribute<float>::CreateLambda([this]
+	{
+		return (UJointEditorSettings::Get())
+			       ? UJointEditorSettings::Get()->ContextTextAutoTextWrapAt
+			       : 100;
+	});
+
+	SAssignNew(ContextTextBox, SMultiLineEditableTextBox)
+	.Visibility(EVisibility::SelfHitTestInvisible)
+	.Text(TextAttr)
+	.HintText(HintTextAttr)
+	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
+	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
+	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
+	.OnCursorMoved(this, &SContextTextEditor::HandleRichEditableTextCursorMoved)
+	.OnKeyDownHandler(this, &SContextTextEditor::HandleContextTextBoxKeyDown)
+	.Marshaller(RichTextMarshaller)
+	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
+	.AutoWrapText(false)
+	.Margin(TextblockMargin)
+	.LineHeightPercentage(1.1f)
+	.BackgroundColor(FLinearColor(0, 0, 0, 0))
+	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.Padding(TextblockPadding)
+	.Style(TextBoxStyle)
+	.ToolTipText(LOCTEXT("TextEditor_ToolTip", "It displays the final visual result of this node's context text."));
+}
+
+void SContextTextEditor::AssignRawContextTextBox()
+{
+	const TAttribute<float> ContextTextAutoTextWrapAt_Attr = TAttribute<float>::CreateLambda([this]
+	{
+		return UJointEditorSettings::Get() ? UJointEditorSettings::Get()->ContextTextAutoTextWrapAt : 100;
+	});
+
+	SAssignNew(RawContextTextBox, SMultiLineEditableTextBox)
+	.Visibility(EVisibility::SelfHitTestInvisible)
+	.Text(TextAttr)
+	.IsReadOnly(this, &SContextTextEditor::IsReadOnly)
+	.OnTextChanged(this, &SContextTextEditor::HandleRichEditableTextChanged)
+	.OnTextCommitted(this, &SContextTextEditor::HandleRichEditableTextCommitted)
+	.WrapTextAt(ContextTextAutoTextWrapAt_Attr)
+	.AutoWrapText(false)
+	.Margin(TextblockMargin)
+	.LineHeightPercentage(1.1f)
+	.BackgroundColor(FLinearColor(0, 0, 0, 0))
+	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.Style(TextBoxStyle)
+	.Padding(TextblockPadding)
+	.ToolTipText(LOCTEXT("RawEditor_ToolTip", "It displays the raw text without the styles and decoration. You can hide this editor on the visibility section on the toolbar."));
+}
+
 
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
-
-
-void SContextTextEditor::RefreshEditorDetailWidget()
-{
-	FPropertyEditorModule& PropertyEditorModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(
-		"PropertyEditor");
-	PropertyEditorModule.NotifyCustomizationModuleChanged();
-}
-
-FReply SContextTextEditor::HandleContextTextBoxKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent)
-{
-	if (!ContextTextStyler) return FReply::Unhandled();
-
-	if (KeyEvent.IsControlDown() && KeyEvent.IsShiftDown() && KeyEvent.GetKey() == EKeys::S)
-	{
-		ContextTextStyler->ApplyCurrentStyleToSelectedText();
-
-		return FReply::Handled();
-	}
-
-	return FReply::Unhandled();
-}
 
 
 void SContextTextEditor::RebuildMarshaller()
@@ -322,8 +289,7 @@ void SContextTextEditor::RebuildMarshaller()
 		, &FJointEditorStyle::Get()
 	);
 
-	StaticCastSharedPtr<FRichTextLayoutMarshaller>(RichTextMarshaller)->SetDecoratorStyleSet(
-		ContextTextStyler->TextStyleSetInstance.Get());
+	StaticCastSharedPtr<FRichTextLayoutMarshaller>(RichTextMarshaller)->SetDecoratorStyleSet(ContextTextStyler->TextStyleSetInstance.Get());
 }
 
 FReply SContextTextEditor::OnSwapButtonDown()
@@ -367,6 +333,14 @@ FReply SContextTextEditor::OnSwapButtonDown()
 	return FReply::Handled();
 }
 
+
+void SContextTextEditor::RefreshEditorDetailWidget()
+{
+	FPropertyEditorModule& PropertyEditorModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(
+		"PropertyEditor");
+	PropertyEditorModule.NotifyCustomizationModuleChanged();
+}
+
 void SContextTextEditor::HandleRichEditableTextChanged(const FText& Text)
 {
 	if (IsReadOnly()) return;
@@ -389,18 +363,21 @@ void SContextTextEditor::HandleRichEditableTextCursorMoved(const FTextLocation& 
 	if (IsReadOnly()) return;
 
 	SAdvancedMultiLineTextEditor::HandleRichEditableTextCursorMoved(NewCursorPosition);
+	
+}
 
-	/*
-	if(!ContextTextStyler.IsValid()) return;
+FReply SContextTextEditor::HandleContextTextBoxKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent)
+{
+	if (!ContextTextStyler) return FReply::Unhandled();
 
-	TSharedPtr<const IRun> Run = ContextTextBox->GetRunUnderCursor();
-	if (Run.IsValid())
+	if (KeyEvent.IsControlDown() && KeyEvent.IsShiftDown() && KeyEvent.GetKey() == EKeys::S)
 	{
-		TextStyles.ExplodeRunInfo(Run->GetRunInfo(), ActiveFontFamily, FontSize, FontStyle, FontColor);
+		ContextTextStyler->ApplyCurrentStyleToSelectedText();
+
+		return FReply::Handled();
 	}
 
-	ContextTextStyler->SetActiveRowForRun(Run);
-	*/
+	return FReply::Unhandled();
 }
 
 void SContextTextEditor::OnFocusLost(const FFocusEvent& InFocusEvent)

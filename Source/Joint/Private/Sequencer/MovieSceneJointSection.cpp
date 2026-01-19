@@ -84,6 +84,17 @@ EMovieSceneChannelProxyType  UMovieSceneJointSection::CacheChannelProxy()
 	return EMovieSceneChannelProxyType::Dynamic;
 }
 
+#if WITH_EDITOR
+
+void UMovieSceneJointSection::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	
+	// Notify that the section has changed
+	OnPropertyChanged.ExecuteIfBound();
+}
+
+#endif
 
 UMovieSceneJointTrack* UMovieSceneJointSection::GetTypedOuterJointTrack() const
 {

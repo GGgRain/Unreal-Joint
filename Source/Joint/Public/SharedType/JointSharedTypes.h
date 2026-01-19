@@ -25,6 +25,65 @@ class UDataTable;
 class IPropertyHandle;
 
 
+
+/**
+ * enum for the execution context of the Joint actor.
+ */
+UENUM(BlueprintType)
+enum class EJointActorExecutionType : uint8
+{
+	None UMETA(DisplayName="None"), // Default value - helps to abort any execution.
+	PreBeginPlay UMETA(DisplayName="Pre Begin Play"),
+	PostBeginPlay UMETA(DisplayName="Post Begin Play"),
+	PrePending UMETA(DisplayName="Pre Pending"),
+	PostPending UMETA(DisplayName="Post Pending"),
+	PreEndPlay UMETA(DisplayName="Pre End Play"),
+	PostEndPlay UMETA(DisplayName="Post End Play"),
+};
+
+/**
+ * Struct for the execution context of the Joint actor.
+ * Joint 2.12.0 : introduced it to support multiple queue based execution (as a replacement of the previous version's direct node playing system).
+ */
+USTRUCT(BlueprintType)
+struct FJointActorExecutionElement
+{
+	GENERATED_BODY()
+	
+public:
+	
+	FJointActorExecutionElement();
+	
+	FJointActorExecutionElement(const EJointActorExecutionType InExecutionType, UJointNodeBase* InTargetNode);
+	
+public:
+	 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Joint")
+	EJointActorExecutionType ExecutionType;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Joint")
+	TWeakObjectPtr<class UJointNodeBase> TargetNode;
+	
+public:
+	
+	/**
+	 * A unique identifier for this execution element.
+	 * Used for the debugger to identify the execution element.
+	 * Note: This is cheap - Guid is 16 bytes only.
+	 */
+	UPROPERTY(Transient)
+	FGuid ExecutionElementGuid = FGuid::NewGuid();
+	
+public:
+	
+	bool operator==(const FJointActorExecutionElement& Other) const
+	{
+		return ExecutionElementGuid == Other.ExecutionElementGuid;
+	}
+	
+};
+
+
 /**
  * A data structure that contains the setting data for a property that will be used to display on the graph node by automatically generated slates.
  */
@@ -320,16 +379,13 @@ public:
 	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
 
 public:
+	
 	/**
 	 * If true, The detail tab of the node will show off the editor node's pin data property.
-	 * You can control it to make a new pin, or control the existing pins.
-	 * This works best with the fragments that you created by yourself.
-	 *
-	 * You must check this true to use OnPinConnectionChanged(), OnUpdatePinData() properly.
+	 * Note: Joint 2.12: It no longer prohibits the execution of OnPinDataChanged, OnPinConnectionChanged delegates. It only controls whether to show the pin data property on the detail tab.
 	 */
-
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Pin")
-	bool bAllowNodeInstancePinControl = false;
+	bool bAllowEditingOfPinDataOnDetailsPanel = false;
 
 public:
 	void UpdateFromNode(const UJointNodeBase* Node);
@@ -533,3 +589,4 @@ public:
 	 */
 	virtual TArray<FJointEdPinData> JointEdNodeInterface_GetPinData();
 };
+

@@ -5,6 +5,7 @@
 #include "UObject/ConstructorHelpers.h"
 
 #include "JointActor.h"
+#include "JointLogChannels.h"
 #include "Node/JointFragment.h"
 #include "JointManager.h"
 
@@ -26,7 +27,7 @@
 
 UJointNodeBase::UJointNodeBase()
 {
-
+	
 #if WITH_EDITORONLY_DATA
 
 	EdNodeSetting.IconicNodeImageBrush = FSlateBrush();
@@ -92,12 +93,20 @@ TArray<UJointNodeBase*> UJointNodeBase::GetParentNodesOnHierarchy() const
 
 UJointManager* UJointNodeBase::GetJointManager() const
 {
-	if (this->IsValidLowLevel() && GetOuter() && GetOuter()->IsValidLowLevel())
+	if (!this->IsValidLowLevel()) return nullptr;
+	
+	UObject* Outer = GetOuter(); 
+	
+	while (Outer && Outer->IsValidLowLevel())
 	{
-		if (UJointManager* Manager = Cast<UJointManager>(GetOuter()))
+		// Move upwards until we find the Joint manager.
+
+		if (UJointManager* JointManager = Cast<UJointManager>(Outer))
 		{
-			return Manager;
+			return JointManager;
 		}
+
+		Outer = Outer->GetOuter();
 	}
 
 	return nullptr;
@@ -317,17 +326,14 @@ const FJointEdPinConnectionResponse UJointNodeBase::CanAttachSubNodeOnThis_Imple
 }
 
 
+#if WITH_EDITOR
 
-bool UJointNodeBase::GetAllowNodeInstancePinControl()
+bool UJointNodeBase::GetAllowEditingOfPinDataOnDetailsPanel()
 {
-	
-#if WITH_EDITOR  
-	return EdNodeSetting.bAllowNodeInstancePinControl;  
-#else  
-	return false;  
-#endif
-	
+	return EdNodeSetting.bAllowEditingOfPinDataOnDetailsPanel;  
 }
+#endif
+
 
 void UJointNodeBase::OnCompileNode_Implementation(TArray<FJointEdLogMessage>& LogMessages)
 {
@@ -761,7 +767,10 @@ bool UJointNodeBase::CheckCanMarkNodeAsPending_Implementation()
 
 UWorld* UJointNodeBase::GetWorld() const
 {
-	if (GetHostingJointInstance()) return GetHostingJointInstance()->GetWorld();
+	if (const AJointActor* Instance = const_cast<AJointActor*>(GetHostingJointInstance()))
+	{
+		return GetHostingJointInstance()->GetWorld();
+	}
 
 	return nullptr;
 }
@@ -808,7 +817,7 @@ void UJointNodeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 bool UJointNodeBase::CallRemoteFunction(UFunction* Function, void* Parms, FOutParmRec* OutParms, FFrame* Stack)
 {
 	
-	if (!HostingJointInstance.IsValid()) return false;
+	if (!GetHostingJointInstance()) return false;
 	
 	/**
 	 * If bUsePlayerControllerAsRPCFunctionCallspace is true and the client does not have authority over the Joint Instance, it will try to retrieve the PlayerController's NetDriver to process the remote function.
@@ -898,7 +907,16 @@ void UJointNodeBase::SetHostingJointInstance(const TWeakObjectPtr<AJointActor>& 
 
 AJointActor* UJointNodeBase::GetHostingJointInstance() const
 {
-	return HostingJointInstance.IsValid() ? HostingJointInstance.Get() : nullptr;
+	if (HostingJointInstance.IsValid()) return HostingJointInstance.Get();
+	
+	UJointManager* Manager = GetJointManager();
+	
+	if (!Manager) return nullptr;
+	
+	// Cache the instance for future use.
+	HostingJointInstance = Manager->GetHostingJointActor();
+	
+	return HostingJointInstance.Get();
 }
 
 void UJointNodeBase::ReloadNode()
@@ -906,7 +924,7 @@ void UJointNodeBase::ReloadNode()
 	if (!CanReloadNode()){
 
 #if WITH_EDITOR
-		UE_LOG(LogTemp, Error, TEXT("Joint: Tried to reload Joint node %s but it is not allowed to reload. Aborting the action... (If you want to make it playable multiple times,"), *this->GetName());
+		UE_LOG(LogJoint, Error, TEXT("Joint: Tried to reload Joint node %s but it is not allowed to reload. Aborting the action... (If you want to make it playable multiple times,"), *this->GetName());
 #endif
 		
 		return;
@@ -916,6 +934,9 @@ void UJointNodeBase::ReloadNode()
 	bIsNodeEndedPlay = false;
 	bIsNodePending = false;
 }
+
+
+/*
 
 void UJointNodeBase::NodeBeginPlay()
 {
@@ -941,7 +962,7 @@ void UJointNodeBase::NodeEndPlay()
 {
 	//Don't end again if once ended before.
 	if (IsNodeEndedPlay()) return;
-
+	
 	bIsNodeEndedPlay = true;
 
 	MarkNodePendingByForce();
@@ -974,10 +995,99 @@ void UJointNodeBase::MarkNodePending()
 		OnJointNodeMarkedAsPendingDelegate.Broadcast(this);
 	}
 	
-	GetHostingJointInstance()->NotifyNodePending(this);
+	GetHostingJointInstance()->NotifyNodeMarkedAsPending(this);
 
 	PostNodeMarkedAsPending();
 	
+	if (ParentNode) ParentNode->MarkNodePendingIfNeeded();
+}
+*/
+void UJointNodeBase::ProcessPreNodeBeginPlay()
+{
+	//Don't play again if once played before.
+	if (IsNodeBegunPlay()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+	
+	bIsNodeBegunPlay = true;
+
+	PreNodeBeginPlay();
+	
+	if (OnJointNodeBeginDelegate.IsBound())
+	{
+		OnJointNodeBeginDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeBeginPlay(this);
+	
+	Actor->RequestPostNodeBeginPlay(this);
+}
+
+
+void UJointNodeBase::ProcessPostNodeBeginPlay()
+{
+	PostNodeBeginPlay();
+}
+
+void UJointNodeBase::ProcessPreNodeEndPlay()
+{
+	//Don't end again if once ended before.
+	if (IsNodeEndedPlay()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+	
+	bIsNodeEndedPlay = true;
+
+	MarkNodePendingByForce();
+	
+	PreNodeEndPlay();
+	
+	//Broadcast OnJointNodeEndDelegate Action.
+	if (OnJointNodeEndDelegate.IsBound())
+	{
+		OnJointNodeEndDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeEndPlay(this);
+	
+	Actor->RequestPostNodeEndPlay(this);
+}
+
+void UJointNodeBase::ProcessPostNodeEndPlay()
+{
+	PostNodeEndPlay();
+}
+
+void UJointNodeBase::ProcessPreMarkNodePending()
+{
+	//Don't end again if once ended before.
+	if (IsNodePending()) return;
+	
+	AJointActor* Actor = GetHostingJointInstance();
+	
+	if (!Actor) return;
+
+	bIsNodePending = true;
+
+	PreNodeMarkedAsPending();
+
+	//Broadcast OnJointNodeMarkedAsPendingDelegate Action.
+	if (OnJointNodeMarkedAsPendingDelegate.IsBound())
+	{
+		OnJointNodeMarkedAsPendingDelegate.Broadcast(this);
+	}
+	
+	Actor->NotifyNodeMarkedAsPending(this);
+	
+	Actor->RequestPostMarkNodeAsPending(this);
+}
+
+void UJointNodeBase::ProcessPostMarkNodePending()
+{
 	if (ParentNode) ParentNode->MarkNodePendingIfNeeded();
 }
 

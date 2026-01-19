@@ -6,6 +6,7 @@
 #include "JointEdGraphNode_Connector.h"
 #include "JointEdGraphNode_Manager.h"
 #include "JointEdGraphSchema.h"
+#include "JointEditorLogChannels.h"
 #include "JointEditorSettings.h"
 #include "EdGraph/EdGraph.h"
 #include "Framework/Application/SlateApplication.h"
@@ -610,7 +611,7 @@ TSharedPtr<FWiggleWireSimulator> FJointGraphConnectionDrawingPolicy::GetOrAddSim
 
 		WireSimulators.Add(Id, SimulatorPtrRef);
 
-		UE_LOG(LogTemp,Log,TEXT("New Connection for %s"), *FString::FromInt(GetTypeHash(Id)));
+		UE_LOG(LogJointEditor,Log,TEXT("New Connection for %s"), *FString::FromInt(GetTypeHash(Id)));
 	}
 	
 	return SimulatorPtrRef;
@@ -674,7 +675,7 @@ void FJointGraphConnectionDrawingPolicy::PruneDeadSimulators(const float DeltaTi
 			WireSimulators.Remove(IdToRemove);
 		}
 		const int32 RemovedCount = SimulatorsToRemove.Num();
-		UE_LOG(LogTemp, Log, TEXT("Pruned %d dead wire simulators."), RemovedCount);
+		UE_LOG(LogJointEditor, Log, TEXT("Pruned %d dead wire simulators."), RemovedCount);
 	}
 }
 
@@ -686,7 +687,7 @@ void FJointGraphConnectionDrawingPolicy::DrawWiggleConnection(int32 LayerId, con
 	TSharedPtr<FWiggleWireSimulator> Simulator = GetOrAddSimulator(WireId);
 	if (!Simulator.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("DrawWiggleConnection: Failed to get or add simulator for wire ID!"));
+		UE_LOG(LogJointEditor, Error, TEXT("DrawWiggleConnection: Failed to get or add simulator for wire ID!"));
 
 		// Fallback draw
 		DrawTangentConnection(LayerId, Start, End, Params);

@@ -87,6 +87,7 @@ public:
 	void ReallocateTextStyleSetInstance();
 	
 	void StoreTextStyleData();
+	void FeedDefaultStyleToTargetRichEditableTextBox();
 
 	/**
 	 * Request refresh action to the FPropertyEditorModule.

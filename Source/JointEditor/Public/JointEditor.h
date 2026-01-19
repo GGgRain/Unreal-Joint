@@ -167,8 +167,7 @@ public:
 	/**
 	 * The Joint debugger object for the editor module.
 	 * A single Joint debugger will handle all the actions related to the debugging from all Joint instance on the level.
-	 *
-	 * This object is a singleton object, you can also access to it by UJointDebugger::Get();
+	 * you can also access to it by UJointDebugger::Get();
 	 */
 	TObjectPtr<UJointDebugger> JointDebugger;
 

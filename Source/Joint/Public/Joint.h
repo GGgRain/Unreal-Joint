@@ -17,23 +17,23 @@ public:
 	
 #if WITH_EDITORONLY_DATA
 	
-	DECLARE_DELEGATE_RetVal_TwoParams(bool, FOnJointExecutionException, AJointActor*, UJointNodeBase*);
+	DECLARE_DELEGATE_RetVal_TwoParams(bool, FCheckJointExecutionException, AJointActor*, const FJointActorExecutionElement&);
 
-	DECLARE_DELEGATE_TwoParams(FOnJointDebuggerMentionNodePlayback, AJointActor*, UJointNodeBase*);
+	DECLARE_DELEGATE_TwoParams(FJointDebuggerNodePlaybackNotification, AJointActor*, UJointNodeBase*);
 
-	DECLARE_DELEGATE_TwoParams(FOnJointDebuggerMentionJointPlayback, AJointActor*, const FGuid&);
+	DECLARE_DELEGATE_TwoParams(FJointDebuggerJointPlaybackNotification, AJointActor*, const FGuid&);
 	
-	FOnJointExecutionException OnJointExecutionExceptionDelegate;
+	FCheckJointExecutionException OnJointExecutionExceptionDelegate;
 
-	FOnJointDebuggerMentionNodePlayback OnJointDebuggerMentionNodeBeginPlay;
+	FJointDebuggerNodePlaybackNotification JointDebuggerNodeBeginPlayNotification;
 
-	FOnJointDebuggerMentionNodePlayback OnJointDebuggerMentionNodeEndPlay;
+	FJointDebuggerNodePlaybackNotification JointDebuggerNodeEndPlayNotification;
 	
-	FOnJointDebuggerMentionNodePlayback OnJointDebuggerMentionNodePending;
+	FJointDebuggerNodePlaybackNotification JointDebuggerNodePendingNotification;
 
-	FOnJointDebuggerMentionJointPlayback OnJointDebuggerMentionJointBeginPlay;
+	FJointDebuggerJointPlaybackNotification JointDebuggerJointBeginPlayNotification;
 
-	FOnJointDebuggerMentionJointPlayback OnJointDebuggerMentionJointEndPlay;
+	FJointDebuggerJointPlaybackNotification JointDebuggerJointEndPlayNotification;
 
 #endif
 	

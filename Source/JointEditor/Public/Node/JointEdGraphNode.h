@@ -165,6 +165,9 @@ public:
 	 * Get the graph node's slate that is populated on the Joint graph editor.
 	 * In most case, you don't need to cast it to derived slate class but if you need, then you can try to cast it with 'StaticCastSharedPtr<SJointGraphNodeSubNodeBase>(GetGraphNodeSlate());'
 	 * But you make sure to whether it is valid first, and whether it has the type you want by GetGraphNodeSlate()->GetType() == "SJointGraphNodeSubNodeBase" (or something else you want).  
+	 * 
+	 * NOTE: It's about the weak pointer general usage - you have to pin it and store it on a local shared pointer variable before using it - avoid calling functions on .Pin()->Function()!!!!!
+	 * This will cause the slate's internal shared pointer to be destroyed. (don't know why)
 	 */
 	TWeakPtr<SJointGraphNodeBase> GetGraphNodeSlate() const;
 
@@ -198,8 +201,6 @@ public:
 	void NotifyNodeInstancePropertyChangeToGraphNodeWidget(const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName);
 
 	void NotifyGraphNodePropertyChangeToGraphNodeWidget(const FPropertyChangedEvent& PropertyChangedEvent);
-
-	void NotifyDebugDataChangedToGraphNodeWidget(const struct FJointNodeDebugData* Data);
 
 public:
 
@@ -454,12 +455,21 @@ public:
 public:
 
 	/**
-	 * return the response when this node is being tested to be attached at the target parent node.
+	 * Returns the response when this node is being tested for attachment to a target parent node.
+	 *
+	 * Prior to Joint 2.12, this function was evaluated only for the node being attached and its direct parent, validating the attachment rules strictly at that boundary.
+	 *
+	 * Starting from Joint 2.12, this function may also be triggered for sub-nodes of the node being attached. In this case, each sub-node receives the attachment target node reference and is allowed to participate in the validation logic.
+	 * As a result, InParentNode may not represent the direct parent of this node, but rather the actual attachment target node.
 	 */
 	virtual FPinConnectionResponse CanAttachThisAtParentNode(const UJointEdGraphNode* InParentNode) const; 
 	
 	/**
-	 * return the response when a sub node is being tested to be attached at this node.
+	 * Returns the response when a sub-node is being tested for attachment to this node.
+	 *
+	 * Prior to Joint 2.12, this function was evaluated only for direct sub-node attachments.
+	 *
+	 * Starting from Joint 2.12, this function may also be invoked for the parent nodes that belong to a node that we want to attach a sub node, allowing indirect parent nodes to participate in the attachment validation process.
 	 */
 	virtual FPinConnectionResponse CanAttachSubNodeOnThis(const UJointEdGraphNode* InSubNode) const;
 
@@ -586,7 +596,10 @@ public:
 	//Get the node's minimum size on the graph. Changing this function will manipulate the size of the node's slate.
 	virtual FVector2D GetNodeMinimumSize() const;
 	
-	bool CheckCanAddSubNode(UJointEdGraphNode* SubNode);
+public:
+	
+	//Check whether we can add the provided sub node on this node.
+	bool CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPinConnectionResponse& OutResponse, bool bAllowNotification = true) const;
 
 public:
 	

@@ -6,6 +6,7 @@
 #include "GraphEditorActions.h"
 #include "JointEdGraphNode_Composite.h"
 #include "JointEditorCommands.h"
+#include "JointEditorLogChannels.h"
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "JointManager.h"
@@ -341,7 +342,7 @@ void SJointEditorOutliner::RebuildWidget()
 
 	if (ToolKitPtr.Pin() == nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Failed to find a valid editor reference. can not create a fragment palette."));
+		UE_LOG(LogJointEditor, Log, TEXT("Failed to find a valid editor reference. can not create a fragment palette."));
 
 		return;
 	}

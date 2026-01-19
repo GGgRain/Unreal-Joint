@@ -11,6 +11,14 @@
 #define LOCTEXT_NAMESPACE "FJointNodePointer"
 
 
+FJointActorExecutionElement::FJointActorExecutionElement() : ExecutionType(EJointActorExecutionType::None)
+{
+}
+
+FJointActorExecutionElement::FJointActorExecutionElement(const EJointActorExecutionType InExecutionType, UJointNodeBase* InTargetNode) : ExecutionType(InExecutionType), TargetNode(InTargetNode)
+{
+}
+
 FJointGraphNodePropertyData::FJointGraphNodePropertyData() : PropertyName(NAME_None)
 {
 }
@@ -381,7 +389,7 @@ void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
 	SimplifiedClassFriendlyNameText = Node->SimplifiedClassFriendlyNameText;
 	DefaultEdSlateDetailLevel = Node->DefaultEdSlateDetailLevel;
 	PropertyDataForSimpleDisplayOnGraphNode = Node->PropertyDataForSimpleDisplayOnGraphNode;
-	bAllowNodeInstancePinControl = Node->bAllowNodeInstancePinControl;
+	bAllowEditingOfPinDataOnDetailsPanel = Node->bAllowNodeInstancePinControl;
 	
 #endif
 }

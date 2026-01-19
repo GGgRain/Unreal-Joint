@@ -25,30 +25,26 @@ void UJointEdGraphNode_Foundation::ReallocatePins()
 
 		TArray<FJointEdPinData> NewPinData;
 		NewPinData.Add(FJointEdPinData("In", EEdGraphPinDirection::EGPD_Input));
+		
+		if (bMakeOutputPinAlways)
+		{
+			NewPinData.Add(FJointEdPinData("Out", EEdGraphPinDirection::EGPD_Output));
+		}
+		
 		PinData = UJointFunctionLibrary::ImplementPins(PinData, NewPinData);
 		
-		if (GetCastedNodeInstance<UJN_Foundation>()) GetCastedNodeInstance<UJN_Foundation>()->NextNode.Empty();
+		// purge the next node if the pin is hidden.
+		if (!bMakeOutputPinAlways)
+		{
+			if (GetCastedNodeInstance<UJN_Foundation>()) GetCastedNodeInstance<UJN_Foundation>()->NextNode.Empty();
+		}
 	}
 	else
 	{
-		bool bShouldAdd = true;
-
-		const int Num = PinData.Num();
-		for (int i = 0; i < Num; ++i)
-		{
-			if (PinData[i].PinName == "Out")
-			{
-				bShouldAdd = false;
-				break;
-			}
-		}
-
-		if (bShouldAdd) {
-			TArray<FJointEdPinData> NewPinData;
-			NewPinData.Add(FJointEdPinData("In", EEdGraphPinDirection::EGPD_Input));
-			NewPinData.Add(FJointEdPinData("Out", EEdGraphPinDirection::EGPD_Output));
-			PinData = UJointFunctionLibrary::ImplementPins(PinData, NewPinData);
-		}
+		TArray<FJointEdPinData> NewPinData;
+		NewPinData.Add(FJointEdPinData("In", EEdGraphPinDirection::EGPD_Input));
+		NewPinData.Add(FJointEdPinData("Out", EEdGraphPinDirection::EGPD_Output));
+		PinData = UJointFunctionLibrary::ImplementPins(PinData, NewPinData);
 	}
 }
 
@@ -86,6 +82,13 @@ void UJointEdGraphNode_Foundation::NodeConnectionListChanged()
 			}
 		}
 	}
+}
+
+void UJointEdGraphNode_Foundation::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	UpdatePins();
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 
 #undef LOCTEXT_NAMESPACE

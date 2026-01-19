@@ -12,6 +12,7 @@ enum class EJointNodePickingType : uint8
 	None = 0 UMETA(DisplayName="None"),
 	FromPropertyHandle = 1 UMETA(DisplayName="From PropertyHandle"),
 	FromJointNodePointerPtr = 2 UMETA(DisplayName="From JointNodePointer Ptr"),
+	QuickPickSelection = 3 UMETA(DisplayName="Quick Pick Selection"),
 };
 
 class JOINTEDITOR_API FJointEditorNodePickingManagerRequest : public TSharedFromThis<FJointEditorNodePickingManagerRequest>
@@ -125,6 +126,15 @@ public:
 	 * @param InRequest The request to start the node picking mode.
 	 */
 	TWeakPtr<FJointEditorNodePickingManagerRequest> StartNodePicking(TWeakPtr<FJointEditorNodePickingManagerRequest> InRequest);
+	
+	
+	/**
+	 * Start Quick Picking mode.
+	 * Quick Picking mode allows users to pick the selected node on the graph panel directly to the OS clipboard.
+	 * Users can paste it to the target property handle after that.
+	 * (This doesn't require any request setup.)
+	 */
+	TWeakPtr<FJointEditorNodePickingManagerRequest> StartQuickPicking();
 	
 	/**
 	 * Pick and feed the provided node instance in the activating picking property handle.
