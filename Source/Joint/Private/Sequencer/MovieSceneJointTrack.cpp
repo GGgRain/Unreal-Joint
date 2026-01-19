@@ -10,6 +10,7 @@
 #include "MovieScene.h"
 #include "Evaluation/MovieSceneEvalTemplate.h"
 
+#include "Misc/EngineVersionComparison.h"
 
 #define LOCTEXT_NAMESPACE "UMovieSceneJointTrack"
 
@@ -21,6 +22,9 @@ UMovieSceneJointTrack::UMovieSceneJointTrack(const FObjectInitializer& ObjectIni
 	TrackTint.A = 80;
 	bSupportsDefaultSections = false;
 	DisplayOptions.bShowVerticalFrames = false;
+	
+	RowHeight = 50;
+
 #endif
 	
 	//SupportedBlendTypes.Add(EMovieSceneBlendType::);
@@ -48,6 +52,16 @@ void UMovieSceneJointTrack::AddSection(UMovieSceneSection& Section)
 	Sections.Add(&Section);
 }
 
+UMovieSceneSection* UMovieSceneJointTrack::CreateNewSection()
+{
+	
+#if UE_VERSION_OLDER_THAN(5,2,0)
+	return NewObject<UMovieSceneJointSection>(this, NAME_None, RF_Transactional);
+#else
+	return NewObject<UMovieSceneJointSection>(this, NAME_None, RF_Transactional);
+#endif
+}
+
 void UMovieSceneJointTrack::RemoveSection(UMovieSceneSection& Section)
 {
 	Sections.RemoveAll([&](const UMovieSceneSection* In) { return In == &Section; });
@@ -70,13 +84,22 @@ const TArray<UMovieSceneSection*>& UMovieSceneJointTrack::GetAllSections() const
 
 bool UMovieSceneJointTrack::SupportsMultipleRows() const
 {
-	return Super::SupportsMultipleRows();
+	return true;
 }
 
-UMovieSceneSection* UMovieSceneJointTrack::CreateNewSection()
+#if WITH_EDITORONLY_DATA
+
+void UMovieSceneJointTrack::SetTrackRowDisplayName(const FText& NewDisplayName, int32 TrackRowIndex)
 {
-	return NewObject<UMovieSceneJointSection>(this, NAME_None, RF_Transactional);
+	Super::SetTrackRowDisplayName(NewDisplayName, TrackRowIndex);
 }
+
+FText UMovieSceneJointTrack::GetTrackRowDisplayName(int32 RowIndex) const
+{
+	return FText::Format(LOCTEXT("JointTrackRowDisplayNameFormat", "Track Row #{0}"), FText::AsNumber(RowIndex + 1));
+}
+
+#endif
 
 
 FMovieSceneEvalTemplatePtr UMovieSceneJointTrack::CreateTemplateForSection(const UMovieSceneSection& InSection) const
@@ -102,7 +125,9 @@ UMovieSceneJointSection* UMovieSceneJointTrack::AddNewSectionOnRow(FJointNodePoi
 	
 	// add the section
 	UMovieSceneJointSection* NewSection = Cast<UMovieSceneJointSection>(CreateNewSection());
-	Sections.Add(NewSection);
+	
+	AddSection(*NewSection);
+	
 	NewSection->InitialPlacementOnRow( Sections, Time, DurationToUse.FrameNumber.Value, RowIndex );
 
 	if (InJointNodePointer) NewSection->SetJointNodePointer(*InJointNodePointer);

@@ -57,15 +57,16 @@ public:
 
 	virtual void BindCommands(TSharedRef<FUICommandList> SequencerCommandBindings) override;
 	virtual void BuildAddTrackMenu(FMenuBuilder& MenuBuilder) override;
-	virtual void BuildTrackContextMenu(FMenuBuilder& MenuBuilder, UMovieSceneTrack* Track) override;
-	virtual void BuildObjectBindingTrackMenu(FMenuBuilder& MenuBuilder, const TArray<FGuid>& ObjectBindings, const UClass* ObjectClass) override;
 	virtual TSharedPtr<SWidget> BuildOutlinerEditWidget(const FGuid& ObjectBinding, UMovieSceneTrack* Track, const FBuildEditWidgetParams& Params) override;
 	virtual TSharedRef<ISequencerSection> MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding) override;
 	virtual void OnRelease() override;
 	virtual bool SupportsType(TSubclassOf<UMovieSceneTrack> Type) const override;
 	virtual bool SupportsSequence(UMovieSceneSequence* InSequence) const override;
-	virtual void Tick(float DeltaTime) override;
 	virtual const FSlateBrush* GetIconBrush() const override;
+	
+	
+	virtual bool IsResizable(UMovieSceneTrack* InTrack) const override;
+	virtual void Resize(float NewSize, UMovieSceneTrack* InTrack) override;
 	
 	virtual bool OnAllowDrop(const FDragDropEvent& DragDropEvent, FSequencerDragDropParams& DragDropParams) override;
 	virtual FReply OnDrop(const FDragDropEvent& DragDropEvent, const FSequencerDragDropParams& DragDropParams) override;
@@ -83,12 +84,6 @@ public:
 
 public:
 
-	// Section addition
-	TSharedRef<SWidget> BuildAddSectionSubMenu(UMovieSceneTrack* InTrack);
-	void OnAddSectionSubMenuSelected(UMovieSceneTrack* Track, EJointMovieSectionType SectionType);
-
-public:
-
 	// Binding
 	
 	FMovieSceneBinding* AddJointManagerBinding(UJointManager* NewManager);
@@ -96,4 +91,8 @@ public:
 	void OnJointManagerBindingAssetSelected(const FAssetData& AssetData);
 	void OnJointManagerBindingAssetPressed(const TArray<FAssetData>& AssetDatas);
 	
+public:
+	
+	void CreateNewSection(UMovieSceneTrack* Track, int32 RowIndex, UClass* SectionType, EJointMovieSectionType JointSectionType, bool bSelect);
+
 };

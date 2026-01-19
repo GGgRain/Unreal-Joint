@@ -34,11 +34,11 @@ void SJointFragmentPalette::OnFragmentActionSelected(const TArray<TSharedPtr<FEd
 	{
 		FText NotificationText = FText::FromString("Can not add a fragment");
 		FText NotificationSubText = FText::FromString(
-			"Nodes to add the fragment have not been selected from the graph.");
+			"Nodes must be selected in the graph to attach the fragment to. Please select one or more nodes and try again.");
 
 		FNotificationInfo NotificationInfo(NotificationText);
 		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
 		NotificationInfo.bFireAndForget = true;
 		NotificationInfo.FadeInDuration = 0.3f;
 		NotificationInfo.FadeOutDuration = 1.3f;
@@ -70,7 +70,7 @@ void SJointFragmentPalette::RebuildWidget()
 
 	if (ToolKitPtr.Pin() == nullptr)
 	{
-		UE_LOG(LogJointEditor, Log, TEXT("Failed to find a valid editor reference. can not create a fragment palette."));
+		UE_LOG(LogJointEditor, Log, TEXT("Failed to find a valid editor toolkit for the fragment palette."));
 
 		return;
 	}

@@ -7,6 +7,7 @@
 
 #include "JointEdGraph.h"
 #include "JointEditor.h"
+#include "JointEditorLogChannels.h"
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
 

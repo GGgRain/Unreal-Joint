@@ -1625,24 +1625,31 @@ void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce, float Speed
 {
 	if (!NodeBackground || !NodeBackground->InnerBorder) return;
 
-	VOLT_STOP_ANIM(NodeBackground->InnerBorderBackgroundColorTrack);
+	VOLT_STOP_ANIM(HighlightInnerBorderBackgroundColorTrack);
 
-	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
+ 	const UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
 		.bShouldLoop(!bBlinkForOnce)
+		.MaxLoopCount(1)
 		//.bShouldLoop(false)
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-			.RateBasedInterpSpeed(25 * SpeedMultiplier)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.bUseStartColor(true)
+			.StartColor(GetNodeBodyBackgroundColor())
+			.AlphaBasedDuration(0.05f / SpeedMultiplier)
 			.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3)),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
-			.RateBasedInterpSpeed(16 * SpeedMultiplier)
+			.InterpolationMode(EVoltInterpMode::AlphaBased)
+			.bUseStartColor(true)
+			.StartColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3))
+			.AlphaBasedDuration(0.25f / SpeedMultiplier)
 			.TargetColor(GetNodeBodyBackgroundColor())
 		)
 	);
 
-	NodeBackground->InnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, Anim);
+	HighlightInnerBorderBackgroundColorTrack = VOLT_PLAY_ANIM(NodeBackground->InnerBorder, Anim);
 }
 
 void SJointGraphNodeBase::StopHighlightAnimation()

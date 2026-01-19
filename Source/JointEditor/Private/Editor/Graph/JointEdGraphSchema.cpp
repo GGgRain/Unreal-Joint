@@ -666,6 +666,7 @@ const FPinConnectionResponse UJointEdGraphSchema::CanCreateConnection(
 		: A->GetOwningNode() && B->GetOwningNode() && A->GetOwningNode()->GetGraph() != B->GetOwningNode()->GetGraph() ? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW,INVTEXT("Cannot make a connection between nodes in different graphs"))
 		: A->Direction == EEdGraphPinDirection::EGPD_Output && B->Direction == EEdGraphPinDirection::EGPD_Output ? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW,INVTEXT("Cannot make a connection between output nodes"))
 		: A->Direction == EEdGraphPinDirection::EGPD_Input && B->Direction == EEdGraphPinDirection::EGPD_Input ? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW,INVTEXT("Cannot make a connection between input nodes"))
+		: Cast<UJointEdGraphNode_Reroute>(A->GetOwningNode()) && Cast<UJointEdGraphNode>(B->GetOwningNode()) && A->GetOwningNode() == B->GetOwningNode()? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW,INVTEXT("Cannot make a connection within the same reroute node"))
 		: A->Direction == EEdGraphPinDirection::EGPD_Output && B->Direction == EEdGraphPinDirection::EGPD_Input ? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_A,INVTEXT("Make a connection between those node"))
 		: A->Direction == EEdGraphPinDirection::EGPD_Input && B->Direction == EEdGraphPinDirection::EGPD_Output ? FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_BREAK_OTHERS_B,INVTEXT("Make a connection between those node"))
 		: FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW,INVTEXT("Unknown reason"));
@@ -751,6 +752,8 @@ void UJointEdGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGrap
 	PinA->BreakLinkTo(PinB);
 	PinA->MakeLinkTo((PinA->Direction == EGPD_Output) ? NewReroute->GetPinAt(0) : NewReroute->GetPinAt(1));
 	PinB->MakeLinkTo((PinB->Direction == EGPD_Output) ? NewReroute->GetPinAt(0) : NewReroute->GetPinAt(1));
+	
+	NewReroute->NodeConnectionListChanged();
 	//NewReroute->PropagatePinType();
 }
 

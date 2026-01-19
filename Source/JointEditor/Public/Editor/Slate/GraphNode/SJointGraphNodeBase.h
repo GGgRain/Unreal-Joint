@@ -598,6 +598,9 @@ public:
 	FVoltAnimationTrack NodeBodyTransformTrack;
 	
 	FVoltAnimationTrack NodeBodyColorTrack;
+	
+	FVoltAnimationTrack HighlightInnerBorderBackgroundColorTrack;
+
 
 public:
 	

@@ -112,10 +112,12 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	}
 
 	// Set the Images of the properties to be equal of our new images, finding the property names can be a bit tricky however.
-	Style->Set("ClassThumbnail.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_Manager", Icon128x128));
-	Style->Set("ClassIcon.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_Manager", Icon16x16));
-	Style->Set("ClassThumbnail.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_Fragment", Icon128x128));
-	Style->Set("ClassIcon.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_Fragment", Icon16x16));
+	Style->Set("ClassThumbnail.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_JointManager", Icon128x128));
+	Style->Set("ClassIcon.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_JointManager", Icon16x16));
+	Style->Set("ClassThumbnail.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_JointFragment", Icon128x128));
+	Style->Set("ClassIcon.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_JointFragment", Icon16x16));
+	Style->Set("ClassThumbnail.JointBuildPreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointBuildPreset", Icon128x128));
+	Style->Set("ClassIcon.JointBuildPreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointBuildPreset", Icon16x16));
 
 
 	//Pin Images
@@ -135,10 +137,10 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	           new Joint_BOX_BRUSH("Graph/Node/NodeShadowSphereX48", Icon64x64, FMargin(0.12f)));
 
 	//Image
-
-	Style->Set("JointUI.Image.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_Manager", Icon48x48));
-	Style->Set("JointUI.Image.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_Fragment", Icon48x48));
-	Style->Set("JointUI.Image.JointFragment.Small", new Joint_IMAGE_BRUSH("Icon/Ico_Fragment", Icon16x16));
+	Style->Set("JointUI.Image.Joint3d", new Joint_IMAGE_BRUSH("Icon/Ico_Joint", Icon48x48));
+	Style->Set("JointUI.Image.JointManager", new Joint_IMAGE_BRUSH("Icon/Ico_JointManager", Icon48x48));
+	Style->Set("JointUI.Image.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_JointFragment", Icon48x48));
+	Style->Set("JointUI.Image.JointFragment.Small", new Joint_IMAGE_BRUSH("Icon/Ico_JointFragment", Icon16x16));
 
 	Style->Set("JointUI.Image.Joint", new Joint_IMAGE_BRUSH("Joint", FVector2D(156,74)));
 	Style->Set("JointUI.Image.Volt", new Joint_IMAGE_BRUSH("Volt", FVector2D(166,66)));

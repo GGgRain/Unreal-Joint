@@ -95,25 +95,95 @@ bool UJointEdGraphNode_Reroute::CanHaveSubNode() const
 	return false;
 }
 
-void UJointEdGraphNode_Reroute::NotifyConnectionChangedToConnectedNodes()
+void UJointEdGraphNode_Reroute::AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin)
 {
+	// SEE NodeConnectionListChanged() FOR DETAILS
+	// 1. if a reroute node's output pin is connected to other nodes, we cache that on ConnectedRerouteNodes.
+	// 2. if a reroute node's output pin is connected to other reroute nodes, we use the cached ConnectedRerouteNodes of the leaf reroute node to propagate the connection.
+	// 3. when a reroute node's connection has been changed, we notify it to the left side (input side) reroute nodes to update their cached ConnectedRerouteNodes.
 	
-}
-
-void UJointEdGraphNode_Reroute::NodeConnectionListChanged()
-{
-	for (UEdGraphPin* Pin : Pins)
+	for (TWeakObjectPtr<UJointEdGraphNode> ConnectedRerouteNode : ConnectedRerouteNodes)
 	{
-		if (Pin == nullptr) continue;
-
-		for (UEdGraphPin* LinkedTo : Pin->LinkedTo)
+		if (ConnectedRerouteNode.IsValid())
 		{
-			if (UJointEdGraphNode* LinkedToGraphNode = CastPinOwnerToJointEdGraphNode(LinkedTo))
+			if (UJointNodeBase* ConnectedNodeInstance = ConnectedRerouteNode->GetCastedNodeInstance())
 			{
-				//LinkedToGraphNode->AllocateReferringNodeInstancesOnConnection(ConnectedNodes, LinkedTo);
+				Nodes.Add(ConnectedNodeInstance);
 			}
 		}
 	}
+}
+
+
+void UJointEdGraphNode_Reroute::NodeConnectionListChanged()
+{
+	
+	// 1. if a reroute node's output pin is connected to other nodes, we cache that on ConnectedRerouteNodes.
+	// 2. if a reroute node's output pin is connected to other reroute nodes, we use the cached ConnectedRerouteNodes of the leaf reroute node to propagate the connection.
+	// 3. when a reroute node's connection has been changed, we notify it to the left side (input side) reroute nodes to update their cached ConnectedRerouteNodes.
+	
+	// Clear current cached connected reroute nodes.
+	ConnectedRerouteNodes.Empty();
+	
+	// Get output pin and input pin.
+	
+	UEdGraphPin* InputPin = nullptr;
+	UEdGraphPin* OutputPin = nullptr;
+	
+	for (UEdGraphPin* Pin : Pins)
+	{
+		if (Pin->Direction == EEdGraphPinDirection::EGPD_Input)
+		{
+			InputPin = Pin;
+		}
+		else if (Pin->Direction == EEdGraphPinDirection::EGPD_Output)
+		{
+			OutputPin = Pin;
+		}
+	}
+	
+	// Process output pin connections. (1 & 2)
+	if (OutputPin)
+	{
+		for (UEdGraphPin* LinkedTo : OutputPin->LinkedTo)
+		{
+			// Check if the linked node is a reroute node. (2)
+			if (UJointEdGraphNode_Reroute* LinkedRerouteNode = Cast<UJointEdGraphNode_Reroute>(CastPinOwnerToJointEdGraphNode(LinkedTo)))
+			{
+				// If connected to another reroute node, propagate its cached connected reroute nodes. (2)
+				for (TWeakObjectPtr<UJointEdGraphNode> CachedConnectedRerouteNode : LinkedRerouteNode->ConnectedRerouteNodes)
+				{
+					if (CachedConnectedRerouteNode.IsValid())
+					{
+						ConnectedRerouteNodes.AddUnique(CachedConnectedRerouteNode);
+					}
+				}
+			}
+			// Non-reroute node. (1)
+			else 
+			{
+				// If connected to a non-reroute node, add it to the cached connected reroute nodes.
+				if (UJointEdGraphNode* LinkedJointNode = Cast<UJointEdGraphNode>(CastPinOwnerToJointEdGraphNode(LinkedTo)))
+				{
+					ConnectedRerouteNodes.AddUnique(LinkedJointNode);
+				}
+			}
+		}
+	}
+	
+	// Notify input side reroute nodes to update their cached connected reroute nodes. (3)
+	if (InputPin)
+	{
+		for (UEdGraphPin* LinkedTo : InputPin->LinkedTo)
+		{
+			if (UJointEdGraphNode* LinkedRerouteNode = CastPinOwnerToJointEdGraphNode(LinkedTo))
+			{
+				LinkedRerouteNode->NodeConnectionListChanged();
+			}
+		}
+	}
+	
+	Super::NodeConnectionListChanged();
 }
 
 void UJointEdGraphNode_Reroute::UpdateNodeInstance()

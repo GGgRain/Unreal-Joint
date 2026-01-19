@@ -55,7 +55,7 @@ public:
 
 public:
 	
-	void NotifyConnectionChangedToConnectedNodes();
+	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin) override;
 	
 	virtual void NodeConnectionListChanged() override;
 
@@ -74,5 +74,10 @@ public:
 public:
 	
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
+	
+public:
+	
+	UPROPERTY(Transient, VisibleAnywhere, Category="Reroute Node")
+	TArray<TWeakObjectPtr<UJointEdGraphNode>> ConnectedRerouteNodes;
 	
 };

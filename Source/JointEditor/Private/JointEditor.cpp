@@ -85,7 +85,7 @@ void FJointEditorModule::StartupModule()
 		.SetDisplayName(LOCTEXT("JointManagementDisplayName", "Joint Management"))
 		.SetMenuType(ETabSpawnerMenuType::Enabled)
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
-		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager"));
+		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "JointUI.Image.Joint3d"));
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(JointToolTabNames::JointBulkSearchReplaceTab,
 	                                                  FOnSpawnTab::CreateRaw(
@@ -93,7 +93,7 @@ void FJointEditorModule::StartupModule()
 		.SetDisplayName(LOCTEXT("JointBulkSearchReplaceDisplayName", "Joint Bulk Search & Replace"))
 		.SetMenuType(ETabSpawnerMenuType::Enabled)
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
-		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager"));
+		.SetIcon(FSlateIcon(FJointEditorStyle::GetStyleSetName(), "JointUI.Image.Joint3d"));
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(JointToolTabNames::JointCompilerTab,
 	                                                  FOnSpawnTab::CreateRaw(

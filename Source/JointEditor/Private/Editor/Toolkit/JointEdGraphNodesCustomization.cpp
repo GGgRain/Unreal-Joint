@@ -1453,15 +1453,15 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 
 		FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
 		FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub",
-		                                          "Provided node instance was not UJointNodeBase type. Pointer reseted.");
+		                                          "Provided node instance was not a valid Joint node instance. Pointer reset to default.");
 
 		FNotificationInfo NotificationInfo(FailedNotificationText);
 		NotificationInfo.SubText = FailedNotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
+		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
 		NotificationInfo.bFireAndForget = true;
 		NotificationInfo.FadeInDuration = 0.2f;
 		NotificationInfo.FadeOutDuration = 0.2f;
-		NotificationInfo.ExpireDuration = 2.5f;
+		NotificationInfo.ExpireDuration = 4.5f;
 		NotificationInfo.bUseThrobber = true;
 
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
@@ -1501,18 +1501,18 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
 			FText FailedNotificationSubText = FText::Format(
 				LOCTEXT("NotJointNodeInstanceType_Sub",
-				        "Current structure can not have the provided node type. Pointer reseted.\n\nAllowd Types: {0}\nDisallowed Types: {1}"),
+				        "Current structure can not accept the provided node instance.\nAllowed Types: {0}\nDisallowed Types: {1}"),
 				FText::FromString(AllowedTypeStr),
 				FText::FromString(DisallowedTypeStr));
 
 			FNotificationInfo NotificationInfo(FailedNotificationText);
 			NotificationInfo.SubText = FailedNotificationSubText;
 			NotificationInfo.Image = FJointEditorStyle::Get().
-				GetBrush("JointUI.Image.JointManager");
+				GetBrush("JointUI.Image.Joint3d");
 			NotificationInfo.bFireAndForget = true;
 			NotificationInfo.FadeInDuration = 0.2f;
 			NotificationInfo.FadeOutDuration = 0.2f;
-			NotificationInfo.ExpireDuration = 2.5f;
+			NotificationInfo.ExpireDuration = 4.5f;
 			NotificationInfo.bUseThrobber = true;
 
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);

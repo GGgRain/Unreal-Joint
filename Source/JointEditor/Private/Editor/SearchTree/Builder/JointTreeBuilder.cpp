@@ -3,6 +3,7 @@
 #include "SearchTree/Builder/JointTreeBuilder.h"
 
 #include "JointEdGraph.h"
+#include "JointEdGraphNode_Reroute.h"
 #include "JointEditorSettings.h"
 #include "JointEdUtils.h"
 #include "Async/Async.h"
@@ -516,6 +517,11 @@ void FJointTreeBuilder::CollectReferencesToBuild(const TArray<TWeakObjectPtr<UJo
 
 			for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : Nodes)
 			{
+				// skip Reroute nodes
+				if (!JointEdGraphNode.IsValid()) continue;
+				
+				if (JointEdGraphNode->IsA(UJointEdGraphNode_Reroute::StaticClass())) continue;
+				
 				BuildTargetEditorNodes.Add(JointEdGraphNode.Get());
 			}
 

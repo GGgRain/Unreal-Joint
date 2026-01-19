@@ -161,6 +161,8 @@ bool FJointMovieSection::IsNodeValid() const
 
 int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) const
 {
+	int32 LayerId = 0; //InPainter.PaintSectionBackground();
+	
 	if (Section == nullptr)
 	{
 		return InPainter.LayerId;
@@ -172,7 +174,7 @@ int32 FJointMovieSection::OnPaintSection(FSequencerSectionPainter& InPainter) co
 		return InPainter.LayerId;
 	}
 	
-	return InPainter.LayerId;
+	return InPainter.LayerId + 1;
 }
 
 

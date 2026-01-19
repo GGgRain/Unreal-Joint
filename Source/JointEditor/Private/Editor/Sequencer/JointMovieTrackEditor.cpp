@@ -117,60 +117,79 @@ void FJointMovieTrackEditor::BuildAddTrackMenu(FMenuBuilder& MenuBuilder)
 		false /*bInOpenSubMenuOnClick*/,
 		FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager")
 	);
-
-	/*
-	MenuBuilder.AddSubMenu(
-		LOCTEXT("AddJointMovieTrack", "Add Joint Manager Binding"),
-		LOCTEXT("AddJointMovieTooltip", "Adds a Joint Manager Binding Track here. The track will be used to trigger fragments of graph."),
-		FNewMenuDelegate::CreateRaw(this, &FJointMovieTrackEditor::AddJointActorMenuExtension),
-		false,
-		FSlateIcon(FJointEditorStyle::GetStyleSetName(), "ClassIcon.JointManager")
-	);
-	*/
 }
 
-void FJointMovieTrackEditor::BuildTrackContextMenu(FMenuBuilder& MenuBuilder, UMovieSceneTrack* Track)
-{
-	/*
-	UMovieSceneCameraCutTrack* CameraCutTrack = Cast<UMovieSceneCameraCutTrack>(Track);
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("CanBlendShots", "Can Blend"),
-		LOCTEXT("CanBlendShotsTooltip", "Enable shot blending on this track, making it possible to overlap sections."),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateSP(this, &FJointMovieTrackEditor::HandleToggleCanBlendExecute, CameraCutTrack),
-			FCanExecuteAction::CreateLambda([=]() { return CameraCutTrack != nullptr; }),
-			FIsActionChecked::CreateLambda([=]() { return CameraCutTrack->bCanBlend; })
-			),
-		"Edit",
-		EUserInterfaceActionType::ToggleButton
-	);
-	*/
-}
-
-void FJointMovieTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder& MenuBuilder, const TArray<FGuid>& ObjectBindings, const UClass* ObjectClass)
-{
-}
 
 TSharedPtr<SWidget> FJointMovieTrackEditor::BuildOutlinerEditWidget(const FGuid& ObjectBinding, UMovieSceneTrack* Track, const FBuildEditWidgetParams& Params)
 {
+	
+	TSharedPtr<ISequencer> SequencerPtr = GetSequencer();
+	if (!SequencerPtr.IsValid())
+	{
+		return SNullWidget::NullWidget;
+	}
+
+	TWeakObjectPtr<UMovieSceneTrack> WeakTrack = Track;
+	const int32 RowIndex = Params.TrackInsertRowIndex;
+	auto SubMenuCallback = [this, WeakTrack, RowIndex]
+	{
+		FMenuBuilder MenuBuilder(true, nullptr);
+
+		UMovieSceneTrack* TrackPtr = WeakTrack.Get();
+		if (TrackPtr)
+		{
+			MenuBuilder.AddMenuEntry(
+				LOCTEXT("AddNewBeginPlayTrack", "Begin Play"),
+				LOCTEXT("AddNewBeginPlayTrackTooltip", "Adds a new section that triggers the begin play of a node."),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateSP(this, &FJointMovieTrackEditor::CreateNewSection, TrackPtr, RowIndex, UMovieSceneJointSection::StaticClass(), EJointMovieSectionType::BeginPlay, true))
+			);
+			
+			MenuBuilder.AddMenuEntry(
+				LOCTEXT("AddNewActiveForRangeTrack", "Active For Range"),
+				LOCTEXT("AddNewRangeTrackTooltip", "Adds a new section that starts off a node, and force it to stop after the duration."),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateSP(this, &FJointMovieTrackEditor::CreateNewSection, TrackPtr, RowIndex, UMovieSceneJointSection::StaticClass(), EJointMovieSectionType::EndPlay, true))
+			);
+			
+			MenuBuilder.AddMenuEntry(
+				LOCTEXT("AddNewEndPlayTrack", "End Play"),
+				LOCTEXT("AddNewEndPlayTrackTooltip", "Adds a new section that triggers the end play of a node."),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateSP(this, &FJointMovieTrackEditor::CreateNewSection, TrackPtr, RowIndex, UMovieSceneJointSection::StaticClass(), EJointMovieSectionType::EndPlay, true))
+			);
+			
+			MenuBuilder.AddMenuEntry(
+				LOCTEXT("AddNewMarkAsPendingTrack", "Mark As Pending"),
+				LOCTEXT("AddNewMarkAsPendingTrackTooltip", "Adds a new section that marks the node as pending."),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateSP(this, &FJointMovieTrackEditor::CreateNewSection, TrackPtr, RowIndex, UMovieSceneJointSection::StaticClass(), EJointMovieSectionType::MarkAsPending, true))
+			);
+			
+		}
+		else
+		{
+			MenuBuilder.AddWidget(SNew(STextBlock).Text(LOCTEXT("InvalidTrack", "Track is no longer valid")), FText(), true);
+		}
+
+		return MenuBuilder.MakeWidget();
+	};
+	
 	return SNew(SHorizontalBox)
-			// Add the audio combo box
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
-			[
-				FSequencerUtilities::MakeAddButton(
-					LOCTEXT("NodeSectionText", "Node Section"),
-					FOnGetContent::CreateSP(
-						this,
-						&FJointMovieTrackEditor::BuildAddSectionSubMenu,
-						Track
-					),
-					Params.NodeIsHovered,
-					GetSequencer()
-				)
-			];
+		// Add the audio combo box
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		[
+			
+			FSequencerUtilities::MakeAddButton(
+				LOCTEXT("NodeSectionText", "Node Section"),
+				FOnGetContent::CreateLambda(SubMenuCallback),
+				true,
+				GetSequencer()
+			)
+		];
+	
 }
 
 TSharedRef<ISequencerSection> FJointMovieTrackEditor::MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding)
@@ -206,126 +225,37 @@ bool FJointMovieTrackEditor::SupportsSequence(UMovieSceneSequence* InSequence) c
 	return false;
 }
 
-void FJointMovieTrackEditor::Tick(float DeltaTime)
-{
-	/*
-	TSharedPtr<ISequencer> SequencerPin = GetSequencer();
-	if (!SequencerPin.IsValid())
-	{
-		return;
-	}
-	
-	EMovieScenePlayerStatus::Type PlaybackState = SequencerPin->GetPlaybackStatus();
-
-	if (FSlateThrottleManager::Get().IsAllowingExpensiveTasks() && PlaybackState != EMovieScenePlayerStatus::Playing && PlaybackState != EMovieScenePlayerStatus::Scrubbing)
-	{
-		SequencerPin->EnterSilentMode();
-
-		FQualifiedFrameTime SavedTime = SequencerPin->GetLocalTime();
-
-		//if (DeltaTime > 0.f && ThumbnailPool->DrawThumbnails())
-		{
-			SequencerPin->SetLocalTimeDirectly(SavedTime.Time);
-		}
-
-		SequencerPin->ExitSilentMode();
-	}
-	*/
-}
 
 const FSlateBrush* FJointMovieTrackEditor::GetIconBrush() const
 {		
 	return FJointEditorStyle::Get().GetBrush("ClassIcon.JointManager");
 }
 
+bool FJointMovieTrackEditor::IsResizable(UMovieSceneTrack* InTrack) const
+{
+	return true;
+}
+
+void FJointMovieTrackEditor::Resize(float NewSize, UMovieSceneTrack* InTrack)
+{
+	if (UMovieSceneJointTrack* Track = Cast<UMovieSceneJointTrack>(InTrack))
+	{
+		Track->Modify();
+
+		const int32 MaxNumRows = Track->GetMaxRowIndex() + 1;
+		Track->SetRowHeight(FMath::RoundToInt(NewSize) / MaxNumRows);
+	}
+}
 
 bool FJointMovieTrackEditor::OnAllowDrop(const FDragDropEvent& DragDropEvent, FSequencerDragDropParams& DragDropParams)
 {
-	UE_LOG(LogJointEditor, Warning, TEXT("FJointMovieTrackEditor::OnAllowDrop called"));
-
-	/*
-	if (!DragDropParams.Track.IsValid() || !DragDropParams.Track.Get()->IsA(UMovieSceneCameraCutTrack::StaticClass()))
-	{
-		return false;
-	}
-
-	TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation();
-
-	if (!Operation.IsValid() || !Operation->IsOfType<FActorDragDropGraphEdOp>() )
-	{
-		return false;
-	}
 	
-	UMovieSceneCameraCutTrack* CameraCutTrack = Cast<UMovieSceneCameraCutTrack>(DragDropParams.Track.Get());
-
-	TSharedPtr<FActorDragDropGraphEdOp> DragDropOp = StaticCastSharedPtr<FActorDragDropGraphEdOp>( Operation );
-
-	for (auto& ActorPtr : DragDropOp->Actors)
-	{
-		if (ActorPtr.IsValid())
-		{
-			AActor* Actor = ActorPtr.Get();
-				
-			UCameraComponent* CameraComponent = MovieSceneHelpers::CameraComponentFromActor(Actor);
-			if (CameraComponent)
-			{
-				FFrameNumber EndFrameNumber = CameraCutTrack->FindEndTimeForCameraCut(DragDropParams.FrameNumber);
-				DragDropParams.FrameRange = TRange<FFrameNumber>(DragDropParams.FrameNumber, EndFrameNumber);
-				return true;
-			}
-		}
-	}
-	
-	*/
-	return false;
+	return FMovieSceneTrackEditor::OnAllowDrop(DragDropEvent, DragDropParams);
 }
-
 
 FReply FJointMovieTrackEditor::OnDrop(const FDragDropEvent& DragDropEvent, const FSequencerDragDropParams& DragDropParams)
 {
-
-	//UE_LOG(LogJointEditor, Warning, TEXT("FJointMovieTrackEditor::OnDrop called"));
-	/*
-	if (!DragDropParams.Track.IsValid() || !DragDropParams.Track.Get()->IsA(UMovieSceneCameraCutTrack::StaticClass()))
-	{
-		return FReply::Unhandled();
-	}
-
-	TSharedPtr<FDragDropOperation> Operation = DragDropEvent.GetOperation();
-
-	if (!Operation.IsValid() || !Operation->IsOfType<FActorDragDropGraphEdOp>() )
-	{
-		return FReply::Unhandled();
-	}
-	
-	TSharedPtr<FActorDragDropGraphEdOp> DragDropOp = StaticCastSharedPtr<FActorDragDropGraphEdOp>( Operation );
-
-	FMovieSceneTrackEditor::BeginKeying(DragDropParams.FrameNumber);
-
-	bool bAnyDropped = false;
-	for (auto& ActorPtr : DragDropOp->Actors)
-	{
-		if (ActorPtr.IsValid())
-		{
-			AActor* Actor = ActorPtr.Get();
-				
-			FGuid ObjectGuid = FindOrCreateHandleToObject(Actor).Handle;
-	
-			if (ObjectGuid.IsValid())
-			{
-				//AnimatablePropertyChanged(FOnKeyProperty::CreateRaw(this, &FJointMovieTrackEditor::AddKeyInternal, ObjectGuid));
-				
-				bAnyDropped = true;
-			}
-		}
-	}
-
-	FMovieSceneTrackEditor::EndKeying();
-	
-	return bAnyDropped ? FReply::Handled() : FReply::Unhandled();
-	*/
-
-	return FReply::Unhandled();
+	return FMovieSceneTrackEditor::OnDrop(DragDropEvent, DragDropParams);
 }
 
 void FJointMovieTrackEditor::AddJointMovieTrackMenuExtension(FMenuBuilder& MenuBuilder)
@@ -439,10 +369,13 @@ void FJointMovieTrackEditor::OnJointManagerTrackAssetSelected(const FAssetData& 
 				UMovieSceneSection* NewSection = FindOrCreateJointTrackFor(NewManager)->AddNewSection(nullptr, KeyTime);
 				KeyPropertyResult.bTrackModified = true;
 				KeyPropertyResult.SectionsCreated.Add(NewSection);
-
+				
 				GetSequencer()->EmptySelection();
 				GetSequencer()->SelectSection(NewSection);
 				GetSequencer()->ThrobSectionSelection();
+				
+				GetSequencer()->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
+
 		
 				return KeyPropertyResult;
 			};
@@ -452,6 +385,8 @@ void FJointMovieTrackEditor::OnJointManagerTrackAssetSelected(const FAssetData& 
 		}
 	}
 }
+
+
 
 
 
@@ -612,73 +547,6 @@ UMovieSceneJointTrack* FJointMovieTrackEditor::FindOrCreateJointTrackFor(UJointM
 	return CastChecked<UMovieSceneJointTrack>(JointTrack);
 }
 
-
-void FJointMovieTrackEditor::OnAddSectionSubMenuSelected(UMovieSceneTrack* Track, EJointMovieSectionType SectionType)
-{
-	auto CreateNewSection = [this, Track, SectionType](FFrameNumber KeyTime)
-	{
-		FKeyPropertyResult KeyPropertyResult;
-
-		UMovieSceneJointSection* NewSection = Cast<UMovieSceneJointTrack>(Track)->AddNewSection(nullptr, KeyTime);
-		NewSection->SectionType = SectionType;
-		KeyPropertyResult.bTrackModified = true;
-		KeyPropertyResult.SectionsCreated.Add(NewSection);
-
-		GetSequencer()->EmptySelection();
-		GetSequencer()->SelectSection(NewSection);
-		GetSequencer()->ThrobSectionSelection();
-		
-		return KeyPropertyResult;
-	};
-
-	AnimatablePropertyChanged(FOnKeyProperty::CreateLambda(CreateNewSection));
-}
-
-
-TSharedRef<SWidget> FJointMovieTrackEditor::BuildAddSectionSubMenu(UMovieSceneTrack* InTrack)
-{
-	FMenuBuilder MenuBuilder(true, nullptr);
-
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewBeginPlayTrack", "Begin Play"),
-		LOCTEXT("AddNewBeginPlayTrackTooltip", "Adds a new section that triggers the begin play of a node."),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::BeginPlay)
-		)
-	);
-
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewActiveForRangeTrack", "Active For Range"),
-		LOCTEXT("AddNewRangeTrackTooltip", "Adds a new section that starts off a node, and force it to stop after the duration."),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::ActiveForRange)
-		)
-	);
-	
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewEndPlayTrack", "End Play"),
-		LOCTEXT("AddNewEndPlayTrackTooltip", "Adds a new section that triggers the end play of a node."),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::EndPlay)
-		)
-	);
-	
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("AddNewMarkAsPendingTrack", "Mark As Pending"),
-		LOCTEXT("AddNewMarkAsPendingTrackTooltip", "Adds a new section that marks the node as pending."),
-		FSlateIcon(),
-		FUIAction(
-			FExecuteAction::CreateRaw(this, &FJointMovieTrackEditor::OnAddSectionSubMenuSelected, InTrack, EJointMovieSectionType::MarkAsPending)
-		)
-	);
-	
-	return MenuBuilder.MakeWidget();
-}
-
-
 FMovieSceneBinding* FJointMovieTrackEditor::AddJointManagerBinding(UJointManager* NewManager)
 {
 	UMovieScene* FocusedMovieScene = GetFocusedMovieScene();
@@ -720,6 +588,63 @@ void FJointMovieTrackEditor::OnJointManagerBindingAssetPressed(const TArray<FAss
 	if (AssetDatas.Num() > 0)
 	{
 		OnJointManagerBindingAssetSelected(AssetDatas[0].GetAsset());
+	}
+}
+
+void FJointMovieTrackEditor::CreateNewSection(UMovieSceneTrack* Track, int32 RowIndex, UClass* SectionType, EJointMovieSectionType JointSectionType, bool bSelect)
+{
+	TSharedPtr<ISequencer> SequencerPtr = GetSequencer();
+	if (SequencerPtr.IsValid())
+	{
+		UMovieScene* FocusedMovieScene = GetFocusedMovieScene();
+		FQualifiedFrameTime CurrentTime = SequencerPtr->GetLocalTime();
+
+		FScopedTransaction Transaction(LOCTEXT("CreateNewSectionTransactionText", "Add Section"));
+
+		UMovieSceneSection* NewSection = NewObject<UMovieSceneSection>(Track, SectionType, NAME_None, RF_Transactional);
+		check(NewSection);
+
+		int32 OverlapPriority = 0;
+		for (UMovieSceneSection* Section : Track->GetAllSections())
+		{
+			if (Section->GetRowIndex() >= RowIndex)
+			{
+				Section->SetRowIndex(Section->GetRowIndex() + 1);
+			}
+			OverlapPriority = FMath::Max(Section->GetOverlapPriority() + 1, OverlapPriority);
+		}
+
+		Track->Modify();
+
+		if (SectionType == UMovieSceneJointSection::StaticClass())
+		{
+			TRange<FFrameNumber> NewSectionRange;
+
+			const float DefaultLengthInSeconds = 1.f;
+			NewSectionRange = TRange<FFrameNumber>(CurrentTime.Time.FrameNumber, CurrentTime.Time.FrameNumber + (DefaultLengthInSeconds * SequencerPtr->GetFocusedTickResolution()).FloorToFrame());
+
+			NewSection->SetRange(NewSectionRange);
+		}
+		
+		if (UMovieSceneJointSection* JointSection = Cast<UMovieSceneJointSection>(NewSection))
+		{
+			JointSection->SectionType = JointSectionType;
+		}
+
+		NewSection->SetOverlapPriority(OverlapPriority);
+		NewSection->SetRowIndex(RowIndex);
+
+		Track->AddSection(*NewSection);
+		Track->UpdateEasing();
+
+		if (bSelect)
+		{
+			SequencerPtr->EmptySelection();
+			SequencerPtr->SelectSection(NewSection);
+			SequencerPtr->ThrobSectionSelection();
+		}
+
+		SequencerPtr->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
 	}
 }
 

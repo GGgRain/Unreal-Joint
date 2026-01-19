@@ -24,15 +24,32 @@ public:
 	// UMovieSceneTrack interface
 	virtual bool SupportsType(TSubclassOf<UMovieSceneSection> SectionClass) const override;
 	virtual void RemoveAllAnimationData() override;
+	
+public:
+	
 	virtual bool HasSection(const UMovieSceneSection& Section) const override;
 	virtual void AddSection(UMovieSceneSection& Section) override;
+	virtual UMovieSceneSection* CreateNewSection() override;
+	
 	virtual void RemoveSection(UMovieSceneSection& Section) override;
 	virtual void RemoveSectionAt(int32 SectionIndex) override;
+	
 	virtual bool IsEmpty() const override;
 	virtual const TArray<UMovieSceneSection*>& GetAllSections() const override;
 	virtual bool SupportsMultipleRows() const override;
-	virtual UMovieSceneSection* CreateNewSection() override;
+	
+public:
+	
+	
+#if WITH_EDITORONLY_DATA
+	
+	virtual void SetTrackRowDisplayName(const FText& NewDisplayName, int32 TrackRowIndex) override;	
+	virtual FText GetTrackRowDisplayName(int32 RowIndex) const override;
 
+#endif 
+	
+public:
+	
 	// ~IMovieSceneTrackTemplateProducer interface
 	virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection& InSection) const override;
 
@@ -69,5 +86,33 @@ public:
 	 */
 	UPROPERTY(Transient, BlueprintReadWrite, Category="Runtime", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AJointActor> RuntimePlaybackActor;
+	
+#if WITH_EDITORONLY_DATA
+	
+public:
+
+	/**
+	 * Get the height of this track's rows
+	 */
+	int32 GetRowHeight() const
+	{
+		return RowHeight;
+	}
+
+	/**
+	 * Set the height of this track's rows
+	 */
+	void SetRowHeight(int32 NewRowHeight)
+	{
+		RowHeight = FMath::Max(16, NewRowHeight);
+	}
+
+private:
+
+	/** The height for each row of this track */
+	UPROPERTY()
+	int32 RowHeight;
+	
+#endif
 	
 };
