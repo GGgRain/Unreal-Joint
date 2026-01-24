@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "JointEditorToolkit.h"
 
-JOINTEDITOR_API DECLARE_DELEGATE_OneParam(FOnNodePickingPerformed, UJointNodeBase* PickedNode)
+DECLARE_DELEGATE_OneParam(FOnNodePickingPerformed, UJointNodeBase* PickedNode)
 
 enum class EJointNodePickingType : uint8
 {
