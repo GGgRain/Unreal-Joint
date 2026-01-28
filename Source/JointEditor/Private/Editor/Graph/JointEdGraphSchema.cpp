@@ -34,6 +34,8 @@
 #include "Node/JointFragment.h"
 #include "UObject/UObjectIterator.h"
 
+#include "Misc/EngineVersionComparison.h"
+
 #define LOCTEXT_NAMESPACE "JointEdGraphSchema"
 
 
@@ -42,9 +44,20 @@ class JOINTEDITOR_API FJointEdGraphDragDropAction : public FGraphSchemaActionDra
 public:
 	DRAG_DROP_OPERATOR_TYPE(FJointEdGraphDragDropAction, FGraphSchemaActionDragDropAction)
 
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	
 	virtual FReply DroppedOnPanel(const TSharedRef<class SWidget>& Panel, FVector2D ScreenPosition, FVector2D GraphPosition, UEdGraph& Graph) override;
-	virtual FReply DroppedOnNode(FVector2D ScreenPosition, FVector2D GraphPosition) override;
 	virtual FReply DroppedOnPin(FVector2D ScreenPosition, FVector2D GraphPosition) override;
+	virtual FReply DroppedOnNode(FVector2D ScreenPosition, FVector2D GraphPosition) override;
+
+#else
+	
+	virtual FReply DroppedOnPanel(const TSharedRef< SWidget >& Panel, const FVector2f& ScreenPosition, const FVector2f& GraphPosition, UEdGraph& Graph) override;
+	virtual FReply DroppedOnPin(const FVector2f& ScreenPosition, const FVector2f& GraphPosition) override;
+	virtual FReply DroppedOnNode(const FVector2f& ScreenPosition, const FVector2f& GraphPosition) override;
+
+#endif
+	
 	virtual FReply DroppedOnAction(TSharedRef<FEdGraphSchemaAction> Action) override;
 	virtual FReply DroppedOnCategory(FText Category) override;
 	virtual void HoverTargetChanged() override;
@@ -70,6 +83,8 @@ FJointEdGraphDragDropAction::FJointEdGraphDragDropAction()
 	  , SourceFuncName(NAME_None)
 {
 }
+
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
 
 FReply FJointEdGraphDragDropAction::DroppedOnPanel(const TSharedRef<class SWidget>& Panel, FVector2D ScreenPosition, FVector2D GraphPosition, UEdGraph& Graph)
 {
@@ -98,6 +113,25 @@ FReply FJointEdGraphDragDropAction::DroppedOnPin(FVector2D ScreenPosition, FVect
 {
 	return FReply::Unhandled();
 }
+
+#else
+
+FReply FJointEdGraphDragDropAction::DroppedOnPanel(const TSharedRef<SWidget>& Panel, const FVector2f& ScreenPosition, const FVector2f& GraphPosition, UEdGraph& Graph)
+{
+	return FReply::Unhandled();
+}
+
+FReply FJointEdGraphDragDropAction::DroppedOnPin(const FVector2f& ScreenPosition, const FVector2f& GraphPosition)
+{
+	return FReply::Unhandled();
+}
+
+FReply FJointEdGraphDragDropAction::DroppedOnNode(const FVector2f& ScreenPosition, const FVector2f& GraphPosition)
+{
+	return FReply::Unhandled();
+}
+
+#endif
 
 FReply FJointEdGraphDragDropAction::DroppedOnAction(TSharedRef<FEdGraphSchemaAction> Action)
 {
