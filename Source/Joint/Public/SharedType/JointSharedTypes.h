@@ -183,12 +183,13 @@ public:
 	 */
 	bool CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const;
 	
-	
 	/**
 	 * Check whether the node pointer is valid.
 	 * @return true if the node pointer is valid.
 	 */
 	bool IsValid() const;
+	
+	void Reset();
 	
 };
 

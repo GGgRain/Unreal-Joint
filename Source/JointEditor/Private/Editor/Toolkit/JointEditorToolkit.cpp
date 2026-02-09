@@ -63,6 +63,7 @@
 #include "JointEditorNameValidator.h"
 #include "JointEditorNodePickingManager.h"
 #include "JointEdUtils.h"
+#include "JointNodePreset.h"
 
 #include "EditorWidget/JointToolkitToastMessages.h"
 #include "EditorWidget/SJointEditorOutliner.h"
@@ -70,6 +71,8 @@
 #include "EditorWidget/SJointGraphPanel.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
+#include "Misc/MessageDialog.h"
 
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
@@ -846,10 +849,10 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 
 	
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().ExpandNodes,
-							   FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnExpandNodes),
-							   FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanExpandNodes),
-							   FIsActionChecked(),
-							   FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanExpandNodes)
+	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnExpandNodes),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanExpandNodes),
+	                           FIsActionChecked(),
+	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanExpandNodes)
 	);
 
 
@@ -967,8 +970,7 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnSolidifySubNodes),
 	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CheckCanSolidifySubNodes)
 	);
-
-
+	
 	ToolkitCommands->MapAction(Commands.ShowIndividualVisibilityButtonForSimpleDisplayProperty,
 	                           FExecuteAction::CreateSP(
 		                           this, &FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty),
@@ -976,6 +978,12 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	                           FIsActionChecked::CreateSP(
 		                           this,
 		                           &FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty));
+	
+	
+	ToolkitCommands->MapAction(Commands.CreateJointNodePresetFromSelection,
+	                           FExecuteAction::CreateSP(
+		                           this, &FJointEditorToolkit::OnCreateJointNodePresetFromSelection),
+	                           FCanExecuteAction().CreateSP(this, &FJointEditorToolkit::CanCreateJointNodePresetFromSelection));
 }
 
 void FJointEditorToolkit::BindDebuggerCommands()
@@ -1320,11 +1328,63 @@ void FJointEditorToolkit::OnGraphEditorTabClosed(TSharedRef<SDockTab> DockTab)
 	SaveEditedObjectState();
 }
 
+void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection)
+{
+	if (GetNodePickingManager().IsValid() && GetNodePickingManager()->IsInNodePicking())
+	{
+		for (UObject* Selection : NewSelection)
+		{
+			if (Selection == nullptr) continue;
+
+			UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(Selection);
+
+			if (CastedGraphNode == nullptr) continue;
+
+			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
+			Result->Node = CastedGraphNode->GetCastedNodeInstance();
+			Result->OptionalEdNode = CastedGraphNode;
+
+			GetNodePickingManager()->PerformNodePicking(Result);
+
+			break;
+		}
+	}
+	else
+	{
+		SelectProvidedObjectOnDetail(NewSelection);
+		NotifySelectionChangeToNodeSlates(InGraph, NewSelection);
+	}
+}
+
+void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection) const
+{
+	if (JointManager == nullptr) return;
+
+	if (UJointEdGraph* CastedGraph = InGraph ? Cast<UJointEdGraph>(InGraph) : nullptr)
+	{
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		{
+			if (!GraphNode.IsValid()) continue;
+
+			const TSharedPtr<SJointGraphNodeBase> NodeSlate = GraphNode->GetGraphNodeSlate().Pin();
+
+			if (!NodeSlate.IsValid()) continue;
+
+			NodeSlate->OnGraphSelectionChanged(NewSelection);
+		}
+	}
+
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
 TSharedPtr<SJointGraphEditor> FJointEditorToolkit::GetFocusedGraphEditor() const
 {
 	//cast to SJointGraphEditor
 	return FocusedGraphEditorPtr.Pin();
 }
+
 
 void FJointEditorToolkit::CompileAllJointGraphs()
 {
@@ -1346,11 +1406,11 @@ void FJointEditorToolkit::CompileAllJointGraphs()
 	}
 }
 
+
 bool FJointEditorToolkit::CanCompileAllJointGraphs()
 {
 	return !UJointDebugger::IsPIESimulating();
 }
-
 
 void FJointEditorToolkit::OnCompileJointGraphFinished(
 	const UJointEdGraph::FJointGraphCompileInfo& CompileInfo) const
@@ -1370,7 +1430,7 @@ void FJointEditorToolkit::OnCompileJointGraphFinished(
 			const TSharedRef<FTokenizedMessage> Token = FTokenizedMessage::Create(
 				EMessageSeverity::Error,
 				LOCTEXT("JointCompileLogMsg_Error_NoJointManager",
-						"No valid Joint manager. This editor might be opened compulsively or refer to a PIE transient Joint manager.")
+				        "No valid Joint manager. This editor might be opened compulsively or refer to a PIE transient Joint manager.")
 			);
 
 			WeakCompileResultPtr.Pin()->AddMessage(Token);
@@ -1399,14 +1459,14 @@ void FJointEditorToolkit::OnCompileJointGraphFinished(
 		TSharedRef<FTokenizedMessage> Token = FTokenizedMessage::Create(
 			EMessageSeverity::Info,
 			FText::Format(LOCTEXT("CompileFinished",
-								  "Compilation finished. [{0}] {1} Fatal Issue(s) {2} Warning(s) {3} Info. (Compiled through {4} nodes total, {5}ms elapsed on the compilation.)")
-						  , FText::FromString(GetJointManager()->GetPathName())
-						  , NumError
+			                      "Compilation finished. [{0}] {1} Fatal Issue(s) {2} Warning(s) {3} Info. (Compiled through {4} nodes total, {5}ms elapsed on the compilation.)")
+			              , FText::FromString(GetJointManager()->GetPathName())
+			              , NumError
 
-						  , NumWarning + NumPerformanceWarning
-						  , NumInfo
-						  , CompileInfo.NodeCount
-						  , CompileInfo.ElapsedTime)
+			              , NumWarning + NumPerformanceWarning
+			              , NumInfo
+			              , CompileInfo.NodeCount
+			              , CompileInfo.ElapsedTime)
 		);
 
 		WeakCompileResultPtr.Pin()->AddMessage(Token);
@@ -1451,11 +1511,11 @@ void FJointEditorToolkit::OnCompileResultTokenClicked(const TSharedRef<IMessageT
 	}
 }
 
+
 TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetNodePickingManager() const
 {
 	return NodePickingManager;
 }
-
 
 TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetOrCreateNodePickingManager()
 {
@@ -1467,10 +1527,85 @@ TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetOrCreateNodeP
 	return NodePickingManager;
 }
 
+void FJointEditorToolkit::SelectAllNodes()
+{
+	if (TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
+	{
+		CurrentGraphEditor->SelectAllNodes();
+	}
+}
 
 bool FJointEditorToolkit::CanSelectAllNodes() const
 {
 	return true;
+}
+
+void FJointEditorToolkit::CopySelectedNodes()
+{
+	// Get the current graph
+
+	if (!GetFocusedGraphEditor()) return;
+
+	UEdGraph* Graph = GetFocusedGraphEditor()->GetCurrentGraph();
+
+	if (Graph == nullptr) return;
+
+	//Export the selected nodes and place the text on the clipboard
+	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	//Target nodes to copy. Ensure to be cleaned up before copying (it's necessary to empty it up because of the compiler optimization can cause issues sometimes.)
+	TSet<UObject*> NodesToCopy;
+	
+	NodesToCopy.Empty();
+
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (SelectedNode == nullptr) continue;
+		
+		if (UEdGraphNode* GraphNode = Cast<UEdGraphNode>(SelectedNode))
+		{
+			if (GraphNode->CanDuplicateNode()) NodesToCopy.Add(GraphNode);
+		}
+	}
+	
+	
+	// Remove the nodes that are contained within other selected nodes - we only want to copy the top-level nodes
+	for (int i = NodesToCopy.Num() - 1; i >= 0; --i)
+	{
+		UObject* NodeToCheck = NodesToCopy.Array()[i];
+
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCheck))
+		{
+			for (UJointEdGraphNode* SubNode : CastedNode->GetAllSubNodesInHierarchy())
+			{
+				if (NodesToCopy.Contains(SubNode))
+				{
+					NodesToCopy.Remove(SubNode);
+				}
+			}
+		}
+	}
+	
+		
+	
+	for (UObject* NodeToCopy : NodesToCopy)
+	{
+		if (UEdGraphNode* CastedNode = Cast<UEdGraphNode>(NodeToCopy))
+			CastedNode->PrepareForCopying();	
+	}
+
+	FString ExportedText;
+	
+	FEdGraphUtilities::ExportNodesToText(NodesToCopy, ExportedText);
+
+	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
+	
+	for (UObject* NodeToCopy : NodesToCopy)
+	{
+		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
+			CastedNode->PostCopyNode();	
+	}
+
 }
 
 bool FJointEditorToolkit::CanCopyNodes() const
@@ -1489,6 +1624,151 @@ bool FJointEditorToolkit::CanCopyNodes() const
 	return false;
 }
 
+void FJointEditorToolkit::PasteNodes()
+{
+	if (const TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
+	{
+		PasteNodesHere(CurrentGraphEditor->GetPasteLocation());
+	}
+
+	RequestManagerViewerRefresh();
+}
+
+void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
+{
+
+	//early returns
+	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
+
+	if (!CurrentGraphEditor.IsValid())
+	{
+		return;
+	}
+	
+	UJointEdGraph* CastedGraph = CurrentGraphEditor->GetCurrentGraph() ? Cast<UJointEdGraph>(CurrentGraphEditor->GetCurrentGraph()) : nullptr;
+
+	if (CastedGraph == nullptr)
+	{
+		return;
+	}
+	
+	//Get the currently selected node on the graph and store it to use it when if we need to attach some nodes that will be imported right after this.
+	//But if there is any node that can be placed directly on the graph among the imported nodes, we will not implement those dependent nodes.
+	//This is for the fragment copy & paste between nodes.
+	
+	
+	UJointEdGraphNode* AttachTargetNode = nullptr;
+	
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (SelectedNode == nullptr) continue;
+
+		if (UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode))
+		{
+			//Only can work with a single object. Not considering paste action for the multiple nodes at once, because it will be confusing and annoying sometimes (ex, Users didn't know that they selected unwanted node to paste to.)
+			if (AttachTargetNode != nullptr) return;
+			
+			AttachTargetNode = Node;
+		}
+	}
+
+	// Start to do actual paste operation - make a transaction for undo/redo
+	const FScopedTransaction Transaction(FGenericCommands::Get().Paste->GetDescription());
+
+	CastedGraph->Modify();
+	CastedGraph->LockUpdates();
+	
+	// Clear the selection set (newly pasted stuff will be selected)
+	CurrentGraphEditor->ClearSelectionSet();
+
+	// Grab the text to paste from the clipboard.
+	FString TextToImport;
+
+	FPlatformApplicationMisc::ClipboardPaste(TextToImport);
+
+	// Import the nodes
+	TSet<UEdGraphNode*> PastedNodes;
+
+	FEdGraphUtilities::ImportNodesFromText(CastedGraph, TextToImport, PastedNodes);
+	
+	// Move the pasted nodes to the location of the paste request
+	FJointEdUtils::MoveNodesAtLocation(PastedNodes, Location);
+	
+	// Handle any fixup of the imported nodes
+	FJointEdUtils::MarkNodesAsModifiedAndValidateName(PastedNodes);
+	
+	// See if the newly pasted nodes can be attached to the selected node on the graph.
+	// if it's a node that had a parent node when it was copied, and we have a valid attach target node, then attach it to the target node.
+	if (AttachTargetNode)
+	{
+		AttachTargetNode->Modify();
+
+		if (AttachTargetNode->GetCastedNodeInstance()) AttachTargetNode->GetCastedNodeInstance()->Modify();
+
+		for (UEdGraphNode* InEdGraphNode : PastedNodes)
+		{
+			if (InEdGraphNode == nullptr) continue;
+		
+			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
+			{
+				CastedPastedNode->ParentNode = AttachTargetNode;
+				AttachTargetNode->AddSubNode(CastedPastedNode);
+
+				// Remove the Paste Node from the graph.
+				CastedGraph->RemoveNode(CastedPastedNode);
+			}
+		}
+	}else
+	{
+		for (UEdGraphNode* InEdGraphNode : PastedNodes)
+		{
+			if (InEdGraphNode == nullptr) continue;
+		
+			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
+			{
+				CastedGraph->RemoveNode(CastedPastedNode);
+			}
+		}
+	}
+	
+	// Explicitly call PostProcessPastedNodes on the pasted nodes one more time since we modified attachment. (FEdGraphUtilities::ImportNodesFromText already called it once)
+	FEdGraphUtilities::PostProcessPastedNodes(PastedNodes);
+	
+	// Notify the graph that graph nodes have been pasted.
+	if (CastedGraph)
+	{
+		CastedGraph->OnNodesPasted(TextToImport);
+		CastedGraph->UnlockUpdates();
+		CastedGraph->NotifyGraphChanged();
+	}
+
+	// Update UI
+	CurrentGraphEditor->NotifyGraphChanged();
+
+	// Mark the package as dirty
+	UObject* GraphOwner = CastedGraph->GetOuter();
+	if (GraphOwner)
+	{
+		GraphOwner->PostEditChange();
+		GraphOwner->MarkPackageDirty();
+	}
+	
+	// Select the newly pasted nodes on the graph
+	TSet<class UObject*> Selection;
+
+	for (UEdGraphNode* PastedNode : PastedNodes)
+	{
+		if (!PastedNode) continue;
+
+		Selection.Add(PastedNode);
+	}
+
+	SelectProvidedObjectOnGraph(Selection);
+	
+}
+
 bool FJointEditorToolkit::CanPasteNodes() const
 {
 	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
@@ -1504,9 +1784,25 @@ bool FJointEditorToolkit::CanPasteNodes() const
 	return FEdGraphUtilities::CanImportNodesFromText(CurrentGraphEditor->GetCurrentGraph(), ClipboardContent);
 }
 
+void FJointEditorToolkit::CutSelectedNodes()
+{
+	CopySelectedNodes();
+	DeleteSelectedDuplicatableNodes();
+
+	RequestManagerViewerRefresh();
+}
+
 bool FJointEditorToolkit::CanCutNodes() const
 {
 	return CanCopyNodes() && CanDeleteNodes();
+}
+
+void FJointEditorToolkit::DuplicateNodes()
+{
+	CopySelectedNodes();
+	PasteNodes();
+
+	RequestManagerViewerRefresh();
 }
 
 bool FJointEditorToolkit::CanDuplicateNodes() const
@@ -1531,6 +1827,7 @@ void FJointEditorToolkit::RenameNodes()
 		}
 	}
 }
+
 
 bool FJointEditorToolkit::CanRenameNodes() const
 {
@@ -1605,6 +1902,8 @@ void FJointEditorToolkit::DeleteSelectedDuplicatableNodes()
 	}
 }
 
+
+
 bool FJointEditorToolkit::CanDeleteNodes() const
 {
 	// If any of the nodes can be deleted then we should allow deleting
@@ -1620,6 +1919,7 @@ bool FJointEditorToolkit::CanDeleteNodes() const
 
 	return false;
 }
+
 
 void FJointEditorToolkit::OnCreateComment()
 {
@@ -1676,7 +1976,6 @@ void FJointEditorToolkit::OnJumpToSelection()
 		return;
 	}
 }
-
 
 void FJointEditorToolkit::OnCollapseSelectionToSubGraph()
 {
@@ -1755,204 +2054,6 @@ bool FJointEditorToolkit::CanCollapseSelectionToSubGraph() const
 	return false;
 }
 
-void FJointEditorToolkit::OnExpandNodes()
-{
-	const FScopedTransaction Transaction( FGraphEditorCommands::Get().ExpandNodes->GetLabel() );
-	GetJointManager()->Modify();
-
-	TSet<UEdGraphNode*> ExpandedNodes;
-	TSharedPtr<SJointGraphEditor> FocusedGraphEd = FocusedGraphEditorPtr.Pin();
-
-	// Expand selected nodes into the focused graph context.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	if(FocusedGraphEd)
-	{
-		FocusedGraphEd->ClearSelectionSet();
-	}
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		ExpandedNodes.Empty();
-		bool bExpandedNodesNeedUniqueGuid = true;
-
-		DocumentManager->CleanInvalidTabs();
-
-		if (UJointEdGraphNode_Composite* SelectedCompositeNode = Cast<UJointEdGraphNode_Composite>(*NodeIt))
-		{
-			// No need to assign unique GUIDs since the source graph will be removed.
-			bExpandedNodesNeedUniqueGuid = false;
-
-			// Expand the composite node back into the world
-			UEdGraph* SourceGraph = SelectedCompositeNode->BoundGraph;
-			ExpandNode(SelectedCompositeNode, SourceGraph, /*inout*/ ExpandedNodes);
-
-			FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
-		}
-		
-		UEdGraphNode* SourceNode = CastChecked<UEdGraphNode>(*NodeIt);
-		check(SourceNode);
-		MoveNodesToAveragePos(ExpandedNodes, FVector2D(SourceNode->NodePosX, SourceNode->NodePosY), bExpandedNodesNeedUniqueGuid);
-	}
-
-	//update editor UI
-	RequestManagerViewerRefresh();
-	RefreshJointEditorOutliner();
-	CleanInvalidDocumentTabs();
-}
-
-
-
-void FJointEditorToolkit::MoveNodesToGraph(TArray<TObjectPtr<class UEdGraphNode>>& SourceNodes, UEdGraph* DestinationGraph, TSet<UEdGraphNode*>& OutExpandedNodes, UEdGraphNode** OutEntry, UEdGraphNode** OutResult, const bool bIsCollapsedGraph)
-{
-	// Move the nodes over, remembering any that are boundary nodes
-	while (SourceNodes.Num())
-	{
-		UEdGraphNode* Node = SourceNodes.Pop();
-		UEdGraph* OriginalGraph = Node->GetGraph();
-
-		Node->Modify();
-		OriginalGraph->Modify();
-		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph, REN_DontCreateRedirectors);
-
-		// Remove the node from the original graph
-		OriginalGraph->RemoveNode(Node, false);
-		
-		// We do not check CanPasteHere when determining CanCollapseNodes, unlike CanCollapseSelectionToFunction/Macro,
-		// so when expanding a collapsed graph we don't want to check the CanPasteHere function:
-		if (!bIsCollapsedGraph && !Node->CanPasteHere(DestinationGraph))
-		{
-			Node->BreakAllNodeLinks();
-			continue;
-		}
-
-		// Successfully added the node to the graph, we may need to remove flags
-		if (Node->HasAllFlags(RF_Transient) && !DestinationGraph->HasAllFlags(RF_Transient))
-		{
-			Node->SetFlags(RF_Transactional);
-			Node->ClearFlags(RF_Transient);
-			TArray<UObject*> Subobjects;
-			GetObjectsWithOuter(Node, Subobjects);
-			for (UObject* Subobject : Subobjects)
-			{
-				Subobject->ClearFlags(RF_Transient);
-				Subobject->SetFlags(RF_Transactional);
-			}
-		}
-		
-		DestinationGraph->AddNode(Node, /* bFromUI */ false, /* bSelectNewNode */ false);
-		
-		if(UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
-		{
-			OriginalGraph->SubGraphs.Remove(Composite->BoundGraph);
-			DestinationGraph->SubGraphs.Add(Composite->BoundGraph);
-		}
-
-		// Want to test exactly against tunnel, we shouldn't collapse embedded collapsed
-		// nodes or macros, only the tunnels in/out of the collapsed graph
-		if (Node->GetClass() == UJointEdGraphNode_Tunnel::StaticClass())
-		{
-			UJointEdGraphNode_Tunnel* TunnelNode = Cast<UJointEdGraphNode_Tunnel>(Node);
-			if (TunnelNode->bCanHaveOutputs)
-			{
-				*OutEntry = Node;
-			}
-			else if (TunnelNode->bCanHaveInputs)
-			{
-				*OutResult = Node;
-			}
-		}
-		else
-		{
-			OutExpandedNodes.Add(Node);
-		}
-	}
-}
-
-
-void FJointEditorToolkit::ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InSourceGraph, TSet<UEdGraphNode*>& OutExpandedNodes)
-{
- 	UEdGraph* DestinationGraph = InNodeToExpand->GetGraph(); // Graph that the composite node is in (parent graph)
-	UEdGraph* SourceGraph = InSourceGraph; // Bound graph of the composite node
-	check(SourceGraph);
-
-	// Mark all edited objects so they will appear in the transaction record if needed.
-	DestinationGraph->Modify();
-	SourceGraph->Modify();
-	InNodeToExpand->Modify();
-
-	UEdGraphNode* Entry = nullptr;
-	UEdGraphNode* Result = nullptr;
-
-	const bool bIsCollapsedGraph = InNodeToExpand->IsA<UJointEdGraphNode_Composite>();
-
-	// Move all of the nodes from the source graph to the destination graph
-
-	MoveNodesToGraph(SourceGraph->Nodes, DestinationGraph, OutExpandedNodes, &Entry, &Result, bIsCollapsedGraph);
-	
-	// Handle the destruction of the component nodes
-	const UJointEdGraphSchema* GraphSchema = GetDefault<UJointEdGraphSchema>();
-	GraphSchema->PruneGatewayNode(Cast<UJointEdGraphNode_Composite>(InNodeToExpand), Entry, Result, nullptr, &OutExpandedNodes);
-
-	if(Entry) Entry->DestroyNode();
-	if(Result) Result->DestroyNode();
-
-	// Make sure any subgraphs get propagated appropriately
-	if (SourceGraph->SubGraphs.Num() > 0)
-	{
-		DestinationGraph->SubGraphs.Append(SourceGraph->SubGraphs);
-		SourceGraph->SubGraphs.Empty();
-	}
-
-	// Fix up the outer for all of the nodes that were moved
-	for (UEdGraphNode* OutExpandedNode : OutExpandedNodes)
-	{
-		if (!OutExpandedNode) continue;
-
-		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(OutExpandedNode))
-		{
-			JointNode->SetOuterAs(DestinationGraph);
-
-			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
-			{
-				if (!Subnode) continue;
-
-				Subnode->SetOuterAs(DestinationGraph);
-
-				// Clean up the slate.
-				Subnode->SetGraphNodeSlate(nullptr);
-				
-			}
-			JointNode->SetGraphNodeSlate(nullptr);
-			// Clean up the slate.
-			
-			JointNode->Update();
-		}
-		else
-		{
-			OutExpandedNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph);
-		}
-	}
-	
-	// Remove the gateway node and source graph
-	InNodeToExpand->DestroyNode();
-	
-}
-
-bool FJointEditorToolkit::CanExpandNodes() const
-{
-	// Does the selection set contain any composite nodes that are legal to expand?
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (Cast<UJointEdGraphNode_Composite>(*NodeIt))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
 
 void FJointEditorToolkit::CollapseNodes(TSet<class UEdGraphNode*>& InCollapsableNodes)
 {
@@ -2221,6 +2322,203 @@ void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* In
 	}
 }
 
+void FJointEditorToolkit::MoveNodesToGraph(TArray<TObjectPtr<class UEdGraphNode>>& SourceNodes, UEdGraph* DestinationGraph, TSet<UEdGraphNode*>& OutExpandedNodes, UEdGraphNode** OutEntry, UEdGraphNode** OutResult, const bool bIsCollapsedGraph)
+{
+	// Move the nodes over, remembering any that are boundary nodes
+	while (SourceNodes.Num())
+	{
+		UEdGraphNode* Node = SourceNodes.Pop();
+		UEdGraph* OriginalGraph = Node->GetGraph();
+
+		Node->Modify();
+		OriginalGraph->Modify();
+		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph, REN_DontCreateRedirectors);
+
+		// Remove the node from the original graph
+		OriginalGraph->RemoveNode(Node, false);
+		
+		// We do not check CanPasteHere when determining CanCollapseNodes, unlike CanCollapseSelectionToFunction/Macro,
+		// so when expanding a collapsed graph we don't want to check the CanPasteHere function:
+		if (!bIsCollapsedGraph && !Node->CanPasteHere(DestinationGraph))
+		{
+			Node->BreakAllNodeLinks();
+			continue;
+		}
+
+		// Successfully added the node to the graph, we may need to remove flags
+		if (Node->HasAllFlags(RF_Transient) && !DestinationGraph->HasAllFlags(RF_Transient))
+		{
+			Node->SetFlags(RF_Transactional);
+			Node->ClearFlags(RF_Transient);
+			TArray<UObject*> Subobjects;
+			GetObjectsWithOuter(Node, Subobjects);
+			for (UObject* Subobject : Subobjects)
+			{
+				Subobject->ClearFlags(RF_Transient);
+				Subobject->SetFlags(RF_Transactional);
+			}
+		}
+		
+		DestinationGraph->AddNode(Node, /* bFromUI */ false, /* bSelectNewNode */ false);
+		
+		if(UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
+		{
+			OriginalGraph->SubGraphs.Remove(Composite->BoundGraph);
+			DestinationGraph->SubGraphs.Add(Composite->BoundGraph);
+		}
+
+		// Want to test exactly against tunnel, we shouldn't collapse embedded collapsed
+		// nodes or macros, only the tunnels in/out of the collapsed graph
+		if (Node->GetClass() == UJointEdGraphNode_Tunnel::StaticClass())
+		{
+			UJointEdGraphNode_Tunnel* TunnelNode = Cast<UJointEdGraphNode_Tunnel>(Node);
+			if (TunnelNode->bCanHaveOutputs)
+			{
+				*OutEntry = Node;
+			}
+			else if (TunnelNode->bCanHaveInputs)
+			{
+				*OutResult = Node;
+			}
+		}
+		else
+		{
+			OutExpandedNodes.Add(Node);
+		}
+	}
+}
+
+
+void FJointEditorToolkit::OnExpandNodes()
+{
+	const FScopedTransaction Transaction( FGraphEditorCommands::Get().ExpandNodes->GetLabel() );
+	GetJointManager()->Modify();
+
+	TSet<UEdGraphNode*> ExpandedNodes;
+	TSharedPtr<SJointGraphEditor> FocusedGraphEd = FocusedGraphEditorPtr.Pin();
+
+	// Expand selected nodes into the focused graph context.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if(FocusedGraphEd)
+	{
+		FocusedGraphEd->ClearSelectionSet();
+	}
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		ExpandedNodes.Empty();
+		bool bExpandedNodesNeedUniqueGuid = true;
+
+		DocumentManager->CleanInvalidTabs();
+
+		if (UJointEdGraphNode_Composite* SelectedCompositeNode = Cast<UJointEdGraphNode_Composite>(*NodeIt))
+		{
+			// No need to assign unique GUIDs since the source graph will be removed.
+			bExpandedNodesNeedUniqueGuid = false;
+
+			// Expand the composite node back into the world
+			UEdGraph* SourceGraph = SelectedCompositeNode->BoundGraph;
+			ExpandNode(SelectedCompositeNode, SourceGraph, /*inout*/ ExpandedNodes);
+
+			FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
+		}
+		
+		UEdGraphNode* SourceNode = CastChecked<UEdGraphNode>(*NodeIt);
+		check(SourceNode);
+		MoveNodesToAveragePos(ExpandedNodes, FVector2D(SourceNode->NodePosX, SourceNode->NodePosY), bExpandedNodesNeedUniqueGuid);
+	}
+
+	//update editor UI
+	RequestManagerViewerRefresh();
+	RefreshJointEditorOutliner();
+	CleanInvalidDocumentTabs();
+}
+
+bool FJointEditorToolkit::CanExpandNodes() const
+{
+	// Does the selection set contain any composite nodes that are legal to expand?
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (Cast<UJointEdGraphNode_Composite>(*NodeIt))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InSourceGraph, TSet<UEdGraphNode*>& OutExpandedNodes)
+{
+	UEdGraph* DestinationGraph = InNodeToExpand->GetGraph(); // Graph that the composite node is in (parent graph)
+	UEdGraph* SourceGraph = InSourceGraph; // Bound graph of the composite node
+	check(SourceGraph);
+
+	// Mark all edited objects so they will appear in the transaction record if needed.
+	DestinationGraph->Modify();
+	SourceGraph->Modify();
+	InNodeToExpand->Modify();
+
+	UEdGraphNode* Entry = nullptr;
+	UEdGraphNode* Result = nullptr;
+
+	const bool bIsCollapsedGraph = InNodeToExpand->IsA<UJointEdGraphNode_Composite>();
+
+	// Move all of the nodes from the source graph to the destination graph
+
+	MoveNodesToGraph(SourceGraph->Nodes, DestinationGraph, OutExpandedNodes, &Entry, &Result, bIsCollapsedGraph);
+	
+	// Handle the destruction of the component nodes
+	const UJointEdGraphSchema* GraphSchema = GetDefault<UJointEdGraphSchema>();
+	GraphSchema->PruneGatewayNode(Cast<UJointEdGraphNode_Composite>(InNodeToExpand), Entry, Result, nullptr, &OutExpandedNodes);
+
+	if(Entry) Entry->DestroyNode();
+	if(Result) Result->DestroyNode();
+
+	// Make sure any subgraphs get propagated appropriately
+	if (SourceGraph->SubGraphs.Num() > 0)
+	{
+		DestinationGraph->SubGraphs.Append(SourceGraph->SubGraphs);
+		SourceGraph->SubGraphs.Empty();
+	}
+
+	// Fix up the outer for all of the nodes that were moved
+	for (UEdGraphNode* OutExpandedNode : OutExpandedNodes)
+	{
+		if (!OutExpandedNode) continue;
+
+		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(OutExpandedNode))
+		{
+			JointNode->SetOuterAs(DestinationGraph);
+
+			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
+			{
+				if (!Subnode) continue;
+
+				Subnode->SetOuterAs(DestinationGraph);
+
+				// Clean up the slate.
+				Subnode->SetGraphNodeSlate(nullptr);
+				
+			}
+			JointNode->SetGraphNodeSlate(nullptr);
+			// Clean up the slate.
+			
+			JointNode->Update();
+		}
+		else
+		{
+			OutExpandedNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph);
+		}
+	}
+	
+	// Remove the gateway node and source graph
+	InNodeToExpand->DestroyNode();
+	
+}
+
 void FJointEditorToolkit::ToggleShowNormalConnection()
 {
 	UJointEditorSettings::Get()->bDrawNormalConnection = !UJointEditorSettings::Get()->bDrawNormalConnection;
@@ -2230,7 +2528,6 @@ bool FJointEditorToolkit::IsShowNormalConnectionChecked() const
 {
 	return UJointEditorSettings::Get()->bDrawNormalConnection;
 }
-
 
 void FJointEditorToolkit::ToggleShowRecursiveConnection()
 {
@@ -2271,6 +2568,1124 @@ void FJointEditorToolkit::StartQuickPicking()
 	PickingManager->StartQuickPicking();
 }
 
+void FJointEditorToolkit::OnEnableBreakpoint()
+{
+	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (*NodeIt == nullptr) continue;
+		UJointEdGraphNode* Node = CastChecked<UJointEdGraphNode>(*NodeIt);
+		if (Node == nullptr) continue;
+
+		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
+
+		if (DebugData && DebugData->bHasBreakpoint == true)
+		{
+			DebugData->bIsBreakpointEnabled = true;
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
+		}
+	}
+
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanEnableBreakpoint() const
+{
+	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (!*NodeIt) continue;
+		
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(*NodeIt);
+		if (Node == nullptr) continue;
+
+		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
+
+		if (DebugData && DebugData->bHasBreakpoint == true && DebugData->bIsBreakpointEnabled == false)
+		{
+			return true;
+		}
+	}
+	
+
+	return false;
+}
+
+void FJointEditorToolkit::OnToggleBreakpoint()
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TSet<UJointEdGraph*> ModifiedGraphs;
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+		if (SelectedNode == nullptr) continue;
+
+		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(SelectedNode->GetCastedGraph()))
+		{
+			//Mark this graph as modified.
+			ModifiedGraphs.Add(SelectedNode->GetCastedGraph());
+
+			//Toggle the breakpoint state.
+			if (FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, SelectedNode); Data != nullptr)
+			{
+				if (Data->bHasBreakpoint) //remove breakpoint - while keeping the debug data instance.
+				{
+					Data->bHasBreakpoint = false;
+					Data->bIsBreakpointEnabled = false;
+					
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
+				}
+				else //add breakpoint - but with the existing debug data instance.
+				{
+					Data->bHasBreakpoint = true;
+					Data->bIsBreakpointEnabled = true;
+					
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
+				}
+			}
+			else
+			{
+				//add a breakpoint - but add a new debug data instance.
+				//(This is the first time to add a breakpoint for this node)
+
+				FJointNodeDebugData NewDebugData;
+
+				NewDebugData.Node = FJointEdUtils::GetOriginalJointGraphNodeFromJointGraphNode(SelectedNode);
+
+				if (NewDebugData.Node)
+				{
+					NewDebugData.bHasBreakpoint = true;
+					NewDebugData.bIsBreakpointEnabled = true;
+
+					DebugDataArr->Add(NewDebugData);
+
+					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, &NewDebugData);
+				}
+			}
+		}
+	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+	
+}
+
+bool FJointEditorToolkit::CanToggleBreakpoint() const
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+		if (SelectedNode)
+		{
+			if (!SelectedNode->CanHaveBreakpoint()) return false;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OnDisableBreakpoint()
+{
+
+	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (*NodeIt) continue;
+		
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(*NodeIt);
+		if (Node == nullptr) continue;
+
+		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
+
+		if (DebugData && DebugData->bHasBreakpoint == true && DebugData->bIsBreakpointEnabled == true)
+		{
+			DebugData->bIsBreakpointEnabled = false;
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
+		}
+	}
+	
+
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanDisableBreakpoint() const
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TMap<UJointEdGraph*, TArray<FJointNodeDebugData>*> GraphToDebugDataMap;
+
+	// Collect all the graphs that are related to the selected nodes.
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (!SelectedNode) continue;
+
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
+		if (Node == nullptr) continue;
+
+		//Avoid duplicate graph search.
+		if (GraphToDebugDataMap.Contains(Node->GetCastedGraph())) continue;
+
+		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(Node->GetCastedGraph()))
+		{
+			GraphToDebugDataMap.Add(Node->GetCastedGraph(), DebugDataArr);
+		}
+	}
+
+	// check if every selected node has a breakpoint and is enabled.
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (!SelectedNode) continue;
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
+		if (Node == nullptr) continue;
+
+		if (TArray<FJointNodeDebugData>* DebugDataArr = GraphToDebugDataMap.FindRef(Node->GetCastedGraph()))
+		{
+			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, Node);
+
+			if (Data != nullptr && Data->Node != nullptr && Data->bHasBreakpoint && !Data->bIsBreakpointEnabled) return false;
+		}
+	}
+
+	return true;
+}
+
+void FJointEditorToolkit::OnAddBreakpoint()
+{
+
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TMap<UJointEdGraph*, TArray<FJointNodeDebugData>*> GraphToDebugDataMap;
+
+	// Collect all the graphs that are related to the selected nodes.
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (SelectedNode == nullptr) continue;
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
+		if (Node == nullptr) continue;
+
+		//Avoid duplicate graph search.
+		if (GraphToDebugDataMap.Contains(Node->GetCastedGraph())) continue;
+
+		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(Node->GetCastedGraph()))
+		{
+			GraphToDebugDataMap.Add(Node->GetCastedGraph(), DebugDataArr);
+		}
+	}
+
+	// check if every selected node has a breakpoint and is enabled.
+	for (UObject* SelectedNode : SelectedNodes)
+	{
+		if (SelectedNode == nullptr) continue;
+		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
+		if (Node == nullptr) continue;
+
+		if (TArray<FJointNodeDebugData>* DebugDataArr = GraphToDebugDataMap.FindRef(Node->GetCastedGraph()))
+		{
+			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, Node);
+
+			if (Data != nullptr)
+			{
+				Data->bHasBreakpoint = true;
+				Data->bIsBreakpointEnabled = false;
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
+			}
+			else
+			{
+				FJointNodeDebugData NewDebugData;
+
+				NewDebugData.Node = Node;
+				NewDebugData.bHasBreakpoint = true;
+				NewDebugData.bIsBreakpointEnabled = true;
+
+				DebugDataArr->Add(NewDebugData);
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
+			}
+		}
+	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanAddBreakpoint() const
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+
+		if (SelectedNode)
+		{
+			if (!SelectedNode->CanHaveBreakpoint()) return false;
+
+			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
+
+			if (Data == nullptr) return true;
+			if (Data->bHasBreakpoint == false) return true;
+		}
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OnRemoveBreakpoint()
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+
+		if (SelectedNode)
+		{
+			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
+
+			if (Data != nullptr)
+			{
+				Data->bHasBreakpoint = false;
+				Data->bIsBreakpointEnabled = false;
+				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
+			}
+		}
+	}
+
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanRemoveBreakpoint() const
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+
+		if (SelectedNode)
+		{
+			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
+
+			if (Data != nullptr)
+			{
+				if (Data->bHasBreakpoint == true) return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OnRemoveAllBreakpoints()
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		for (FJointNodeDebugData& DebugData : Graph->DebugData)
+		{
+			DebugData.bHasBreakpoint = false;
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
+		}
+	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+
+bool FJointEditorToolkit::CanRemoveAllBreakpoints() const
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		return !Graph->DebugData.IsEmpty();
+	}
+
+	return false;
+}
+
+
+void FJointEditorToolkit::OnEnableAllBreakpoints()
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		for (FJointNodeDebugData& DebugData : Graph->DebugData)
+		{
+			DebugData.bIsBreakpointEnabled = true;
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
+		}
+	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanEnableAllBreakpoints() const
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		for (const FJointNodeDebugData& DebugData : Graph->DebugData)
+		{
+			if (!DebugData.bIsBreakpointEnabled) return true;
+		}
+
+		return false;
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OnDisableAllBreakpoints()
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		for (FJointNodeDebugData& DebugData : Graph->DebugData)
+		{
+			DebugData.bIsBreakpointEnabled = false;
+			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
+		}
+	}
+	
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
+bool FJointEditorToolkit::CanDisableAllBreakpoints() const
+{
+	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+	for (UJointEdGraph* Graph : Graphs)
+	{
+		if (!Graph) continue;
+
+		for (const FJointNodeDebugData& DebugData : Graph->DebugData)
+		{
+			if (DebugData.bIsBreakpointEnabled) return true;
+		}
+
+		return false;
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OnToggleDebuggerExecution()
+{
+	UJointEditorSettings::Get()->bDebuggerEnabled = !UJointEditorSettings::Get()->bDebuggerEnabled;
+}
+
+bool FJointEditorToolkit::GetCheckedToggleDebuggerExecution() const
+{
+	return UJointEditorSettings::Get()->bDebuggerEnabled;
+}
+
+void FJointEditorToolkit::OnDissolveSubNodes()
+{
+	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
+	
+	if (GEditor->IsTransactionActive())
+	{
+		return;
+	}
+	
+	// dissolve all the sub nodes under the selected nodes - and refresh the selected nodes' parent nodes - but only once for each parent node for the performance reason.
+
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TSet<UJointEdGraphNode*> NodesToApply;
+	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
+
+	// Collect nodes to apply
+
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		NodesToApply.Add(SelectedNode);
+
+		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
+		{
+			ParentNodesToRefresh.Add(ParentNode);
+		}
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				NodesToApply.Add(FragmentNode);
+			}
+		}
+	}
+	
+	// abort if no nodes to apply
+	if (NodesToApply.Num() == 0) return;
+	
+	// Abort if every node is already dissolved (IsDissolvedSubNode())
+	bool bAllApplied = true;
+	
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			if (!FragmentNode->IsDissolvedSubNode())
+			{
+				bAllApplied = false;
+				break;
+			}
+		}
+	}
+	
+	if (bAllApplied) return;
+	
+	// Apply changes
+	const FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
+	);
+	
+	//modify all the nodes to apply
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+		Node->Modify();
+
+		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
+	}
+	
+	//modify all the parent nodes to refresh
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->Modify();
+
+		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
+	}
+	
+
+	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
+	
+	// Reverse order to safely modify graph structure
+	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
+	{
+		UJointEdGraphNode* Node = NodesArray[Index];
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			FragmentNode->DissolveSelf();
+		}else
+		{
+			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
+			Node->ReconstructNode();
+		}
+	}
+	
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->ReconstructNode();
+	}
+	
+	
+}
+
+
+bool FJointEditorToolkit::CheckCanDissolveSubNodes() const
+{
+	// if the selected nodes contain at least one fragment node that is not yet dissolved, then we can dissolve sub nodes.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			if (!FragmentNode->IsDissolvedSubNode())
+			{
+				return true;
+			}
+		}
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				if (!SubFragmentNode->IsDissolvedSubNode())
+				{
+					return true;
+				}
+			}
+		}
+	}
+	
+	return false;
+}
+
+
+void FJointEditorToolkit::OnDissolveExactSubNode()
+{
+
+	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
+	
+	if (GEditor->IsTransactionActive())
+	{
+		return;
+	}
+	
+	// dissolve all the sub nodes under the selected nodes - and refresh the selected nodes' parent nodes - but only once for each parent node for the performance reason.
+
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TSet<UJointEdGraphNode*> NodesToApply;
+	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
+
+	// Collect nodes to apply
+
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		NodesToApply.Add(SelectedNode);
+
+		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
+		{
+			ParentNodesToRefresh.Add(ParentNode);
+		}
+	}
+	
+	// abort if no nodes to apply
+	if (NodesToApply.Num() == 0) return;
+	
+	// Abort if every node is already dissolved (IsDissolvedSubNode())
+	bool bAllApplied = true;
+	
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			if (!FragmentNode->IsDissolvedSubNode())
+			{
+				bAllApplied = false;
+				break;
+			}
+		}
+	}
+	
+	if (bAllApplied) return;
+	
+	// Apply changes
+	const FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
+	);
+	
+	//modify all the nodes to apply
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+		Node->Modify();
+
+		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
+	}
+	
+	//modify all the parent nodes to refresh
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->Modify();
+
+		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
+	}
+	
+
+	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
+	
+	// Reverse order to safely modify graph structure
+	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
+	{
+		UJointEdGraphNode* Node = NodesArray[Index];
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			FragmentNode->DissolveSelf();
+		}else
+		{
+			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
+			Node->ReconstructNode();
+		}
+	}
+	
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->ReconstructNode();
+	}
+	
+	
+}
+
+bool FJointEditorToolkit::CheckCanDissolveExactSubNode() const
+{
+	// Check if at least one selected node is a fragment node that is not yet dissolved.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			if (!FragmentNode->IsDissolvedSubNode())
+			{
+				return true;
+			}
+		}
+	}
+	
+	return false;
+}
+
+
+void FJointEditorToolkit::OnDissolveOnlySubNodes()
+{
+	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
+	
+	if (GEditor->IsTransactionActive())
+	{
+		return;
+	}
+	
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TSet<UJointEdGraphNode*> NodesToApply;
+	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
+
+	// Collect nodes to apply
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				NodesToApply.Add(FragmentNode);
+
+				if (UJointEdGraphNode* ParentNode = FragmentNode->ParentNode)
+				{
+					ParentNodesToRefresh.Add(ParentNode);
+				}
+			}
+		}
+	}
+
+	// Abort if nothing to apply 
+	if (NodesToApply.Num() == 0) return;
+	
+	// Abort if every node is already dissolved (IsDissolvedSubNode())
+	bool bAllApplied = true;
+	
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			if (!FragmentNode->IsDissolvedSubNode())
+			{
+				bAllApplied = false;
+				break;
+			}
+		}
+	}
+	
+	if (bAllApplied) return;
+	
+	// Apply changes
+	const FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
+	);
+	
+	//modify all the nodes to apply
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+		Node->Modify();
+
+		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
+	}
+	
+	//modify all the parent nodes to refresh
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh )
+	{
+		if (!ParentNode) continue;
+		ParentNode->Modify();
+
+		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
+	}
+	
+	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
+	
+	// Reverse order to safely modify graph structure
+	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
+	{
+		UJointEdGraphNode* Node = NodesArray[Index];
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			FragmentNode->DissolveSelf();
+		}else
+		{
+			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
+			Node->ReconstructNode();
+		}
+	}
+	
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->ReconstructNode();
+	}
+	
+	
+}
+
+bool FJointEditorToolkit::CheckCanDissolveOnlySubNodes() const
+{
+	// if the selected nodes contain at least one fragment node that is not yet dissolved, then we can dissolve sub nodes.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				if (!SubFragmentNode->IsDissolvedSubNode())
+				{
+					return true;
+				}
+			}
+		}
+	}
+	
+	return false;
+}
+
+
+void FJointEditorToolkit::OnSolidifySubNodes()
+{
+	
+	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
+	
+	if (GEditor->IsTransactionActive())
+	{
+		return;
+	}
+	
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+
+	TSet<UJointEdGraphNode*> NodesToApply;
+	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
+
+	// Collect nodes to apply
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		NodesToApply.Add(SelectedNode);
+
+		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
+		{
+			ParentNodesToRefresh.Add(ParentNode);
+		}
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				NodesToApply.Add(FragmentNode);
+
+				if (UJointEdGraphNode* ParentNode = FragmentNode->ParentNode)
+				{
+					ParentNodesToRefresh.Add(ParentNode);
+				}
+			}
+		}
+	}
+
+	// Abort if nothing to apply 
+	if (NodesToApply.Num() == 0) return;
+	
+	// Abort if every node is already solidified (IsDissolvedSubNode())
+	bool bAllApplied = true;
+	
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			if (FragmentNode->IsDissolvedSubNode())
+			{
+				bAllApplied = false;
+				break;
+			}
+		}
+	}
+	
+	if (bAllApplied) return;
+	
+	// Apply changes
+	const FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_SolidifySubNode", "Solidify Sub Node")
+	);
+	
+	//modify all the nodes to apply
+	for (UJointEdGraphNode* Node : NodesToApply)
+	{
+		if (!Node) continue;
+		Node->Modify();
+
+		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
+	}
+	
+	//modify all the parent nodes to refresh
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		ParentNode->Modify();
+
+		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
+	}
+
+	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
+
+	// Reverse order to safely modify graph structure
+	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
+	{
+		UJointEdGraphNode* Node = NodesArray[Index];
+		if (!Node) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
+		{
+			FragmentNode->SolidifySelf();
+		}
+		else
+		{
+			// Non-fragment nodes may still need refresh
+			Node->ReconstructNode();
+		}
+	}
+
+	// Refresh parent nodes
+	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
+	{
+		if (!ParentNode) continue;
+		
+		ParentNode->ReconstructNode();
+	}
+}
+
+bool FJointEditorToolkit::CheckCanSolidifySubNodes() const
+{
+	// if the selected nodes contain at least one fragment node that is dissolved, then we can solidify sub nodes.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			if (FragmentNode->IsDissolvedSubNode())
+			{
+				return true;
+			}
+		}
+
+		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
+		{
+			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
+			{
+				if (SubFragmentNode->IsDissolvedSubNode())
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+void FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty()
+{
+	bIsOnVisibilityChangeModeForSimpleDisplayProperty = !bIsOnVisibilityChangeModeForSimpleDisplayProperty;
+
+	if (bIsOnVisibilityChangeModeForSimpleDisplayProperty)
+	{
+		PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted();
+	}
+	else
+	{
+		ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded();
+	}
+}
+
+bool FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const
+{
+	return bIsOnVisibilityChangeModeForSimpleDisplayProperty;
+}
+
+void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted()
+{
+	if (UJointEdGraph* Graph = GetFocusedJointGraph())
+	{
+		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
+		{
+			if (CachedJointGraphNode.IsValid())
+			{
+				if (TSharedPtr<SJointGraphNodeBase> GraphNodeWidget = CachedJointGraphNode->GetGraphNodeSlate().Pin())
+				{
+					GraphNodeWidget->OnVisibilityChangeModeForSimpleDisplayPropertyEnter();
+				}
+			}
+		}
+	}
+}
+
+void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded()
+{
+	if (UJointEdGraph* Graph = GetFocusedJointGraph())
+	{
+		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
+		{
+			if (CachedJointGraphNode.IsValid())
+			{
+				if (TSharedPtr<SJointGraphNodeBase> GraphNodeWidget = CachedJointGraphNode->GetGraphNodeSlate().Pin())
+				{
+					GraphNodeWidget->OnVisibilityChangeModeForSimpleDisplayPropertyExit();
+				}
+			}
+		}
+	}
+}
+
+void FJointEditorToolkit::OnCreateJointNodePresetFromSelection()
+{
+	//open dialog to ask for preset name
+	
+	EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(TEXT("Create Joint Node Preset from selected foundation node?")));
+	
+	if (Result == EAppReturnType::Ok)
+	{
+		// proceed to create preset
+
+		// only allow when exactly one node is selected and that node is a foundation node.
+		const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+		if (SelectedNodes.Num() == 1)
+		{
+			for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+			{
+				UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+
+				if (SelectedNode)
+				{
+					if (SelectedNode->GetCastedNodeInstance<UJN_Foundation>())
+					{
+						// Create preset asset from the selected foundation node on the project.
+						FString Path = GetJointManager()->GetPathName();
+						
+						if (UJointNodePreset* Asset = FJointEdUtils::CreateNewAssetForClass<UJointNodePreset>(UJointNodePreset::StaticClass(), FPaths::GetPath(Path)))
+						{
+							FJointEdUtils::FireNotification(
+								LOCTEXT("Notification_Title_JointNodePresetCreated", "Joint Node Preset Created"),
+								FText::Format(
+									LOCTEXT("Notification_Sub_JointNodePresetCreated", "A new Joint Node Preset asset has been created from the selected foundation node on path \'{0}\'."),
+									FText::FromString(Asset->GetPathName())
+								),
+								EJointMDAdmonitionType::Note
+							);
+							
+							//copy the foundation node data to the preset asset.
+							FJointEdUtils::AllocateNodeTemplate(Asset,SelectedNode);
+							
+							return;
+						}
+					}
+				}
+			}
+		}
+		
+		FJointEdUtils::FireNotification(
+			LOCTEXT("Notification_Title_JointNodePresetCreationFailed", "Joint Node Preset Creation Failed"),
+			LOCTEXT("Notification_Sub_JointNodePresetCreationFailed", "Failed to create Joint Node Preset asset from the selected foundation node for unknown reason."),
+			EJointMDAdmonitionType::Error
+		);
+	
+		return;
+		
+	}
+	
+}
+
+bool FJointEditorToolkit::CanCreateJointNodePresetFromSelection() const
+{
+	// only allow when exactly one node is selected and that node is a foundation node.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if (SelectedNodes.Num() != 1) return false;
+	
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+
+		if (SelectedNode)
+		{
+			if (SelectedNode->GetCastedNodeInstance<UJN_Foundation>())
+			{
+				return true;
+			}
+		}
+	}
+	
+	return false;
+}
 
 void FJointEditorToolkit::OpenSearchTab() const
 {
@@ -2995,1295 +4410,6 @@ void FJointEditorToolkit::JumpToHyperlink(UObject* ObjectReference, bool bReques
 		UE_LOG(LogBlueprint, Warning, TEXT("Unknown type of hyperlinked object (%s), cannot focus it"),
 		       *GetNameSafe(ObjectReference));
 	}
-}
-
-
-void FJointEditorToolkit::SelectAllNodes()
-{
-	if (TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
-	{
-		CurrentGraphEditor->SelectAllNodes();
-	}
-}
-
-
-void FJointEditorToolkit::CopySelectedNodes()
-{
-	// Get the current graph
-
-	if (!GetFocusedGraphEditor()) return;
-
-	UEdGraph* Graph = GetFocusedGraphEditor()->GetCurrentGraph();
-
-	if (Graph == nullptr) return;
-
-	//Export the selected nodes and place the text on the clipboard
-	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	//Target nodes to copy. Ensure to be cleaned up before copying (it's necessary to empty it up because of the compiler optimization can cause issues sometimes.)
-	TSet<UObject*> NodesToCopy;
-	
-	NodesToCopy.Empty();
-
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (SelectedNode == nullptr) continue;
-		
-		if (UEdGraphNode* GraphNode = Cast<UEdGraphNode>(SelectedNode))
-		{
-			if (GraphNode->CanDuplicateNode()) NodesToCopy.Add(GraphNode);
-		}
-	}
-	
-	
-	// Remove the nodes that are contained within other selected nodes - we only want to copy the top-level nodes
-	for (int i = NodesToCopy.Num() - 1; i >= 0; --i)
-	{
-		UObject* NodeToCheck = NodesToCopy.Array()[i];
-
-		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCheck))
-		{
-			for (UJointEdGraphNode* SubNode : CastedNode->GetAllSubNodesInHierarchy())
-			{
-				if (NodesToCopy.Contains(SubNode))
-				{
-					NodesToCopy.Remove(SubNode);
-				}
-			}
-		}
-	}
-	
-		
-	
-	for (UObject* NodeToCopy : NodesToCopy)
-	{
-		if (UEdGraphNode* CastedNode = Cast<UEdGraphNode>(NodeToCopy))
-			CastedNode->PrepareForCopying();	
-	}
-
-	FString ExportedText;
-	
-	FEdGraphUtilities::ExportNodesToText(NodesToCopy, ExportedText);
-
-	FPlatformApplicationMisc::ClipboardCopy(*ExportedText);
-	
-	for (UObject* NodeToCopy : NodesToCopy)
-	{
-		if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(NodeToCopy))
-			CastedNode->PostCopyNode();	
-	}
-
-}
-
-void FJointEditorToolkit::PasteNodes()
-{
-	if (const TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
-	{
-		PasteNodesHere(CurrentGraphEditor->GetPasteLocation());
-	}
-
-	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::CutSelectedNodes()
-{
-	CopySelectedNodes();
-	DeleteSelectedDuplicatableNodes();
-
-	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::DuplicateNodes()
-{
-	CopySelectedNodes();
-	PasteNodes();
-
-	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection)
-{
-	if (GetNodePickingManager().IsValid() && GetNodePickingManager()->IsInNodePicking())
-	{
-		for (UObject* Selection : NewSelection)
-		{
-			if (Selection == nullptr) continue;
-
-			UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(Selection);
-
-			if (CastedGraphNode == nullptr) continue;
-
-			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
-			Result->Node = CastedGraphNode->GetCastedNodeInstance();
-			Result->OptionalEdNode = CastedGraphNode;
-
-			GetNodePickingManager()->PerformNodePicking(Result);
-
-			break;
-		}
-	}
-	else
-	{
-		SelectProvidedObjectOnDetail(NewSelection);
-		NotifySelectionChangeToNodeSlates(InGraph, NewSelection);
-	}
-}
-
-void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection) const
-{
-	if (JointManager == nullptr) return;
-
-	if (UJointEdGraph* CastedGraph = InGraph ? Cast<UJointEdGraph>(InGraph) : nullptr)
-	{
-		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
-
-		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
-		{
-			if (!GraphNode.IsValid()) continue;
-
-			const TSharedPtr<SJointGraphNodeBase> NodeSlate = GraphNode->GetGraphNodeSlate().Pin();
-
-			if (!NodeSlate.IsValid()) continue;
-
-			NodeSlate->OnGraphSelectionChanged(NewSelection);
-		}
-	}
-
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
-{
-
-	//early returns
-	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
-
-	if (!CurrentGraphEditor.IsValid())
-	{
-		return;
-	}
-	
-	UJointEdGraph* CastedGraph = CurrentGraphEditor->GetCurrentGraph() ? Cast<UJointEdGraph>(CurrentGraphEditor->GetCurrentGraph()) : nullptr;
-
-	if (CastedGraph == nullptr)
-	{
-		return;
-	}
-	
-	//Get the currently selected node on the graph and store it to use it when if we need to attach some nodes that will be imported right after this.
-	//But if there is any node that can be placed directly on the graph among the imported nodes, we will not implement those dependent nodes.
-	//This is for the fragment copy & paste between nodes.
-	
-	
-	UJointEdGraphNode* AttachTargetNode = nullptr;
-	
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (SelectedNode == nullptr) continue;
-
-		if (UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode))
-		{
-			//Only can work with a single object. Not considering paste action for the multiple nodes at once, because it will be confusing and annoying sometimes (ex, Users didn't know that they selected unwanted node to paste to.)
-			if (AttachTargetNode != nullptr) return;
-			
-			AttachTargetNode = Node;
-		}
-	}
-
-	// Start to do actual paste operation - make a transaction for undo/redo
-	const FScopedTransaction Transaction(FGenericCommands::Get().Paste->GetDescription());
-
-	CastedGraph->Modify();
-	CastedGraph->LockUpdates();
-	
-	// Clear the selection set (newly pasted stuff will be selected)
-	CurrentGraphEditor->ClearSelectionSet();
-
-	// Grab the text to paste from the clipboard.
-	FString TextToImport;
-
-	FPlatformApplicationMisc::ClipboardPaste(TextToImport);
-
-	// Import the nodes
-	TSet<UEdGraphNode*> PastedNodes;
-
-	FEdGraphUtilities::ImportNodesFromText(CastedGraph, TextToImport, PastedNodes);
-	
-	// Move the pasted nodes to the location of the paste request
-	FJointEdUtils::MoveNodesAtLocation(PastedNodes, Location);
-	
-	// Handle any fixup of the imported nodes
-	FJointEdUtils::MarkNodesAsModifiedAndValidateName(PastedNodes);
-	
-	// See if the newly pasted nodes can be attached to the selected node on the graph.
-	// if it's a node that had a parent node when it was copied, and we have a valid attach target node, then attach it to the target node.
-	if (AttachTargetNode)
-	{
-		AttachTargetNode->Modify();
-
-		if (AttachTargetNode->GetCastedNodeInstance()) AttachTargetNode->GetCastedNodeInstance()->Modify();
-
-		for (UEdGraphNode* InEdGraphNode : PastedNodes)
-		{
-			if (InEdGraphNode == nullptr) continue;
-		
-			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
-			{
-				CastedPastedNode->ParentNode = AttachTargetNode;
-				AttachTargetNode->AddSubNode(CastedPastedNode);
-
-				// Remove the Paste Node from the graph.
-				CastedGraph->RemoveNode(CastedPastedNode);
-			}
-		}
-	}else
-	{
-		for (UEdGraphNode* InEdGraphNode : PastedNodes)
-		{
-			if (InEdGraphNode == nullptr) continue;
-		
-			if (UJointEdGraphNode_Fragment* CastedPastedNode = Cast<UJointEdGraphNode_Fragment>(InEdGraphNode))
-			{
-				CastedGraph->RemoveNode(CastedPastedNode);
-			}
-		}
-	}
-	
-	// Explicitly call PostProcessPastedNodes on the pasted nodes one more time since we modified attachment. (FEdGraphUtilities::ImportNodesFromText already called it once)
-	FEdGraphUtilities::PostProcessPastedNodes(PastedNodes);
-	
-	// Notify the graph that graph nodes have been pasted.
-	if (CastedGraph)
-	{
-		CastedGraph->OnNodesPasted(TextToImport);
-		CastedGraph->UnlockUpdates();
-		CastedGraph->NotifyGraphChanged();
-	}
-
-	// Update UI
-	CurrentGraphEditor->NotifyGraphChanged();
-
-	// Mark the package as dirty
-	UObject* GraphOwner = CastedGraph->GetOuter();
-	if (GraphOwner)
-	{
-		GraphOwner->PostEditChange();
-		GraphOwner->MarkPackageDirty();
-	}
-	
-	// Select the newly pasted nodes on the graph
-	TSet<class UObject*> Selection;
-
-	for (UEdGraphNode* PastedNode : PastedNodes)
-	{
-		if (!PastedNode) continue;
-
-		Selection.Add(PastedNode);
-	}
-
-	SelectProvidedObjectOnGraph(Selection);
-	
-}
-
-
-void FJointEditorToolkit::OnEnableBreakpoint()
-{
-	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (*NodeIt == nullptr) continue;
-		UJointEdGraphNode* Node = CastChecked<UJointEdGraphNode>(*NodeIt);
-		if (Node == nullptr) continue;
-
-		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
-
-		if (DebugData && DebugData->bHasBreakpoint == true)
-		{
-			DebugData->bIsBreakpointEnabled = true;
-			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
-		}
-	}
-
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-
-bool FJointEditorToolkit::CanEnableBreakpoint() const
-{
-	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (!*NodeIt) continue;
-		
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(*NodeIt);
-		if (Node == nullptr) continue;
-
-		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
-
-		if (DebugData && DebugData->bHasBreakpoint == true && DebugData->bIsBreakpointEnabled == false)
-		{
-			return true;
-		}
-	}
-	
-
-	return false;
-}
-
-void FJointEditorToolkit::OnToggleBreakpoint()
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TSet<UJointEdGraph*> ModifiedGraphs;
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-		if (SelectedNode == nullptr) continue;
-
-		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(SelectedNode->GetCastedGraph()))
-		{
-			//Mark this graph as modified.
-			ModifiedGraphs.Add(SelectedNode->GetCastedGraph());
-
-			//Toggle the breakpoint state.
-			if (FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, SelectedNode); Data != nullptr)
-			{
-				if (Data->bHasBreakpoint) //remove breakpoint - while keeping the debug data instance.
-				{
-					Data->bHasBreakpoint = false;
-					Data->bIsBreakpointEnabled = false;
-					
-					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
-				}
-				else //add breakpoint - but with the existing debug data instance.
-				{
-					Data->bHasBreakpoint = true;
-					Data->bIsBreakpointEnabled = true;
-					
-					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
-				}
-			}
-			else
-			{
-				//add a breakpoint - but add a new debug data instance.
-				//(This is the first time to add a breakpoint for this node)
-
-				FJointNodeDebugData NewDebugData;
-
-				NewDebugData.Node = FJointEdUtils::GetOriginalJointGraphNodeFromJointGraphNode(SelectedNode);
-
-				if (NewDebugData.Node)
-				{
-					NewDebugData.bHasBreakpoint = true;
-					NewDebugData.bIsBreakpointEnabled = true;
-
-					DebugDataArr->Add(NewDebugData);
-
-					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, &NewDebugData);
-				}
-			}
-		}
-	}
-	
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-	
-}
-
-
-bool FJointEditorToolkit::CanToggleBreakpoint() const
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-		if (SelectedNode)
-		{
-			if (!SelectedNode->CanHaveBreakpoint()) return false;
-
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnDisableBreakpoint()
-{
-
-	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (*NodeIt) continue;
-		
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(*NodeIt);
-		if (Node == nullptr) continue;
-
-		FJointNodeDebugData* DebugData = UJointDebugger::GetDebugDataForInstance(Node);
-
-		if (DebugData && DebugData->bHasBreakpoint == true && DebugData->bIsBreakpointEnabled == true)
-		{
-			DebugData->bIsBreakpointEnabled = false;
-			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, DebugData);
-		}
-	}
-	
-
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-
-bool FJointEditorToolkit::CanDisableBreakpoint() const
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TMap<UJointEdGraph*, TArray<FJointNodeDebugData>*> GraphToDebugDataMap;
-
-	// Collect all the graphs that are related to the selected nodes.
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (!SelectedNode) continue;
-
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
-		if (Node == nullptr) continue;
-
-		//Avoid duplicate graph search.
-		if (GraphToDebugDataMap.Contains(Node->GetCastedGraph())) continue;
-
-		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(Node->GetCastedGraph()))
-		{
-			GraphToDebugDataMap.Add(Node->GetCastedGraph(), DebugDataArr);
-		}
-	}
-
-	// check if every selected node has a breakpoint and is enabled.
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (!SelectedNode) continue;
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
-		if (Node == nullptr) continue;
-
-		if (TArray<FJointNodeDebugData>* DebugDataArr = GraphToDebugDataMap.FindRef(Node->GetCastedGraph()))
-		{
-			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, Node);
-
-			if (Data != nullptr && Data->Node != nullptr && Data->bHasBreakpoint && !Data->bIsBreakpointEnabled) return false;
-		}
-	}
-
-	return true;
-}
-
-void FJointEditorToolkit::OnAddBreakpoint()
-{
-
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TMap<UJointEdGraph*, TArray<FJointNodeDebugData>*> GraphToDebugDataMap;
-
-	// Collect all the graphs that are related to the selected nodes.
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (SelectedNode == nullptr) continue;
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
-		if (Node == nullptr) continue;
-
-		//Avoid duplicate graph search.
-		if (GraphToDebugDataMap.Contains(Node->GetCastedGraph())) continue;
-
-		if (TArray<FJointNodeDebugData>* DebugDataArr = UJointDebugger::GetCorrespondingDebugDataForGraph(Node->GetCastedGraph()))
-		{
-			GraphToDebugDataMap.Add(Node->GetCastedGraph(), DebugDataArr);
-		}
-	}
-
-	// check if every selected node has a breakpoint and is enabled.
-	for (UObject* SelectedNode : SelectedNodes)
-	{
-		if (SelectedNode == nullptr) continue;
-		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(SelectedNode);
-		if (Node == nullptr) continue;
-
-		if (TArray<FJointNodeDebugData>* DebugDataArr = GraphToDebugDataMap.FindRef(Node->GetCastedGraph()))
-		{
-			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, Node);
-
-			if (Data != nullptr)
-			{
-				Data->bHasBreakpoint = true;
-				Data->bIsBreakpointEnabled = false;
-				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
-			}
-			else
-			{
-				FJointNodeDebugData NewDebugData;
-
-				NewDebugData.Node = Node;
-				NewDebugData.bHasBreakpoint = true;
-				NewDebugData.bIsBreakpointEnabled = true;
-
-				DebugDataArr->Add(NewDebugData);
-				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
-			}
-		}
-	}
-	
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-bool FJointEditorToolkit::CanAddBreakpoint() const
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-
-		if (SelectedNode)
-		{
-			if (!SelectedNode->CanHaveBreakpoint()) return false;
-
-			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
-
-			if (Data == nullptr) return true;
-			if (Data->bHasBreakpoint == false) return true;
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnRemoveBreakpoint()
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-
-		if (SelectedNode)
-		{
-			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
-
-			if (Data != nullptr)
-			{
-				Data->bHasBreakpoint = false;
-				Data->bIsBreakpointEnabled = false;
-				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
-			}
-		}
-	}
-
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-bool FJointEditorToolkit::CanRemoveBreakpoint() const
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-
-		if (SelectedNode)
-		{
-			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstance(SelectedNode);
-
-			if (Data != nullptr)
-			{
-				if (Data->bHasBreakpoint == true) return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnRemoveAllBreakpoints()
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		for (FJointNodeDebugData& DebugData : Graph->DebugData)
-		{
-			DebugData.bHasBreakpoint = false;
-			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
-		}
-	}
-	
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-bool FJointEditorToolkit::CanRemoveAllBreakpoints() const
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		return !Graph->DebugData.IsEmpty();
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnEnableAllBreakpoints()
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		for (FJointNodeDebugData& DebugData : Graph->DebugData)
-		{
-			DebugData.bIsBreakpointEnabled = true;
-			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
-		}
-	}
-	
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-bool FJointEditorToolkit::CanEnableAllBreakpoints() const
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		for (const FJointNodeDebugData& DebugData : Graph->DebugData)
-		{
-			if (!DebugData.bIsBreakpointEnabled) return true;
-		}
-
-		return false;
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnDisableAllBreakpoints()
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		for (FJointNodeDebugData& DebugData : Graph->DebugData)
-		{
-			DebugData.bIsBreakpointEnabled = false;
-			UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(DebugData.Node, &DebugData);
-		}
-	}
-	
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-}
-
-bool FJointEditorToolkit::CanDisableAllBreakpoints() const
-{
-	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-	for (UJointEdGraph* Graph : Graphs)
-	{
-		if (!Graph) continue;
-
-		for (const FJointNodeDebugData& DebugData : Graph->DebugData)
-		{
-			if (DebugData.bIsBreakpointEnabled) return true;
-		}
-
-		return false;
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnToggleDebuggerExecution()
-{
-	UJointEditorSettings::Get()->bDebuggerEnabled = !UJointEditorSettings::Get()->bDebuggerEnabled;
-}
-
-bool FJointEditorToolkit::GetCheckedToggleDebuggerExecution() const
-{
-	return UJointEditorSettings::Get()->bDebuggerEnabled;
-}
-
-void FJointEditorToolkit::OnDissolveSubNodes()
-{
-	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
-	
-	if (GEditor->IsTransactionActive())
-	{
-		return;
-	}
-	
-	// dissolve all the sub nodes under the selected nodes - and refresh the selected nodes' parent nodes - but only once for each parent node for the performance reason.
-
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TSet<UJointEdGraphNode*> NodesToApply;
-	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
-
-	// Collect nodes to apply
-
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		NodesToApply.Add(SelectedNode);
-
-		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
-		{
-			ParentNodesToRefresh.Add(ParentNode);
-		}
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				NodesToApply.Add(FragmentNode);
-			}
-		}
-	}
-	
-	// abort if no nodes to apply
-	if (NodesToApply.Num() == 0) return;
-	
-	// Abort if every node is already dissolved (IsDissolvedSubNode())
-	bool bAllApplied = true;
-	
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			if (!FragmentNode->IsDissolvedSubNode())
-			{
-				bAllApplied = false;
-				break;
-			}
-		}
-	}
-	
-	if (bAllApplied) return;
-	
-	// Apply changes
-	const FScopedTransaction Transaction(
-		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
-	);
-	
-	//modify all the nodes to apply
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-		Node->Modify();
-
-		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
-	}
-	
-	//modify all the parent nodes to refresh
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->Modify();
-
-		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
-	}
-	
-
-	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
-	
-	// Reverse order to safely modify graph structure
-	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
-	{
-		UJointEdGraphNode* Node = NodesArray[Index];
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			FragmentNode->DissolveSelf();
-		}else
-		{
-			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
-			Node->ReconstructNode();
-		}
-	}
-	
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->ReconstructNode();
-	}
-	
-	
-}
-
-bool FJointEditorToolkit::CheckCanDissolveSubNodes() const
-{
-	// if the selected nodes contain at least one fragment node that is not yet dissolved, then we can dissolve sub nodes.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
-		{
-			if (!FragmentNode->IsDissolvedSubNode())
-			{
-				return true;
-			}
-		}
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				if (!SubFragmentNode->IsDissolvedSubNode())
-				{
-					return true;
-				}
-			}
-		}
-	}
-	
-	return false;
-}
-
-void FJointEditorToolkit::OnDissolveExactSubNode()
-{
-
-	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
-	
-	if (GEditor->IsTransactionActive())
-	{
-		return;
-	}
-	
-	// dissolve all the sub nodes under the selected nodes - and refresh the selected nodes' parent nodes - but only once for each parent node for the performance reason.
-
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TSet<UJointEdGraphNode*> NodesToApply;
-	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
-
-	// Collect nodes to apply
-
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		NodesToApply.Add(SelectedNode);
-
-		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
-		{
-			ParentNodesToRefresh.Add(ParentNode);
-		}
-	}
-	
-	// abort if no nodes to apply
-	if (NodesToApply.Num() == 0) return;
-	
-	// Abort if every node is already dissolved (IsDissolvedSubNode())
-	bool bAllApplied = true;
-	
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			if (!FragmentNode->IsDissolvedSubNode())
-			{
-				bAllApplied = false;
-				break;
-			}
-		}
-	}
-	
-	if (bAllApplied) return;
-	
-	// Apply changes
-	const FScopedTransaction Transaction(
-		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
-	);
-	
-	//modify all the nodes to apply
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-		Node->Modify();
-
-		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
-	}
-	
-	//modify all the parent nodes to refresh
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->Modify();
-
-		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
-	}
-	
-
-	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
-	
-	// Reverse order to safely modify graph structure
-	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
-	{
-		UJointEdGraphNode* Node = NodesArray[Index];
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			FragmentNode->DissolveSelf();
-		}else
-		{
-			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
-			Node->ReconstructNode();
-		}
-	}
-	
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->ReconstructNode();
-	}
-	
-	
-}
-
-bool FJointEditorToolkit::CheckCanDissolveExactSubNode() const
-{
-	// Check if at least one selected node is a fragment node that is not yet dissolved.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
-		{
-			if (!FragmentNode->IsDissolvedSubNode())
-			{
-				return true;
-			}
-		}
-	}
-	
-	return false;
-}
-
-void FJointEditorToolkit::OnDissolveOnlySubNodes()
-{
-	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
-	
-	if (GEditor->IsTransactionActive())
-	{
-		return;
-	}
-	
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TSet<UJointEdGraphNode*> NodesToApply;
-	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
-
-	// Collect nodes to apply
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				NodesToApply.Add(FragmentNode);
-
-				if (UJointEdGraphNode* ParentNode = FragmentNode->ParentNode)
-				{
-					ParentNodesToRefresh.Add(ParentNode);
-				}
-			}
-		}
-	}
-
-	// Abort if nothing to apply 
-	if (NodesToApply.Num() == 0) return;
-	
-	// Abort if every node is already dissolved (IsDissolvedSubNode())
-	bool bAllApplied = true;
-	
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			if (!FragmentNode->IsDissolvedSubNode())
-			{
-				bAllApplied = false;
-				break;
-			}
-		}
-	}
-	
-	if (bAllApplied) return;
-	
-	// Apply changes
-	const FScopedTransaction Transaction(
-		NSLOCTEXT("JointEdTransaction", "TransactionTitle_DissolveSubNode", "Dissolve Sub Node")
-	);
-	
-	//modify all the nodes to apply
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-		Node->Modify();
-
-		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
-	}
-	
-	//modify all the parent nodes to refresh
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh )
-	{
-		if (!ParentNode) continue;
-		ParentNode->Modify();
-
-		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
-	}
-	
-	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
-	
-	// Reverse order to safely modify graph structure
-	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
-	{
-		UJointEdGraphNode* Node = NodesArray[Index];
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			FragmentNode->DissolveSelf();
-		}else
-		{
-			//for the cases if it was not a fragment node but a parent node that has sub nodes, we need to refresh it too. TODO: is it necessary?
-			Node->ReconstructNode();
-		}
-	}
-	
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->ReconstructNode();
-	}
-	
-	
-}
-
-bool FJointEditorToolkit::CheckCanDissolveOnlySubNodes() const
-{
-	// if the selected nodes contain at least one fragment node that is not yet dissolved, then we can dissolve sub nodes.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				if (!SubFragmentNode->IsDissolvedSubNode())
-				{
-					return true;
-				}
-			}
-		}
-	}
-	
-	return false;
-}
-
-void FJointEditorToolkit::OnSolidifySubNodes()
-{
-	
-	//if we have a transaction on going, we should not allow operation since it will mess up the transaction stack.
-	
-	if (GEditor->IsTransactionActive())
-	{
-		return;
-	}
-	
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
-	TSet<UJointEdGraphNode*> NodesToApply;
-	TSet<UJointEdGraphNode*> ParentNodesToRefresh;
-
-	// Collect nodes to apply
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		NodesToApply.Add(SelectedNode);
-
-		if (UJointEdGraphNode* ParentNode = SelectedNode->ParentNode)
-		{
-			ParentNodesToRefresh.Add(ParentNode);
-		}
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				NodesToApply.Add(FragmentNode);
-
-				if (UJointEdGraphNode* ParentNode = FragmentNode->ParentNode)
-				{
-					ParentNodesToRefresh.Add(ParentNode);
-				}
-			}
-		}
-	}
-
-	// Abort if nothing to apply 
-	if (NodesToApply.Num() == 0) return;
-	
-	// Abort if every node is already solidified (IsDissolvedSubNode())
-	bool bAllApplied = true;
-	
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			if (FragmentNode->IsDissolvedSubNode())
-			{
-				bAllApplied = false;
-				break;
-			}
-		}
-	}
-	
-	if (bAllApplied) return;
-	
-	// Apply changes
-	const FScopedTransaction Transaction(
-		NSLOCTEXT("JointEdTransaction", "TransactionTitle_SolidifySubNode", "Solidify Sub Node")
-	);
-	
-	//modify all the nodes to apply
-	for (UJointEdGraphNode* Node : NodesToApply)
-	{
-		if (!Node) continue;
-		Node->Modify();
-
-		if (Node->GetCastedNodeInstance()) Node->GetCastedNodeInstance()->Modify();
-	}
-	
-	//modify all the parent nodes to refresh
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		ParentNode->Modify();
-
-		if (ParentNode->GetCastedNodeInstance()) ParentNode->GetCastedNodeInstance()->Modify();
-	}
-
-	TArray<UJointEdGraphNode*> NodesArray = NodesToApply.Array();
-
-	// Reverse order to safely modify graph structure
-	for (int32 Index = NodesArray.Num() - 1; Index >= 0; --Index)
-	{
-		UJointEdGraphNode* Node = NodesArray[Index];
-		if (!Node) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(Node))
-		{
-			FragmentNode->SolidifySelf();
-		}
-		else
-		{
-			// Non-fragment nodes may still need refresh
-			Node->ReconstructNode();
-		}
-	}
-
-	// Refresh parent nodes
-	for (UJointEdGraphNode* ParentNode : ParentNodesToRefresh)
-	{
-		if (!ParentNode) continue;
-		
-		ParentNode->ReconstructNode();
-	}
-}
-
-bool FJointEditorToolkit::CheckCanSolidifySubNodes() const
-{
-	// if the selected nodes contain at least one fragment node that is dissolved, then we can solidify sub nodes.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (UObject* Obj : SelectedNodes)
-	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
-		if (!SelectedNode) continue;
-
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
-		{
-			if (FragmentNode->IsDissolvedSubNode())
-			{
-				return true;
-			}
-		}
-
-		for (UJointEdGraphNode* SubNode : SelectedNode->GetAllSubNodesInHierarchy())
-		{
-			if (UJointEdGraphNode_Fragment* SubFragmentNode = Cast<UJointEdGraphNode_Fragment>(SubNode))
-			{
-				if (SubFragmentNode->IsDissolvedSubNode())
-				{
-					return true;
-				}
-			}
-		}
-	}
-	return false;
-}
-
-void FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty()
-{
-	bIsOnVisibilityChangeModeForSimpleDisplayProperty = !bIsOnVisibilityChangeModeForSimpleDisplayProperty;
-
-	if (bIsOnVisibilityChangeModeForSimpleDisplayProperty)
-	{
-		PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
-	}
-	else
-	{
-		ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
-	}
-}
-
-bool FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const
-{
-	return bIsOnVisibilityChangeModeForSimpleDisplayProperty;
 }
 
 void FJointEditorToolkit::SelectProvidedObjectOnGraph(TSet<UObject*> NewSelection)

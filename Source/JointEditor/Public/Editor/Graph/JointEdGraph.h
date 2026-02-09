@@ -220,11 +220,6 @@ public:
 
 public:
 
-	//Patch node pickers with invalid data.
-	void PatchNodePickers();
-
-public:
-
 	//Functor execution
 	
 	/**

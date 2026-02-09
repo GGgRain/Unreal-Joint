@@ -44,7 +44,7 @@ TSharedRef<SDockTab> FJointManagementTabHandler::SpawnJointManagementTab()
 		)
 	);
 
-	NomadTab->SetTabIcon(FJointEditorStyle::Get().GetBrush("ClassIcon.JointManager"));
+	NomadTab->SetTabIcon(FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d"));
 
 	NomadTab->SetOnTabClosed(
 		SDockTab::FOnTabClosedCallback::CreateStatic(

@@ -6,20 +6,32 @@
 #include "EdGraphSchema_K2_Actions.h"
 #include "Editor/Graph/JointEdGraph.h"
 #include "JointManager.h"
+#include "Asset/JointNodePreset.h"
 #include "STextPropertyEditableTextBox.h"
 #include "Editor/SharedType/JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
+
+enum class EJointMDAdmonitionType : uint8;
 
 class UJointEdGraphNode;
 
 class JOINTEDITOR_API FJointEdUtils
 {
+
 public:
+	
 	//Get the editor node's subclasses of the provided class on the ClassCache of the engine instance.
 	static void GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
 
 	//Get the node's subclasses of the provided class on the ClassCache of the engine instance.
 	static void GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
+
+	/**
+	 * Find class data for the provided Joint node class.
+	 * @param NodeClass Node class to find class data for.
+	 * @param OutClassData Output class data for the provided node class.
+	 */
+	static FJointGraphNodeClassData FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass);
 
 	//Find and return the first EditorGraphNode for the provided Joint node class. If there is no class for the node, returns nullptr;
 	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FJointGraphNodeClassData Class);
@@ -75,8 +87,20 @@ public:
 
 public:
 
-	static void HandleNewAssetActionClassPicked(FString BasePath,UClass* InClass);
+	static UBlueprint* CreateNewBlueprintAssetForClass(UClass* InClass, FString BasePath);
+	static UObject* CreateNewAssetForClass(UClass* InClass, FString BasePath);
 
+	template<typename T>
+	static T* CreateNewAssetForClass(UClass* InClass, FString BasePath)
+	{
+		UObject* NewAsset = CreateNewAssetForClass(InClass, BasePath);
+		return NewAsset ? Cast<T>(NewAsset) : nullptr;
+	}
+
+public:
+	
+	static TSharedRef<SWidget> DescribeMarkdownTextAsWidget(const FString& InMarkdownText);
+	
 public:
 
 	/**
@@ -156,7 +180,7 @@ public:
 	
 	static void MarkNodesAsModifiedAndValidateName(TSet<UEdGraphNode*> InNodes);
 
-	static void MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& PasteLocation);
+	static void MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& Location);
 
 public:
 	
@@ -183,6 +207,11 @@ public:
 	static void RemoveNode(class UObject* NodeRemove);
 
 	static void RemoveNodes(TArray<class UObject*> NodesToRemove);
+	
+public:
+	
+	// node preset 
+	static void AllocateNodeTemplate(UJointNodePreset* NodePreset, UObject* InNodeTemplate);
 
 public:
 	
@@ -200,6 +229,24 @@ public:
 	// Editor cosmetic related
 	static void GetGraphIconForAction(FEdGraphSchemaAction_K2Graph const* const ActionIn, FSlateBrush const*& IconOut, FSlateColor& ColorOut, FText& ToolTipOut);
 	static void GetGraphIconFor(const UEdGraph* Graph, FSlateBrush const*& IconOut);
+
+public:
+
+	//Notification
+	static void FireNotification(const FText& NotificationTitleText, const FText& NotificationText, const EJointMDAdmonitionType& AdmonitionType, const float& DurationSeconds = 5.f);
+	
+public:
+	
+	/**
+	 * Import files to the provided Joint manager. (e.g., importing csv files to create & update nodes)
+	 * @param TargetManager Target Joint manager to import the files to.
+	 * @param FilePath File path to import.
+	 */
+	static void ImportFileToJointManager(UJointManager* TargetManager, const FString& FilePath);
+	
+public:
+
+	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode);
 
 public:
 

@@ -31,6 +31,7 @@
 #include "PropertyCustomizationHelpers.h"
 #include "ScopedTransaction.h"
 #include "VoltDecl.h"
+#include "EditorTools/SJointNotificationWidget.h"
 
 #include "Styling/CoreStyle.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -43,6 +44,7 @@
 
 #include "Widgets/Notifications/SNotificationList.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Module/Volt_ASM_InterpColor.h"
 #include "Module/Volt_ASM_Sequence.h"
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
@@ -556,7 +558,15 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 					NotificationInfo.FadeInDuration = 0.3f;
 					NotificationInfo.FadeOutDuration = 1.3f;
 					NotificationInfo.ExpireDuration = 4.5f;
-
+					NotificationInfo.WidthOverride = 500;
+					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(NotificationInfo.Text.Get())
+						.bUseDescriptionText(true)
+						.DescriptionText(NotificationInfo.SubText.Get())
+					];
 					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 					continue;
@@ -574,7 +584,17 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 					NotificationInfo.FadeInDuration = 0.3f;
 					NotificationInfo.FadeOutDuration = 1.3f;
 					NotificationInfo.ExpireDuration = 4.5f;
-
+					NotificationInfo.WidthOverride = FOptionalSize();
+					
+					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(NotificationInfo.Text.Get())
+						.bUseDescriptionText(true)
+						.DescriptionText(NotificationInfo.SubText.Get())
+					];
+					
 					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 					continue;
@@ -639,7 +659,16 @@ void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClas
 					NotificationInfo.FadeInDuration = 0.3f;
 					NotificationInfo.FadeOutDuration = 1.3f;
 					NotificationInfo.ExpireDuration = 4.5f;
-
+					NotificationInfo.WidthOverride = FOptionalSize();
+					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(NotificationInfo.Text.Get())
+						.bUseDescriptionText(true)
+						.DescriptionText(NotificationInfo.SubText.Get())
+					];
+					
 					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 					continue;
@@ -657,7 +686,17 @@ void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClas
 					NotificationInfo.FadeInDuration = 0.3f;
 					NotificationInfo.FadeOutDuration = 1.3f;
 					NotificationInfo.ExpireDuration = 4.5f;
-
+					NotificationInfo.WidthOverride = FOptionalSize();
+					
+					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(NotificationInfo.Text.Get())
+						.bUseDescriptionText(true)
+						.DescriptionText(NotificationInfo.SubText.Get())
+					];
+					
 					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 					continue;
@@ -1120,21 +1159,30 @@ void FJointBuildPresetCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 	DescriptionCategory.AddCustomRow(INVTEXT("Explanation"))
 	                   .WholeRowContent()
 	[
-		SNew(SJointOutlineBorder)
-		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-		.OutlineHoverColor(FJointEditorStyle::Color_Selected)
-		.ContentPadding(FJointEditorStyle::Margin_Normal)
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		[
-			SNew(STextBlock)
-			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-			.AutoWrapText(true)
-			.Text(LOCTEXT("FJointBuildPresetCustomization_Explanation",
-			              "We supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together.\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset.\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
-		]
+		SNew(SJointMDSlate_Admonitions)
+		.AdmonitionType(EJointMDAdmonitionType::Note)
+		.CustomHeaderText(LOCTEXT("FJointBuildPresetCustomization_ExplanationTitle", "Joint Build Preset"))
+		.bUseDescriptionText(true)
+		.DescriptionText(LOCTEXT("FJointBuildPresetCustomization_Explanation", "Joint Build Preset is a preset asset that lets you specify which nodes and fragments of the Joint Manager are included in or excluded from packaging for a given build target. (See the tooltip for each property.)\n\nWe supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together.\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset.\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
+	];
+}
+
+TSharedRef<IDetailCustomization> FJointNodePresetCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointNodePresetCustomization());
+}
+
+void FJointNodePresetCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	IDetailCategoryBuilder& DescriptionCategory = DetailBuilder.EditCategory("Description");
+	DescriptionCategory.AddCustomRow(INVTEXT("Explanation"))
+					   .WholeRowContent()
+	[
+		SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Note)
+			.CustomHeaderText(LOCTEXT("FJointNodePresetCustomization_ExplanationTitle", "Joint Node Preset"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("FJointNodePresetCustomization_Explanation", "Joint Node Preset is a preset asset that represents a foundation node with pre-configured settings and sub nodes that can be reused across multiple Joint Managers or projects.\nIt allows for consistent node configurations and simplifies the process of setting up Joint Managers by providing a ready-to-use node template.\nThis asset is the core component of external import & export system of Joint Editor because it works with the node preset level instead of the whole joint node level - each row in external csv and json files represent a node preset, not a node instance.") )
 	];
 }
 
@@ -1452,17 +1500,22 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 		NodeHandle.Get()->ResetToDefault();
 
 		FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
-		FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub",
-		                                          "Provided node instance was not a valid Joint node instance. Pointer reset to default.");
-
+		FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub","Provided node instance was not a valid Joint node instance. Pointer reset to default.");
 		FNotificationInfo NotificationInfo(FailedNotificationText);
-		NotificationInfo.SubText = FailedNotificationSubText;
 		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
 		NotificationInfo.bFireAndForget = true;
 		NotificationInfo.FadeInDuration = 0.2f;
 		NotificationInfo.FadeOutDuration = 0.2f;
 		NotificationInfo.ExpireDuration = 4.5f;
-		NotificationInfo.bUseThrobber = true;
+		NotificationInfo.WidthOverride = FOptionalSize();
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Error)
+							.CustomHeaderText(FailedNotificationText)
+							.bUseDescriptionText(true)
+							.DescriptionText(FailedNotificationSubText)
+						];
 
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
@@ -1487,7 +1540,14 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			{
 				if (AllowedType == nullptr) continue;
 				if (!AllowedTypeStr.IsEmpty()) AllowedTypeStr.Append(", ");
-				AllowedTypeStr.Append(AllowedType.Get()->GetName());
+				// FText::Format returns FText, convert to FString before appending
+				AllowedTypeStr.Append(
+					FText::Format(
+						LOCTEXT("AllowedTypeTemplate","{0} ({1})"),
+						FJointEdUtils::GetFriendlyNameFromClass(AllowedType.Get()),
+						FText::FromString(AllowedType.Get()->GetName())
+					).ToString()
+				);
 			}
 
 			FString DisallowedTypeStr;
@@ -1495,26 +1555,128 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			{
 				if (DisallowedType == nullptr) continue;
 				if (!DisallowedTypeStr.IsEmpty()) DisallowedTypeStr.Append(", ");
-				DisallowedTypeStr.Append(DisallowedType.Get()->GetName());
+				// FText::Format returns FText, convert to FString before appending
+				DisallowedTypeStr.Append(
+					FText::Format(
+						LOCTEXT("DisallowedTypeTemplate","{0} ({1})"),
+						FJointEdUtils::GetFriendlyNameFromClass(DisallowedType.Get()),
+						FText::FromString(DisallowedType.Get()->GetName())
+					).ToString()
+				);
 			}
 
 			FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
-			FText FailedNotificationSubText = FText::Format(
-				LOCTEXT("NotJointNodeInstanceType_Sub",
-				        "Current structure can not accept the provided node instance.\nAllowed Types: {0}\nDisallowed Types: {1}"),
-				FText::FromString(AllowedTypeStr),
-				FText::FromString(DisallowedTypeStr));
+			FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub","Current structure can not accept the provided node instance.");
 
 			FNotificationInfo NotificationInfo(FailedNotificationText);
-			NotificationInfo.SubText = FailedNotificationSubText;
-			NotificationInfo.Image = FJointEditorStyle::Get().
-				GetBrush("JointUI.Image.Joint3d");
 			NotificationInfo.bFireAndForget = true;
 			NotificationInfo.FadeInDuration = 0.2f;
 			NotificationInfo.FadeOutDuration = 0.2f;
 			NotificationInfo.ExpireDuration = 4.5f;
-			NotificationInfo.bUseThrobber = true;
-
+			NotificationInfo.WidthOverride = FOptionalSize();
+			
+			if ( !AllowedTypeStr.IsEmpty() && !DisallowedTypeStr.IsEmpty())
+			{
+				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+						.bUseDescriptionText(false)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(STextBlock)
+								.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+								.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(SJointMDSlate_Admonitions)
+								.AdmonitionType(EJointMDAdmonitionType::Info)
+								.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
+								.bUseDescriptionText(true)
+								.DescriptionText(FText::FromString(AllowedTypeStr))
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(SJointMDSlate_Admonitions)
+								.AdmonitionType(EJointMDAdmonitionType::Info)
+								.CustomHeaderText(LOCTEXT("DisallowedType", "Disallowed Types"))
+								.bUseDescriptionText(true)
+								.DescriptionText(FText::FromString(DisallowedTypeStr))
+							]
+						]
+					];
+			}else if ( !AllowedTypeStr.IsEmpty() )
+			{
+				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+						.bUseDescriptionText(false)
+						[
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(STextBlock)
+								.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+								.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FJointEditorStyle::Margin_Normal)
+							[
+								SNew(SJointMDSlate_Admonitions)
+								.AdmonitionType(EJointMDAdmonitionType::Info)
+								.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
+								.bUseDescriptionText(true)
+								.DescriptionText(FText::FromString(AllowedTypeStr))
+							]
+						]
+					];
+			}else if ( !DisallowedTypeStr.IsEmpty() )
+			{
+				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+					.bUseDescriptionText(false)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(STextBlock)
+							.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+							.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("DisallowedType", "Disallowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(DisallowedTypeStr))
+						]
+					]
+				];
+			}
+			
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
 	}

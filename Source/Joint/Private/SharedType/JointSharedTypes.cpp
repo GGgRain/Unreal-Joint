@@ -92,6 +92,17 @@ bool FJointNodePointer::IsValid() const
 	return Node.IsValid();
 }
 
+void FJointNodePointer::Reset()
+{ 
+	Node = nullptr;
+#if WITH_EDITORONLY_DATA
+	EditorNode = nullptr;
+#endif
+	AllowedType.Empty();
+	DisallowedType.Empty();
+	
+}
+
 FJointNodes::FJointNodes()
 {
 }

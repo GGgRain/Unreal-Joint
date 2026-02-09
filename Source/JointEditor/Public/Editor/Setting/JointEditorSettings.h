@@ -8,6 +8,8 @@
 #include "JointGraphConnectionDrawingPolicy.h"
 #include "JointEditorSettings.generated.h"
 
+class UJointScriptParser;
+class UJointNodePreset;
 class UJointManager;
 class UJointNodeBase;
 
@@ -16,6 +18,7 @@ namespace JointEditorDefaultSettings
 	static const bool bUseLODRenderingForSimplePropertyDisplay(true);
 	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(32);
 	static const int SimplePropertyDisplayInitializationRate(150);
+	static const FVector2D SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode(FVector2D(50.0f, 50.0f));
 
 	//Composite Node
 	static const FVector2D CompositeNodeTooltipSize(FVector2D(900.0f, 500.0f));
@@ -137,8 +140,13 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "Simple Property Display Initialization Delay Standard (BETA)"))
 	int SimplePropertyDisplayInitializationRate = JointEditorDefaultSettings::SimplePropertyDisplayInitializationRate;
-
-
+	
+	/** 
+	 * The minimal display size of the Simple Property Display section when the node is in visibility change mode.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "Simple Property Display Minimal Display Size On Visibility Change Mode"))
+	FVector2D SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode = JointEditorDefaultSettings::SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode;
+	
 public:
 
 	/**
@@ -393,7 +401,7 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Joint Redirects", meta = (DisplayName = "Joint Class Name Redirects"))
 	TArray<FJointCoreRedirect> JointCoreRedirects;
-
+	
 public:
 	void AddCoreRedirect(const FJointCoreRedirect& Redirect);
 
@@ -401,6 +409,15 @@ public:
 
 public:
 	static const float GetJointGridSnapSize();
+	
+public:
+	
+	/** 
+	 * A set of Joint node presets that will be available for this project.
+	 * They will be used on the export & import of the Joint nodes.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Joint Script Parser", meta = (DisplayName = "Joint Script Parsers"))
+	TArray<TSubclassOf<UJointScriptParser>> JointScriptParsers;
 
 public:
 	//Instance Obtain Related

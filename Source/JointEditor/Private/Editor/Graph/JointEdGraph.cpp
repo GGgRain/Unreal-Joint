@@ -566,14 +566,6 @@ void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
 	NotifyGraphRequestUpdate();
 }
 
-void UJointEdGraph::PatchNodePickers()
-{
-	for (UEdGraphNode* Node : Nodes)
-	{
-		if (!Node) continue;
-	}
-}
-
 void UJointEdGraph::ExecuteForAllNodesInHierarchy(const TFunction<void(UEdGraphNode*)>& Func)
 {
 	const TSet<TWeakObjectPtr<UJointEdGraphNode>>& CachedNodes = GetCachedJointGraphNodes();
@@ -874,6 +866,7 @@ void UJointEdGraph::RemoveOrphanedNodes()
 		NotificationInfo.FadeOutDuration = 1.3f;
 		NotificationInfo.ExpireDuration = 4.5f;
 
+		
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 		if (GetJointManager() != nullptr) GetJointManager()->MarkPackageDirty();

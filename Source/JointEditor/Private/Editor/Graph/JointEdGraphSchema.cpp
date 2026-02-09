@@ -27,6 +27,7 @@
 
 #include "ToolMenu.h"
 #include "ToolMenuSection.h"
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
 
 #include "Framework/Commands/GenericCommands.h"
@@ -205,6 +206,12 @@ FReply UJointEdGraphSchema::BeginGraphDragAction(TSharedPtr<FEdGraphSchemaAction
 	}
 
 	return FReply::Unhandled();
+}
+
+void UJointEdGraphSchema::DroppedAssetsOnGraph(const TArray<struct FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
+{
+	//TODO: Handle Dropped Assets on the Joint Graph Editor.
+	Super::DroppedAssetsOnGraph(Assets, GraphPosition, Graph);
 }
 
 void UJointEdGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const
@@ -644,11 +651,14 @@ void UJointEdGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeConte
 
 	if (!Context->bIsDebugging)
 	{
-		FToolMenuSection& DissolveSolidifyActionsSession = Menu->AddSection("DissolveSolidifyActionsMenu",LOCTEXT("DebugActionsMenuDissolveSolidifyHeader", "Dissolve & Solidify Actions"));
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveSubNodesIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveExactSubNodeIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveOnlySubNodesIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().SolidifySubNodesFromParentNode);
+		FToolMenuSection& DissolveSolidifyActionsSection = Menu->AddSection("DissolveSolidifyActionsMenu",LOCTEXT("DebugActionsMenuDissolveSolidifyHeader", "Dissolve & Solidify Actions"));
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveSubNodesIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveExactSubNodeIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveOnlySubNodesIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().SolidifySubNodesFromParentNode);
+		
+		FToolMenuSection& NodePresetActionsSection = Menu->AddSection("NodePresetActionsMenu",LOCTEXT("CreateNodePresetMenuHeader", "Create Node Preset From The Selection"));
+		NodePresetActionsSection.AddMenuEntry(FJointEditorCommands::Get().CreateJointNodePresetFromSelection);
 	}
 
 	Super::GetContextMenuActions(Menu, Context);

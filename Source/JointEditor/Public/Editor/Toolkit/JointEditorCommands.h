@@ -21,6 +21,7 @@ public:
 	TSharedPtr<FUICommandInfo> CompileJoint;
 
 public:
+	
 	TSharedPtr<FUICommandInfo> SetShowNormalConnection;
 	TSharedPtr<FUICommandInfo> SetShowRecursiveConnection;
 	TSharedPtr<FUICommandInfo> SetShowContextTextRawEditorBox;
@@ -42,10 +43,10 @@ public:
 	TSharedPtr<FUICommandInfo> EscapeNodePickingMode;
 
 public:
+	
 	TSharedPtr<FUICommandInfo> RemoveAllBreakpoints;
 	TSharedPtr<FUICommandInfo> EnableAllBreakpoints;
 	TSharedPtr<FUICommandInfo> DisableAllBreakpoints;
-
 	TSharedPtr<FUICommandInfo> ToggleDebuggerExecution;
 
 public:
@@ -67,10 +68,19 @@ public:
 public:
 
 	TSharedPtr<FUICommandInfo> DeleteEntry;
-
+	
 public:
 	
+	TSharedPtr<FUICommandInfo> CreateJointNodePresetFromSelection;
+
+private:
+	
 	TSharedPtr<FUICommandList> PluginCommands;
+	
+	// only these classes can access the command list directly
+	friend class FJointEditorToolkit;
+	friend class FJointEditorToolbar;
+	friend class FJointEditorModule;
 	
 };
 

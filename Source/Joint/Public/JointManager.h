@@ -264,7 +264,17 @@ public:
 #endif
 
 #if WITH_EDITOR
-
+	
+	UFUNCTION(BlueprintPure, Category = "Editor")
+	UEdGraph* GetJointGraph() const
+	{
+		return JointGraph;
+	}
+	
+	/**
+	 * Get the Joint Graph as the provided class.
+	 * @return The Joint Graph casted to the provided class. nullptr if the cast failed or JointGraph is null.
+	 */
 	template<typename T=UEdGraph>
 	T* GetJointGraphAs() const
 	{

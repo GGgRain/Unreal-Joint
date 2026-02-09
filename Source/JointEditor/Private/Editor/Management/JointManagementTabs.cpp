@@ -2,6 +2,7 @@
 
 #include "JointManagementTabs.h"
 
+#include "DesktopPlatformModule.h"
 #include "ISettingsEditorModule.h"
 #include "JointAdvancedWidgets.h"
 
@@ -10,12 +11,15 @@
 #include "JointEditorLogChannels.h"
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
+#include "JointEdUtils.h"
 
 #include "JointManager.h"
 #include "PropertyCustomizationHelpers.h"
+#include "EditorTools/SJointNotificationWidget.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Kismet2/KismetEditorUtilities.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Misc/MessageDialog.h"
 #include "UObject/CoreRedirects.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -52,24 +56,24 @@ void FJointManagementTab_JointEditorUtilityTab::RegisterTabSpawner(const TShared
 	}
 
 	TabManager->RegisterTabSpawner(
-			GetTabId()
-			, FOnSpawnTab::CreateLambda(
-				[=](const FSpawnTabArgs&)
-				{
-					return SNew(SDockTab)
-						.TabRole(ETabRole::PanelTab)
-						.Label(LOCTEXT("EditorUtility", "Editor Utility"))
-						[
-							SNew(SJointEditorUtilityTab)
-						];
-				}
-			)
-		)
-		.SetDisplayName(LOCTEXT("EditorUtilityTabTitle", "Editor Utility"))
-		.SetTooltipText(LOCTEXT("EditorUtilityTooltipText", "Open the Editor Utility tab."))
-		.SetGroup(JointEditorGroup.ToSharedRef())
-		.SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
-		                    "ExternalImagePicker.GenerateImageButton"));
+		          GetTabId()
+		          , FOnSpawnTab::CreateLambda(
+			          [=](const FSpawnTabArgs&)
+			          {
+				          return SNew(SDockTab)
+					          .TabRole(ETabRole::PanelTab)
+					          .Label(LOCTEXT("EditorUtility", "Editor Utility"))
+					          [
+						          SNew(SJointEditorUtilityTab)
+					          ];
+			          }
+		          )
+	          )
+	          .SetDisplayName(LOCTEXT("EditorUtilityTabTitle", "Editor Utility"))
+	          .SetTooltipText(LOCTEXT("EditorUtilityTooltipText", "Open the Editor Utility tab."))
+	          .SetGroup(JointEditorGroup.ToSharedRef())
+	          .SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
+	                              "ExternalImagePicker.GenerateImageButton"));
 }
 
 const FName FJointManagementTab_JointEditorUtilityTab::GetTabId()
@@ -81,6 +85,66 @@ const ETabState::Type FJointManagementTab_JointEditorUtilityTab::GetInitialTabSt
 {
 	return IJointManagementSubTab::GetInitialTabState();
 }
+
+FJointManagementTab_JointEditorExportingImportingTab::FJointManagementTab_JointEditorExportingImportingTab()
+{
+}
+
+FJointManagementTab_JointEditorExportingImportingTab::~FJointManagementTab_JointEditorExportingImportingTab()
+{
+}
+
+TSharedRef<IJointManagementSubTab> FJointManagementTab_JointEditorExportingImportingTab::MakeInstance()
+{
+	return MakeShareable(new FJointManagementTab_JointEditorExportingImportingTab);
+}
+
+void FJointManagementTab_JointEditorExportingImportingTab::RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager)
+{
+	TSharedPtr<FWorkspaceItem> JointEditorGroup = GetParentTabHandler().Pin()->GetActiveGroupFor("JointEditor");
+
+	if (!JointEditorGroup)
+	{
+		JointEditorGroup = TabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("JointEditorGroupName", "Joint Editor"));
+
+		GetParentTabHandler().Pin()->AddActiveGroup("JointEditor", JointEditorGroup);
+	}
+
+	TabManager->RegisterTabSpawner(
+				  GetTabId()
+				  , FOnSpawnTab::CreateLambda(
+					  [=](const FSpawnTabArgs&)
+					  {
+						  return SNew(SDockTab)
+							  .TabRole(ETabRole::PanelTab)
+							  .Label(LOCTEXT("ExportingImporting", "Exporting & Importing"))
+							  [
+								  SNew(SJointEditorExportingImportingTab)
+							  ];
+					  }
+				  )
+			  )
+			  .SetDisplayName(LOCTEXT("EditorExportingImportingTabTitle", "Exporting & Importing"))
+			  .SetTooltipText(LOCTEXT("EditorExportingImportingTooltipText", "Open the Editor Exporting & Importing tab."))
+			  .SetGroup(JointEditorGroup.ToSharedRef())
+			  .SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
+								  "ExternalImagePicker.GenerateImageButton"));
+}
+
+const FName FJointManagementTab_JointEditorExportingImportingTab::GetTabId()
+{
+	return "TAB_JointEditorExportingImporting";
+}
+
+const ETabState::Type FJointManagementTab_JointEditorExportingImportingTab::GetInitialTabState()
+{
+	return IJointManagementSubTab::GetInitialTabState();
+}
+
+
+
+
+
 
 #if UE_VERSION_OLDER_THAN(5, 1, 0)
 
@@ -717,16 +781,25 @@ FReply SJointEditorUtilityTab::UpdateBPNodeEdSettings()
 		}
 	}
 
-	FNotificationInfo Info(
-		FText::Format(
-			LOCTEXT("UpdatedEdSettings",
-			        "Updated {0} Joint Node Blueprint's Editor Settings. Save your project to apply the changes."),
-			FText::FromString(FString::FromInt(Count)))
+	FText Title = LOCTEXT("UpdatedEdSettingsTitle", "Updated Editor Settings");
+	FText Description = FText::Format(
+		LOCTEXT("UpdatedEdSettings","Updated {0} Joint Node Blueprint's Editor Settings. Save your project to apply the changes."),
+		FText::FromString(FString::FromInt(Count))
 	);
+	
+	FNotificationInfo Info(Title);
 	Info.ExpireDuration = 5.0f;
 	Info.bUseLargeFont = false;
 	Info.bUseThrobber = false;
 	Info.bFireAndForget = true;
+	Info.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(Title)
+						.bUseDescriptionText(true)
+						.DescriptionText(Description)
+					];
 
 	FSlateNotificationManager::Get().AddNotification(Info);
 
@@ -804,7 +877,7 @@ FReply SJointEditorUtilityTab::ResetAllEditorStyle()
 		Settings->RecursiveConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 		Settings->SelfConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
 		Settings->PreviewConnectionWiggleWireConfig = JointEditorDefaultSettings::WiggleWireConfig;
-		
+
 		Settings->DebuggerPlayingNodeColor = JointEditorDefaultSettings::DebuggerPlayingNodeColor;
 		Settings->DebuggerPlayingNodeColor = JointEditorDefaultSettings::DebuggerPlayingNodeColor;
 		Settings->DebuggerEndedNodeColor = JointEditorDefaultSettings::DebuggerEndedNodeColor;
@@ -922,6 +995,108 @@ FReply SJointEditorUtilityTab::ResetNodeEditorStyle()
 }
 
 
+void SJointEditorExportingImportingTab::Construct(const FArguments& InArgs)
+{
+	ChildSlot.DetachWidget();
+
+	ChildSlot
+	[
+		SNew(SBorder)
+		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Image.GraphBackground"))
+		.BorderBackgroundColor(FJointEditorStyle::Color_Node_TabBackground)
+		.Padding(FJointEditorStyle::Margin_Normal)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Top)
+		[
+			SNew(SScrollBox)
+			+ SScrollBox::Slot()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Top)
+			[
+				SNew(SJointOutlineBorder)
+					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("ImportWholeJointManager", "Importing external file as Joint Manager asset"))
+							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointOutlineButton)
+							.ContentPadding(FJointEditorStyle::Margin_Large)
+							.OnClicked(this, &SJointEditorExportingImportingTab::ImportJointManager)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ImportJointManagerButton", "Import Joint Manager"))
+							]
+						]
+					]
+			]
+		]
+	];
+}
+
+FReply SJointEditorExportingImportingTab::ImportJointManager()
+{
+	//1. Open file dialog to select the file
+	TArray<FString> OutFiles;
+	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+	
+	if (!DesktopPlatform)
+	{
+		UE_LOG(LogJointEditor, Error, TEXT("Desktop Platform module is not available. Cannot open file dialog."));
+		
+		return FReply::Handled();
+	}
+	
+	const void* ParentWindowHandle = FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr);
+
+	// Set default path to project directory
+	FString DefaultPath = FPaths::ProjectDir();
+
+	bool bOpened = DesktopPlatform->OpenFileDialog(
+		ParentWindowHandle,
+		LOCTEXT("ImportJointManagerTitle", "Import Joint Manager").ToString(),
+		DefaultPath,
+		TEXT(""),
+		TEXT("Joint Manager Files (*.jointmanager)|*.jointmanager|Sheet Files (*.csv)|*.csv|Json Files (*.json)|*.json|All Files (*.*)|*.*"),
+		EFileDialogFlags::None,
+		OutFiles
+	);
+
+	if (bOpened && OutFiles.Num() > 0)
+	{
+		FString SelectedFile = OutFiles[0];
+		
+		// make a Joint Manager asset.
+		UJointManager* NewJointManager = FJointEdUtils::CreateNewAssetForClass<UJointManager>(
+			UJointManager::StaticClass(),
+			TEXT("/Game/JointAssets/Imported")
+		);
+
+		//2. Import the selected file as Joint Manager asset
+		FJointEdUtils::ImportFileToJointManager(NewJointManager, SelectedFile);
+	}
+	
+	return FReply::Handled();
+}
+
 FJointManagementTab_NodeClassManagementTab::FJointManagementTab_NodeClassManagementTab()
 {
 }
@@ -947,24 +1122,24 @@ void FJointManagementTab_NodeClassManagementTab::RegisterTabSpawner(const TShare
 	}
 
 	TabManager->RegisterTabSpawner(
-			GetTabId()
-			, FOnSpawnTab::CreateLambda(
-				[=](const FSpawnTabArgs&)
-				{
-					return SNew(SDockTab)
-						.TabRole(ETabRole::PanelTab)
-						.Label(LOCTEXT("NodeClassManagementTab", "Node Class Management"))
-						[
-							SNew(SJointEditorNodeClassManagementTab)
-						];
-				}
-			)
-		)
-		.SetDisplayName(LOCTEXT("NodeClassManagementTabTitle", "Node Class Management"))
-		.SetTooltipText(LOCTEXT("NodeClassManagementTabText", "Open the Node Class Management tab."))
-		.SetGroup(JointEditorGroup.ToSharedRef())
-		.SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
-		                    "ExternalImagePicker.GenerateImageButton"));
+		          GetTabId()
+		          , FOnSpawnTab::CreateLambda(
+			          [=](const FSpawnTabArgs&)
+			          {
+				          return SNew(SDockTab)
+					          .TabRole(ETabRole::PanelTab)
+					          .Label(LOCTEXT("NodeClassManagementTab", "Node Class Management"))
+					          [
+						          SNew(SJointEditorNodeClassManagementTab)
+					          ];
+			          }
+		          )
+	          )
+	          .SetDisplayName(LOCTEXT("NodeClassManagementTabTitle", "Node Class Management"))
+	          .SetTooltipText(LOCTEXT("NodeClassManagementTabText", "Open the Node Class Management tab."))
+	          .SetGroup(JointEditorGroup.ToSharedRef())
+	          .SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(),
+	                              "ExternalImagePicker.GenerateImageButton"));
 }
 
 const FName FJointManagementTab_NodeClassManagementTab::GetTabId()
@@ -1002,12 +1177,12 @@ void SJointEditorNodeClassManagementTab::Construct(const FArguments& InArgs)
 
 	TSharedPtr<FTabManager::FLayout> DebuggerLayout = FTabManager::NewLayout("JointNodeClassManagementTab_V1.1")
 		->AddArea(FTabManager::NewPrimaryArea()
-			->SetOrientation(Orient_Horizontal)
-			->Split(
-				FTabManager::NewStack()
-				->SetSizeCoefficient(0.25f)
-				->AddTab(JointEditorNodeClassManagementTabs::JointListTab, ETabState::OpenedTab)
-			)
+		          ->SetOrientation(Orient_Horizontal)
+		          ->Split(
+			          FTabManager::NewStack()
+			          ->SetSizeCoefficient(0.25f)
+			          ->AddTab(JointEditorNodeClassManagementTabs::JointListTab, ETabState::OpenedTab)
+		          )
 			// ->Split(
 			// 	FTabManager::NewStack()
 			// 	->SetSizeCoefficient(0.75f)
@@ -1018,7 +1193,7 @@ void SJointEditorNodeClassManagementTab::Construct(const FArguments& InArgs)
 	DebuggerLayout = FLayoutSaveRestore::LoadFromConfig(GEditorLayoutIni, DebuggerLayout.ToSharedRef());
 
 	TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(DebuggerLayout.ToSharedRef(), TSharedPtr<SWindow>()).
-		ToSharedRef();
+	                                              ToSharedRef();
 
 	// create & initialize main menu
 	FMenuBarBuilder MenuBarBuilder = FMenuBarBuilder(TSharedPtr<FUICommandList>());
@@ -1075,9 +1250,9 @@ void SJointEditorNodeClassManagementTab::RegisterTabSpawners(const TSharedRef<FT
 	TabManager->RegisterTabSpawner(JointEditorNodeClassManagementTabs::JointListTab,
 	                               FOnSpawnTab::CreateSP(
 		                               this, &SJointEditorNodeClassManagementTab::SpawnMissingClassesMapTab))
-		.SetDisplayName(LOCTEXT("JointListTabTitle", "Joint List"))
-		.SetTooltipText(LOCTEXT("JointListTabTooltipText", "Open Joint list tab."))
-		.SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), "ContentBrowser.ShowSourcesView"));
+	          .SetDisplayName(LOCTEXT("JointListTabTitle", "Joint List"))
+	          .SetTooltipText(LOCTEXT("JointListTabTooltipText", "Open Joint list tab."))
+	          .SetIcon(FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), "ContentBrowser.ShowSourcesView"));
 }
 
 void SJointEditorNodeClassManagementTab::InitializeMissingClassesMapTab()
@@ -1440,40 +1615,40 @@ FReply SJointEditorTap_MissingClassesMap::AllocatedRedirectionRefresh()
 		++Count;
 
 		RedirectionScrollBox->AddSlot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			.Padding(FJointEditorStyle::Margin_Normal)
-			[
-				SNew(FJointEditorTap_RedirectionInstance)
-				.Redirection(JointCoreRedirect)
-				.Owner(SharedThis(this))
-			];
+		                    .HAlign(HAlign_Fill)
+		                    .VAlign(VAlign_Fill)
+		                    .Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SNew(FJointEditorTap_RedirectionInstance)
+			.Redirection(JointCoreRedirect)
+			.Owner(SharedThis(this))
+		];
 	}
 
 
 	if (Count == 0)
 	{
 		RedirectionScrollBox->AddSlot()
+		                    .HAlign(HAlign_Fill)
+		                    .VAlign(VAlign_Fill)
+		                    .Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SNew(SJointOutlineBorder)
+			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+			.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+			.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+			.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+			.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
-			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(SJointOutlineBorder)
-				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.NormalColor(FLinearColor(0.015, 0.015, 0.02))
-				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
-				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
-				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
-				.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				[
-					SNew(STextBlock)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.Text(LOCTEXT("NoRedirectionDescription", "No Redirection is allocated."))
-				]
-			];
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.Text(LOCTEXT("NoRedirectionDescription", "No Redirection is allocated."))
+			]
+		];
 	}
 
 	return FReply::Handled();
@@ -1503,19 +1678,19 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 		if (!Data.GetAsset()) continue;
 
 		UJointManager* Manager = Cast<UJointManager>(Data.GetAsset());
-		
+
 		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
 
 		for (UJointEdGraph* Graph : Graphs)
 		{
 			if (!Graph) continue;
-			
+
 			Graph->UpdateClassData();
 
 			Graph->GrabUnknownClassDataFromGraph();
 		}
 	}
-	
+
 
 	if (FJointEditorModule* Module = FJointEditorModule::Get(); Module && Module->GetClassCache().IsValid())
 	{
@@ -1526,46 +1701,22 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 			bEverCreated = true;
 
 			MissingClassScrollBox->AddSlot()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(FJointEditorTap_MissingClassInstance)
-					.ClassData(UnknownPackage)
-					.Owner(SharedThis(this))
-				];
+			                     .HAlign(HAlign_Fill)
+			                     .VAlign(VAlign_Fill)
+			                     .Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(FJointEditorTap_MissingClassInstance)
+				.ClassData(UnknownPackage)
+				.Owner(SharedThis(this))
+			];
 		}
 
 		if (!bEverCreated)
 		{
 			MissingClassScrollBox->AddSlot()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SJointOutlineBorder)
-					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
-					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
-					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Fill)
-					[
-						SNew(STextBlock)
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-						.Text(LOCTEXT("MissingNodeClassFixDescription", "No Missing Node Class. Hooray!"))
-					]
-				];
-		}
-	}
-	else
-	{
-		MissingClassScrollBox->AddSlot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
+			                     .HAlign(HAlign_Fill)
+			                     .VAlign(VAlign_Fill)
+			                     .Padding(FJointEditorStyle::Margin_Normal)
 			[
 				SNew(SJointOutlineBorder)
 				.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
@@ -1574,16 +1725,40 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 				.HoverColor(FLinearColor(0.04, 0.04, 0.06))
 				.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
 				.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
-				.ContentPadding(FJointEditorStyle::Margin_Normal* 2)
+				.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
 					SNew(STextBlock)
 					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.Text(LOCTEXT("RefreshError",
-					              "Something went wrong. Please close the tab and reopen it, and try this again."))
+					.Text(LOCTEXT("MissingNodeClassFixDescription", "No Missing Node Class. Hooray!"))
 				]
 			];
+		}
+	}
+	else
+	{
+		MissingClassScrollBox->AddSlot()
+		                     .HAlign(HAlign_Fill)
+		                     .VAlign(VAlign_Fill)
+		[
+			SNew(SJointOutlineBorder)
+			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.NormalColor(FLinearColor(0.015, 0.015, 0.02))
+			.HoverColor(FLinearColor(0.04, 0.04, 0.06))
+			.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
+			.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
+			.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.Text(LOCTEXT("RefreshError",
+				              "Something went wrong. Please close the tab and reopen it, and try this again."))
+			]
+		];
 	}
 
 	return FReply::Handled();
@@ -1614,11 +1789,19 @@ FReply SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked()
 	if (NodeClassLeftSelectedClass == nullptr || NodeClassRightSelectedClass == nullptr)
 	{
 		FNotificationInfo Info = FNotificationInfo(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"));
-		Info.SubText = LOCTEXT("CanNotProceedWarning1", "Provided invalid classes.");
 		Info.bFireAndForget = true;
 		Info.FadeInDuration = 0.2f;
 		Info.FadeOutDuration = 0.2f;
 		Info.ExpireDuration = 2.5f;
+		Info.WidthOverride = FOptionalSize();
+		Info.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("CanNotProceedWarningDescription1", "Provided invalid classes."))
+		];
 
 		FSlateNotificationManager::Get().AddNotification(Info);
 
@@ -1628,12 +1811,19 @@ FReply SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked()
 	if (NodeClassLeftSelectedClass == NodeClassRightSelectedClass)
 	{
 		FNotificationInfo Info = FNotificationInfo(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"));
-		Info.SubText = LOCTEXT("CanNotProceedWarning2",
-		                       "The selected classes are same. Please select different classes.");
 		Info.bFireAndForget = true;
 		Info.FadeInDuration = 0.2f;
 		Info.FadeOutDuration = 0.2f;
 		Info.ExpireDuration = 2.5f;
+		Info.WidthOverride = FOptionalSize();
+		Info.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("CanNotProceedWarningDescription2", "The selected classes are same. Please select different classes."))
+		];
 
 		FSlateNotificationManager::Get().AddNotification(Info);
 
@@ -1672,7 +1862,7 @@ FReply SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked()
 			{
 				UObject* Asset = Data.GetAsset();
 				if (!Asset) continue;
-				
+
 				UJointManager* Manager = Cast<UJointManager>(Asset);
 				TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
 
@@ -1718,12 +1908,19 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 	if (NodeClassLeftSelectedClass == nullptr || NodeClassRightSelectedClass == nullptr)
 	{
 		FNotificationInfo Info = FNotificationInfo(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"));
-		Info.SubText = LOCTEXT("CanNotProceedWarning1", "Provided invalid classes.");
 		Info.bFireAndForget = true;
 		Info.FadeInDuration = 0.2f;
 		Info.FadeOutDuration = 0.2f;
 		Info.ExpireDuration = 2.5f;
-
+		Info.WidthOverride = FOptionalSize();
+		Info.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("CanNotProceedWarningDescription1", "Provided invalid classes."))
+		];
 		FSlateNotificationManager::Get().AddNotification(Info);
 
 		return FReply::Handled();
@@ -1732,13 +1929,19 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 	if (NodeClassLeftSelectedClass == NodeClassRightSelectedClass)
 	{
 		FNotificationInfo Info = FNotificationInfo(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"));
-		Info.SubText = LOCTEXT("CanNotProceedWarning2",
-		                       "The selected classes are same. Please select different classes.");
 		Info.bFireAndForget = true;
 		Info.FadeInDuration = 0.2f;
 		Info.FadeOutDuration = 0.2f;
 		Info.ExpireDuration = 2.5f;
-
+		Info.WidthOverride = FOptionalSize();
+		Info.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(LOCTEXT("CanNotProceedWarning", "Can not proceed class swapping"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("CanNotProceedWarningDescription2", "The selected classes are same. Please select different classes."))
+		];
 		FSlateNotificationManager::Get().AddNotification(Info);
 
 		return FReply::Handled();
@@ -1776,7 +1979,7 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 			{
 				UObject* Asset = Data.GetAsset();
 				if (!Asset) continue;
-				
+
 				UJointManager* Manager = Cast<UJointManager>(Asset);
 				TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
 
@@ -1976,14 +2179,20 @@ FReply FJointEditorTap_MissingClassInstance::Apply()
 {
 	if (SelectedClass == nullptr)
 	{
-		FNotificationInfo Info = FNotificationInfo(
-			LOCTEXT("CanNotProceedWarning", "Can not proceed class reallocation"));
-		Info.SubText = LOCTEXT("CanNotProceedWarning1", "Provided invalid classes.");
+		FNotificationInfo Info = FNotificationInfo(LOCTEXT("CanNotProceedWarning", "Can not proceed class reallocation"));
 		Info.bFireAndForget = true;
 		Info.FadeInDuration = 0.2f;
 		Info.FadeOutDuration = 0.2f;
 		Info.ExpireDuration = 2.5f;
-
+		Info.WidthOverride = FOptionalSize();
+		Info.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(LOCTEXT("CanNotProceedWarning", "Can not proceed class reallocation"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("CanNotProceedWarningDescription1", "Provided invalid classes."))
+		];
 		FSlateNotificationManager::Get().AddNotification(Info);
 
 		return FReply::Handled();

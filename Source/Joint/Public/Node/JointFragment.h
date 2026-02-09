@@ -12,11 +12,6 @@
  * Fragments will have its priority on the node. Fragments with higher priority will be tested and played first.
  */
 
-/**
- * Note for the SDS1 users :
- * Now Joint nodes are just a wrapper for the fragments. and all the functionalities will be implemented by the fragment.
- */
-
 UCLASS(Abstract, Blueprintable, BlueprintType)
 class JOINT_API UJointFragment : public UJointNodeBase
 {

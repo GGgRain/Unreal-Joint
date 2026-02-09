@@ -7,10 +7,15 @@
 #include "EditorWidget/SJointGraphEditorActionMenu.h"
 
 #include "JointEditorStyle.h"
+#include "JointEdUtils.h"
+#include "EditorTools/SJointNotificationWidget.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 #include "Misc/EngineVersionComparison.h"
+
+#define LOCTEXT_NAMESPACE "SJointFragmentPalette"
 
 void SJointFragmentPalette::Construct(const FArguments& InArgs)
 {
@@ -32,19 +37,12 @@ void SJointFragmentPalette::OnFragmentActionSelected(const TArray<TSharedPtr<FEd
 
 	if (Selections.Num() == 0)
 	{
-		FText NotificationText = FText::FromString("Can not add a fragment");
-		FText NotificationSubText = FText::FromString(
-			"Nodes must be selected in the graph to attach the fragment to. Please select one or more nodes and try again.");
-
-		FNotificationInfo NotificationInfo(NotificationText);
-		NotificationInfo.SubText = NotificationSubText;
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
-
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		FJointEdUtils::FireNotification(
+			LOCTEXT("Notification_Title_CannotAddFragment", "Cannot Add Fragment"),
+			LOCTEXT("Notification_Sub_CannotAddFragment", "Nodes must be selected in the graph to attach the fragment to. Please select one or more nodes and try again."),
+			EJointMDAdmonitionType::Error
+		);
+		
 		return;
 	}
 
@@ -87,3 +85,4 @@ void SJointFragmentPalette::RebuildWidget()
 
 
 
+#undef LOCTEXT_NAMESPACE

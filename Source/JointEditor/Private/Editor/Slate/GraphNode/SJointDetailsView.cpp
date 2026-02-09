@@ -70,13 +70,11 @@ void SJointDetailsView::Construct(const FArguments& InArgs)
 void SJointDetailsView::PopulateSlate()
 {
 	this->ChildSlot.DetachWidget();
-
 	
 	this->ChildSlot.AttachWidget(
 		SAssignNew(JointRetainerWidget, SJointRetainerWidget )
 		.DisplayRetainerRendering(this, &SJointDetailsView::UseLowDetailedRendering)
 		);
-	
 	
 	bInitialized = false;
 	bInitializing = false;
@@ -105,10 +103,10 @@ EActiveTimerReturnType SJointDetailsView::InitializationTimer(double InCurrentTi
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::ENameAreaSettings::HideNameArea;
 	DetailsViewArgs.bHideSelectionTip = true;
 	DetailsViewArgs.bAllowSearch = false;
+	DetailsViewArgs.bShowScrollBar = true;
 	//DetailsViewArgs.ViewIdentifier = FName(FGuid::NewGuid().ToString());
 
 	ThisPtr->DetailViewWidget = nullptr;
-			
 	ThisPtr->DetailViewWidget = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [ThisPtr]()
@@ -146,6 +144,8 @@ EActiveTimerReturnType SJointDetailsView::InitializationTimer(double InCurrentTi
 				View->SetObject(ThisPtr->Object.Get(), false);
 				
 				ThisPtr->JointRetainerWidget.Pin()->GetChildSlot().AttachWidget(View);
+				
+				//ThisPtr->ChildSlot.AttachWidget(ThisPtr->DetailViewWidget.ToSharedRef());
 
 				ThisPtr->bInitializing = false;
 				ThisPtr->bInitialized = true;

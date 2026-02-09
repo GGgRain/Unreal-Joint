@@ -33,6 +33,7 @@
 #include "Misc/UObjectToken.h"
 
 #include "Logging/TokenizedMessage.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Misc/EngineVersionComparison.h"
 #include "Modules/ModuleManager.h"
 #include "SharedType/JointEdSharedTypes.h"
@@ -539,18 +540,6 @@ void UJointEdGraphNode::ReplicateSubNodePins()
 }
 
 
-UEdGraphPin* UJointEdGraphNode::FindOriginalSubNodePin(UEdGraphPin* InReplicatedSubNodePin)
-{
-	TArray<UEdGraphPin*> SubNodePins = GetPinsFromSubNodes();
-
-	for (UEdGraphPin* SubNodePin : SubNodePins)
-	{
-		if (SubNodePin->PinId == InReplicatedSubNodePin->PinId) return SubNodePin;
-	}
-
-	return nullptr;
-}
-
 UEdGraphPin* UJointEdGraphNode::FindOriginalPin(UEdGraphPin* InReplicatedPin)
 {
 	//First check if the pin is originated from this node.
@@ -561,6 +550,18 @@ UEdGraphPin* UJointEdGraphNode::FindOriginalPin(UEdGraphPin* InReplicatedPin)
 
 	//If not, check from the sub nodes.
 	return FindOriginalSubNodePin(InReplicatedPin);
+}
+
+UEdGraphPin* UJointEdGraphNode::FindOriginalSubNodePin(UEdGraphPin* InReplicatedSubNodePin)
+{
+	TArray<UEdGraphPin*> SubNodePins = GetPinsFromSubNodes();
+
+	for (UEdGraphPin* SubNodePin : SubNodePins)
+	{
+		if (SubNodePin->PinId == InReplicatedSubNodePin->PinId) return SubNodePin;
+	}
+
+	return nullptr;
 }
 
 FPinConnectionResponse UJointEdGraphNode::CanAttachThisAtParentNode(const UJointEdGraphNode* InParentNode) const
@@ -910,16 +911,6 @@ bool UJointEdGraphNode::GetShouldHideNameBox() const
 	return false;
 }
 
-void UJointEdGraphNode::PostPlacedNewNode()
-{
-	PatchNodeInstanceFromClassDataIfNeeded();
-
-	UpdateNodeInstance();
-
-	GrabSlateDetailLevelFromNodeInstance();
-}
-
-
 void UJointEdGraphNode::HoldOuterChainToCopy()
 {
 	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
@@ -943,6 +934,7 @@ void UJointEdGraphNode::HoldOuterChainToCopy()
 	}
 }
 
+
 void UJointEdGraphNode::RestoreOuterChainFromCopy()
 {
 	if (ParentNode != nullptr)
@@ -958,6 +950,15 @@ void UJointEdGraphNode::RestoreOuterChainFromCopy()
 		
 		SubNode->RestoreOuterChainFromCopy();
 	}
+}
+
+void UJointEdGraphNode::PostPlacedNewNode()
+{
+	PatchNodeInstanceFromClassDataIfNeeded();
+
+	UpdateNodeInstance();
+
+	GrabSlateDetailLevelFromNodeInstance();
 }
 
 void UJointEdGraphNode::PrepareForCopying()
@@ -1122,13 +1123,20 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	NotificationInfo.FadeInDuration = 0.2f;
 	NotificationInfo.FadeOutDuration = 0.2f;
 	NotificationInfo.ExpireDuration = 5.f;
-	NotificationInfo.bUseThrobber = true;
-
+	NotificationInfo.WidthOverride = FOptionalSize();
 
 	if (ProcessedName.IsEmpty())
 	{
 		NotificationInfo.Text = FailedNotificationText;
 		NotificationInfo.SubText = NodeNameEmptySubText;
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(NotificationInfo.Text.Get())
+			.bUseDescriptionText(true)
+			.DescriptionText(NotificationInfo.SubText.Get())
+		];
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 		return;
@@ -1138,6 +1146,14 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	{
 		NotificationInfo.Text = FailedNotificationText;
 		NotificationInfo.SubText = NoInstanceFailNotificationSubText;
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(NotificationInfo.Text.Get())
+			.bUseDescriptionText(true)
+			.DescriptionText(NotificationInfo.SubText.Get())
+		];
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 
@@ -1151,6 +1167,14 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	{
 		NotificationInfo.Text = FailedNotificationText;
 		NotificationInfo.SubText = InstanceConditionFailNotificationSubText;
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(NotificationInfo.Text.Get())
+			.bUseDescriptionText(true)
+			.DescriptionText(NotificationInfo.SubText.Get())
+		];
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
 		return;
@@ -1164,6 +1188,7 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	
 	GetCastedNodeInstance()->Rename(*ProcessedName);
 
+	// if the name was changed, notify success.
 	if (ProcessedName != DesiredNewName)
 	{
 		NotificationInfo.Text = SucceedNotificationText;
@@ -1172,9 +1197,18 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 			FText::FromString(SavedOriginalName),
 			FText::FromString(ProcessedName),
 			FText::FromString(DesiredNewName));
-
+		
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Info)
+			.CustomHeaderText(NotificationInfo.Text.Get())
+			.bUseDescriptionText(true)
+			.DescriptionText(NotificationInfo.SubText.Get())
+		];
+		
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
-	}else
+	}else // notify only if the name was actually changed.
 	{
 		if (SavedOriginalName != ProcessedName)
 		{
@@ -1184,6 +1218,15 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 				FText::FromString(SavedOriginalName),
 				FText::FromString(ProcessedName));
 
+			NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+			[
+				SNew(SJointMDSlate_Admonitions)
+				.AdmonitionType(EJointMDAdmonitionType::Info)
+				.CustomHeaderText(NotificationInfo.Text.Get())
+				.bUseDescriptionText(true)
+				.DescriptionText(NotificationInfo.SubText.Get())
+			];
+			
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
 	}
@@ -1561,12 +1604,27 @@ bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPi
 			NotificationInfo.FadeInDuration = 0.3f;
 			NotificationInfo.FadeOutDuration = 1.3f;
 			NotificationInfo.ExpireDuration = 4.5f;
+			NotificationInfo.WidthOverride = FOptionalSize();
+			NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(NotificationText)
+					.bUseDescriptionText(false)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Info)
+						.CustomHeaderText(this->GetNodeTitle(ENodeTitleType::FullTitle))
+						.bUseDescriptionText(true)
+						.DescriptionText(FText::FromString("This node instance's class doesn't permit having sub nodes."))
+					]
+				];
 
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
 		
 		
-		OutResponse = FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, FText::FromString("This node can not have sub nodes."));
+		OutResponse = FPinConnectionResponse(ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW, FText::FromString("This node instance's class doesn't permit having sub nodes."));
 
 
 		return false;
@@ -1575,18 +1633,32 @@ bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPi
 
 	if (ThisNodeResponse.Response == ECanCreateConnectionResponse::CONNECT_RESPONSE_DISALLOW)
 	{
+		
 		if (bAllowNotification)
 		{
 			FText NotificationText = FText::FromString("Sub node add action has been denied");
-			FText NotificationSubText = FText::FromString(this->GetName() + ":\n\n" + ThisNodeResponse.Message.ToString());
 
 			FNotificationInfo NotificationInfo(NotificationText);
-			NotificationInfo.SubText = NotificationSubText;
 			NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
 			NotificationInfo.bFireAndForget = true;
 			NotificationInfo.FadeInDuration = 0.3f;
 			NotificationInfo.FadeOutDuration = 1.3f;
 			NotificationInfo.ExpireDuration = 4.5f;
+			NotificationInfo.WidthOverride = FOptionalSize();
+			NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(NotificationText)
+					.bUseDescriptionText(false)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Info)
+						.CustomHeaderText(this->GetNodeTitle(ENodeTitleType::FullTitle))
+						.bUseDescriptionText(true)
+						.DescriptionText(FText::FromString(ThisNodeResponse.Message.ToString()))
+					]
+				];
 
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
@@ -1602,16 +1674,27 @@ bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPi
 		{
 			//DisallowMessage
 			FText NotificationText = FText::FromString("Sub node add action has been denied");
-			FText NotificationSubText =
-				FText::FromString(SubNode->GetName() + ":\n\n" + SubNodeResponse.Message.ToString());
-
 			FNotificationInfo NotificationInfo(NotificationText);
-			NotificationInfo.SubText = NotificationSubText;
 			NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
 			NotificationInfo.bFireAndForget = true;
 			NotificationInfo.FadeInDuration = 0.3f;
 			NotificationInfo.FadeOutDuration = 1.3f;
 			NotificationInfo.ExpireDuration = 4.5f;
+			NotificationInfo.WidthOverride = FOptionalSize();
+			NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(NotificationText)
+					.bUseDescriptionText(false)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Info)
+						.CustomHeaderText(SubNode->GetNodeTitle(ENodeTitleType::FullTitle))
+						.bUseDescriptionText(true)
+						.DescriptionText(FText::FromString(SubNodeResponse.Message.ToString()))
+					]
+				];
 
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
@@ -1801,6 +1884,15 @@ void UJointEdGraphNode::PatchNodeInstanceFromClassData(FArchive& Ar)
 		NotificationInfo.ExpireDuration = 10.f;
 		NotificationInfo.FadeInDuration = 2.0f;
 		NotificationInfo.FadeOutDuration = 4.f;
+		NotificationInfo.WidthOverride = FOptionalSize();
+		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(EJointMDAdmonitionType::Error)
+						.CustomHeaderText(NotificationInfo.Text.Get())
+						.bUseDescriptionText(true)
+						.DescriptionText(NotificationInfo.SubText.Get())
+					];
 
 		const FNotificationButtonInfo Button1(LOCTEXT("InvalidNode_JointManagement", "Open Joint Management"),
 		                                      FText::GetEmpty(),

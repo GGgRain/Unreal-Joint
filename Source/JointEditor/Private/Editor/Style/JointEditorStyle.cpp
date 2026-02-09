@@ -118,6 +118,10 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	Style->Set("ClassIcon.JointFragment", new Joint_IMAGE_BRUSH("Icon/Ico_JointFragment", Icon16x16));
 	Style->Set("ClassThumbnail.JointBuildPreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointBuildPreset", Icon128x128));
 	Style->Set("ClassIcon.JointBuildPreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointBuildPreset", Icon16x16));
+	Style->Set("ClassThumbnail.JointNodePreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointNodePreset", Icon128x128));
+	Style->Set("ClassIcon.JointNodePreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointNodePreset", Icon16x16));
+	Style->Set("ClassThumbnail.JointScriptParser", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptParser", Icon128x128));
+	Style->Set("ClassIcon.JointScriptParser", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptParser", Icon16x16));
 
 
 	//Pin Images

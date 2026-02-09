@@ -20,9 +20,7 @@ public:
 public:
 
 	virtual void OnSetCompletionState(SNotificationItem::ECompletionState State) override;
-	
 	virtual TSharedRef< SWidget > AsWidget() override;
-	
 	virtual bool UseNotificationBackground() const override;
 
 public:

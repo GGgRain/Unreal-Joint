@@ -1471,9 +1471,7 @@ void SJointNodeDescription::PopulateSlate()
 				[
 					SNew(STextBlock)
 					.Visibility(EVisibility::SelfHitTestInvisible)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-					.ColorAndOpacity(FLinearColor(1, 1, 1, 0.7))
-					.Justification(ETextJustify::Center)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
 					.Text(FText::FromString(ClassToDescribe->GetDesc()))
 				]
 				+ SHorizontalBox::Slot()
@@ -1540,10 +1538,9 @@ void SJointNodeDescription::PopulateSlate()
 			.VAlign(VAlign_Center)
 			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(STextBlock)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.Text(ClassToDescribe->GetToolTipText())
-				.AutoWrapText(true)
+				FJointEdUtils::DescribeMarkdownTextAsWidget(
+					ClassToDescribe->GetToolTipText().ToString()
+				)
 			]
 		]
 	];

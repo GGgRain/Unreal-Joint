@@ -17,17 +17,24 @@
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
 #include "JointFunctionLibrary.h"
+#include "JointNodePreset.h"
+#include "JointScriptParser.h"
 #include "SNodePanel.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "EditorTools/SJointNotificationWidget.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Internationalization/TextPackageNamespaceUtil.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Node/JointFragment.h"
 #include "Node/JointNodeBase.h"
 #include "Serialization/TextReferenceCollector.h"
 
 #include "Misc/EngineVersionComparison.h"
+#include "Misc/FileHelper.h"
+
 
 
 #define LOCTEXT_NAMESPACE "JointEdUtils"
@@ -57,6 +64,23 @@ void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGrap
 	{
 		ClassCache->GatherClasses(BaseClass, ClassData);
 	}
+}
+
+FJointGraphNodeClassData FJointEdUtils::FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass)
+{
+	TArray<FJointGraphNodeClassData> ClassData;
+
+	FJointEdUtils::GetNodeSubClasses(UJointNodeBase::StaticClass(), ClassData);
+
+	for (FJointGraphNodeClassData& SubclassData : ClassData)
+	{
+		if (SubclassData.GetClass() == NodeClass)
+		{
+			return SubclassData;
+		}
+	}
+	
+	return FJointGraphNodeClassData();
 }
 
 TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FJointGraphNodeClassData Class)
@@ -101,7 +125,7 @@ bool FJointEdUtils::FJointAssetFilter::IsClassAllowed(const FClassViewerInitiali
                                                       const UClass* InClass, TSharedRef<FClassViewerFilterFuncs> InFilterFuncs)
 {
 	if (InClass != nullptr) { 
-		return InClass == UJointFragment::StaticClass();
+		return InClass == UJointFragment::StaticClass() || InClass == UJointBuildPreset::StaticClass();
 	}
 	return false;
 }
@@ -213,13 +237,13 @@ void FJointEdUtils::JointText_StaticStableTextIdWithObj(UObject* InObject,
 }
 
 
-void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* InClass)
+UBlueprint* FJointEdUtils::CreateNewBlueprintAssetForClass(UClass* InClass, FString BasePath)
 {
-	if (InClass == nullptr) return;
+	if (InClass == nullptr) return nullptr;
 
 	FString ClassName = FBlueprintEditorUtils::GetClassNameWithoutSuffix(InClass);
 	
-	FString PathName = !BasePath.IsEmpty() ? FPaths::GetPath(BasePath) : TEXT("/Game");
+	FString PathName = !BasePath.IsEmpty() ? BasePath : TEXT("/Game");
 
 	PathName = PathName / ClassName;
 
@@ -229,15 +253,20 @@ void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* In
 	AssetToolsModule.Get().CreateUniqueAssetName(PathName, TEXT("_New"), PackageName, Name);
 
 	UPackage* Package = CreatePackage(*PackageName);
+	
+	UBlueprint* NewBP = nullptr;
+	
 	if (ensure(Package))
 	{
 		// Create and init a new Blueprint
-		if (UBlueprint* NewBP = FKismetEditorUtilities::CreateBlueprint(InClass
-		                                                                , Package
-		                                                                , FName(*Name)
-		                                                                , BPTYPE_Normal
-		                                                                , UBlueprint::StaticClass()
-		                                                                , UBlueprintGeneratedClass::StaticClass()))
+		NewBP = FKismetEditorUtilities::CreateBlueprint(InClass
+																		, Package
+																		, FName(*Name)
+																		, BPTYPE_Normal
+																		, UBlueprint::StaticClass()
+																		, UBlueprintGeneratedClass::StaticClass());
+		
+		if (NewBP)
 		{
 			GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(NewBP);
 
@@ -251,7 +280,133 @@ void FJointEdUtils::HandleNewAssetActionClassPicked(FString BasePath, UClass* In
 
 
 	FSlateApplication::Get().DismissAllMenus();
+	
+	return NewBP;
 }
+
+UObject* FJointEdUtils::CreateNewAssetForClass(UClass* InClass, FString BasePath)
+{
+	if (InClass == nullptr) return nullptr;
+
+	FString ClassName = FBlueprintEditorUtils::GetClassNameWithoutSuffix(InClass);
+	
+	FString PathName = !BasePath.IsEmpty() ? BasePath : TEXT("/Game");
+
+	PathName = PathName / ClassName;
+
+	FString Name;
+	FString PackageName;
+	const FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
+	AssetToolsModule.Get().CreateUniqueAssetName(PathName, TEXT("_New"), PackageName, Name);
+
+	UPackage* Package = CreatePackage(*PackageName);
+	
+	UObject* NewAsset = nullptr;
+	
+	if (ensure(Package))
+	{
+		// Create and init a new asset
+		NewAsset = NewObject<UObject>(Package, InClass, *Name, RF_Public | RF_Standalone | RF_MarkAsRootSet);
+		
+		if (NewAsset)
+		{
+			GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(NewAsset);
+
+			// Notify the asset registry
+			FAssetRegistryModule::AssetCreated(NewAsset);
+
+			// Mark the package dirty...
+			Package->MarkPackageDirty();
+		}
+	}
+
+	FSlateApplication::Get().DismissAllMenus();
+	
+	return NewAsset;
+}
+
+TSharedRef<SWidget> FJointEdUtils::DescribeMarkdownTextAsWidget(const FString& InMarkdownText)
+{
+	// break lines by \n
+	TArray<FString> Lines;
+	InMarkdownText.ParseIntoArrayLines(Lines, false);
+
+	if (Lines.Num() > 0)
+	{
+		TSharedRef<SVerticalBox> VerticalBox = SNew(SVerticalBox);
+
+		for (const FString& Line : Lines)
+		{
+			FString TrimmedLine = Line;
+			TrimmedLine.TrimStartAndEndInline();
+
+			if (TrimmedLine.IsEmpty())
+			{
+				continue;
+			}
+
+			// detect admonition prefix
+			auto TryParseAdmonition = [&](const FString& Prefix, EJointMDAdmonitionType Type) -> bool
+			{
+				if (TrimmedLine.StartsWith(Prefix))
+				{
+					FString Content = TrimmedLine;
+					Content.RemoveFromStart(Prefix);
+					Content.TrimStartAndEndInline();
+
+					if (Content.IsEmpty())
+					{
+						return true; // handled but nothing to add
+					}
+
+					VerticalBox->AddSlot()
+					.AutoHeight()
+					.Padding(FJointEditorStyle::Margin_Normal)
+					[
+						SNew(SJointMDSlate_Admonitions)
+						.AdmonitionType(Type)
+						.bUseDescriptionText(true)
+						.bAutoWrapDescriptionText(true)
+						.DescriptionText(FText::FromString(Content))
+					];
+
+					return true;
+				}
+				return false;
+			};
+
+			const bool bHandled =
+				TryParseAdmonition(TEXT("@info"),   EJointMDAdmonitionType::Info) ||
+				TryParseAdmonition(TEXT("@note"),    EJointMDAdmonitionType::Note) ||
+				TryParseAdmonition(TEXT("@warning"), EJointMDAdmonitionType::Warning) ||
+				TryParseAdmonition(TEXT("@important"),   EJointMDAdmonitionType::Important) ||
+				TryParseAdmonition(TEXT("@caution"),   EJointMDAdmonitionType::Caution) ||
+				TryParseAdmonition(TEXT("@error"),   EJointMDAdmonitionType::Error);
+
+			if (bHandled)
+			{
+				continue;
+			}
+
+			TSharedRef<STextBlock> TextBlock = SNew(STextBlock)
+				.Text(FText::FromString(TrimmedLine))
+				.AutoWrapText(true)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3");
+
+			VerticalBox->AddSlot()
+			.AutoHeight()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				TextBlock
+			];
+		}
+
+		return VerticalBox;
+	}
+
+	return SNullWidget::NullWidget;
+}
+
 
 void FJointEdUtils::OpenEditorFor(UJointManager* Manager, FJointEditorToolkit*& Toolkit)
 {
@@ -575,7 +730,7 @@ void FJointEdUtils::MarkNodesAsModifiedAndValidateName(
 }
 
 
-void FJointEdUtils::MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& PasteLocation)
+void FJointEdUtils::MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVector2D& Location)
 {
 	// Recenter pasted nodes around PasteLocation
 	int64 SumX = 0, SumY = 0;
@@ -600,7 +755,7 @@ void FJointEdUtils::MoveNodesAtLocation(TSet<UEdGraphNode*> InNodes, const FVect
 		const int32 CenterX = static_cast<int32>(SumX / Count);
 		const int32 CenterY = static_cast<int32>(SumY / Count);
 		const FVector2D CurrentCenter((float)CenterX, (float)CenterY);
-		const FVector2D Offset = PasteLocation - CurrentCenter;
+		const FVector2D Offset = Location - CurrentCenter;
 
 		for (UEdGraphNode* Node : InNodes)
 		{
@@ -886,6 +1041,60 @@ void FJointEdUtils::RemoveNodes(TArray<class UObject*> NodesToRemove)
 	}
 }
 
+void FJointEdUtils::AllocateNodeTemplate(UJointNodePreset* NodePreset, UObject* InNodeTemplate)
+{
+	if (NodePreset == nullptr || InNodeTemplate == nullptr) return;
+	
+	//check if InNodeTemplate is an object which is type of UJointEdGraphNode;
+	
+	UJointEdGraphNode* CastedNodeTemplate = Cast<UJointEdGraphNode>(InNodeTemplate);
+	
+	if (CastedNodeTemplate == nullptr) return;
+	
+	CastedNodeTemplate->PrepareForCopying();
+	
+	NodePreset->NodeTemplate = DuplicateObject(InNodeTemplate, NodePreset);
+	
+	CastedNodeTemplate->PostCopyNode();
+	
+	if (UJointEdGraphNode* CastedDuplicatedNodeTemplate = Cast<UJointEdGraphNode>(NodePreset->NodeTemplate))
+	{
+		//iterate all sub nodes and their properties and find FJointNodePointer and clear them if they point to outside of the template.
+		TArray<UJointEdGraphNode*> AllNodes = CastedDuplicatedNodeTemplate->GetAllSubNodesInHierarchy();
+		AllNodes.Add(CastedDuplicatedNodeTemplate); //add itself as well.
+		
+		for (UJointEdGraphNode* Node : AllNodes)
+		{
+			if (Node == nullptr) continue;
+
+			for (TFieldIterator<FProperty> PropIt(Node->GetClass()); PropIt; ++PropIt)
+			{
+				FProperty* Property = *PropIt;
+
+				if (FStructProperty* StructProperty = CastField<FStructProperty>(Property))
+				{
+					if (StructProperty->Struct == FJointNodePointer::StaticStruct())
+					{
+						void* PropertyValue = StructProperty->ContainerPtrToValuePtr<void>(Node);
+						FJointNodePointer* NodePointer = reinterpret_cast<FJointNodePointer*>(PropertyValue);
+
+						if (NodePointer && NodePointer->IsValid())
+						{
+							UObject* PointedNode = NodePointer->Node.Get();
+
+							//if the pointed node is not in the duplicated template, clear it.
+							if (!AllNodes.Contains(PointedNode) && PointedNode != CastedDuplicatedNodeTemplate)
+							{
+								NodePointer->Reset();
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+}
 
 
 bool FJointEdUtils::GetSafeNameForObjectRenaming(FString& InNewNameOutValidatedName, UObject* ObjectToRename, UObject* InOuter)
@@ -972,6 +1181,120 @@ void FJointEdUtils::GetGraphIconFor(const UEdGraph* Graph, FSlateBrush const*& I
 	// fallback
 	if (IconOut == nullptr) IconOut = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(TEXT("GraphEditor.EventGraph_16x"));
 	
+}
+
+void FJointEdUtils::FireNotification(const FText& NotificationTitleText, const FText& NotificationText, const EJointMDAdmonitionType& AdmonitionType, const float& DurationSeconds)
+{
+	FNotificationInfo NotificationInfo(NotificationTitleText);
+	NotificationInfo.SubText = NotificationText;
+	NotificationInfo.bFireAndForget = true;
+	NotificationInfo.FadeInDuration = 0.3f;
+	NotificationInfo.FadeOutDuration = 1.3f;
+	NotificationInfo.ExpireDuration = DurationSeconds;
+	NotificationInfo.WidthOverride = FOptionalSize();
+	NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(AdmonitionType)
+					.CustomHeaderText(NotificationTitleText)
+					.bUseDescriptionText(true)
+					.DescriptionText(NotificationText)
+				];
+		
+	FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+}
+
+void FJointEdUtils::ImportFileToJointManager(UJointManager* TargetManager, const FString& FilePath)
+{
+	// Validate inputs
+	if (TargetManager == nullptr || FilePath.IsEmpty()) return;
+	
+	// Parse the file's contents as text (HAL)
+	FString FileContents;
+	if (!FFileHelper::LoadFileToString(FileContents, *FilePath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to load file: %s"), *FilePath);
+		return;
+	}
+	
+	bool bHandledAnyParser = false;
+	
+	// Iterate all registered Joint Script Parsers and let them handle the import.
+	for (const TSubclassOf<UJointScriptParser>& JointScriptParser : UJointEditorSettings::Get()->JointScriptParsers)
+	{
+		UJointScriptParser* Parser = JointScriptParser.GetDefaultObject();
+		
+		if (!Parser) continue;
+		
+		Parser->HandleImporting(TargetManager, FileContents);
+		
+		bHandledAnyParser = true;
+	}
+	
+	if ( bHandledAnyParser)
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("JointScriptImport_Success_Title", "Joint Script Import Successful"),
+			FText::Format(
+				LOCTEXT("JointScriptImport_Success_Message", "Successfully imported Joint Script from file: {0}"),
+				FText::FromString(FPaths::GetCleanFilename(FilePath))
+			),
+			EJointMDAdmonitionType::Info
+		);
+	}
+	else
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("JointScriptImport_Failure_Title", "Joint Script Import Failed"),
+			FText::Format(
+				LOCTEXT("JointScriptImport_Failure_Message", "No Joint Script Parsers were able to handle the file: {0}"),
+				FText::FromString(FPaths::GetCleanFilename(FilePath))
+			),
+			EJointMDAdmonitionType::Error
+		);
+	}
+}
+
+void FJointEdUtils::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode)
+{
+	if (FromPin == nullptr || ConnectedNode == nullptr) return;
+
+	switch (FromPin->Direction)
+	{
+	case EGPD_Input:
+
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
+		{
+			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Output) continue;
+			AllPin->Modify();
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
+		}
+
+		break;
+
+	case EGPD_Output:
+
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
+		{
+			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Input) continue;
+			AllPin->Modify();
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
+		}
+
+		break;
+
+	case EGPD_MAX: break;
+
+	default: break;
+	}
+
+	//Force the node to update its connections.
+	if(UEdGraphNode* GraphNode = FromPin->GetOwningNode())
+	{
+		GraphNode->NodeConnectionListChanged();
+	}
+
+	ConnectedNode->NodeConnectionListChanged();
 }
 
 #undef LOCTEXT_NAMESPACE

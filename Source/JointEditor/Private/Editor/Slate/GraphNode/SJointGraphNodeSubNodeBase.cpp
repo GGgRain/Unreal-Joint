@@ -337,8 +337,9 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					.AutoHeight()
 					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Top)
+					.Padding(0)
 					[
-						PopulateSimpleDisplayForProperties()
+						PopulateSimpleDisplaySection()
 					]
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -411,8 +412,9 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					.AutoHeight()
 					.HAlign(HAlign_Fill)
 					.VAlign(VAlign_Top)
+					.Padding(0)
 					[
-						PopulateSimpleDisplayForProperties()
+						PopulateSimpleDisplaySection()
 					]
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -505,8 +507,9 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 			.AutoHeight()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Top)
+			.Padding(0)
 			[
-				PopulateSimpleDisplayForProperties()
+				PopulateSimpleDisplaySection()
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -543,8 +546,9 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 			.AutoHeight()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Top)
+			.Padding(0)
 			[
-				PopulateSimpleDisplayForProperties()
+				PopulateSimpleDisplaySection()
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()

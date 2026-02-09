@@ -20,6 +20,9 @@
 #include "JointManagement.h"
 #include "JointManagementTabs.h"
 #include "JointManager.h"
+#include "Asset/JointNodePreset.h"
+#include "JointNodePresetActions.h"
+#include "JointScriptParserActions.h"
 
 #include "Debug/JointDebugger.h"
 #include "EditorTools/SJointBulkSearchReplace.h"
@@ -69,6 +72,7 @@ void FJointEditorModule::StartupModule()
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();
 
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
+	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorExportingImportingTab::MakeInstance());
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_NodeClassManagementTab::MakeInstance());
 
 	JointNodeStyleFactory = MakeShareable(new FJointGraphNodeSlateFactory);
@@ -142,6 +146,8 @@ void FJointEditorModule::RegisterAssetTools()
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointManagerActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointFragmentActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointBuildPresetActions(AssetCategory)));
+	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointNodePresetActions(AssetCategory)));
+	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointScriptParserActions(AssetCategory)));
 }
 
 void FJointEditorModule::RegisterSequencerTrack()
@@ -350,6 +356,10 @@ void FJointEditorModule::RegisterClassLayout()
 	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
 		                                         &FJointBuildPresetCustomization::MakeInstance));
 
+	PropertyModule.RegisterCustomClassLayout(FName(*UJointNodePreset::StaticClass()->GetName())
+										 , FOnGetDetailCustomizationInstance::CreateStatic(
+											 &FJointNodePresetCustomization::MakeInstance));
+	
 
 	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointNodePointer::StaticStruct()->GetName()),
 	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(

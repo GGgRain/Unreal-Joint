@@ -432,6 +432,12 @@ public:
 	void OnToggleVisibilityChangeModeForSimpleDisplayProperty();
 	bool GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const;
 
+	void NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted();
+	void NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded();
+	
+	void OnCreateJointNodePresetFromSelection();
+	bool CanCreateJointNodePresetFromSelection() const;
+
 public:
 	
 	void OpenSearchTab() const;

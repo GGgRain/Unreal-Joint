@@ -42,6 +42,27 @@ public:
 };
 
 
+class JOINTEDITOR_API FJointManagementTab_JointEditorExportingImportingTab : public IJointManagementSubTab
+{
+public:
+	FJointManagementTab_JointEditorExportingImportingTab();
+
+	virtual ~FJointManagementTab_JointEditorExportingImportingTab() override;
+
+public:
+	static TSharedRef<IJointManagementSubTab> MakeInstance();
+
+public:
+	virtual void RegisterTabSpawner(const TSharedPtr<FTabManager>& TabManager) override;
+
+public:
+	virtual const FName GetTabId() override;
+
+	virtual const ETabState::Type GetInitialTabState() override;
+};
+
+
+
 /**
  * Content widget for the FJointManagementTab_JointEditorUtilityTab. it's just a pure slate. make something like this for your own extension.
  */
@@ -83,6 +104,26 @@ public:
 	FReply ResetNodeEditorStyle();
 
 	FReply ResetContextTextEditorStyle();
+};
+
+/**
+ * Content widget for the FJointManagementTab_JointEditorUtilityTab. it's just a pure slate. make something like this for your own extension.
+ */
+class JOINTEDITOR_API SJointEditorExportingImportingTab : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SJointEditorExportingImportingTab)
+	{
+	}
+
+	SLATE_END_ARGS();
+
+	void Construct(const FArguments& InArgs);
+
+public:
+	
+	FReply ImportJointManager();
+
 };
 
 

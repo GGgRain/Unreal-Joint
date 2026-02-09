@@ -53,9 +53,10 @@ public:
 public:
 	
 	//The instance of the runtime Joint node that this editor graph node represent on the graph.
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category="Developer Mode")
+	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
 	TObjectPtr<UObject> NodeInstance;
-
+	
+public:
 
 #if WITH_EDITOR
 

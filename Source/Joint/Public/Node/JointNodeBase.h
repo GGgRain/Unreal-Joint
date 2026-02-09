@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 
 #include "SharedType/JointSharedTypes.h"
-#include "SharedType/JointBuildPreset.h"
 #include "SharedType/JointEdSharedTypes.h"
 
 #include "BlueprintUtilities.h"
 #include "GameplayTagAssetInterface.h"
 #include "GameplayTagContainer.h"
+#include "SharedType/JointBuildPreset.h"
 
 #include "JointNodeBase.generated.h"
 
@@ -890,6 +890,7 @@ public:
 	                                                   TArray<UJointFragment*>& Fragments,
 	                                                   TSubclassOf<UJointFragment> SpecificClassToFind);
 
+	
 public:
 
 #if WITH_EDITORONLY_DATA

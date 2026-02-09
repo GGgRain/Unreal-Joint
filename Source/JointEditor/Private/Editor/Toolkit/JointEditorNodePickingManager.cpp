@@ -8,9 +8,11 @@
 #include "PropertyHandle.h"
 #include "ScopedTransaction.h"
 #include "SGraphPanel.h"
+#include "EditorTools/SJointNotificationWidget.h"
 #include "EditorWidget/JointGraphEditor.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorNodePickingManager"
@@ -197,7 +199,6 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 			else
 			{
 				//Notify the action failure
-
 				FString AllowedTypeStr;
 				for (TSubclassOf<UJointNodeBase> AllowedType : NodePickingJointNodePointerStructure->AllowedType)
 				{
@@ -205,9 +206,9 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 					if (!AllowedTypeStr.IsEmpty()) AllowedTypeStr.Append(", ");
 					AllowedTypeStr.Append(AllowedType.Get()->GetName());
 				}
+				
 				FString DisallowedTypeStr;
-				for (TSubclassOf<UJointNodeBase> DisallowedType : NodePickingJointNodePointerStructure->
-				     DisallowedType)
+				for (TSubclassOf<UJointNodeBase> DisallowedType : NodePickingJointNodePointerStructure->DisallowedType)
 				{
 					if (DisallowedType == nullptr) continue;
 					if (!DisallowedTypeStr.IsEmpty()) DisallowedTypeStr.Append(", ");
@@ -215,11 +216,7 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 				}
 
 				FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
-				FText FailedNotificationSubText = FText::Format(
-					LOCTEXT("NotJointNodeInstanceType_Sub",
-					        "Current structure can not accept the provided node instance.\nAllowed Types: {0}\nDisallowed Types: {1}"),
-					FText::FromString(AllowedTypeStr),
-					FText::FromString(DisallowedTypeStr));
+				FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub","Current structure can not accept the provided node instance.");
 
 				FNotificationInfo NotificationInfo(FailedNotificationText);
 				NotificationInfo.SubText = FailedNotificationSubText;
@@ -229,7 +226,45 @@ void FJointEditorNodePickingManager::PerformNodePicking(TWeakPtr<FJointEditorNod
 				NotificationInfo.FadeOutDuration = 0.2f;
 				NotificationInfo.ExpireDuration = 4.5f;
 				NotificationInfo.bUseThrobber = true;
-
+				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+					.bUseDescriptionText(false)
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(STextBlock)
+							.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+							.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(AllowedTypeStr))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("DisallowedType", "Disallowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(DisallowedTypeStr))
+						]
+					]
+				];
+				
 				FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 			}
 		}

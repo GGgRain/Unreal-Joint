@@ -77,8 +77,8 @@ bool SJointRetainerWidget::CalculatePhaseAndCheckItsTime()
 
 bool SJointRetainerWidget::CustomPrepass(float LayoutScaleMultiplier)
 {
-	// If we are not in low detailed rendering mode, skip the prepass
-	if (CaptureRetainerRendering.Get())
+	// Only do retainer rendering if both display and capture are enabled
+	if (DisplayRetainerRendering.Get() && CaptureRetainerRendering.Get())
 	{
 		TSharedPtr<SWidget> ChildWidget = this->ChildSlot.GetWidget();
 	

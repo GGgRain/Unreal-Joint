@@ -52,6 +52,7 @@ public class JointEditor : ModuleRules
 			"ToolMenus",
 			"ContentBrowser",
 			"DesktopWidgets",
+			"DesktopPlatform",
 
 			"InputCore",
 			"Projects",

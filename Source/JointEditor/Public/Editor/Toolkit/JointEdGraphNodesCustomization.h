@@ -202,6 +202,19 @@ public:
 	
 };
 
+class JOINTEDITOR_API FJointNodePresetCustomization: public IDetailCustomization
+{
+	
+public:
+	
+	static TSharedRef<IDetailCustomization> MakeInstance();
+
+	// IDetailCustomization interface
+	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
+	// End of IDetailCustomization interface
+	
+};
+
 //Type Customization (usually structures)
 
 class JOINTEDITOR_API FJointNodePointerStructCustomization : public IStructCustomization

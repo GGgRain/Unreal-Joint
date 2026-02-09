@@ -20,9 +20,12 @@
 
 #include "Modules/ModuleManager.h"
 #include "ClassViewerModule.h"
+#include "JointAdvancedWidgets.h"
 #include "JointManager.h"
 #include "JointEditor.h"
 #include "Debug/JointDebugger.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
+#include "Node/JointFragment.h"
 #include "Widgets/Input/SComboButton.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorToolbar"
@@ -95,9 +98,9 @@ void FJointEditorToolbar::AddDebuggerToolbar(TSharedPtr<FExtender> Extender)
 				);
 
 				const TAttribute<EVisibility> SelectionBoxVisibility = TAttribute<EVisibility>::CreateLambda([]
-					{
-						return UJointDebugger::IsPIESimulating() ? EVisibility::Visible : EVisibility::Collapsed;
-					});
+				{
+					return UJointDebugger::IsPIESimulating() ? EVisibility::Visible : EVisibility::Collapsed;
+				});
 
 				TSharedRef<SWidget> SelectionBox = SNew(SComboButton)
 					.Visibility(SelectionBoxVisibility)
@@ -220,63 +223,63 @@ void FJointEditorToolbar::FillJointToolbar_BeforeAsset(FToolBarBuilder& ToolbarB
 	ToolbarBuilder.BeginSection("Joint");
 	{
 		const TAttribute<FSlateIcon> CompileIcon = TAttribute<FSlateIcon>::CreateLambda([this]
-			{
-				static const FName CompileStatusBackground("Blueprint.CompileStatus.Background");
-				static const FName CompileStatusUnknown("Blueprint.CompileStatus.Overlay.Unknown");
-				static const FName CompileStatusError("Blueprint.CompileStatus.Overlay.Error");
-				static const FName CompileStatusGood("Blueprint.CompileStatus.Overlay.Good");
-				static const FName CompileStatusWarning("Blueprint.CompileStatus.Overlay.Warning");
-			
-				UJointManager* BlueprintObj = JointEditor.Pin()->GetJointManager();
-			
-				if(!BlueprintObj) return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusUnknown, NAME_None, CompileStatusUnknown);
-			
-				EBlueprintStatus Status = BlueprintObj->Status;
+		{
+			static const FName CompileStatusBackground("Blueprint.CompileStatus.Background");
+			static const FName CompileStatusUnknown("Blueprint.CompileStatus.Overlay.Unknown");
+			static const FName CompileStatusError("Blueprint.CompileStatus.Overlay.Error");
+			static const FName CompileStatusGood("Blueprint.CompileStatus.Overlay.Good");
+			static const FName CompileStatusWarning("Blueprint.CompileStatus.Overlay.Warning");
 
-				switch (Status)
-				{
-				default:
-				case BS_Unknown:
-				case BS_Dirty:
-					return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
-					                  CompileStatusUnknown);
-				case BS_Error:
-					return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
-					                  CompileStatusError);
-				case BS_UpToDate:
-					return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
-					                  CompileStatusGood);
-				case BS_UpToDateWithWarnings:
-					return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
-					                  CompileStatusWarning);
-				}
-			});
+			UJointManager* BlueprintObj = JointEditor.Pin()->GetJointManager();
+
+			if (!BlueprintObj) return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusUnknown, NAME_None, CompileStatusUnknown);
+
+			EBlueprintStatus Status = BlueprintObj->Status;
+
+			switch (Status)
+			{
+			default:
+			case BS_Unknown:
+			case BS_Dirty:
+				return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
+				                  CompileStatusUnknown);
+			case BS_Error:
+				return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
+				                  CompileStatusError);
+			case BS_UpToDate:
+				return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
+				                  CompileStatusGood);
+			case BS_UpToDateWithWarnings:
+				return FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), CompileStatusBackground, NAME_None,
+				                  CompileStatusWarning);
+			}
+		});
 
 		const TAttribute<FText> CompileTooltip = TAttribute<FText>::CreateLambda([this]
-			{
-				UJointManager* BlueprintObj = JointEditor.Pin()->GetJointManager();
+		{
+			UJointManager* BlueprintObj = JointEditor.Pin()->GetJointManager();
 
-				if(!BlueprintObj) return LOCTEXT("Recompile_Status", "Unknown status; should recompile");
-			
-				EBlueprintStatus Status = BlueprintObj->Status;
-			
-				switch (Status)
-				{
-				default:
-				case BS_Unknown:
-					return LOCTEXT("Recompile_Status", "Unknown status; should recompile");
-				case BS_Dirty:
-					return LOCTEXT("Dirty_Status", "Dirty; needs to be recompiled");
-				case BS_Error:
-					return LOCTEXT("CompileError_Status",
-					               "There was an error during compilation, see the log for details");
-				case BS_UpToDate:
-					return LOCTEXT("GoodToGo_Status", "Good to go");
-				case BS_UpToDateWithWarnings:
-					return LOCTEXT("GoodToGoWarning_Status",
-					               "There was a warning during compilation, see the log for details");
-				}
-			});
+			if (!BlueprintObj) return LOCTEXT("Recompile_Status", "Unknown status; should recompile");
+
+			EBlueprintStatus Status = BlueprintObj->Status;
+
+			switch (Status)
+			{
+			default:
+			case BS_Unknown:
+				return LOCTEXT("Recompile_Status", "Unknown status; should recompile");
+			case BS_Dirty:
+				return LOCTEXT("Dirty_Status", "Dirty; needs to be recompiled");
+			case BS_Error:
+				return LOCTEXT("CompileError_Status",
+				               "There was an error during compilation, see the log for details");
+			case BS_UpToDate:
+				return LOCTEXT("GoodToGo_Status", "Good to go");
+			case BS_UpToDateWithWarnings:
+				return LOCTEXT("GoodToGoWarning_Status",
+				               "There was a warning during compilation, see the log for details");
+			}
+		});
 
 
 		ToolbarBuilder.AddToolBarButton(
@@ -384,20 +387,19 @@ void FJointEditorToolbar::FillEditorModuleToolbar(FToolBarBuilder& ToolbarBuilde
 
 	ToolbarBuilder.BeginSection("EditorModule");
 	{
-		const FText JointToolsLabel = LOCTEXT("JointTools_Label", "Joint Tools");
-		const FText JointToolsTooltip = LOCTEXT("JointTools_ToolTip", "Open Joint tools.");
-		const FSlateIcon JointToolsTaskIcon = FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), "DeveloperTools.MenuIcon");
+		const FText JointUtilitiesLabel = LOCTEXT("JointUtilities_Label", "Utilities");
+		const FText JointUtilitiesTooltip = LOCTEXT("JointUtilities_ToolTip", "Utilities for Joint Editor.");
+		const FSlateIcon JointUtilitiesTaskIcon = FSlateIcon(FJointEditorStyle::GetUEEditorSlateStyleSetName(), "DeveloperTools.MenuIcon");
 
 		ToolbarBuilder.AddComboButton(
 			FUIAction(
 				FExecuteAction()
 			)
-			, FOnGetContent::CreateSP(this, &FJointEditorToolbar::GenerateJointToolsMenu)
-			, JointToolsLabel
-			, JointToolsTooltip
-			, JointToolsTaskIcon
+			, FOnGetContent::CreateSP(this, &FJointEditorToolbar::GenerateJointUtilitiesMenu)
+			, JointUtilitiesLabel
+			, JointUtilitiesTooltip
+			, JointUtilitiesTaskIcon
 		);
-		
 	}
 	ToolbarBuilder.EndSection();
 }
@@ -417,7 +419,6 @@ TSharedRef<SWidget> FJointEditorToolbar::GenerateDebuggerMenu() const
 		ShowMenuBuilder.AddMenuSeparator("Debugger");
 
 		ShowMenuBuilder.AddMenuEntry(Commands.ToggleDebuggerExecution);
-		
 	}
 
 	return ShowMenuBuilder.MakeWidget();
@@ -441,15 +442,42 @@ TSharedRef<SWidget> FJointEditorToolbar::GenerateVisibilityMenu() const
 	return ShowMenuBuilder.MakeWidget();
 }
 
-TSharedRef<SWidget> FJointEditorToolbar::GenerateJointToolsMenu() const
+TSharedRef<SWidget> FJointEditorToolbar::GenerateJointUtilitiesMenu() const
 {
-
 	FMenuBuilder ShowMenuBuilder(true, FJointEditorCommands::Get().PluginCommands.ToSharedRef());
 	{
 		const FJointEditorCommands& Commands = FJointEditorCommands::Get();
 		
-		ShowMenuBuilder.AddMenuEntry(Commands.OpenJointManagementTab);
-		ShowMenuBuilder.AddMenuEntry(Commands.OpenJointBulkSearchReplaceTab);
+		ShowMenuBuilder.BeginSection("JointEditorUtilities_Graph", LOCTEXT("JointEditorUtilitiesSection_Graph", "Graph"));
+		{
+			TSharedRef<SWidget> CreateNewJointAssetWidget = 
+				SNew(SBorder)
+				.Padding(FJointEditorStyle::Margin_Large)
+				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Empty"))
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Note)
+					.bUseDescriptionText(true)
+					.DescriptionText(LOCTEXT("CreateNewJointAssetWidget_Text", "Commands in this section only work with shortcuts.\nWe're listing them here for your reference."))
+				];
+			
+			ShowMenuBuilder.AddWidget(
+				CreateNewJointAssetWidget, FText::GetEmpty(), false
+			);
+			ShowMenuBuilder.AddMenuEntry(Commands.QuickPickSelection);
+			ShowMenuBuilder.AddMenuEntry(Commands.JumpToSelection);
+			ShowMenuBuilder.AddMenuEntry(Commands.CreateFoundation);
+			ShowMenuBuilder.AddMenuEntry(Commands.CreateJointNodePresetFromSelection);
+		}
+		ShowMenuBuilder.EndSection();
+
+		
+		ShowMenuBuilder.BeginSection("JointEditorUtilities_Tools", LOCTEXT("JointEditorUtilitiesSection_Tools", "Tools"));
+		{
+			ShowMenuBuilder.AddMenuEntry(Commands.OpenJointManagementTab);
+			ShowMenuBuilder.AddMenuEntry(Commands.OpenJointBulkSearchReplaceTab);
+		}
+		ShowMenuBuilder.EndSection();
 	}
 
 	return ShowMenuBuilder.MakeWidget();
@@ -461,28 +489,37 @@ TSharedRef<SWidget> FJointEditorToolbar::Task_HandleCreateNewJointAsset() const
 
 	FClassViewerInitializationOptions Options;
 	Options.bShowUnloadedBlueprints = true;
-	
-#if UE_VERSION_OLDER_THAN(5,0,0)
+
+#if UE_VERSION_OLDER_THAN(5, 0, 0)
 	Options.ClassFilter = MakeShareable(new FJointEdUtils::FJointAssetFilter);
 #else
 	Options.ClassFilters.Add(MakeShareable(new FJointEdUtils::FJointAssetFilter));
 #endif
-	
+
 
 	const FOnClassPicked OnPicked(FOnClassPicked::CreateLambda([this](UClass* ChosenClass)
-		{
-			if (JointEditor.IsValid())
-			{
-				FString BasePath;
+	{
+		if (!JointEditor.IsValid()) return;
+		if (!ChosenClass) return;
 
-				if (JointEditor.Pin()->GetJointManager() && JointEditor.Pin()->GetJointManager()->GetOutermostObject())
-				{
-					BasePath = JointEditor.Pin()->GetJointManager()->GetOutermostObject()->GetPathName();
-				}
-				
-				FJointEdUtils::HandleNewAssetActionClassPicked(BasePath, ChosenClass);
-			}
-		}));
+		FString BasePath;
+
+		if (JointEditor.Pin()->GetJointManager() && JointEditor.Pin()->GetJointManager()->GetOutermostObject())
+		{
+			BasePath = JointEditor.Pin()->GetJointManager()->GetOutermostObject()->GetPathName();
+		}
+		
+		// please make my life easier god
+		if (ChosenClass->IsChildOf(UJointFragment::StaticClass()))
+		{
+			FJointEdUtils::CreateNewBlueprintAssetForClass(ChosenClass, FPaths::GetPath(BasePath));
+		}
+		else if (ChosenClass->IsChildOf(UJointBuildPreset::StaticClass()))
+		{
+			FJointEdUtils::CreateNewAssetForClass(ChosenClass, FPaths::GetPath(BasePath));
+		}
+		
+	}));
 
 	return FModuleManager::LoadModuleChecked<FClassViewerModule>("ClassViewer").CreateClassViewer(Options, OnPicked);
 }

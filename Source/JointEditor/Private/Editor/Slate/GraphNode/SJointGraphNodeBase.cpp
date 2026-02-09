@@ -9,6 +9,12 @@
 
 #include "Widgets/Text/SInlineEditableTextBlock.h"
 #include "Widgets/Images/SImage.h"
+#include "Slate/SRetainerWidget.h"
+#include "Widgets/SToolTip.h"
+#include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Input/SCheckBox.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SWrapBox.h"
 
 #include "SCommentBubble.h"
 #include "ScopedTransaction.h"
@@ -23,16 +29,9 @@
 #include "Framework/Application/SlateApplication.h"
 
 #include "Runtime/Launch/Resources/Version.h"
-#include "Widgets/Input/SCheckBox.h"
-#include "Widgets/Layout/SBorder.h"
-
 #include "Logging/TokenizedMessage.h"
-#include "Widgets/Layout/SScrollBox.h"
-#include "Widgets/Layout/SWrapBox.h"
-
 
 #include "Debug/JointDebugger.h"
-
 #include "JointEditorSettings.h"
 #include "JointEdUtils.h"
 
@@ -55,8 +54,6 @@
 #include "Module/Volt_ASM_InterpColor.h"
 #include "Module/Volt_ASM_InterpWidgetTransform.h"
 #include "Module/Volt_ASM_Sequence.h"
-#include "Slate/SRetainerWidget.h"
-#include "Widgets/SToolTip.h"
 
 #include "Misc/EngineVersionComparison.h"
 
@@ -154,7 +151,6 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 
 				if (!JointDetailsView)
 				{
-					
 					SAssignNew(JointDetailsView, SJointDetailsView)
 					.OwnerGraphNode(SharedThis(this))
 					.Object(InNodeInstance)
@@ -166,18 +162,68 @@ TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 					JointDetailsView->SetOwnerGraphNode(SharedThis(this));
 					JointDetailsView->UpdatePropertyData(InGraphNode->GetEdNodeSetting().PropertyDataForSimpleDisplayOnGraphNode);
 				}
-
-				if (JointDetailsView)
-				{
-					return JointDetailsView.ToSharedRef();
-				}
-
-				 return SNullWidget::NullWidget;
+				
+				return JointDetailsView.ToSharedRef();
 			}
 		}
 	}
 
 	return SNullWidget::NullWidget;
+}
+
+TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplaySection()
+{
+	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
+	{
+		if (UJointNodeBase* InNodeInstance = InGraphNode->GetCastedNodeInstance())
+		{
+			if (!InGraphNode->GetEdNodeSetting().PropertyDataForSimpleDisplayOnGraphNode.IsEmpty())
+			{
+				//Don't populate again - really bad for the performance.
+				if (!JointDetailsViewBox)
+				{
+					SAssignNew(JointDetailsViewBox, SBox)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.Visibility(EVisibility::SelfHitTestInvisible)
+					.Padding(0)
+					[
+						PopulateSimpleDisplayForProperties()
+					];
+				}
+				
+				//return JointDetailsViewScrollBox.ToSharedRef();
+				return JointDetailsViewBox.ToSharedRef();
+			}
+		}
+	}
+
+	return SNullWidget::NullWidget;
+}
+
+void SJointGraphNodeBase::OnVisibilityChangeModeForSimpleDisplayPropertyEnter()
+{
+	// if the details view is not valid or has no property data, do nothing.
+	if (!JointDetailsViewBox || !JointDetailsView || JointDetailsView->PropertyData.IsEmpty()) return;
+	
+	// cache current size of the details view and cap it to avoid layout shifting during visibility change mode.
+	const FVector2D& MinimalSize = UJointEditorSettings::Get()->SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode;
+	auto Size = JointDetailsViewBox->GetCachedGeometry().GetLocalSize();
+	
+	JointDetailsViewBox->SetHeightOverride(FMath::Max<float>(Size.Y, MinimalSize.Y));
+	
+	JointDetailsView->SetCanTick(false);
+}
+
+void SJointGraphNodeBase::OnVisibilityChangeModeForSimpleDisplayPropertyExit()
+{
+	// release the size override to allow auto-sizing again.
+	if (JointDetailsViewBox)
+	{
+		//JointDetailsViewBox->SetWidthOverride(FOptionalSize());
+		JointDetailsViewBox->SetHeightOverride(FOptionalSize());
+		JointDetailsView->SetCanTick(true);
+	}
 }
 
 void SJointGraphNodeBase::ModifySlateFromGraphNode() const
@@ -2303,8 +2349,9 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterWholeBox()
 	.AutoHeight()
 	.HAlign(HAlign_Fill)
 	.VAlign(VAlign_Top)
+	.Padding(0)
 	[
-		PopulateSimpleDisplayForProperties()
+		PopulateSimpleDisplaySection()
 	]
 	+ SVerticalBox::Slot()
 	.AutoHeight()

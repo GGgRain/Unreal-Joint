@@ -11,6 +11,7 @@
 #include "Editor.h"
 #include "GraphEditor.h"
 #include "JointEdGraphNode_Composite.h"
+#include "JointEdUtils.h"
 #include "Node/JointNodeBase.h"
 #include "ScopedTransaction.h"
 #include "GraphNode/SJointGraphNodeBase.h"
@@ -143,49 +144,6 @@ void FJointSchemaAction_NewSubNode::AddReferencedObjects(FReferenceCollector& Co
 }
 
 
-void FJointSchemaAction_NewNode::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode)
-{
-	if (FromPin == nullptr || ConnectedNode == nullptr) return;
-
-	switch (FromPin->Direction)
-	{
-	case EGPD_Input:
-
-		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
-		{
-			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Output) continue;
-			AllPin->Modify();
-			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
-		}
-
-		break;
-
-	case EGPD_Output:
-
-		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
-		{
-			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Input) continue;
-			AllPin->Modify();
-			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
-		}
-
-		break;
-
-	case EGPD_MAX: break;
-
-	default: break;
-	}
-
-	//Force the node to update its connections.
-	if(UEdGraphNode* GraphNode = FromPin->GetOwningNode())
-	{
-		GraphNode->NodeConnectionListChanged();
-	}
-
-	ConnectedNode->NodeConnectionListChanged();
-	
-}
-
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin,
 														   const FVector2D Location, bool bSelectNewNode)
 {
@@ -231,7 +189,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, U
 	ResultNode->UpdatePins();
 
 	//Set up the connection from the from pin if needed.
-	MakeConnectionFromTheDraggedPin(FromPin, ResultNode);
+	FJointEdUtils::MakeConnectionFromTheDraggedPin(FromPin, ResultNode);
 
 	//Add the newly created node to the Joint graph.
 	ParentGraph->AddNode(ResultNode, true);

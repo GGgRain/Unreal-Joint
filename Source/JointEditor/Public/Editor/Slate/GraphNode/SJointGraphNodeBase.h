@@ -31,7 +31,8 @@ class SVerticalBox;
 class SWrapBox;
 class SCheckBox;
 class SGraphNode;
-
+class SBox;
+class SScrollBox;
 
 namespace JointGraphNodeResizableDefs
 {
@@ -173,6 +174,13 @@ public:
 	 * Populates the simple display for the properties according to the node instance's PropertyDataForSimpleDisplayOnGraphNode.
 	 */
 	virtual TSharedRef<SWidget> PopulateSimpleDisplayForProperties();
+	
+	virtual TSharedRef<SWidget> PopulateSimpleDisplaySection();
+	
+public:
+	
+	virtual void OnVisibilityChangeModeForSimpleDisplayPropertyEnter();
+	virtual void OnVisibilityChangeModeForSimpleDisplayPropertyExit();
 
 public:
 	
@@ -345,6 +353,8 @@ public:
 	
 	TSharedPtr<SVerticalBox> NodeTagContentBox = nullptr;
 	
+	TSharedPtr<SBox> JointDetailsViewBox;
+
 public:
 
 	TArray<TSharedPtr<SJointGraphNodeInsertPoint>> InsertPoints;
