@@ -221,11 +221,6 @@ void UJointEdGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& Conte
 	ImplementAddNodeActions(ContextMenuBuilder);
 }
 
-void UJointEdGraphSchema::GetGraphNodeContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const
-{
-	ImplementAddFragmentActions(ContextMenuBuilder);
-}
-
 
 void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& ContextMenuBuilder)
 {
@@ -236,11 +231,11 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
 
 	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-	TArray<FJointGraphNodeClassData> NodeClasses;
+	TArray<FJointSharedClassData> NodeClasses;
 
 	FJointEdUtils::GetNodeSubClasses(UJointNodeBase::StaticClass(), NodeClasses);
 
-	for (FJointGraphNodeClassData& NodeClass : NodeClasses)
+	for (FJointSharedClassData& NodeClass : NodeClasses)
 	{
 		if (NodeClass.GetClass() == nullptr) continue;
 
@@ -267,11 +262,12 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
 		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, EdGraphNodeClass);
 		OpNode->NodeClassData = NodeClass;
 
-		const TSharedPtr<FJointSchemaAction_NewNode> AddNodeAction = CreateNewNodeAction(
-			NodeCategory, NodeTypeName, NodeTooltip);
-		AddNodeAction->NodeTemplate = OpNode;
+		TSharedPtr<FJointSchemaAction_NewNode> NewAction = MakeShared<FJointSchemaAction_NewNode>(
+			NodeCategory, NodeTypeName, NodeTooltip, 0);
+		
+		NewAction->NodeTemplate = OpNode;
 
-		ContextMenuBuilder.AddAction(AddNodeAction);
+		ContextMenuBuilder.AddAction(NewAction);
 	}
 }
 
@@ -281,10 +277,10 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
 
 	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-	TArray<FJointGraphNodeClassData> FragmentClasses;
+	TArray<FJointSharedClassData> FragmentClasses;
 	FJointEdUtils::GetNodeSubClasses(UJointFragment::StaticClass(), FragmentClasses);
 
-	for (FJointGraphNodeClassData& NodeClass : FragmentClasses)
+	for (FJointSharedClassData& NodeClass : FragmentClasses)
 	{
 		//Make sure we are going to display this action or not.
 		if (NodeClass.GetClass() == nullptr) continue;
@@ -311,12 +307,40 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
 		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, TargetFragmentEdClass);
 		OpNode->NodeClassData = NodeClass;
 
-		const TSharedPtr<FJointSchemaAction_NewSubNode> AddSubnodeAction = CreateNewSubNodeAction(
-			NodeCategory, NodeTypeName, NodeTooltip);
-		AddSubnodeAction->NodesToAttachTo = ContextMenuBuilder.SelectedObjects;
-		AddSubnodeAction->NodeTemplate = OpNode;
+		TSharedPtr<FJointSchemaAction_NewSubNode> NewAction = MakeShared<FJointSchemaAction_NewSubNode>(
+			NodeCategory, NodeTypeName, NodeTooltip, 0);
+		NewAction->NodesToAttachTo = ContextMenuBuilder.SelectedObjects;
+		NewAction->NodeTemplate = OpNode;
 
-		ContextMenuBuilder.AddAction(AddSubnodeAction);
+		ContextMenuBuilder.AddAction(NewAction);
+	}
+}
+
+void UJointEdGraphSchema::ImplementAddNodePresetActions(FGraphContextMenuBuilder& ContextMenuBuilder)
+{
+	if (ContextMenuBuilder.CurrentGraph == nullptr) return;
+
+	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
+
+	TArray<FAssetData> NodePresetAssets;
+	FJointEdUtils::GetNodePresetAssets(NodePresetAssets);
+	
+	for (FAssetData& NodePresetAsset : NodePresetAssets)
+	{
+		if (NodePresetAsset.GetClass() != UJointNodePreset::StaticClass()) continue;
+
+		UJointNodePreset* NodePreset = Cast<UJointNodePreset>(NodePresetAsset.GetAsset());
+		if (!NodePreset) continue;
+
+		const TSharedPtr<FJointSchemaAction_NewNodePreset> AddNodePresetAction = MakeShared<FJointSchemaAction_NewNodePreset>(
+			NodePreset->PresetCategory,
+			NodePreset->PresetDisplayName, 
+			NodePreset->PresetDescription, 
+			0
+		);
+		
+		AddNodePresetAction->NodePreset = NodePreset;
+		ContextMenuBuilder.AddAction(AddNodePresetAction);
 	}
 }
 
@@ -344,24 +368,6 @@ void UJointEdGraphSchema::ImplementAddConnectorAction(FGraphContextMenuBuilder& 
 		FJointSchemaAction_AddConnector>(Category, MenuDesc, ToolTip);
 
 	ContextMenuBuilder.AddAction(AddConnectorAction);
-}
-
-TSharedPtr<FJointSchemaAction_NewNode> UJointEdGraphSchema::CreateNewNodeAction(
-	const FText& Category, const FText& MenuDesc, const FText& Tooltip)
-{
-	TSharedPtr<FJointSchemaAction_NewNode> NewAction = MakeShared<FJointSchemaAction_NewNode>(
-		Category, MenuDesc, Tooltip, 0);
-
-	return NewAction;
-}
-
-TSharedPtr<FJointSchemaAction_NewSubNode> UJointEdGraphSchema::CreateNewSubNodeAction(
-	const FText& Category, const FText& MenuDesc, const FText& Tooltip)
-{
-	TSharedPtr<FJointSchemaAction_NewSubNode> NewAction = MakeShared<FJointSchemaAction_NewSubNode>(
-		Category, MenuDesc, Tooltip, 0);
-
-	return NewAction;
 }
 
 bool UJointEdGraphSchema::PruneGatewayNode(UJointEdGraphNode_Composite* InNode, UEdGraphNode* InEntryNode, UEdGraphNode* InResultNode, FKismetCompilerContext* CompilerContext, TSet<UEdGraphNode*>* OutExpandedNodes) const
@@ -657,8 +663,11 @@ void UJointEdGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeConte
 		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveOnlySubNodesIntoParentNode);
 		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().SolidifySubNodesFromParentNode);
 		
-		FToolMenuSection& NodePresetActionsSection = Menu->AddSection("NodePresetActionsMenu",LOCTEXT("CreateNodePresetMenuHeader", "Create Node Preset From The Selection"));
-		NodePresetActionsSection.AddMenuEntry(FJointEditorCommands::Get().CreateJointNodePresetFromSelection);
+		FToolMenuSection& ScriptActionsSection = Menu->AddSection("ScriptActionsMenu",LOCTEXT("ScriptActionsMenuHeader", "Script Actions"));
+		ScriptActionsSection.AddMenuEntry(FJointEditorCommands::Get().UnlinkScriptFromSelectedNodes);
+		
+		FToolMenuSection& PresetActionsSection = Menu->AddSection("PresetActionsMenu",LOCTEXT("PresetActionsMenuHeader", "Preset Actions"));
+		PresetActionsSection.AddMenuEntry(FJointEditorCommands::Get().CreateNodePresetFromSelectedBaseNode);
 	}
 
 	Super::GetContextMenuActions(Menu, Context);

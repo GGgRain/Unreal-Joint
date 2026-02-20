@@ -14,7 +14,7 @@ UJointEdGraphNode_Fragment::UJointEdGraphNode_Fragment()
 {
 	NodeWidth = JointGraphNodeResizableDefs::MinFragmentSize.X;
 	NodeHeight = JointGraphNodeResizableDefs::MinFragmentSize.Y;
-	bIsNodeResizeable = false;
+	DefaultEdNodeSetting.bIsNodeResizeable = false;
 }
 
 void UJointEdGraphNode_Fragment::ResizeNode(const FVector2D& NewSize)

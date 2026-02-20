@@ -9,7 +9,7 @@
 #include "JointEditorSettings.generated.h"
 
 class UJointScriptParser;
-class UJointNodePreset;
+class UJointScriptLinker;
 class UJointManager;
 class UJointNodeBase;
 
@@ -28,7 +28,7 @@ namespace JointEditorDefaultSettings
 	
 	//Graph Editor
 	static const bool bUseGrid(false);
-	static const FLinearColor BackgroundColor(FLinearColor(0.093963, 0.092709, 0.104167, 1));
+	static const FLinearColor BackgroundColor(FLinearColor(0.0093963, 0.0092709, 0.0104167, 1));//(FLinearColor(0.093963, 0.092709, 0.104167, 1));
 	static const FLinearColor RegularGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor RuleGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor CenterGridColor(FColor(5, 5, 9, 255));
@@ -409,15 +409,6 @@ public:
 
 public:
 	static const float GetJointGridSnapSize();
-	
-public:
-	
-	/** 
-	 * A set of Joint node presets that will be available for this project.
-	 * They will be used on the export & import of the Joint nodes.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Joint Script Parser", meta = (DisplayName = "Joint Script Parsers"))
-	TArray<TSubclassOf<UJointScriptParser>> JointScriptParsers;
 
 public:
 	//Instance Obtain Related

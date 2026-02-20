@@ -5,6 +5,7 @@
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
 #include "JointEditorGraphDocument.h"
+#include "JointEditorToolkitToastMessages.h"
 #include "PropertyHandle.h"
 #include "ScopedTransaction.h"
 #include "SGraphPanel.h"
@@ -102,7 +103,7 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 {
 	if (JointEditorToolkitPtr.IsValid())
 	{
-		JointEditorToolkitPtr.Pin()->PopulateNodePickingToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickingToastMessage(JointEditorToolkitPtr);
 
 		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
 	}
@@ -126,8 +127,8 @@ TWeakPtr<FJointEditorNodePickingManagerRequest> FJointEditorNodePickingManager::
 
 	if (JointEditorToolkitPtr.IsValid())
 	{
-		JointEditorToolkitPtr.Pin()->PopulateQuickNodePickingToastMessage();
-
+		JointEditorToolkitToastMessages::PopulateQuickNodePickingToastMessage(JointEditorToolkitPtr);
+		
 		SavedSelectionSet = JointEditorToolkitPtr.Pin()->GetSelectedNodes();
 	}
 
@@ -317,7 +318,8 @@ void FJointEditorNodePickingManager::EndNodePicking()
 {
 	if (JointEditorToolkitPtr.IsValid())
 	{
-		JointEditorToolkitPtr.Pin()->ClearNodePickingToastMessage();
+		JointEditorToolkitToastMessages::ClearToastMessage(JointEditorToolkitPtr, EJointEditorToastMessage::NodePicking);
+		JointEditorToolkitToastMessages::ClearToastMessage(JointEditorToolkitPtr, EJointEditorToastMessage::QuickNodePicking);
 
 		// fuck this feature. This is so dumb. I will update the slate system a little in the next update.
 		// //if both aren't same, it means that the user selected something else than the previous one.

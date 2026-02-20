@@ -163,6 +163,8 @@ public:
 	virtual TSharedRef<SWidget> CreateNameBox();
 
 	virtual TSharedRef<SWidget> CreateDissolvedSubNodeIndication();
+	
+	virtual TSharedRef<SWidget> CreateImportedNodeIndication();
 
 public:
 
@@ -342,6 +344,8 @@ public:
 	TSharedPtr<SHorizontalBox> NameBox = nullptr;
 	
 	TSharedPtr<SHorizontalBox> DissolveIndicator = nullptr;
+	
+	TSharedPtr<SHorizontalBox> ImportedIndicator = nullptr;
 
 	TSharedPtr<SVerticalBox> CenterWholeBox = nullptr;
 
@@ -610,6 +614,16 @@ public:
 	FVoltAnimationTrack NodeBodyColorTrack;
 	
 	FVoltAnimationTrack HighlightInnerBorderBackgroundColorTrack;
+	
+public:
+	
+	bool CheckHasExternalLink() const;
+	
+	/** Returns if widget is editable, additionally considers if the owning graph is read only */
+	virtual bool IsNodeEditable() const override;
+	
+	// !IsNodeEditable for the bindings
+	virtual bool IsNodeNotEditable() const;
 
 
 public:

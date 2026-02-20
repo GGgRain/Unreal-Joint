@@ -120,7 +120,7 @@ public:
 
 	/** Unregisters debugger. */
 	void UnregisterDebugger();
-
+	
 public:
 
 	FDelegateHandle JointNativeMovieTrackCreateEditorHandle;

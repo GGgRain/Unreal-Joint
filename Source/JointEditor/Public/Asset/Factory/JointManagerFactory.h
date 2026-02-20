@@ -7,6 +7,8 @@
 #include "JointManagerFactory.generated.h"
 
 
+class UJointManager;
+
 UCLASS()
 class JOINTEDITOR_API UJointManagerFactory : public UFactory
 {
@@ -20,5 +22,8 @@ public:
 	//Returns true if this factory should be shown in the New Asset menu (by default calls CanCreateNew).
 	virtual bool ShouldShowInNewMenu() const override;
 	
+public:
+	
+	static void CreateDefaultRootGraphForJointManager(UJointManager* Manager);
 
 };

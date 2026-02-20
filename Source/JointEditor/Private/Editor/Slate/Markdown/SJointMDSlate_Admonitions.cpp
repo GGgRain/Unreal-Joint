@@ -17,6 +17,9 @@ void SJointMDSlate_Admonitions::Construct(const FArguments& InArgs)
 	case EJointMDAdmonitionType::Info:
 		BorderColor = FLinearColor(1.0f, 1.0f, 1.0f);
 		break;
+	case EJointMDAdmonitionType::Mention:
+		BorderColor = FLinearColor(0.3f, 0.7f, 1.0f);
+		break;
 	case EJointMDAdmonitionType::Note:
 		BorderColor = FLinearColor(0.1f, 1.0f, 0.5f);
 		break;
@@ -43,6 +46,9 @@ void SJointMDSlate_Admonitions::Construct(const FArguments& InArgs)
 	switch (AdmonitionType)
 	{
 	case EJointMDAdmonitionType::Info:
+		IconBrush = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Info");
+		break;
+	case EJointMDAdmonitionType::Mention:
 		IconBrush = FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Info");
 		break;
 	case EJointMDAdmonitionType::Note:
@@ -78,6 +84,9 @@ void SJointMDSlate_Admonitions::Construct(const FArguments& InArgs)
 		case EJointMDAdmonitionType::Info:
 			HeaderText = FText::FromString(TEXT("Info"));
 			break;
+		case EJointMDAdmonitionType::Mention:
+			HeaderText = FText::FromString(TEXT("Mention"));
+			break;
 		case EJointMDAdmonitionType::Note:
 			HeaderText = FText::FromString(TEXT("Note"));
 			break;
@@ -89,6 +98,9 @@ void SJointMDSlate_Admonitions::Construct(const FArguments& InArgs)
 			break;
 		case EJointMDAdmonitionType::Important:
 			HeaderText = FText::FromString(TEXT("Important"));
+			break;
+		case EJointMDAdmonitionType::Error:
+			HeaderText = FText::FromString(TEXT("Error"));
 			break;
 		}
 	}

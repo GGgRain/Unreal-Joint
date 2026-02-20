@@ -48,8 +48,9 @@ UJointEdGraphNode::UJointEdGraphNode() :
 	NodeWidth = JointGraphNodeResizableDefs::MinNodeSize.X;
 	NodeHeight = JointGraphNodeResizableDefs::MinNodeSize.Y;
 
-	bIsNodeResizeable = true;
 	bCanRenameNode = true;
+
+	DefaultEdNodeSetting.bIsNodeResizeable = true;
 
 	CompileMessages.Empty();
 }
@@ -57,6 +58,13 @@ UJointEdGraphNode::UJointEdGraphNode() :
 UJointEdGraphNode::~UJointEdGraphNode()
 {
 	ClearGraphNodeSlate();
+}
+
+void UJointEdGraphNode::BeginDestroy()
+{
+	//ClearGraphNodeSlate();
+	
+	Super::BeginDestroy();
 }
 
 void UJointEdGraphNode::AllocateDefaultPins()
@@ -609,10 +617,7 @@ void UJointEdGraphNode::RequestUpdateSlate()
 
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 
-	if (NodeSlate.IsValid())
-	{
-		NodeSlate->UpdateGraphNode();
-	}
+	if (NodeSlate.IsValid()) NodeSlate->UpdateGraphNode();
 }
 
 void UJointEdGraphNode::RequestPopulationOfPinWidgets()
@@ -621,10 +626,7 @@ void UJointEdGraphNode::RequestPopulationOfPinWidgets()
 
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 
-	if (NodeSlate.IsValid())
-	{
-		NodeSlate->PopulatePinWidgets();
-	}
+	if (NodeSlate.IsValid()) NodeSlate->PopulatePinWidgets();
 }
 
 void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(
@@ -634,10 +636,7 @@ void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(
 
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 
-	if (NodeSlate.IsValid())
-	{
-		NodeSlate->OnNodeInstancePropertyChanged(PropertyChangedEvent, PropertyName);
-	}
+	if (NodeSlate.IsValid()) NodeSlate->OnNodeInstancePropertyChanged(PropertyChangedEvent, PropertyName);
 }
 
 void UJointEdGraphNode::NotifyGraphNodePropertyChangeToGraphNodeWidget(
@@ -647,10 +646,7 @@ void UJointEdGraphNode::NotifyGraphNodePropertyChangeToGraphNodeWidget(
 
 	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 
-	if (NodeSlate.IsValid())
-	{
-		NodeSlate->OnGraphNodePropertyChanged(PropertyChangedEvent);
-	}
+	if (NodeSlate.IsValid()) NodeSlate->OnGraphNodePropertyChanged(PropertyChangedEvent);
 }
 
 void UJointEdGraphNode::ReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class)
@@ -1116,46 +1112,24 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	FText SameNameFailNotificationSubText = LOCTEXT("NodeRenameFailed_SameNameSubText","There might be a node that has the same name.");
 	FText NodeNameEmptySubText = LOCTEXT("NodeRenameFailed_EmptyNameSubText","Node name can not be empty");
 	
-	FNotificationInfo NotificationInfo(FailedNotificationText);
-	NotificationInfo.SubText = NoInstanceFailNotificationSubText;
-	NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-	NotificationInfo.bFireAndForget = true;
-	NotificationInfo.FadeInDuration = 0.2f;
-	NotificationInfo.FadeOutDuration = 0.2f;
-	NotificationInfo.ExpireDuration = 5.f;
-	NotificationInfo.WidthOverride = FOptionalSize();
-
 	if (ProcessedName.IsEmpty())
 	{
-		NotificationInfo.Text = FailedNotificationText;
-		NotificationInfo.SubText = NodeNameEmptySubText;
-		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-		[
-			SNew(SJointMDSlate_Admonitions)
-			.AdmonitionType(EJointMDAdmonitionType::Error)
-			.CustomHeaderText(NotificationInfo.Text.Get())
-			.bUseDescriptionText(true)
-			.DescriptionText(NotificationInfo.SubText.Get())
-		];
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
-
+		FJointEdUtils::FireNotification(
+			FailedNotificationText,
+			NodeNameEmptySubText,
+			EJointMDAdmonitionType::Error
+		);
+		
 		return;
 	}
 
 	if (!GetCastedNodeInstance())
 	{
-		NotificationInfo.Text = FailedNotificationText;
-		NotificationInfo.SubText = NoInstanceFailNotificationSubText;
-		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-		[
-			SNew(SJointMDSlate_Admonitions)
-			.AdmonitionType(EJointMDAdmonitionType::Error)
-			.CustomHeaderText(NotificationInfo.Text.Get())
-			.bUseDescriptionText(true)
-			.DescriptionText(NotificationInfo.SubText.Get())
-		];
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
-
+		FJointEdUtils::FireNotification(
+			FailedNotificationText,
+			NoInstanceFailNotificationSubText,
+			EJointMDAdmonitionType::Error
+		);
 
 		return;
 	}
@@ -1165,17 +1139,11 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 		|| GetCastedNodeInstance()->HasAnyFlags(RF_FinishDestroyed)
 		|| GetCastedNodeInstance()->HasAnyFlags(RF_BeginDestroyed))
 	{
-		NotificationInfo.Text = FailedNotificationText;
-		NotificationInfo.SubText = InstanceConditionFailNotificationSubText;
-		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-		[
-			SNew(SJointMDSlate_Admonitions)
-			.AdmonitionType(EJointMDAdmonitionType::Error)
-			.CustomHeaderText(NotificationInfo.Text.Get())
-			.bUseDescriptionText(true)
-			.DescriptionText(NotificationInfo.SubText.Get())
-		];
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		FJointEdUtils::FireNotification(
+			FailedNotificationText,
+			InstanceConditionFailNotificationSubText,
+			EJointMDAdmonitionType::Error
+		);
 
 		return;
 	}
@@ -1191,43 +1159,27 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 	// if the name was changed, notify success.
 	if (ProcessedName != DesiredNewName)
 	{
-		NotificationInfo.Text = SucceedNotificationText;
-		NotificationInfo.SubText = FText::Format(
-			NodeRenameSucceed_Altered,
-			FText::FromString(SavedOriginalName),
-			FText::FromString(ProcessedName),
-			FText::FromString(DesiredNewName));
-		
-		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-		[
-			SNew(SJointMDSlate_Admonitions)
-			.AdmonitionType(EJointMDAdmonitionType::Info)
-			.CustomHeaderText(NotificationInfo.Text.Get())
-			.bUseDescriptionText(true)
-			.DescriptionText(NotificationInfo.SubText.Get())
-		];
-		
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+		FJointEdUtils::FireNotification(
+			SucceedNotificationText,
+			FText::Format(
+				NodeRenameSucceed_Altered,
+				FText::FromString(SavedOriginalName),
+				FText::FromString(ProcessedName),
+				FText::FromString(DesiredNewName)),
+			EJointMDAdmonitionType::Info
+		);
 	}else // notify only if the name was actually changed.
 	{
 		if (SavedOriginalName != ProcessedName)
 		{
-			NotificationInfo.Text = SucceedNotificationText;
-			NotificationInfo.SubText = FText::Format(
-				NodeRenameSucceed_Succeeded,
-				FText::FromString(SavedOriginalName),
-				FText::FromString(ProcessedName));
-
-			NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-			[
-				SNew(SJointMDSlate_Admonitions)
-				.AdmonitionType(EJointMDAdmonitionType::Info)
-				.CustomHeaderText(NotificationInfo.Text.Get())
-				.bUseDescriptionText(true)
-				.DescriptionText(NotificationInfo.SubText.Get())
-			];
-			
-			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+			FJointEdUtils::FireNotification(
+				SucceedNotificationText,
+				FText::Format(
+					NodeRenameSucceed_Succeeded,
+					FText::FromString(SavedOriginalName),
+					FText::FromString(ProcessedName)),
+				EJointMDAdmonitionType::Info
+			);
 		}
 	}
 
@@ -1495,7 +1447,7 @@ EOrientation UJointEdGraphNode::GetSubNodeBoxOrientation()
 
 bool UJointEdGraphNode::GetUseFixedNodeSize() const
 {
-	return bIsNodeResizeable;
+	return GetEdNodeSetting().bIsNodeResizeable;
 }
 
 void UJointEdGraphNode::RecalculateNodeDepth()
@@ -1962,14 +1914,19 @@ void UJointEdGraphNode::CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Grap
 void UJointEdGraphNode::AddContextMenuActions_Fragments(UToolMenu* Menu, const FName SectionName,
                                                         UGraphNodeContextMenuContext* Context) const
 {
-	FToolMenuSection& Section = Menu->FindOrAddSection(SectionName);
-	Section.AddSeparator("Fragment");
-	Section.AddSubMenu(
-		"AddFragment"
-		, LOCTEXT("AddFragment", "Add Fragment...")
-		, LOCTEXT("AddFragmentTooltip", "Adds new fragment as a subnode")
-		, FNewToolMenuDelegate::CreateUObject(this, &UJointEdGraphNode::CreateAddFragmentSubMenu,
-		                                      (UEdGraph*)Context->Graph));
+	//if we're in a read-only graph, don't show the fragment options.
+	if (!Context->bIsDebugging)
+	{
+		FToolMenuSection& Section = Menu->FindOrAddSection(SectionName);
+		Section.AddSeparator("Fragment");
+		Section.AddSubMenu(
+			"AddFragment"
+			, LOCTEXT("AddFragment", "Add Fragment...")
+			, LOCTEXT("AddFragmentTooltip", "Adds new fragment as a subnode")
+			, FNewToolMenuDelegate::CreateUObject(this, &UJointEdGraphNode::CreateAddFragmentSubMenu,
+												  (UEdGraph*)Context->Graph));	
+	}
+	
 }
 
 void CollectAllSubNodesOf(const UJointEdGraphNode* Node, TArray<UJointEdGraphNode*>& Nodes)
@@ -1991,6 +1948,16 @@ TSubclassOf<UJointNodeBase> UJointEdGraphNode::SupportedNodeClass()
 	return UJointNodeBase::StaticClass();
 }
 
+
+FJointScriptLinkerFileEntry UJointEdGraphNode::GetExternalSourceEntry() const
+{
+	return ExternalSourceEntry;
+}
+
+bool UJointEdGraphNode::IsLinkedWithExternalSource() const
+{
+	return !ExternalSourceEntry.IsNull();
+}
 
 void UJointEdGraphNode::ModifyGraphNodeSlate()
 {
@@ -2099,13 +2066,13 @@ void UJointEdGraphNode::UpdateNodeClassData()
 	UpdateNodeClassDataFrom(NodeInstance->GetClass(), NodeClassData);
 }
 
-void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGraphNodeClassData& UpdatedData)
+void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointSharedClassData& UpdatedData)
 {
 	if (!InstanceClass) return;
 
 	if (const UBlueprint* BPOwner = Cast<UBlueprint>(InstanceClass->ClassGeneratedBy))
 	{
-		UpdatedData = FJointGraphNodeClassData(
+		UpdatedData = FJointSharedClassData(
 			BPOwner->GetName(),
 			BPOwner->GetOutermost()->GetName(),
 			InstanceClass->GetName(),
@@ -2114,7 +2081,7 @@ void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGra
 	}
 	else
 	{
-		UpdatedData = FJointGraphNodeClassData(
+		UpdatedData = FJointSharedClassData(
 			InstanceClass,
 			FJointGraphNodeClassHelper::GetDeprecationMessage(InstanceClass)
 		);
@@ -2125,7 +2092,10 @@ void UJointEdGraphNode::AllocateNodeInstanceGuidIfNeeded() const
 {
 	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance())
 	{
-		if (CastedNodeInstance->NodeGuid == FGuid()) CastedNodeInstance->NodeGuid = FGuid::NewGuid();
+		if (CastedNodeInstance->GetNodeGuid() == FGuid())
+		{
+			CastedNodeInstance->NodeGuid = FGuid::NewGuid();
+		}
 	}
 }
 
@@ -2153,13 +2123,12 @@ void UJointEdGraphNode::CompileNode(const TSharedPtr<class IMessageLogListing>& 
 			);
 		}
 	}
-
+	
 	if (!GetGraphNodeSlate().IsValid()) return;
 	
 	TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
 	
 	NodeSlate->UpdateErrorInfo();
-	
 }
 
 void UJointEdGraphNode::OnCompileNode()

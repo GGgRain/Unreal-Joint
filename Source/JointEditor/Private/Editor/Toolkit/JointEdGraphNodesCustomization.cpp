@@ -23,15 +23,23 @@
 
 #include "IDetailChildrenBuilder.h"
 #include "IDetailGroup.h"
+#include "IPropertyUtilities.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEdGraphNode_Fragment.h"
 #include "JointEditorNodePickingManager.h"
 #include "JointEditorSettings.h"
+#include "JointEditorToolkitToastMessages.h"
 #include "JointEdUtils.h"
+#include "JointNodePreset.h"
 #include "PropertyCustomizationHelpers.h"
 #include "ScopedTransaction.h"
 #include "VoltDecl.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "EditorTools/SJointNotificationWidget.h"
+#include "EditorWidget/JointGraphEditor.h"
+#include "EditorWidget/SJointGraphPanel.h"
+#include "EditorWidget/SJointGraphPreviewer.h"
+#include "EditorWidget/SJointManagerImportingPopup.h"
 
 #include "Styling/CoreStyle.h"
 #include "Framework/Notifications/NotificationManager.h"
@@ -48,6 +56,9 @@
 #include "Module/Volt_ASM_InterpColor.h"
 #include "Module/Volt_ASM_Sequence.h"
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
+#include "PropertyEditor/Private/PropertyNode.h"
+#include "Script/JointScriptSettings.h"
+#include "Widgets/Layout/SExpandableArea.h"
 
 
 #define LOCTEXT_NAMESPACE "JointManagerEditor"
@@ -250,26 +261,6 @@ TSharedRef<IDetailCustomization> FJointEdGraphNodesCustomizationBase::MakeInstan
 }
 
 
-bool FJointEdGraphNodesCustomizationBase::CheckIfEveryNodeAllowPinDataControl(TArray<UObject*> NodeInstanceObjs)
-{
-	bool bCanShowPinDataProperty = true;
-
-	for (UObject* NodeInstanceObj : NodeInstanceObjs)
-	{
-		if (!NodeInstanceObj) continue;
-
-		if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(NodeInstanceObj); NodeBase && !NodeBase->
-			GetAllowEditingOfPinDataOnDetailsPanel())
-		{
-			bCanShowPinDataProperty = false;
-
-			break;
-		}
-	}
-
-	return bCanShowPinDataProperty;
-}
-
 void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
 	IDetailCategoryBuilder& NodeInstanceCategory = DetailBuilder.EditCategory("Node Instance Data");
@@ -329,19 +320,15 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 
 	IDetailCategoryBuilder& EditorNodeCategory = DetailBuilder.EditCategory("Editor Node");
-	
+
 	if (!CheckIfEveryNodeAllowPinDataControl(NodeInstanceObjs))
 	{
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, PinData));
 	}
 
 
-
-
-	
-	
 	TSet<UJointNodeBase*> AllDissolvedFragments;
-	
+
 	for (UObject* NodeInstanceObj : NodeInstanceObjs)
 	{
 		if (!NodeInstanceObj) continue;
@@ -352,8 +339,8 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 		UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(NodeBase->GetJointManager()->JointGraph);
 
-		if ( CastedGraph == nullptr ) continue;
-		
+		if (CastedGraph == nullptr) continue;
+
 		TArray<UJointFragment*> Subnodes = NodeBase->GetAllFragmentsOnLowerHierarchy();
 
 		for (UJointFragment* Subnode : Subnodes)
@@ -372,7 +359,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 	}
 
 	TArray<UObject*> DissolvedFragmentsArray;
-	
+
 	for (UJointNodeBase* Item : AllDissolvedFragments.Array())
 	{
 		DissolvedFragmentsArray.Add(Item);
@@ -384,12 +371,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 
 		DissolvedCategory.AddExternalObjects(DissolvedFragmentsArray);
 	}
-	
 
-
-
-
-	
 
 	bool bCanShowReplaceNodeContext = false;
 	bool bCanShowReplaceEditorNodeContext = false;
@@ -403,14 +385,14 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 				bCanShowReplaceEditorNodeContext |= GraphNode->CanReplaceEditorNodeClass();
 			}
 
-		if(bCanShowReplaceNodeContext && bCanShowReplaceEditorNodeContext) break;
+		if (bCanShowReplaceNodeContext && bCanShowReplaceEditorNodeContext) break;
 	}
 
 	IDetailCategoryBuilder& AdvancedCategory = DetailBuilder.EditCategory("Advanced");
 	AdvancedCategory.InitiallyCollapsed(true);
 	AdvancedCategory.SetShowAdvanced(true);
 
-	if(bCanShowReplaceNodeContext)
+	if (bCanShowReplaceNodeContext)
 	{
 		AdvancedCategory.AddCustomRow(LOCTEXT("ChangeNodeClassText", "Change Node Class"))
 		                .WholeRowWidget
@@ -465,7 +447,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 		];
 	}
 
-	if(bCanShowReplaceEditorNodeContext)
+	if (bCanShowReplaceEditorNodeContext)
 	{
 		AdvancedCategory.AddCustomRow(LOCTEXT("ChangeEditorNodeClassText", "Change Editor Node Class"))
 		                .WholeRowWidget
@@ -523,7 +505,6 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 	HideDeveloperModeProperties(DetailBuilder);
 }
 
-
 void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Class)
 {
 	TSubclassOf<UJointNodeBase> CastedClass = Class ? TSubclassOf<UJointNodeBase>(const_cast<UClass*>(Class)) : nullptr;
@@ -531,7 +512,6 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 	if (CastedClass == nullptr) return;
 
 
-	
 	FScopedTransaction Transaction(FText::Format(
 		NSLOCTEXT("JointEdTransaction", "TransactionTitle_ChangeNodeClass", "Change node class: {0}"),
 		FText::FromString(Class->GetName())));
@@ -544,62 +524,29 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 
 			if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(CachedSelectedObjects[i].Get()))
 			{
-
 				//Fallback
 				if (!CastedGraphNode->CanReplaceNodeClass())
 				{
-					FText NotificationText = LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed","Replace Node Class Action Has Been Denied");
-					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed","This editor node prohibits this action.");
-
-					FNotificationInfo NotificationInfo(NotificationText);
-					NotificationInfo.SubText = NotificationSubText;
-					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-					NotificationInfo.bFireAndForget = true;
-					NotificationInfo.FadeInDuration = 0.3f;
-					NotificationInfo.FadeOutDuration = 1.3f;
-					NotificationInfo.ExpireDuration = 4.5f;
-					NotificationInfo.WidthOverride = 500;
-					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(NotificationInfo.Text.Get())
-						.bUseDescriptionText(true)
-						.DescriptionText(NotificationInfo.SubText.Get())
-					];
-					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+					FJointEdUtils::FireNotification(
+						LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed", "Replace Node Class Action Has Been Denied"),
+						LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed", "This editor node prohibits this action."),
+						EJointMDAdmonitionType::Error
+					);
 
 					continue;
 				}
-				
+
 				if (!CastedGraphNode->CanPerformReplaceNodeClassTo(CastedClass))
 				{
-					FText NotificationText = LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed_Specific","Replace Node Class Action Has Been Denied");
-					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed_Specific","Provided class that is not compatible with the editor node type or it was invalid class.");
-
-					FNotificationInfo NotificationInfo(NotificationText);
-					NotificationInfo.SubText = NotificationSubText;
-					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-					NotificationInfo.bFireAndForget = true;
-					NotificationInfo.FadeInDuration = 0.3f;
-					NotificationInfo.FadeOutDuration = 1.3f;
-					NotificationInfo.ExpireDuration = 4.5f;
-					NotificationInfo.WidthOverride = FOptionalSize();
-					
-					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(NotificationInfo.Text.Get())
-						.bUseDescriptionText(true)
-						.DescriptionText(NotificationInfo.SubText.Get())
-					];
-					
-					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+					FJointEdUtils::FireNotification(
+						LOCTEXT("Notification_ReplaceNode_Deny_NotAllowed_Specific", "Replace Node Class Action Has Been Denied"),
+						LOCTEXT("Notification_Sub_ReplaceNode_Deny_NotAllowed_Specific", "Provided class that is not compatible with the editor node type or it was invalid class."),
+						EJointMDAdmonitionType::Error
+					);
 
 					continue;
 				}
-				
+
 
 				if (!ModifiedObjects.Contains(CastedGraphNode))
 				{
@@ -614,7 +561,7 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 					ModifiedObjects.Add(CastedNode);
 				}
 
-				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph &&!ModifiedObjects.Contains(CastedGraph))
+				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph && !ModifiedObjects.Contains(CastedGraph))
 				{
 					CastedGraph->Modify();
 					ModifiedObjects.Add(CastedGraph);
@@ -625,6 +572,7 @@ void FJointEdGraphNodesCustomizationBase::OnChangeNodeSetClass(const UClass* Cla
 		}
 	}
 }
+
 
 void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClass* Class)
 {
@@ -649,55 +597,22 @@ void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClas
 				//Fallback
 				if (!CastedGraphNode->CanReplaceEditorNodeClass())
 				{
-					FText NotificationText = LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed","Replace Editor Node Class Action Has Been Denied");
-					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed","This editor node prohibits this action.");
-
-					FNotificationInfo NotificationInfo(NotificationText);
-					NotificationInfo.SubText = NotificationSubText;
-					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-					NotificationInfo.bFireAndForget = true;
-					NotificationInfo.FadeInDuration = 0.3f;
-					NotificationInfo.FadeOutDuration = 1.3f;
-					NotificationInfo.ExpireDuration = 4.5f;
-					NotificationInfo.WidthOverride = FOptionalSize();
-					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(NotificationInfo.Text.Get())
-						.bUseDescriptionText(true)
-						.DescriptionText(NotificationInfo.SubText.Get())
-					];
-					
-					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+					FJointEdUtils::FireNotification(
+						LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed", "Replace Editor Node Class Action Has Been Denied"),
+						LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed", "This editor node prohibits this action."),
+						EJointMDAdmonitionType::Error
+					);
 
 					continue;
 				}
-				
+
 				if (!CastedGraphNode->CanPerformReplaceEditorNodeClassTo(CastedClass))
 				{
-					FText NotificationText = LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed_Specific","Replace Editor Node Class Action Has Been Denied");
-					FText NotificationSubText = LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed_Specific","Provided class doesn't support the node instance type or it was invalid class.");
-
-					FNotificationInfo NotificationInfo(NotificationText);
-					NotificationInfo.SubText = NotificationSubText;
-					NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-					NotificationInfo.bFireAndForget = true;
-					NotificationInfo.FadeInDuration = 0.3f;
-					NotificationInfo.FadeOutDuration = 1.3f;
-					NotificationInfo.ExpireDuration = 4.5f;
-					NotificationInfo.WidthOverride = FOptionalSize();
-					
-					NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(NotificationInfo.Text.Get())
-						.bUseDescriptionText(true)
-						.DescriptionText(NotificationInfo.SubText.Get())
-					];
-					
-					FSlateNotificationManager::Get().AddNotification(NotificationInfo);
+					FJointEdUtils::FireNotification(
+						LOCTEXT("Notification_ReplaceEditorNode_Deny_NotAllowed_Specific", "Replace Editor Node Class Action Has Been Denied"),
+						LOCTEXT("Notification_Sub_ReplaceEditorNode_Deny_NotAllowed_Specific", "Provided class doesn't support the node instance type or it was invalid class."),
+						EJointMDAdmonitionType::Error
+					);
 
 					continue;
 				}
@@ -715,7 +630,7 @@ void FJointEdGraphNodesCustomizationBase::OnChangeEditorNodeSetClass(const UClas
 					ModifiedObjects.Add(CastedNode);
 				}
 
-				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph &&!ModifiedObjects.Contains(CastedGraph))
+				if (UEdGraph* CastedGraph = CastedGraphNode->GetGraph(); CastedGraph && !ModifiedObjects.Contains(CastedGraph))
 				{
 					CastedGraph->Modify();
 					ModifiedObjects.Add(CastedGraph);
@@ -737,10 +652,30 @@ void FJointEdGraphNodesCustomizationBase::HideDeveloperModeProperties(IDetailLay
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, NodeClassData));
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, ParentNode));
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SubNodes));
-		
+
 		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, SimpleDisplayHiddenProperties));
-		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, bFromExternal));
+		DetailBuilder.HideProperty(GET_MEMBER_NAME_CHECKED(UJointEdGraphNode, ExternalSourceEntry));
 	}
+}
+
+bool FJointEdGraphNodesCustomizationBase::CheckIfEveryNodeAllowPinDataControl(TArray<UObject*> NodeInstanceObjs)
+{
+	bool bCanShowPinDataProperty = true;
+
+	for (UObject* NodeInstanceObj : NodeInstanceObjs)
+	{
+		if (!NodeInstanceObj) continue;
+
+		if (UJointNodeBase* NodeBase = Cast<UJointNodeBase>(NodeInstanceObj); NodeBase && !NodeBase->
+			GetAllowEditingOfPinDataOnDetailsPanel())
+		{
+			bCanShowPinDataProperty = false;
+
+			break;
+		}
+	}
+
+	return bCanShowPinDataProperty;
 }
 
 UJointNodeBase* GetFirstNodeInstanceFromSelectedNodeInstances(IDetailLayoutBuilder& DetailBuilder,
@@ -958,6 +893,70 @@ TSharedRef<IDetailCustomization> FJointNodeInstanceCustomizationBase::MakeInstan
 	return MakeShareable(new FJointNodeInstanceCustomizationBase);
 }
 
+void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
+		DetailBuilder.GetSelectedObjects());
+
+	//If it was empty, try to grab the node instances by itself.
+	if (NodeInstances.IsEmpty())
+	{
+		NodeInstances = JointDetailCustomizationHelpers::CastToNodeInstance(DetailBuilder.GetSelectedObjects());
+	}
+
+	//Display class description for the nodes when all the nodes are instanced.
+	PopulateNodeClassesDescription(DetailBuilder, NodeInstances);
+
+	//Display class description for the nodes when all the nodes are instanced.
+	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
+	{
+		DetailBuilder.HideCategory("Editor");
+	}
+	//Hide the properties that are not instance editable.
+	HideDisableEditOnInstanceProperties(DetailBuilder, NodeInstances);
+
+
+	/*
+	IDetailCategoryBuilder& AdvancedCategory = DetailBuilder.EditCategory("Advanced");
+
+	for (UObject* NodeInstance : NodeInstances)
+	{
+	    if(!NodeInstance) continue;
+	    
+	    AdvancedCategory.AddCustomRow(LOCTEXT("OuterRow","Outer"))
+	    .ValueContent()
+	    [
+	        SNew(STextBlock)
+	        .Text(NodeInstance->GetOuter() ? FText::FromString(NodeInstance->GetOuter()->GetName()) : LOCTEXT("OuterNull","Nullptr"))
+	    ];
+	}
+	*/
+}
+
+void FJointNodeInstanceCustomizationBase::HideDisableEditOnInstanceProperties(
+	IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances)
+{
+	for (UObject* Object : NodeInstances)
+	{
+		if (Object == nullptr) continue;
+
+		if (JointDetailCustomizationHelpers::IsArchetypeOrClassDefaultObject(Object)) continue;
+
+		for (TFieldIterator<FProperty> PropIt(Object->GetClass()); PropIt; ++PropIt)
+		{
+			if (!PropIt->IsValidLowLevel()) continue;
+
+			if (!PropIt->HasAnyPropertyFlags(CPF_DisableEditOnInstance)) continue;
+
+			TSharedRef<IPropertyHandle> PropertyHandle = DetailBuilder.GetProperty(
+				*PropIt->GetName(), Object->GetClass());
+
+			DetailBuilder.HideProperty(*PropIt->GetName());
+			PropertyHandle->MarkHiddenByCustomization();
+		}
+	}
+}
+
 void FJointNodeInstanceCustomizationBase::PopulateNodeClassesDescription(IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances)
 {
 	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
@@ -1000,70 +999,6 @@ void FJointNodeInstanceCustomizationBase::PopulateNodeClassesDescription(IDetail
 	else
 	{
 		//DetailBuilder.HideCategory("Description");
-	}
-}
-
-void FJointNodeInstanceCustomizationBase::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
-{
-	TArray<UObject*> NodeInstances = JointDetailCustomizationHelpers::GetNodeInstancesFromGraphNodes(
-		DetailBuilder.GetSelectedObjects());
-
-	//If it was empty, try to grab the node instances by itself.
-	if (NodeInstances.IsEmpty())
-	{
-		NodeInstances = JointDetailCustomizationHelpers::CastToNodeInstance(DetailBuilder.GetSelectedObjects());
-	}
-
-	//Display class description for the nodes when all the nodes are instanced.
-	PopulateNodeClassesDescription(DetailBuilder, NodeInstances);
-
-	//Display class description for the nodes when all the nodes are instanced.
-	if (!JointDetailCustomizationHelpers::HasArchetypeOrClassDefaultObject(NodeInstances))
-	{
-		DetailBuilder.HideCategory("Editor");
-	}
-	//Hide the properties that are not instance editable.
-	HideDisableEditOnInstanceProperties(DetailBuilder, NodeInstances);
-	
-
-	/*
-	IDetailCategoryBuilder& AdvancedCategory = DetailBuilder.EditCategory("Advanced");
-
-	for (UObject* NodeInstance : NodeInstances)
-	{
-	    if(!NodeInstance) continue;
-	    
-	    AdvancedCategory.AddCustomRow(LOCTEXT("OuterRow","Outer"))
-	    .ValueContent()
-	    [
-	        SNew(STextBlock)
-	        .Text(NodeInstance->GetOuter() ? FText::FromString(NodeInstance->GetOuter()->GetName()) : LOCTEXT("OuterNull","Nullptr"))
-	    ];
-	}
-	*/
-}
-
-void FJointNodeInstanceCustomizationBase::HideDisableEditOnInstanceProperties(
-	IDetailLayoutBuilder& DetailBuilder, TArray<UObject*> NodeInstances)
-{
-	for (UObject* Object : NodeInstances)
-	{
-		if (Object == nullptr) continue;
-
-		if (JointDetailCustomizationHelpers::IsArchetypeOrClassDefaultObject(Object)) continue;
-
-		for (TFieldIterator<FProperty> PropIt(Object->GetClass()); PropIt; ++PropIt)
-		{
-			if (!PropIt->IsValidLowLevel()) continue;
-			
-			if (!PropIt->HasAnyPropertyFlags(CPF_DisableEditOnInstance)) continue;
-			
-			TSharedRef<IPropertyHandle> PropertyHandle = DetailBuilder.GetProperty(
-				*PropIt->GetName(), Object->GetClass());
-
-			DetailBuilder.HideProperty(*PropIt->GetName());
-			PropertyHandle->MarkHiddenByCustomization();
-		}
 	}
 }
 
@@ -1163,27 +1098,203 @@ void FJointBuildPresetCustomization::CustomizeDetails(IDetailLayoutBuilder& Deta
 		.AdmonitionType(EJointMDAdmonitionType::Note)
 		.CustomHeaderText(LOCTEXT("FJointBuildPresetCustomization_ExplanationTitle", "Joint Build Preset"))
 		.bUseDescriptionText(true)
-		.DescriptionText(LOCTEXT("FJointBuildPresetCustomization_Explanation", "Joint Build Preset is a preset asset that lets you specify which nodes and fragments of the Joint Manager are included in or excluded from packaging for a given build target. (See the tooltip for each property.)\n\nWe supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together.\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset.\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
+		.DescriptionText(LOCTEXT("FJointBuildPresetCustomization_Explanation",
+		                         "Joint Build Preset is a preset asset that lets you specify which nodes and fragments of the Joint Manager are included in or excluded from packaging for a given build target. (See the tooltip for each property.)"
+		                         "\n\nWe supports client & server preset, but those are not that recommended to use because using only those two has limitation on making a game that can be standalone & multiplayer together."
+		                         "\nIf you set any of those to \'exclude\' then standalone section will not contain the nodes with that preset."
+		                         "\nFor that cases, using build target based including & excluding will help you better. just make 3 different build target for each sessions (standalone (game), client, server) and set the behavior for each of them."))
 	];
 }
 
 TSharedRef<IDetailCustomization> FJointNodePresetCustomization::MakeInstance()
 {
-	return MakeShareable(new FJointNodePresetCustomization());
+	return MakeShareable(new FJointNodePresetCustomization);
 }
 
 void FJointNodePresetCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
 	IDetailCategoryBuilder& DescriptionCategory = DetailBuilder.EditCategory("Description");
 	DescriptionCategory.AddCustomRow(INVTEXT("Explanation"))
-					   .WholeRowContent()
+	                   .WholeRowContent()
 	[
 		SNew(SJointMDSlate_Admonitions)
-			.AdmonitionType(EJointMDAdmonitionType::Note)
-			.CustomHeaderText(LOCTEXT("FJointNodePresetCustomization_ExplanationTitle", "Joint Node Preset"))
-			.bUseDescriptionText(true)
-			.DescriptionText(LOCTEXT("FJointNodePresetCustomization_Explanation", "Joint Node Preset is a preset asset that represents a foundation node with pre-configured settings and sub nodes that can be reused across multiple Joint Managers or projects.\nIt allows for consistent node configurations and simplifies the process of setting up Joint Managers by providing a ready-to-use node template.\nThis asset is the core component of external import & export system of Joint Editor because it works with the node preset level instead of the whole joint node level - each row in external csv and json files represent a node preset, not a node instance.") )
+		.AdmonitionType(EJointMDAdmonitionType::Note)
+		.CustomHeaderText(LOCTEXT("FJointNodePresetCustomization_ExplanationTitle", "Joint Node Preset"))
+		.bUseDescriptionText(true)
+		.bAutoWrapDescriptionText(true)
+		.DescriptionText(LOCTEXT("FJointNodePresetCustomization_Explanation",
+		                         "Joint Node Preset is a preset asset that lets you reuse the base node set configuration (including the values of the properties) as a preset."
+		                         "\nIt's just for the better iteration + and you can also take advantage of it on the script parsers as well."
+		                         "\nBut keep in mind that changing presets will not apply any changes to the nodes. that already exist in the graph."))
 	];
+
+	//UJointEdGraph* PresetGraph;
+	JointManagerHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UJointNodePreset, InternalJointManager));
+
+
+	//Grab the Joint Manager from the preset asset.
+	UJointManager* InternalJointManager = nullptr;
+	if (JointManagerHandle)
+	{
+		UObject* JointManagerObject = nullptr;
+		JointManagerHandle->GetValue(JointManagerObject);
+
+		InternalJointManager = Cast<UJointManager>(JointManagerObject);
+	}
+
+	//Make a graph editor for the PresetGraph property to show the graph of the preset asset.
+	IDetailCategoryBuilder& GraphCategory = DetailBuilder.EditCategory("Preset Graph");
+
+	if (InternalJointManager)
+	{
+		if (UEdGraph* EdGraph = InternalJointManager->JointGraph)
+		{
+			GraphCategory
+				.AddCustomRow(LOCTEXT("PresetGraphRow", "Preset Graph"))
+				.WholeRowContent()
+				.HAlign(HAlign_Fill)
+				.VAlign(VAlign_Fill)
+				[
+					SNew(SBox)
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Fill)
+					.HeightOverride(750)
+					[
+						SNew(SJointGraphPreviewer, EdGraph)
+						.Visibility(EVisibility::HitTestInvisible)
+						.Clipping(EWidgetClipping::Inherit)
+					]
+				];
+		}
+		else
+		{
+			GraphCategory.AddCustomRow(LOCTEXT("PresetGraphNull", "Preset Graph Null"))
+			             .WholeRowContent()
+			             .HAlign(HAlign_Fill)
+			             .VAlign(VAlign_Fill)
+			[
+				SNew(SJointMDSlate_Admonitions)
+				.AdmonitionType(EJointMDAdmonitionType::Warning)
+				.CustomHeaderText(LOCTEXT("PresetGraphNullTitle", "No Graph Found"))
+				.bUseDescriptionText(true)
+				.DescriptionText(LOCTEXT("PresetGraphNullDescription", "No graph found for this preset. Try pressing the edit button below to generate the graph, if you're first time opening this preset asset."))
+			];
+		}
+	}
+
+	GraphCategory.AddProperty(JointManagerHandle).Visibility(EVisibility::Collapsed);
+
+	GraphCategory.AddCustomRow(LOCTEXT("PresetGraphEditingHint", "Preset Graph Edit"))
+	             .WholeRowContent()
+	[
+		SNew(SJointOutlineBorder)
+		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+		.OutlineHoverColor(FJointEditorStyle::Color_Selected)
+		.ContentPadding(FJointEditorStyle::Margin_Large)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("PresetGraphEditingHint", "Edit the preset graph to change the configuration of the preset"))
+					.ColorAndOpacity(FLinearColor::White)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FJointEditorStyle::Margin_Normal)
+				[
+					SNew(SJointOutlineButton)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.ToolTipText(LOCTEXT("EditPresetGraphButtonToolTip", "Open the external editor"))
+					.OnClicked(this, &FJointNodePresetCustomization::OnEditButtonClicked)
+					[
+						SNew(STextBlock)
+						.Text(LOCTEXT("EditPresetGraphButton", "Edit Preset Graph"))
+						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+						.ColorAndOpacity(FLinearColor::White)
+					]
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(SJointMDSlate_Admonitions)
+				.AdmonitionType(EJointMDAdmonitionType::Info)
+				.CustomHeaderText(LOCTEXT("PresetGraphEditingHintTitle", "Preset Editing Rule"))
+				.bUseDescriptionText(true)
+				.DescriptionText(LOCTEXT("PresetGraphEditingHintDescription", "1. Fragments that are attached to the root node of the preset graph will be implemented as Manager Fragments."
+				                         "\n2. Base Nodes (foundations) and its fragements will be implemented on the target graph. Connection between Base Nodes will be implemented as well."
+				                         "\n3. But the connection between Root node and the other nodes will not be implemented."))
+			]
+		]
+	];
+}
+
+void FJointNodePresetCustomization::PendingDelete()
+{
+	IDetailCustomization::PendingDelete();
+
+	//Grab the Joint Manager from the preset asset.
+	UJointManager* InternalJointManager = nullptr;
+	if (JointManagerHandle)
+	{
+		UObject* JointManagerObject = nullptr;
+		JointManagerHandle->GetValue(JointManagerObject);
+
+		InternalJointManager = Cast<UJointManager>(JointManagerObject);
+	}
+
+	if (InternalJointManager)
+	{
+		if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(InternalJointManager, false))
+		{
+			Toolkit->CloseWindow();
+		}
+	}
+
+	JointManagerHandle.Reset();
+}
+
+FReply FJointNodePresetCustomization::OnEditButtonClicked()
+{
+	//Grab the Joint Manager from the preset asset.
+	UJointManager* InternalJointManager = nullptr;
+	if (JointManagerHandle)
+	{
+		UObject* JointManagerObject = nullptr;
+		JointManagerHandle->GetValue(JointManagerObject);
+
+		InternalJointManager = Cast<UJointManager>(JointManagerObject);
+	}
+
+	FJointEditorToolkit* Toolkit = nullptr;
+	FJointEdUtils::OpenEditorFor(InternalJointManager, Toolkit);
+	Toolkit->SetIsInNodePresetEditingMode(true);
+
+	return FReply::Handled();
 }
 
 
@@ -1311,7 +1422,7 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 
 	FSimpleDelegate OnNodeResetTo = FSimpleDelegate::CreateSP(
 		this, &FJointNodePointerStructCustomization::OnNodeResetToDefault);
-	
+
 	NodeHandle.Get()->SetOnPropertyValueChanged(OnDataChanged);
 	NodeHandle.Get()->SetOnPropertyResetToDefault(OnNodeResetTo);
 }
@@ -1343,7 +1454,6 @@ FReply FJointNodePointerStructCustomization::OnNodePickUpButtonPressed()
 	}
 
 	return FReply::Handled();
-
 }
 
 
@@ -1381,7 +1491,7 @@ FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 					if (Node->GetCastedNodeInstance() == CurrentNode)
 					{
 						Toolkit->JumpToHyperlink(Node.Get());
-						
+
 						// if(!Toolkit->GetNodePickingManager().IsValid()) return;
 						//
 						// if (!Toolkit->GetNodePickingManager()->IsInNodePicking() || Toolkit->GetNodePickingManager()->GetActiveRequest() != Request)
@@ -1395,7 +1505,7 @@ FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 			}
 		}
 	}
-	
+
 	BlinkSelf();
 
 	return FReply::Handled();
@@ -1404,7 +1514,7 @@ FReply FJointNodePointerStructCustomization::OnGoToButtonPressed()
 FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 {
 	FString Value;
-	
+
 	if (NodeHandle->GetValueAsFormattedString(Value, PPF_Copy) == FPropertyAccess::Success)
 	{
 		FPlatformApplicationMisc::ClipboardCopy(*Value);
@@ -1422,11 +1532,11 @@ FReply FJointNodePointerStructCustomization::OnCopyButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(FoundJointManager))
 	{
-		Toolkit->PopulateNodePickerCopyToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerCopyToastMessage(SharedThis(Toolkit));
 	}
 
 	BlinkSelf();
-	
+
 	return FReply::Handled();
 }
 
@@ -1436,17 +1546,16 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 
 	FPlatformApplicationMisc::ClipboardPaste(Value);
 	//Check if the provided node is from the same Joint manager.
-	
+
 	TSoftObjectPtr<UJointNodeBase> Node;
 	Node = FSoftObjectPath(Value);
-	
+
 	if (!Node.IsValid())
 	{
 		//Invalid node path provided.
 		return FReply::Handled();
 	}
-	
-	
+
 
 	bool bFromMultipleManager = false;
 	bool bFromInvalidJointManagerObject = false;
@@ -1457,24 +1566,23 @@ FReply FJointNodePointerStructCustomization::OnPasteButtonPressed()
 
 	//Halt if the Joint manager is not valid.
 	if (FoundJointManager == nullptr) return FReply::Handled();
-	
+
 	if (FoundJointManager != Node->GetJointManager())
 	{
 		//The node is not from the same Joint manager.
 		return FReply::Handled();
 	}
-	
+
 	NodeHandle->SetValueFromFormattedString(Value, PPF_Copy);
 
 	OnNodeDataChanged();
-	
-	
+
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(FoundJointManager))
 	{
-		Toolkit->PopulateNodePickerPastedToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerPastedToastMessage(SharedThis(Toolkit));
 	}
-	
+
 	return FReply::Handled();
 }
 
@@ -1499,8 +1607,14 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 	{
 		NodeHandle.Get()->ResetToDefault();
 
+		FJointEdUtils::FireNotification(
+			LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled"),
+			LOCTEXT("NotJointNodeInstanceType_Sub", "Provided node instance was not a valid Joint node instance. Pointer reset to default."),
+			EJointMDAdmonitionType::Error
+		);
+
 		FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
-		FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub","Provided node instance was not a valid Joint node instance. Pointer reset to default.");
+		FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub", "Provided node instance was not a valid Joint node instance. Pointer reset to default.");
 		FNotificationInfo NotificationInfo(FailedNotificationText);
 		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.Joint3d");
 		NotificationInfo.bFireAndForget = true;
@@ -1509,13 +1623,13 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 		NotificationInfo.ExpireDuration = 4.5f;
 		NotificationInfo.WidthOverride = FOptionalSize();
 		NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
-						[
-							SNew(SJointMDSlate_Admonitions)
-							.AdmonitionType(EJointMDAdmonitionType::Error)
-							.CustomHeaderText(FailedNotificationText)
-							.bUseDescriptionText(true)
-							.DescriptionText(FailedNotificationSubText)
-						];
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Error)
+			.CustomHeaderText(FailedNotificationText)
+			.bUseDescriptionText(true)
+			.DescriptionText(FailedNotificationSubText)
+		];
 
 		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 
@@ -1543,7 +1657,7 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 				// FText::Format returns FText, convert to FString before appending
 				AllowedTypeStr.Append(
 					FText::Format(
-						LOCTEXT("AllowedTypeTemplate","{0} ({1})"),
+						LOCTEXT("AllowedTypeTemplate", "{0} ({1})"),
 						FJointEdUtils::GetFriendlyNameFromClass(AllowedType.Get()),
 						FText::FromString(AllowedType.Get()->GetName())
 					).ToString()
@@ -1558,7 +1672,7 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 				// FText::Format returns FText, convert to FString before appending
 				DisallowedTypeStr.Append(
 					FText::Format(
-						LOCTEXT("DisallowedTypeTemplate","{0} ({1})"),
+						LOCTEXT("DisallowedTypeTemplate", "{0} ({1})"),
 						FJointEdUtils::GetFriendlyNameFromClass(DisallowedType.Get()),
 						FText::FromString(DisallowedType.Get()->GetName())
 					).ToString()
@@ -1566,7 +1680,7 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			}
 
 			FText FailedNotificationText = LOCTEXT("NotJointNodeInstanceType", "Node Pick Up Canceled");
-			FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub","Current structure can not accept the provided node instance.");
+			FText FailedNotificationSubText = LOCTEXT("NotJointNodeInstanceType_Sub", "Current structure can not accept the provided node instance.");
 
 			FNotificationInfo NotificationInfo(FailedNotificationText);
 			NotificationInfo.bFireAndForget = true;
@@ -1574,78 +1688,80 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 			NotificationInfo.FadeOutDuration = 0.2f;
 			NotificationInfo.ExpireDuration = 4.5f;
 			NotificationInfo.WidthOverride = FOptionalSize();
-			
-			if ( !AllowedTypeStr.IsEmpty() && !DisallowedTypeStr.IsEmpty())
+
+			if (!AllowedTypeStr.IsEmpty() && !DisallowedTypeStr.IsEmpty())
 			{
 				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+					.bUseDescriptionText(false)
 					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
-						.bUseDescriptionText(false)
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
-								.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
-							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SJointMDSlate_Admonitions)
-								.AdmonitionType(EJointMDAdmonitionType::Info)
-								.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
-								.bUseDescriptionText(true)
-								.DescriptionText(FText::FromString(AllowedTypeStr))
-							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SJointMDSlate_Admonitions)
-								.AdmonitionType(EJointMDAdmonitionType::Info)
-								.CustomHeaderText(LOCTEXT("DisallowedType", "Disallowed Types"))
-								.bUseDescriptionText(true)
-								.DescriptionText(FText::FromString(DisallowedTypeStr))
-							]
+							SNew(STextBlock)
+							.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+							.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
 						]
-					];
-			}else if ( !AllowedTypeStr.IsEmpty() )
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(AllowedTypeStr))
+						]
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("DisallowedType", "Disallowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(DisallowedTypeStr))
+						]
+					]
+				];
+			}
+			else if (!AllowedTypeStr.IsEmpty())
 			{
 				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
+				[
+					SNew(SJointMDSlate_Admonitions)
+					.AdmonitionType(EJointMDAdmonitionType::Error)
+					.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
+					.bUseDescriptionText(false)
 					[
-						SNew(SJointMDSlate_Admonitions)
-						.AdmonitionType(EJointMDAdmonitionType::Error)
-						.CustomHeaderText(LOCTEXT("NodePickUpCanceledTitle", "Node Pick Up Canceled"))
-						.bUseDescriptionText(false)
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
-								.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
-							]
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SJointMDSlate_Admonitions)
-								.AdmonitionType(EJointMDAdmonitionType::Info)
-								.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
-								.bUseDescriptionText(true)
-								.DescriptionText(FText::FromString(AllowedTypeStr))
-							]
+							SNew(STextBlock)
+							.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+							.Text(LOCTEXT("NodePickUpCanceledDescription", "Current structure can not accept the provided node instance."))
 						]
-					];
-			}else if ( !DisallowedTypeStr.IsEmpty() )
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FJointEditorStyle::Margin_Normal)
+						[
+							SNew(SJointMDSlate_Admonitions)
+							.AdmonitionType(EJointMDAdmonitionType::Info)
+							.CustomHeaderText(LOCTEXT("AllowedType", "Allowed Types"))
+							.bUseDescriptionText(true)
+							.DescriptionText(FText::FromString(AllowedTypeStr))
+						]
+					]
+				];
+			}
+			else if (!DisallowedTypeStr.IsEmpty())
 			{
 				NotificationInfo.ContentWidget = SNew(SJointNotificationWidget)
 				[
@@ -1676,11 +1792,11 @@ void FJointNodePointerStructCustomization::OnNodeDataChanged()
 					]
 				];
 			}
-			
+
 			FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 		}
 	}
-	
+
 	BlinkSelf();
 }
 
@@ -1691,9 +1807,8 @@ void FJointNodePointerStructCustomization::OnNodeResetToDefault()
 
 void FJointNodePointerStructCustomization::OnMouseHovered()
 {
-
 	FeatureButtonsSlate->UpdateVisualOnHovered();
-	
+
 	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5);
 	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::SelfHitTestInvisible);
 
@@ -1762,9 +1877,8 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 
 void FJointNodePointerStructCustomization::OnMouseUnhovered()
 {
-
 	FeatureButtonsSlate->UpdateVisualOnUnhovered();
-	
+
 	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(1);
 	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::Collapsed);
 
@@ -1835,8 +1949,8 @@ void FJointNodePointerStructCustomization::OnMouseUnhovered()
 
 void FJointNodePointerStructCustomization::BlinkSelf()
 {
-	if (BorderWidget == nullptr) return; 
-	
+	if (BorderWidget == nullptr) return;
+
 	VOLT_STOP_ANIM(BlinkAnimTrack);
 
 	//play blink animation with background color change
@@ -1845,8 +1959,8 @@ void FJointNodePointerStructCustomization::BlinkSelf()
 		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
 		.bShouldLoop(true)
 		.MaxLoopCount(1)
-		(
-			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+		                                    (
+			                                    VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
 			.AlphaBasedDuration(0.16)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
@@ -1854,7 +1968,7 @@ void FJointNodePointerStructCustomization::BlinkSelf()
 			.bUseStartColor(true)
 			.StartColor(BorderWidget->NormalColor)
 			.TargetColor(FLinearColor(1, 1, 1, 0.5)),
-			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
+			                                    VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
 			.AlphaBasedDuration(0.16)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
@@ -1862,10 +1976,2068 @@ void FJointNodePointerStructCustomization::BlinkSelf()
 			.bUseStartColor(true)
 			.StartColor(FLinearColor(1, 1, 1, 0.5))
 			.TargetColor(BorderWidget->NormalColor)
-		)
+		                                    )
 	);
 
 	BlinkAnimTrack = VOLT_PLAY_ANIM(BorderWidget->InnerBorder, BlinkAnimation);
+}
+
+
+//JointScriptLinkerCustomizationHelpers - namespace
+
+namespace JointScriptLinkerCustomizationHelpers
+{
+	void Reimport_FJointScriptLinkerDataElement(
+		FString FilePath,
+		TSharedPtr<IPropertyHandle> StructPropertyHandle_FJointScriptLinkerDataElement
+	)
+	{
+		if (StructPropertyHandle_FJointScriptLinkerDataElement.IsValid())
+		{
+			TSharedPtr<IPropertyHandle> JointManagerHandle = StructPropertyHandle_FJointScriptLinkerDataElement->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+
+			TSharedPtr<IPropertyHandle> ParserDataHandle = StructPropertyHandle_FJointScriptLinkerDataElement->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, ParserData));
+			TSharedPtr<IPropertyHandle> ParserData_ScriptParser = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ScriptParser));
+
+			//Skip if Joint manager is null
+			UObject* JointManagerObj = nullptr;
+			JointManagerHandle->GetValue(JointManagerObj);
+
+			if (JointManagerObj == nullptr)
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("ReimportFileFailedTitle_NullJointManager", "Reimport File Skipped"),
+					LOCTEXT("ReimportFileFailedDesc_NullJointManager", "A mapping had a null Joint Manager reference. Skipping reimport for that mapping."),
+					EJointMDAdmonitionType::Warning
+				);
+
+				return;
+			}
+
+			FString OutputString;
+
+			ParserData_ScriptParser->GetValueAsFormattedString(OutputString);
+			// make a soft object path and try to load it, if it fails, skip and fire notification
+			FSoftClassPath SoftClassPath(OutputString);
+			UClass* ParserClass = SoftClassPath.TryLoadClass<UJointScriptParser>();
+
+			UJointScriptParser* ParserCasted = ParserClass->GetDefaultObject<UJointScriptParser>();
+
+			if (ParserCasted == nullptr)
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("ReimportFileFailedTitle_InvalidParser", "Reimport File Skipped"),
+					LOCTEXT("ReimportFileFailedDesc_InvalidParser", "The parser reference provided is not valid. Skipping reimport for that mapping."),
+					EJointMDAdmonitionType::Warning
+				);
+
+				return;
+			}
+
+			UJointManager* JointManagerCasted = Cast<UJointManager>(JointManagerObj);
+
+			if (JointManagerCasted == nullptr) return;
+
+			FJointEdUtils::ImportFileToJointManager(
+				JointManagerCasted,
+				FilePath,
+				ParserCasted,
+				true
+			);
+		}
+	}
+
+	void Reimport_FJointScriptLinkerDataElement_Array(
+		FString FilePath,
+		TSharedPtr<IPropertyHandle> StructPropertyHandle_FJointScriptLinkerDataElement_Array
+	)
+	{
+		if (StructPropertyHandle_FJointScriptLinkerDataElement_Array.IsValid())
+		{
+			//TArray<FJointScriptLinkerMapping>
+			TSharedPtr<IPropertyHandle> MappingsHandle = StructPropertyHandle_FJointScriptLinkerDataElement_Array->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
+
+			//iterate through each element and call ImportFileToJointManager
+			TSharedPtr<class IPropertyHandleArray> ArrayPH = MappingsHandle->AsArray();
+
+			if (ArrayPH.IsValid())
+			{
+				uint32 NumElements = 0;
+				ArrayPH->GetNumElements(NumElements);
+
+				for (uint32 Index = 0; Index < NumElements; ++Index)
+				{
+					if (TSharedPtr<IPropertyHandle> ElementHandle = ArrayPH->GetElement(Index); ElementHandle.IsValid())
+					{
+						Reimport_FJointScriptLinkerDataElement(FilePath, ElementHandle);
+					}
+				}
+			}
+		}
+	}
+
+	bool CheckPathValidity(
+		TSharedPtr<IPropertyHandle> StructPropertyHandle_FJointScriptLinkerFileEntry
+	)
+	{
+		if (StructPropertyHandle_FJointScriptLinkerFileEntry.IsValid())
+		{
+			const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle_FJointScriptLinkerFileEntry->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+			FString OutputString;
+
+			FilePathHandle->GetValueAsFormattedString(OutputString);
+
+			return !OutputString.IsEmpty() && FPaths::FileExists(OutputString);
+		}
+
+		return false;
+	}
+
+
+	void GetAllNodeGuidsFromJointManager(UJointManager* JM, TSet<FGuid>& OutNodeGuids)
+	{
+		if (!JM) return;
+
+		for (TObjectPtr<UJointNodeBase>& ManagerFragment : JM->ManagerFragments)
+		{
+			if (!ManagerFragment) continue;
+
+			const FGuid& FragmentNodeGuid = ManagerFragment->GetNodeGuid();
+
+			OutNodeGuids.Add(FragmentNodeGuid);
+
+			const TArray<UJointFragment*>& FragmentsOnLowerHierarchy = ManagerFragment->GetAllFragmentsOnLowerHierarchy();
+			for (const UJointFragment* Fragment : FragmentsOnLowerHierarchy)
+			{
+				if (!Fragment) continue;
+
+				const FGuid& ManagerFragmentNodeGuid = Fragment->GetNodeGuid();
+
+				OutNodeGuids.Add(ManagerFragmentNodeGuid);
+			}
+		}
+
+		for (TObjectPtr<UJointNodeBase>& JointNodeBase : JM->Nodes)
+		{
+			if (!JointNodeBase) continue;
+
+			const FGuid& NodeGuid = JointNodeBase->GetNodeGuid();
+
+			OutNodeGuids.Add(NodeGuid);
+
+			const TArray<UJointFragment*>& FragmentsOnLowerHierarchy = JointNodeBase->GetAllFragmentsOnLowerHierarchy();
+			for (const UJointFragment* Fragment : FragmentsOnLowerHierarchy)
+			{
+				if (!Fragment) continue;
+
+				const FGuid& FragmentNodeGuid = Fragment->GetNodeGuid();
+
+				OutNodeGuids.Add(FragmentNodeGuid);
+			}
+		}
+	}
+
+
+	UJointManager* LoadJointManager(const TSharedPtr<IPropertyHandle>& JointManagerHandle)
+	{
+		FString SoftReferenceString;
+		JointManagerHandle->GetValueAsFormattedString(SoftReferenceString);
+		FSoftObjectPath SoftObjectPath(SoftReferenceString);
+
+		//load the object if it's not already loaded
+		UObject* LoadedObject = SoftObjectPath.TryLoad();
+		UJointManager* JM = Cast<UJointManager>(LoadedObject);
+		return JM;
+	}
+}
+
+
+TSharedRef<IPropertyTypeCustomization> FJointScriptLinkerDataElementCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointScriptLinkerDataElementCustomization);
+}
+
+void FJointScriptLinkerDataElementCustomization::CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	//No special header needed - create default on
+	HeaderRow.NameContent()
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Tiny)
+		[
+			StructPropertyHandle->CreatePropertyNameWidget()
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		.Padding(FJointEditorStyle::Margin_Tiny)
+		[
+			CreateReimportButtonWidget(StructPropertyHandle).ToSharedRef()
+		]
+	];
+}
+
+void FJointScriptLinkerDataElementCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, FileEntry)).ToSharedRef());
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, ParserData)).ToSharedRef());
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings)).ToSharedRef());
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerDataElementCustomization::CreateReimportButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	{
+		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+		FString OutputString;
+
+		FilePathHandle->GetValueAsFormattedString(OutputString);
+
+		return !OutputString.IsEmpty() && FPaths::FileExists(OutputString);
+	};
+
+	//Reimport button
+	return SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("ReimportFileToolTip", "Reimport the file to all mapped Joint Managers."))
+		.IsEnabled_Lambda([this, StructPropertyHandle]() -> const bool
+		{
+			return JointScriptLinkerCustomizationHelpers::CheckPathValidity(StructPropertyHandle);
+		})
+		.OnClicked_Lambda([StructPropertyHandle, this]()
+		{
+			const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+			FString OutputString;
+
+			FilePathHandle->GetValueAsFormattedString(OutputString);
+
+			if (OutputString.IsEmpty() || !FPaths::FileExists(OutputString))
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("ReimportFileFailedTitle", "Reimport File Failed"),
+					LOCTEXT("ReimportFileFailedDesc", "File path is empty or file does not exist at the specified path."),
+					EJointMDAdmonitionType::Error
+				);
+
+				return FReply::Handled();
+			}
+
+			//TArray<FJointScriptLinkerMapping>
+			const TSharedPtr<IPropertyHandle> MappingsHandle = StructPropertyHandle->GetChildHandle(
+				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
+
+			JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement_Array(OutputString, StructPropertyHandle);
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+				.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+			]
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+				.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+			]
+		];
+}
+
+
+TSharedRef<IPropertyTypeCustomization> FJointScriptLinkerFileEntryCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointScriptLinkerFileEntryCustomization);
+}
+
+/*
+void FJointScriptLinkerFileEntryCustomization::BuildFilterString()
+{
+	if (!HeaderRowPtr) return;
+	
+	const TSharedPtr<IPropertyHandle> FilePathHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+	FString FilePathString;
+
+	FilePathHandle->GetValueAsFormattedString(FilePathString);
+
+	if (FilePathString.IsEmpty())
+	{
+		FilePathString = TEXT("N/A");
+	}
+	
+	HeaderRowPtr->RowTagName = FName(FText::Format(
+		LOCTEXT("FileEntryNameWithPathTemplate", "({0})"),
+		FText::FromString(FilePathString)
+	).ToString());
+}
+*/
+
+TSharedRef<IPropertyTypeCustomization> FJointScriptLinkerDataCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointScriptLinkerDataCustomization);
+}
+
+void FJointScriptLinkerDataCustomization::CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	ThisStructPropertyHandle = StructPropertyHandle;
+	PropertyUtils = StructCustomizationUtils.GetPropertyUtilities();
+	HeaderRow.WholeRowContent()
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FJointEditorStyle::Margin_Tiny)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				StructPropertyHandle->CreatePropertyNameWidget()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreateQuickReimportAllButtonWidget().ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreateRefreshWidgetButtonWidget().ToSharedRef()
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FJointEditorStyle::Margin_Tiny)
+		[
+			StructPropertyHandle->CreatePropertyValueWidget()
+		]
+	];
+}
+
+void FJointScriptLinkerDataCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerData, ScriptLinks)).ToSharedRef());
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateQuickReimportAllButtonWidget()
+{
+	//Reimport button
+	return SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("QuickReimportAllToolTip",
+		                     "Quickly reimport all Joint Managers in this script linker data. This will reimport all files associated with each mapping without changing the file paths, and will overwrite existing node mappings. Please make sure to backup your data before using this function."))
+		.OnClicked_Lambda([this]()
+		{
+			TSharedPtr<IPropertyHandle> ScriptLinksHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerData, ScriptLinks));
+
+			//iterate through each element and call ImportFileToJointManager
+			TSharedPtr<class IPropertyHandleArray> ArrayPH = ScriptLinksHandle->AsArray();
+
+			if (!ArrayPH.IsValid()) return FReply::Handled();
+
+			uint32 NumElements = 0;
+			ArrayPH->GetNumElements(NumElements);
+
+			for (uint32 Index = 0; Index < NumElements; ++Index)
+			{
+				//FJointScriptLinkerDataElement
+				TSharedPtr<IPropertyHandle> ElementHandle = ArrayPH->GetElement(Index);
+
+				if (!ElementHandle.IsValid()) continue;
+
+				TSharedPtr<IPropertyHandle> JointScriptLinkerFileEntryHandle = ElementHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, FileEntry));
+				TSharedPtr<IPropertyHandle> JointScriptLinkerMappingArrayHandle = ElementHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
+				// get the path string from the FileEntry struct
+				TSharedPtr<IPropertyHandle> FilePathHandle = JointScriptLinkerFileEntryHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+				FString FilePathString;
+				FilePathHandle->GetValueAsFormattedString(FilePathString);
+
+				JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement(FilePathString, ElementHandle);
+			}
+
+			FJointEdUtils::FireNotification(
+				LOCTEXT("QuickReimportAllSuccessTitle", "Quick Reimport All Completed"),
+				LOCTEXT("ReimportAllSuccessDesc", "All files have been reimported. Please verify the node mappings in the Joint Manager assets."),
+				EJointMDAdmonitionType::Mention
+			);
+
+			// Simply refresh the details panel. 
+			if (PropertyUtils.IsValid()) PropertyUtils.Pin()->ForceRefresh();
+
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+			]
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("EditorViewport.ToggleRealTime"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+				.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+			]
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+				.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+			]
+		];
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateRefreshWidgetButtonWidget()
+{
+	//Refresh button
+	return SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("RefreshToolTip", "Refresh the details panel to reflect any changes in the data"))
+		.OnClicked_Lambda([this]()
+		{
+			// Simply refresh the details panel. 
+			if (PropertyUtils.IsValid()) PropertyUtils.Pin()->ForceRefresh();
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SImage)
+			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+			.DesiredSizeOverride(FVector2D(12, 12))
+			.ColorAndOpacity(FLinearColor::White)
+		];
+}
+
+void FJointScriptLinkerFileEntryCustomization::CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	HeaderRowPtr = &HeaderRow;
+	ThisStructPropertyHandle = StructPropertyHandle;
+	//No special header needed - create default on
+
+	//if (const TSharedPtr<IPropertyHandle> FileNameHandle =StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath)))
+	//{
+	//	FileNameHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FJointScriptLinkerFileEntryCustomization::BuildFilterString));
+	//}
+
+	if (HeaderRowPtr)
+	{
+		TSharedPtr<IPropertyHandle> FileNameHandle = StructPropertyHandle->GetChildHandle(
+			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName));
+
+		TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+		HeaderRowPtr->PropertyHandles = TArray<TSharedPtr<IPropertyHandle>>{
+			StructPropertyHandle,
+			FileNameHandle,
+			FilePathHandle
+		};
+
+		HeaderRowPtr->WholeRowContent()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				CreateValidityIconWidget(StructPropertyHandle).ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreateNameTextWidget(StructPropertyHandle).ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreatePathTextWidget(StructPropertyHandle).ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreateOpenOnFileExplorerButtonWidget(StructPropertyHandle).ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				CreateReassignFileButtonWidget(StructPropertyHandle).ToSharedRef()
+			]
+		];
+	}
+}
+
+void FJointScriptLinkerFileEntryCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName)).ToSharedRef()); //.Visibility(EVisibility::Collapsed);
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath)).ToSharedRef()); //.Visibility(EVisibility::Collapsed);
+}
+
+
+TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateValidityIconWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	//lambda for validity check
+	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	{
+		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+		FString OutputString;
+
+		FilePathHandle->GetValueAsFormattedString(OutputString);
+
+		return !OutputString.IsEmpty() && FPaths::FileExists(OutputString);
+	};
+
+	//Validity icon - change the icon based on whether the file exists or not
+	return SNew(SImage)
+		.ColorAndOpacity_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FSlateColor
+		{
+			return ValidityCheck() ? FLinearColor::Green + FLinearColor(0.15, 0.15, 0.15) : FLinearColor::Red + FLinearColor(0.15, 0.15, 0.15);
+		})
+		.Image_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FSlateBrush*
+		{
+			return ValidityCheck() ? FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Check") : FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Error");
+		})
+		.DesiredSizeOverride(FVector2D(16, 16))
+		.ToolTipText_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FText
+		{
+			return ValidityCheck() ? LOCTEXT("FileEntryValidToolTip", "The specified file path is valid.") : LOCTEXT("FileEntryInvalidToolTip", "The specified file path is missing or invalid.");
+		});
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateNameTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	// show name of the file first and then the path in ()
+	return SNew(STextBlock)
+		.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Black.h4"))
+		.HighlightText_Lambda([this]() -> const FText
+		{
+			return (HeaderRowPtr != nullptr) ? HeaderRowPtr->FilterTextString : FText::GetEmpty();
+		})
+		.Text_Lambda([StructPropertyHandle, this]() -> const FText
+		{
+			const TSharedPtr<IPropertyHandle> FileNameHandle = StructPropertyHandle->GetChildHandle(
+				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName));
+
+			FString FileNameString;
+
+			FileNameHandle->GetValueAsFormattedString(FileNameString);
+
+			if (FileNameString.IsEmpty())
+			{
+				FileNameString = TEXT("N/A");
+			}
+
+			return FText::Format(
+				LOCTEXT("FileEntryNameWithPathTemplate", "{0}"),
+				FText::FromString(FileNameString)
+			);
+		});
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreatePathTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	// show name of the file first and then the path in ()
+	return SNew(STextBlock)
+		.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h5"))
+		.ColorAndOpacity(FLinearColor(0.66, 0.66, 0.66))
+		.HighlightText_Lambda([this]() -> const FText
+		{
+			return (HeaderRowPtr != nullptr) ? HeaderRowPtr->FilterTextString : FText::GetEmpty();
+		})
+		.Text_Lambda([StructPropertyHandle, this]() -> const FText
+		{
+			const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+			FString FilePathString;
+
+			FilePathHandle->GetValueAsFormattedString(FilePathString);
+
+			if (FilePathString.IsEmpty())
+			{
+				FilePathString = TEXT("N/A");
+			}
+
+			return FText::Format(
+				LOCTEXT("FileEntryNameWithPathTemplate", "({0})"),
+				FText::FromString(FilePathString)
+			);
+		});
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileExplorerButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	//lambda for validity check
+	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	{
+		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+		FString OutputString;
+
+		FilePathHandle->GetValueAsFormattedString(OutputString);
+
+		return !OutputString.IsEmpty() && FPaths::FileExists(OutputString);
+	};
+
+	TSharedPtr<SWidget> Widget = SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("OpenInExplorerToolTip", "Open file location in Explorer"))
+		.OnClicked_Lambda([StructPropertyHandle, this]()
+		{
+			TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+			FString OutputString;
+
+			FilePathHandle->GetValueAsFormattedString(OutputString);
+
+			if (OutputString.IsEmpty())
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("OpenInExplorerFailedTitle", "Open in Explorer Failed"),
+					LOCTEXT("OpenInExplorerFailedDesc", "File path is empty."),
+					EJointMDAdmonitionType::Error
+				);
+
+				return FReply::Handled();
+			}
+			else if (!FPaths::FileExists(OutputString))
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("OpenInExplorerFailedTitle", "Open in Explorer Failed"),
+					LOCTEXT("OpenInExplorerFailedDesc_NotExist", "File does not exist at the specified path."),
+					EJointMDAdmonitionType::Error
+				);
+
+				return FReply::Handled();
+			}
+
+			FJointEdUtils::OpenFileInExplorer(OutputString);
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SImage)
+			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.FolderOpen"))
+			.DesiredSizeOverride(FVector2D(16, 16))
+			.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
+			{
+				return ValidityCheck() ? FLinearColor(1, 1, 1) : FLinearColor(0.5, 0.5, 0.5);
+			})
+		];
+
+	return Widget;
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateReassignFileButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
+{
+	TSharedPtr<SWidget> Widget = SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("ReassignFileToolTip", "Reassign file for this entry"))
+		.OnClicked_Lambda([StructPropertyHandle, this]()
+		{
+			TArray<FString> OutFilePaths;
+
+			FJointEdUtils::OpenJointScriptImportWindow(OutFilePaths, false);
+
+			if (!OutFilePaths.IsEmpty())
+			{
+				const FString FirstFilePath = OutFilePaths[0];
+
+				const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+					GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+
+				FilePathHandle->SetValueFromFormattedString(FirstFilePath);
+
+				// get the parent struct handle to trigger OnValueChanged event
+				TSharedPtr<IPropertyHandle> ParentStructHandle = StructPropertyHandle->GetParentHandle();
+				if (ParentStructHandle.IsValid())
+				{
+					ParentStructHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
+				}
+			}
+			else
+			{
+				FJointEdUtils::FireNotification(
+					LOCTEXT("FileReassignCanceledTitle", "File Reassign Canceled"),
+					LOCTEXT("FileReassignCanceledDesc", "No file was selected for reassignment."),
+					EJointMDAdmonitionType::Warning
+				);
+			}
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SImage)
+			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Audit"))
+			.DesiredSizeOverride(FVector2D(16, 16))
+			.ColorAndOpacity(FLinearColor::White)
+		];
+
+	return Widget;
+}
+
+FJointArrayElementBuilder::FJointArrayElementBuilder(TSharedPtr<IPropertyHandle> InPropertyHandle)
+{
+	PropertyHandle = InPropertyHandle;
+}
+
+void FJointArrayElementBuilder::SetOnRebuildChildren(FSimpleDelegate InOnRebuildChildren)
+{
+	IDetailCustomNodeBuilder::SetOnRebuildChildren(InOnRebuildChildren);
+}
+
+void FJointArrayElementBuilder::GenerateHeaderRowContent(FDetailWidgetRow& NodeRow)
+{
+	/*
+	//Create PropertyHandle widget
+	NodeRow.NameContent()
+	[
+		PropertyHandle->CreatePropertyNameWidget()
+	].ValueContent()
+	[
+		PropertyHandle->CreatePropertyValueWidget()
+	];
+	*/
+}
+
+
+void FJointArrayElementBuilder::GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder)
+{
+	TSharedPtr<class IPropertyHandleArray> ArrayPH = PropertyHandle->AsArray();
+
+	if (!ArrayPH) return;
+
+	uint32 Num = 0;
+	ArrayPH->GetNumElements(Num);
+
+	for (uint32 Index = 0; Index < Num; ++Index)
+	{
+		TSharedPtr<IPropertyHandle> ElementHandle = ArrayPH->GetElement(Index);
+
+		ChildrenBuilder.AddProperty(ElementHandle.ToSharedRef());
+	}
+}
+
+bool FJointArrayElementBuilder::RequiresTick() const
+{
+	return IDetailCustomNodeBuilder::RequiresTick();
+}
+
+
+void FJointArrayElementBuilder::Tick(float DeltaTime)
+{
+	IDetailCustomNodeBuilder::Tick(DeltaTime);
+}
+
+FName FJointArrayElementBuilder::GetName() const
+{
+	return FName("ArrayPropertyBuilder");
+}
+
+bool FJointArrayElementBuilder::InitiallyCollapsed() const
+{
+	return false;
+}
+
+
+TSharedRef<IPropertyTypeCustomization> FJointScriptLinkerMappingCustomization::MakeInstance()
+{
+	return MakeShareable(new FJointScriptLinkerMappingCustomization);
+}
+
+FJointScriptLinkerMappingCustomization::SCandidateRow::FArguments::FArguments()
+{
+}
+
+void FJointScriptLinkerMappingCustomization::SCandidateRow::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable)
+{
+	Item = InArgs._Item;
+
+	SMultiColumnTableRow<TSharedPtr<FCandidateItem>>::Construct(
+		FSuperRowType::FArguments(),
+		OwnerTable
+	);
+}
+
+TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::SCandidateRow::GenerateWidgetForColumn(const FName& ColumnName)
+{
+	if (ColumnName == "Name")
+	{
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Item->Name))
+				.ColorAndOpacity(FLinearColor::White)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				SNew(SJointOutlineButton)
+				.NormalColor(FLinearColor::Transparent)
+				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OutlineNormalColor(FLinearColor::Transparent)
+				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+				.ContentPadding(FJointEditorStyle::Margin_Tiny)
+				.ToolTipText(LOCTEXT("GoToButtonToolTip", "Go to this Joint Manager asset in the Content Browser"))
+				.OnClicked(this, &FJointScriptLinkerMappingCustomization::SCandidateRow::OnGoToButtonPressed)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.ArrowRight"))
+					.DesiredSizeOverride(FVector2D(12, 12))
+					.ColorAndOpacity(FLinearColor::White)
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
+				SNew(SJointOutlineButton)
+				.NormalColor(FLinearColor::Transparent)
+				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+				.OutlineNormalColor(FLinearColor::Transparent)
+				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+				.ContentPadding(FJointEditorStyle::Margin_Tiny)
+				.ToolTipText(LOCTEXT("OpenEditorButtonToolTip", "Open this Joint Manager asset in the editor"))
+				.OnClicked(this, &FJointScriptLinkerMappingCustomization::SCandidateRow::OnOpenEditorButtonPressed)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
+					.DesiredSizeOverride(FVector2D(12, 12))
+					.ColorAndOpacity(FLinearColor::White)
+				]
+			];
+	}
+	else if (ColumnName == "Path")
+	{
+		return SNew(STextBlock)
+			.Text(FText::FromString(Item->Path))
+			.ColorAndOpacity(FLinearColor::Gray)
+			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4");
+	}
+	else if (ColumnName == "Match")
+	{
+		return SNew(STextBlock) // display "no matching nodes" if MatchingNodeCount is 0, otherwise display the count
+			.Text(Item->MatchingNodeCount > 0 ? FText::AsNumber(Item->MatchingNodeCount) : FText::FromString(TEXT("No Matching Nodes")))
+			.ColorAndOpacity(Item->MatchingNodeCount > 0 ? FLinearColor::Green : FLinearColor::Red);
+	}
+
+	return SNullWidget::NullWidget;
+}
+
+FReply FJointScriptLinkerMappingCustomization::SCandidateRow::OnOpenEditorButtonPressed()
+{
+	if (Item->Manager.IsValid())
+	{
+		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Item->Manager.Get());
+	}
+
+	return FReply::Handled();
+}
+
+
+FReply FJointScriptLinkerMappingCustomization::SCandidateRow::OnGoToButtonPressed()
+{
+	if (Item->Manager.IsValid())
+	{
+		TArray<UObject*> ObjectsToSync;
+		ObjectsToSync.Add(Item->Manager.Get());
+		GEditor->SyncBrowserToObjects(ObjectsToSync);
+	}
+
+	return FReply::Handled();
+}
+
+// Add missing FArguments constructor for SReallocationPopup to resolve linker error
+FJointScriptLinkerMappingCustomization::SReallocationPopup::FArguments::FArguments()
+{
+}
+
+void FJointScriptLinkerMappingCustomization::SReallocationPopup::Construct(const FArguments& InArgs)
+{
+	ParentWindow = InArgs._ParentWindow;
+	ParentJointManagerHandle = InArgs._JointManagerHandle.Pin();
+	CandidateItems = InArgs._CandidateItems;
+	ParentCustomizationPtr = InArgs._ParentCustomizationPtr;
+
+
+	this->ChildSlot.AttachWidget(
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Info)
+			.bAutoWrapDescriptionText(true)
+			.bUseDescriptionText(true)
+			.DescriptionText(
+				LOCTEXT(
+					"ReallocateJointManager_Info",
+					"Select a Joint Manager to reassign for this mapping and press OK to proceed the reallocation. The number of matching nodes (compared to the current mapping) is shown to help identify the correct one, but please verify by checking the Joint Manager's graph assets may have similar node counts."
+				)
+			)
+		]
+		+ SVerticalBox::Slot()
+		.FillHeight(1)
+		.Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SAssignNew(ReallocationPopupListView, SListView<TSharedPtr<FCandidateItem>>)
+			.ListItemsSource(&CandidateItems)
+			.SelectionMode(ESelectionMode::Single)
+			.OnGenerateRow_Lambda([](TSharedPtr<FCandidateItem> InItem, const TSharedRef<STableViewBase>& Owner)
+			{
+				return SNew(SCandidateRow, Owner)
+					.Item(InItem);
+			})
+			.OnSelectionChanged_Lambda([this](TSharedPtr<FCandidateItem> NewSelection, ESelectInfo::Type)
+			{
+				SelectedItem = NewSelection;
+			})
+			.HeaderRow
+			(
+				SNew(SHeaderRow)
+				+ SHeaderRow::Column("Name")
+				.DefaultLabel(LOCTEXT("Column_Name", "Name"))
+				.FillWidth(0.3f)
+				.OnSort(this, &SReallocationPopup::OnColumnSort)
+				.SortMode(
+					TAttribute<EColumnSortMode::Type>::Create(
+						TAttribute<EColumnSortMode::Type>::FGetter::CreateSP(
+							this,
+							&SReallocationPopup::GetColumnSortMode,
+							FName("Name")
+						)
+					)
+				)
+				+ SHeaderRow::Column("Path")
+				.DefaultLabel(LOCTEXT("Column_Path", "Path"))
+				.FillWidth(0.5f)
+				.OnSort(this, &SReallocationPopup::OnColumnSort)
+				.SortMode(
+					TAttribute<EColumnSortMode::Type>::Create(
+						TAttribute<EColumnSortMode::Type>::FGetter::CreateSP(
+							this,
+							&SReallocationPopup::GetColumnSortMode,
+							FName("Path")
+						)
+					)
+				)
+				+ SHeaderRow::Column("Match")
+				.DefaultLabel(LOCTEXT("Column_Match", "Matching Nodes"))
+				.FillWidth(0.2f)
+				.OnSort(this, &SReallocationPopup::OnColumnSort)
+				.SortMode(
+					TAttribute<EColumnSortMode::Type>::Create(
+						TAttribute<EColumnSortMode::Type>::FGetter::CreateSP(
+							this,
+							&SReallocationPopup::GetColumnSortMode,
+							FName("Match")
+						)
+					)
+				)
+			)
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Right)
+		.Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("Cancel", "Cancel"))
+				.OnClicked_Lambda([this]() -> FReply
+				{
+					if (ParentWindow.IsValid()) ParentWindow.Pin()->RequestDestroyWindow();
+
+					if (ParentCustomizationPtr.Pin()) ParentCustomizationPtr.Pin()->RefreshVisual();
+
+					return FReply::Handled();
+				})
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(FJointEditorStyle::Margin_Normal)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("Proceed", "Proceed"))
+				.ButtonColorAndOpacity(FLinearColor(0.5, 0.7, 1.0))
+				.IsEnabled_Lambda([this]() -> bool
+				{
+					return SelectedItem.IsValid() && SelectedItem.Pin()->Manager.IsValid();
+				})
+				.OnClicked_Lambda([this]() -> FReply
+				{
+					if (SelectedItem.IsValid() && SelectedItem.Pin()->Manager.IsValid() && ParentJointManagerHandle.IsValid())
+					{
+						// Assign the selected JointManager to the JointManager property handle
+						UObject* ObjToSet = SelectedItem.Pin()->Manager.Get();
+						FPropertyAccess::Result Result = ParentJointManagerHandle->SetValue(ObjToSet);
+					}
+
+					FJointEdUtils::FireNotification(
+						LOCTEXT("ReallocationSuccessTitle", "Joint Manager Reallocated"),
+						LOCTEXT("ReallocationSuccessDesc", "The Joint Manager reference has been successfully reallocated."),
+						EJointMDAdmonitionType::Mention
+					);
+
+					if (ParentWindow.IsValid()) ParentWindow.Pin()->RequestDestroyWindow();
+
+					if (ParentCustomizationPtr.Pin()) ParentCustomizationPtr.Pin()->RefreshVisual();
+
+					return FReply::Handled();
+				})
+			]
+		]
+	);
+}
+
+void FJointScriptLinkerMappingCustomization::SReallocationPopup::OnColumnSort(
+	EColumnSortPriority::Type,
+	const FName& ColumnId,
+	EColumnSortMode::Type SortMode)
+{
+	ReallocationCurrentSortColumn = ColumnId;
+	ReallocationCurrentSortMode = SortMode;
+
+	CandidateItems.Sort([&](const TSharedPtr<FCandidateItem>& A, const TSharedPtr<FCandidateItem>& B)
+	{
+		int32 Result = 0;
+
+		if (ColumnId == "Name")
+			Result = A->Name.Compare(B->Name);
+		else if (ColumnId == "Path")
+			Result = A->Path.Compare(B->Path);
+		else if (ColumnId == "Match")
+			Result = A->MatchingNodeCount - B->MatchingNodeCount;
+
+		return SortMode == EColumnSortMode::Ascending ? Result < 0 : Result > 0;
+	});
+
+	if (ReallocationPopupListView.IsValid())
+	{
+		ReallocationPopupListView->RequestListRefresh();
+	}
+}
+
+EColumnSortMode::Type FJointScriptLinkerMappingCustomization::SReallocationPopup::GetColumnSortMode(FName ColumnId) const
+{
+	return (ReallocationCurrentSortColumn == ColumnId) ? ReallocationCurrentSortMode : EColumnSortMode::None;
+}
+
+TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget()
+{
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+	TSharedPtr<IPropertyHandle> NodeMappingsHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings));
+
+	//iterate NodeStatusItems and count bExistsInGraph
+	int32 RecognizedCount = 0;
+	int32 TotalCount = NodeStatusItems.Num();
+	for (const TSharedPtr<FNodeStatusItem>& Item : NodeStatusItems)
+	{
+		if (!Item->bExistsInGraph) continue;
+
+		++RecognizedCount;
+	}
+
+	return SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(0)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Small)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Left)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.ToolTipText(LOCTEXT("ReallocateToolTip", "Reallocate the Joint Manager reference for this mapping (useful if the Joint Manager was deleted and recreated)"))
+					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnReallocateButtonPressed)
+					[
+						SNew(SImage)
+						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
+						.DesiredSizeOverride(FVector2D(12, 12))
+						.ColorAndOpacity(FLinearColor::White)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.ToolTipText(LOCTEXT("ReimportToolTip", "Reimport the file for this specific mapping"))
+					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnReimportButtonPressed)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+						]
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Normal)
+					.ToolTipText(LOCTEXT("QuickReimportToolTip", "Quickly reimport the file for this mapping using the same parser settings as the last import (if available)"))
+					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnQuickReimportButtonPressed)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+						]
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("EditorViewport.ToggleRealTime"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+						]
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+						]
+					]
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Small)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Left)
+			[
+				ThisStructPropertyHandle->GetChildHandle(
+					GET_MEMBER_NAME_CHECKED(
+						FJointScriptLinkerMapping,
+						JointManager
+					))->CreatePropertyValueWidget()
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1)
+			.Padding(FJointEditorStyle::Margin_Small)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Right) // indicator for the summaries
+			[
+				SNew(SImage) //if TotalCount == 0, show "Icons.Info" with white color to indicate no nodes are mapped, instead of showing "0/0 Recognized" with red color which can be misleading
+				.Image_Lambda([RecognizedCount, TotalCount]() -> const FSlateBrush*
+				{
+					if (TotalCount == 0)
+					{
+						return FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Info");
+					}
+					return RecognizedCount == TotalCount
+						       ? FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Check")
+						       : (RecognizedCount == 0
+							          ? FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Error")
+							          : FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Warning"));
+				})
+				.DesiredSizeOverride(FVector2D(16, 16))
+				.ColorAndOpacity_Lambda([RecognizedCount, TotalCount]() -> FLinearColor
+				{
+					if (TotalCount == 0)
+					{
+						return FLinearColor::White;
+					}
+					return RecognizedCount == TotalCount
+						       ? FLinearColor::Green
+						       : (RecognizedCount == 0 ? FLinearColor::Red : FLinearColor::Yellow);
+				})
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Small)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Right) // indicator for the summaries
+			[
+				SNew(STextBlock)
+				.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h3"))
+				.Text_Lambda([this, RecognizedCount, TotalCount]() -> FText
+				{
+					//if TotalCount == 0, show "No Nodes Mapped" instead of "0/0 Recognized" which can be misleading
+					if (TotalCount == 0)
+					{
+						return LOCTEXT("NoNodesMapped", "No Nodes Mapped");
+					}
+					return FText::Format(LOCTEXT("NodeMappingSummaryFormat", "{0}/{1} Recognized"), FText::AsNumber(RecognizedCount), FText::AsNumber(TotalCount));
+				})
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(0)
+		[
+			SNew(SVerticalBox)
+			.Visibility_Lambda([this]() -> EVisibility
+			{
+				return NodeStatusItems.Num() > 0 ? EVisibility::Visible : EVisibility::Collapsed;
+			})
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FJointEditorStyle::Margin_Small)
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Left)
+				[
+					SNew(STextBlock)
+					.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Black.h5"))
+					.Text(LOCTEXT("NodeMappingsLabel", "Node Mappings"))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FJointEditorStyle::Margin_Small)
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Left)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Tiny)
+					.ToolTipText(LOCTEXT("CleanAllButtonToolTip", "Clean all node mappings."))
+					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnCleanAllButtonClicked)
+					[
+						SNew(SImage)
+						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Delete"))
+						.DesiredSizeOverride(FVector2D(12, 12))
+						.ColorAndOpacity(FLinearColor::White)
+					]
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(FJointEditorStyle::Margin_Small)
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Left)
+				[
+					SNew(SJointOutlineButton)
+					.NormalColor(FLinearColor::Transparent)
+					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+					.OutlineNormalColor(FLinearColor::Transparent)
+					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+					.ContentPadding(FJointEditorStyle::Margin_Tiny)
+					.ToolTipText(LOCTEXT("CleanInvalidButtonToolTip", "Clean invalid node mappings that do not exist in the Joint Manager's graph."))
+					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnCleanInvalidButtonClicked)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Delete"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(0, 0)))
+						]
+						+ SOverlay::Slot()
+						[
+							SNew(SImage)
+							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("GraphEditor.Macro.IsValid_16x"))
+							.DesiredSizeOverride(FVector2D(12, 12))
+							.ColorAndOpacity(FLinearColor::White)
+							.RenderTransform(FSlateRenderTransform(FVector2D(-5, -5)))
+						]
+					]
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0)
+			[
+				SNew(SExpandableArea)
+				.AreaTitle(LOCTEXT("NodeMappingStatusTitle", "Node Mapping Status"))
+				.InitiallyCollapsed(true)
+				.BodyContent()
+				[
+					SNew(SListView<TSharedPtr<FNodeStatusItem>>)
+					.ListItemsSource(&NodeStatusItems)
+					.ItemHeight(22)
+					.OnGenerateRow_Lambda([JointManagerHandle](TSharedPtr<FNodeStatusItem> InItem, const TSharedRef<STableViewBase>& Owner)
+					{
+						return SNew(STableRow<TSharedPtr<FNodeStatusItem>>, Owner)
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot()
+								.FillWidth(0.4f)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(InItem->Key))
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(InItem->Guid.ToString()))
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Left)
+								[
+									SNew(SJointOutlineButton)
+									.NormalColor(FLinearColor::Transparent)
+									.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+									.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+									.OutlineNormalColor(FLinearColor::Transparent)
+									.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+									.ContentPadding(FJointEditorStyle::Margin_Tiny)
+									.ToolTipText(LOCTEXT("GoToButtonToolTip", "Go to this node in the Joint Manager's graph"))
+									.IsEnabled(InItem->bExistsInGraph)
+									.OnClicked_Lambda([InItem, JointManagerHandle]()
+									{
+										UObject* JointManagerObj = nullptr;
+										JointManagerHandle->GetValue(JointManagerObj);
+
+										UJointManager* JM = Cast<UJointManager>(JointManagerObj);
+										if (!JM)
+										{
+											FJointEdUtils::FireNotification(
+												LOCTEXT("GoToNodeFailedTitle", "Go To Node Failed"),
+												LOCTEXT("GoToNodeFailedDesc", "Unable to retrieve the Joint Manager reference."),
+												EJointMDAdmonitionType::Error
+											);
+											return FReply::Handled();
+										}
+
+										FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JM, true, true);
+
+										if (Toolkit)
+										{
+											Toolkit->JumpToNodeGuid(InItem->Guid);
+										}
+
+										return FReply::Handled();
+									})
+									[
+										SNew(SImage)
+										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.ArrowRight"))
+										.DesiredSizeOverride(FVector2D(16, 16))
+										.ColorAndOpacity(FLinearColor::White)
+									]
+								]
+								+ SHorizontalBox::Slot()
+								.AutoWidth()
+								.HAlign(HAlign_Right)
+								.VAlign(VAlign_Center)
+								[
+									SNew(SImage)
+									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush(InItem->bExistsInGraph ? "Icons.Check" : "Icons.Error"))
+									.ColorAndOpacity(InItem->bExistsInGraph ? FLinearColor::Green : FLinearColor::Red)
+									.ToolTipText(
+										InItem->bExistsInGraph ? LOCTEXT("NodeExistsToolTip", "This node exists in the Joint Manager's graph.") : LOCTEXT("NodeMissingToolTip", "This node is missing from the Joint Manager's graph."))
+									.DesiredSizeOverride(FVector2D(12, 12))
+								]
+							];
+					})
+				]
+
+			]
+		];
+}
+
+void FJointScriptLinkerMappingCustomization::CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	//StructPropertyHandle->AddChildStructure();
+
+	// Store the struct property handle for later use
+	ThisStructPropertyHandle = StructPropertyHandle;
+	HeaderRowPtr = &HeaderRow;
+
+	CleanUp();
+
+	BuildNodeStatusItems();
+
+	if (HeaderRowPtr)
+	{
+		HeaderRowPtr->WholeRowContent()
+		[
+			SAssignNew(BodyBorder, SJointOutlineBorder)
+			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
+			.ContentPadding(FJointEditorStyle::Margin_Large)
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			[
+				CreateContentWidget()
+			]
+		];
+	}
+
+	BuildFilterString();
+}
+
+
+void FJointScriptLinkerMappingCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
+{
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager)).ToSharedRef()).IsEnabled(false);
+	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings)).ToSharedRef()).IsEnabled(false);
+}
+
+void FJointScriptLinkerMappingCustomization::CleanUp()
+{
+	NodeStatusItems.Reset();
+}
+
+FReply FJointScriptLinkerMappingCustomization::OnReallocateButtonPressed()
+{
+	if (!ThisStructPropertyHandle) return FReply::Handled();
+
+	//array
+	TArray<TSharedPtr<FCandidateItem>> Items;
+
+	// Get the child handle for JointManager and NodeMappings (if present)
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+	TSharedPtr<IPropertyHandle> NodeMappingsHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings));
+
+
+	// Gather candidate JointManager assets via Asset Registry (best-effort).
+	TArray<UJointManager*> CandidateManagers;
+	{
+		// Try Asset Registry first (falls back gracefully if module not available)
+		bool bFoundAny = false;
+		if (FModuleManager::Get().IsModuleLoaded("AssetRegistry"))
+		{
+			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+			TArray<FAssetData> AssetDataList;
+			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetDataList);
+
+			for (const FAssetData& AD : AssetDataList)
+			{
+				UObject* Obj = AD.GetAsset();
+				if (UJointManager* JM = Cast<UJointManager>(Obj))
+				{
+					CandidateManagers.Add(JM);
+				}
+			}
+			bFoundAny = AssetDataList.Num() > 0;
+		}
+	}
+
+	// collect node id from the mapping to compare with candidate Joint Managers' mappings for display purposes
+	// TMap<FString, FJointScriptLinkerNodeSet> NodeMappings;
+	TSet<FGuid> RecognizedNodeIDs;
+	if (NodeMappingsHandle.IsValid())
+	{
+		TSharedPtr<IPropertyHandleMap> MapHandle;
+		FMapProperty* MapProperty;
+		void* MapContainer;
+		FScriptMapHelper MapHelper = GetMapHelpers(NodeMappingsHandle, MapProperty, MapContainer);
+
+		for (int32 Index = 0; Index < MapHelper.GetMaxIndex(); ++Index)
+		{
+			if (!MapHelper.IsValidIndex(Index)) continue;
+
+			FJointScriptLinkerNodeSet Value;
+			MapProperty->ValueProp->CopyCompleteValue(&Value, MapHelper.GetValuePtr(Index));
+
+			for (const FGuid& Guid : Value.NodeGuids)
+			{
+				RecognizedNodeIDs.Add(Guid);
+			}
+		}
+	}
+
+
+	for (auto& JMRef : CandidateManagers)
+	{
+		UJointManager* JM = JMRef;
+		if (!JM) continue;
+
+		FString Name = JM->GetName();
+		FString Path = JM->GetPathName();
+		int32 MatchingNodeCount = 0;
+
+		// iterate through the Joint Manager's NodeMappings and count how many entries match the recognized node IDs from the current mapping
+
+		TSet<FGuid> CandidateNodeIDs;
+		JointScriptLinkerCustomizationHelpers::GetAllNodeGuidsFromJointManager(JM, CandidateNodeIDs);
+
+		for (const FGuid& CandidateNodeID : CandidateNodeIDs)
+		{
+			if (!RecognizedNodeIDs.Contains(CandidateNodeID)) continue;
+
+			MatchingNodeCount++;
+		}
+
+		// Display the mapping entries count as a heuristic for resolvable nodes
+		TSharedPtr<FCandidateItem> Item = MakeShared<FCandidateItem>();
+		Item->Manager = JM;
+		Item->Name = Name;
+		Item->Path = Path;
+		Item->MatchingNodeCount = MatchingNodeCount;
+		Items.Add(Item);
+	}
+
+	// If no candidates, notify and return
+	if (Items.Num() == 0)
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("NoCandidateManagersTitle", "No Candidate Joint Managers Found"),
+			LOCTEXT("NoCandidateManagersDesc", "No Joint Manager assets were found in the project. Please create a Joint Manager asset before reallocating."),
+			EJointMDAdmonitionType::Warning
+		);
+	}
+
+	//sort candidates by number of matching nodes.
+	Items.Sort([&](const TSharedPtr<FCandidateItem>& A, const TSharedPtr<FCandidateItem>& B)
+	{
+		int32 Result = 0;
+
+		Result = A->MatchingNodeCount - B->MatchingNodeCount;
+
+		return Result > 0;
+	});
+
+
+	// Create a simple modal window with a list and OK/Cancel
+	ReallocationWindow = SNew(SWindow)
+		.Title(LOCTEXT("ReallocateJointManager_Title", "Reallocate Joint Manager"))
+		.ClientSize(FVector2D(1200, 800))
+		.SupportsMinimize(false)
+		.SupportsMaximize(false)
+		.FocusWhenFirstShown(true);
+
+	// List view widget
+	ReallocationWindow->SetContent(
+		SNew(SReallocationPopup)
+		.CandidateItems(Items)
+		.ParentWindow(ReallocationWindow)
+		.JointManagerHandle(JointManagerHandle)
+		.ParentCustomizationPtr(SharedThis(this))
+	);
+
+
+	// Show modal
+	FSlateApplication::Get().AddWindow(ReallocationWindow.ToSharedRef(), true);
+
+	return FReply::Handled();
+}
+
+FReply FJointScriptLinkerMappingCustomization::OnReimportButtonPressed()
+{
+	if (!ThisStructPropertyHandle) return FReply::Handled();
+
+	//check if we have a valid Joint Manager reference. If not, fire a notification and return handled.
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+	UObject* JointManagerObj = nullptr;
+	JointManagerHandle->GetValue(JointManagerObj);
+
+	//Get the parent struct property handle and get FJointScriptLinkerDataElement from it, then get the file path and reimport to the Joint Manager in this mapping only.
+	//ParentStructHandle will refer 'ScriptLinkData->ScriptLinks[i]->Mappings'
+	TSharedPtr<IPropertyHandle> ParentStructHandle = ThisStructPropertyHandle->GetParentHandle();
+	if (!ParentStructHandle) return FReply::Handled();
+
+	//ParentStructHandle will now refer to 'ScriptLinkData->ScriptLinks[i]'
+	ParentStructHandle = ParentStructHandle->GetParentHandle();
+	if (!ParentStructHandle) return FReply::Handled();
+
+	TSharedPtr<IPropertyHandle> FileEntryHandle = ParentStructHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, FileEntry));
+	if (!FileEntryHandle) return FReply::Handled();
+
+
+	TSharedPtr<IPropertyHandle> ParserDataHandle = ParentStructHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, ParserData));
+	TSharedPtr<IPropertyHandle> ParserData_ScriptParser = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ScriptParser));
+
+
+	if (!ParserData_ScriptParser) return FReply::Handled();
+
+	TSharedPtr<IPropertyHandle> FilePathHandle = FileEntryHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+	if (!FilePathHandle) return FReply::Handled();
+
+	//get class from ParserData_ScriptParser
+	UClass* ScriptParserClass = nullptr;
+	FString SoftClassPath;
+	ParserData_ScriptParser->GetValueAsFormattedString(SoftClassPath);
+
+
+	FSoftClassPath SoftClassPathObj(SoftClassPath);
+	if (SoftClassPathObj.IsValid())
+	{
+		ScriptParserClass = Cast<UClass>(SoftClassPathObj.TryLoad());
+	}
+
+	FString FilePathString;
+	FilePathHandle->GetValueAsFormattedString(FilePathString);
+
+
+	FScopedTransaction ReimportTransaction(LOCTEXT("ReimportJointManagersTransaction", "Re-import Joint Managers from external files"));
+
+	UJointScriptSettings::Get()->Modify();
+
+	// Create a simple modal window with a list and OK/Cancel
+	TSharedPtr<SWindow> ImportWindow = SNew(SWindow)
+		.Title(LOCTEXT("ImportJointManagerWindowTitle", "Import Joint Manager"))
+		.ClientSize(FVector2D(1200, 800))
+		.SupportsMinimize(false)
+		.SupportsMaximize(false)
+		.FocusWhenFirstShown(true);
+
+	// List view widget
+	ImportWindow->SetContent(
+		SNew(SJointManagerImportingPopup)
+		.bIsReimporting(true)
+		.OptionalJointManagerToImport(JointManagerObj)
+		.InitiallySelectedParserClass(ScriptParserClass)
+		.InitialImportMode(SJointManagerImportingPopup::EJointImportMode::ToSpecifiedJointManager)
+		.ExternalFilePaths(TArray<FString>{FilePathString})
+		.ParentWindow(ImportWindow)
+	);
+
+	// Show the window modally
+	FSlateApplication::Get().AddModalWindow(ImportWindow.ToSharedRef(), nullptr);
+
+	UJointScriptSettings::Save();
+
+	RefreshVisual();
+
+	return FReply::Handled();
+}
+
+FReply FJointScriptLinkerMappingCustomization::OnQuickReimportButtonPressed()
+{
+	if (!ThisStructPropertyHandle) return FReply::Handled();
+
+	//check if we have a valid Joint Manager reference. If not, fire a notification and return handled.
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+
+	UObject* JointManagerObj = nullptr;
+	JointManagerHandle->GetValue(JointManagerObj);
+
+	if (JointManagerObj == nullptr)
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("QuickReimportFileFailedTitle_NullJointManager", "Quick Reimport File Skipped"),
+			LOCTEXT("QuickReimportFileFailedDesc_NullJointManager", "Joint Manager reference is null. Please assign a valid Joint Manager before reimporting."),
+			EJointMDAdmonitionType::Warning
+		);
+
+		return FReply::Handled();
+	}
+
+
+	//Get the parent struct property handle and get FJointScriptLinkerDataElement from it, then get the file path and reimport to the Joint Manager in this mapping only.
+	//ParentStructHandle will refer 'ScriptLinkData->ScriptLinks[i]->Mappings'
+	TSharedPtr<IPropertyHandle> ParentStructHandle = ThisStructPropertyHandle->GetParentHandle();
+	if (!ParentStructHandle) return FReply::Handled();
+
+	//ParentStructHandle will now refer to 'ScriptLinkData->ScriptLinks[i]'
+	ParentStructHandle = ParentStructHandle->GetParentHandle();
+	if (!ParentStructHandle) return FReply::Handled();
+
+	TSharedPtr<IPropertyHandle> FileEntryHandle = ParentStructHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, FileEntry));
+	if (!FileEntryHandle) return FReply::Handled();
+
+	TSharedPtr<IPropertyHandle> FilePathHandle = FileEntryHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+	if (!FilePathHandle) return FReply::Handled();
+
+	FString FilePathString;
+	FilePathHandle->GetValueAsFormattedString(FilePathString);
+
+	if (FilePathString.IsEmpty() || !FPaths::FileExists(FilePathString))
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("QuickReimportFileFailedTitle", "Quick Reimport File Failed"),
+			LOCTEXT("QuickReimportFileFailedDesc", "File path is empty or file does not exist at the specified path."),
+			EJointMDAdmonitionType::Error
+		);
+
+		return FReply::Handled();
+	}
+
+	//Check if the parent struct is valid and the struct is FJointScriptLinkerDataElement, if so call the reimport function in JointScriptLinkerCustomizationHelpers, if not return handled.
+	if (ParentStructHandle->GetProperty() && ParentStructHandle->GetProperty()->GetFName() == GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings))
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("QuickReimportFileFailedTitle_InvalidStruct", "Quick Reimport File Failed"),
+			LOCTEXT("QuickReimportFileFailedDesc_InvalidStruct", "Parent struct is not valid or is not of type FJointScriptLinkerDataElement."),
+			EJointMDAdmonitionType::Error
+		);
+	}
+
+	//FJointScriptLinkerDataElement is the parent struct of FJointScriptLinkerMapping, so we can call the reimport function in
+	JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement(
+		FilePathString,
+		ParentStructHandle);
+
+	RefreshVisual();
+
+	return FReply::Handled();
+}
+
+FReply FJointScriptLinkerMappingCustomization::OnCleanAllButtonClicked()
+{
+	// it will simply just empty the NodeMappings map in this mapping, which will effectively clean all node mappings. The user can then reassign nodes manually or reimport to repopulate the mappings.
+
+	if (!ThisStructPropertyHandle) return FReply::Handled();
+
+	// ask if the user is sure about this action with a confirmation dialog, as this cannot be undone.
+	EAppReturnType::Type Result = FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		LOCTEXT("CleanAllMappingsConfirmationDesc", "Are you sure you want to clean all node mappings for this mapping? You can undo (ctrl + z) or reimport to repopulate the mappings if needed.")
+	);
+
+	if (Result != EAppReturnType::Yes)
+	{
+		return FReply::Handled();
+	}
+
+	// ask if the user want to remove the nodes from the graph as well, which will permanently remove the nodes and cannot be undone.
+	EAppReturnType::Type RemoveNodesResult = FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		LOCTEXT("CleanAllMappingsRemoveNodesConfirmationDesc",
+		        "Do you also want to remove the linked nodes from the Joint Manager's graph? This will permanently remove the nodes and CANNOT be undone. You can manually add the nodes back in the Joint Manager's graph if needed.")
+	);
+
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+	UJointManager* JointManager = JointScriptLinkerCustomizationHelpers::LoadJointManager(JointManagerHandle);
+
+	FScopedTransaction Transaction(LOCTEXT("CleanAllMappingsTransaction", "Clean All Node Mappings"));
+	ThisStructPropertyHandle->NotifyPreChange();
+
+	TSharedPtr<IPropertyHandle> NodeMappingsHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings));
+
+	TArray<void*> RawData;
+	ThisStructPropertyHandle->AccessRawData(RawData);
+
+	for (void* RawPtr : RawData)
+	{
+		if (!RawPtr) continue;
+
+		FJointScriptLinkerMapping* Mapping = static_cast<FJointScriptLinkerMapping*>(RawPtr);
+
+		if (RemoveNodesResult == EAppReturnType::Yes)
+		{
+			for (TPair<FString, FJointScriptLinkerNodeSet>& NodeMapping : Mapping->NodeMappings)
+			{
+				FJointEdUtils::RemoveNodesWithGuid(JointManager, NodeMapping.Value.NodeGuids);
+			}
+		}
+
+		Mapping->NodeMappings.Empty();
+	}
+
+	ThisStructPropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
+	ThisStructPropertyHandle->NotifyFinishedChangingProperties();
+
+	//refresh the details panel to reflect the changes
+	RefreshVisual();
+
+	FJointEdUtils::FireNotification(
+		LOCTEXT("CleanAllMappingsSuccessTitle", "All Mappings Cleaned"),
+		LOCTEXT("CleanAllMappingsSuccessDesc", "All node mappings have been removed. Please reimport to repopulate the mappings if needed"),
+		EJointMDAdmonitionType::Mention
+	);
+
+	return FReply::Handled();
+}
+
+FReply FJointScriptLinkerMappingCustomization::OnCleanInvalidButtonClicked()
+{
+	// iterate through the NodeMappings and check if the node guids exist in the Joint Manager's graph. If not, remove those entries from the map.
+	if (!ThisStructPropertyHandle) return FReply::Handled();
+
+	// ask if the user is sure about this action with a confirmation dialog, as this cannot be undone.
+	EAppReturnType::Type Result = FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		LOCTEXT("CleanInvalidMappingsConfirmationDesc",
+		        "Are you sure you want to clean invalid node mappings for this mapping? This will remove any node mappings that do not exist in the Joint Manager's graph. You can undo (ctrl + z) if needed.")
+	);
+
+	if (Result != EAppReturnType::Yes)
+	{
+		return FReply::Handled();
+	}
+
+	FScopedTransaction Transaction(LOCTEXT("CleanInvalidMappingsTransaction", "Clean Invalid Node Mappings"));
+
+	TSharedPtr<IPropertyHandle> NodeMappingsHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings));
+
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(
+		GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+
+	UJointManager* JointManager = JointScriptLinkerCustomizationHelpers::LoadJointManager(JointManagerHandle);
+
+	if (!JointManager)
+	{
+		FJointEdUtils::FireNotification(
+			LOCTEXT("CleanInvalidMappingsFailedTitle", "Clean Invalid Mappings Failed"),
+			LOCTEXT("CleanInvalidMappingsFailedDesc", "Failed to load Joint Manager reference. Please ensure the reference is valid and try again."),
+			EJointMDAdmonitionType::Error
+		);
+		return FReply::Handled();
+	}
+
+	TSet<FGuid> JointManagerNodeGuids;
+	JointScriptLinkerCustomizationHelpers::GetAllNodeGuidsFromJointManager(JointManager, JointManagerNodeGuids);
+
+	ThisStructPropertyHandle->NotifyPreChange();
+
+	TArray<void*> RawData;
+	ThisStructPropertyHandle->AccessRawData(RawData);
+
+	for (void* RawPtr : RawData)
+	{
+		if (!RawPtr) continue;
+
+		FJointScriptLinkerMapping* Mapping =
+			static_cast<FJointScriptLinkerMapping*>(RawPtr);
+
+		for (auto MapIt = Mapping->NodeMappings.CreateIterator(); MapIt; ++MapIt)
+		{
+			FJointScriptLinkerNodeSet& NodeSet = MapIt.Value();
+
+			for (int32 i = NodeSet.NodeGuids.Num() - 1; i >= 0; --i)
+			{
+				if (!JointManagerNodeGuids.Contains(NodeSet.NodeGuids[i]))
+				{
+					NodeSet.NodeGuids.RemoveAt(i);
+				}
+			}
+		}
+	}
+
+	ThisStructPropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
+	ThisStructPropertyHandle->NotifyFinishedChangingProperties();
+
+	FJointEdUtils::FireNotification(
+		LOCTEXT("CleanInvalidMappingsSuccessTitle", "Invalid Mappings Cleaned"),
+		LOCTEXT("CleanInvalidMappingsSuccessDesc", "All invalid node mappings have been removed. Please verify the remaining mappings in the Joint Manager asset."),
+		EJointMDAdmonitionType::Mention
+	);
+
+	//refresh the details panel to reflect the changes
+	RefreshVisual();
+
+	return FReply::Handled();
+}
+
+void FJointScriptLinkerMappingCustomization::RefreshVisual()
+{
+	BuildNodeStatusItems();
+
+	if (BodyBorder.IsValid()) BodyBorder->SetContent(CreateContentWidget());
+
+	BuildFilterString();
+}
+
+
+void FJointScriptLinkerMappingCustomization::BuildNodeStatusItems()
+{
+	TSharedPtr<IPropertyHandle> JointManagerHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+	TSharedPtr<IPropertyHandle> NodeMappingsHandle = ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings));
+
+	//Clear existing items first before rebuilding.
+	NodeStatusItems.Reset();
+
+	//JointManagerHandle refers TSoftObjectPtr<UJointManager>, so we need to get the reference first and resolve it to get the actual UJointManager object.
+	UJointManager* JM = JointScriptLinkerCustomizationHelpers::LoadJointManager(JointManagerHandle);
+
+	if (JM && NodeMappingsHandle.IsValid())
+	{
+		TSet<FGuid> ExistingNodeIDs;
+
+		JointScriptLinkerCustomizationHelpers::GetAllNodeGuidsFromJointManager(JM, ExistingNodeIDs);
+
+		TSharedPtr<IPropertyHandleMap> MapHandle;
+		FMapProperty* MapProperty;
+		void* MapContainer;
+		FScriptMapHelper MapHelper = GetMapHelpers(NodeMappingsHandle, MapProperty, MapContainer);
+
+
+		for (int32 Index = 0; Index < MapHelper.GetMaxIndex(); ++Index)
+		{
+			if (!MapHelper.IsValidIndex(Index)) continue;
+			FString Key;
+			MapProperty->KeyProp->CopyCompleteValue(&Key, MapHelper.GetKeyPtr(Index));
+
+			FJointScriptLinkerNodeSet Value;
+			MapProperty->ValueProp->CopyCompleteValue(&Value, MapHelper.GetValuePtr(Index));
+
+			for (const FGuid& Guid : Value.NodeGuids)
+			{
+				TSharedPtr<FNodeStatusItem> Item = MakeShared<FNodeStatusItem>();
+				Item->Key = Key;
+				Item->Guid = Guid;
+				Item->bExistsInGraph = ExistingNodeIDs.Contains(Guid);
+				NodeStatusItems.Add(Item);
+			}
+		}
+	}
+}
+
+void FJointScriptLinkerMappingCustomization::BuildFilterString()
+{
+	if (HeaderRowPtr)
+	{
+		FString JointManagerString;
+		ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager))->GetValueAsDisplayString(JointManagerString);
+		FString NodeMappingsString;
+		ThisStructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, NodeMappings))->GetValueAsDisplayString(NodeMappingsString);
+
+		// Set the filter string
+		const FString FilterString =
+			JointManagerString
+			+ TEXT("|") // separator for better readability in filter results
+			+ NodeMappingsString
+			+ TEXT("|")
+			+ LOCTEXT("NodeMappingsFilterStringSuffix", "Node Mappings").ToString();
+
+		HeaderRowPtr->FilterString(
+			FText::FromString(FilterString)
+		);
+	}
+}
+
+FScriptMapHelper FJointScriptLinkerMappingCustomization::GetMapHelpers(
+	TSharedPtr<IPropertyHandle> InNodeMappingsHandle,
+	FMapProperty*& OutMapProp,
+	void*& OutMapContainer)
+{
+	if (InNodeMappingsHandle.IsValid())
+	{
+		OutMapProp = CastFieldChecked<FMapProperty>(InNodeMappingsHandle->GetProperty());
+
+		InNodeMappingsHandle->GetValueData(OutMapContainer);
+
+		if (OutMapContainer)
+		{
+			return FScriptMapHelper(OutMapProp, OutMapContainer);
+		}
+	}
+
+	return FScriptMapHelper(nullptr, nullptr);
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -34,18 +34,7 @@ void SJointGraphPreviewer::Construct(const FArguments& InArgs, UEdGraph* InGraph
 
 	if (EdGraphObj)
 	{
-		this->ChildSlot
-		[
-			SAssignNew(GraphPanel, SJointGraphPanel,
-				SGraphPanel::FArguments()
-				.GraphObj( EdGraphObj )
-				.InitialZoomToFit(true)
-				.DisplayAsReadOnly(true)
-				.ShowGraphStateOverlay(false)
-				.Clipping(EWidgetClipping::Inherit)
-			)
-			.Clipping(EWidgetClipping::Inherit)
-		];
+		BuildGraphWidget();
 		
 		if (GraphPanel.IsValid()){
 			GraphPanel.Pin()->Update();
@@ -67,6 +56,33 @@ void SJointGraphPreviewer::Construct(const FArguments& InArgs, UEdGraph* InGraph
 TWeakPtr<SJointGraphPanel> SJointGraphPreviewer::GetGraphPanel() const
 {
 	return GraphPanel;
+}
+
+void SJointGraphPreviewer::BuildGraphWidget()
+{
+	this->ChildSlot
+	[
+		SAssignNew(GraphPanel, SJointGraphPanel,
+		           SGraphPanel::FArguments()
+		           .GraphObj( EdGraphObj )
+		           .InitialZoomToFit(true)
+		           .DisplayAsReadOnly(true)
+		           .ShowGraphStateOverlay(false)
+		           .Clipping(EWidgetClipping::Inherit)
+		)
+		.Clipping(EWidgetClipping::Inherit)
+	];
+}
+
+void SJointGraphPreviewer::SetGraph(UEdGraph* InGraphObj)
+{
+	EdGraphObj = InGraphObj;
+
+	BuildGraphWidget();
+	
+	if (GraphPanel.IsValid()){
+		GraphPanel.Pin()->Update();
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

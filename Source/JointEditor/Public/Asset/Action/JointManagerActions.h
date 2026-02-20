@@ -9,6 +9,7 @@
  */
 class JOINTEDITOR_API FJointManagerActions : public FAssetTypeActions_Base
 {
+
 public:
 
 	/**
@@ -26,6 +27,7 @@ public:
 	virtual FColor GetTypeColor() const override;
 	virtual bool HasActions(const TArray<UObject*>& InObjects) const override;
 	virtual void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor) override;
+	virtual TSharedPtr<class SWidget> GetThumbnailOverlay(const FAssetData& AssetData) const override;
 	
 public:
 	

@@ -13,8 +13,13 @@
 
 UJointManager::UJointManager()
 {
-	
 }
+
+void UJointManager::BeginDestroy()
+{
+	UObject::BeginDestroy();
+}
+
 
 AJointActor* UJointManager::GetHostingJointActor() const
 {
@@ -28,7 +33,7 @@ UJointNodeBase* UJointManager::FindBaseNodeWithGuid(FGuid NodeGuid) const
 	{
 		if (Node == nullptr) continue;
 
-		if (Node->NodeGuid == NodeGuid) return Node;
+		if (Node->GetNodeGuid() == NodeGuid) return Node;
 	}
 
 	return nullptr;
@@ -43,7 +48,7 @@ UJointFragment* UJointManager::FindFragmentWithGuid(FGuid NodeGuid) const
 	{
 		if (ManagerFragment == nullptr) continue;
 
-		if (ManagerFragment->NodeGuid == NodeGuid) return ManagerFragment;
+		if (ManagerFragment->GetNodeGuid() == NodeGuid) return ManagerFragment;
 	}
 
 	for (UJointNodeBase* Node : Nodes)
@@ -56,7 +61,7 @@ UJointFragment* UJointManager::FindFragmentWithGuid(FGuid NodeGuid) const
 		{
 			if (SubNode == nullptr) continue;
 
-			if (SubNode->NodeGuid == NodeGuid) return SubNode;
+			if (SubNode->GetNodeGuid() == NodeGuid) return SubNode;
 		}
 	}
 
@@ -352,6 +357,32 @@ TArray<UJointFragment*> UJointManager::FindManagerFragmentsWithAllTagsOnLowerHie
 	return OutFragments;
 }
 
+UJointFragment* UJointManager::FindManagerFragmentWithGuidOnLowerHierarchy(const FGuid Guid) const
+{
+	for (UJointNodeBase* ManagerFragment : ManagerFragments)
+	{
+		if(!ManagerFragment) continue;
+
+		TArray<UJointFragment*> IterFragments;
+
+		if(UJointFragment* CastedManagerFragment = Cast<UJointFragment>(ManagerFragment))
+		{
+			IterFragments.Add(CastedManagerFragment);
+		}
+
+		UJointNodeBase::IterateAndCollectAllFragmentsUnderNode(ManagerFragment, IterFragments, nullptr);
+
+		for (UJointFragment* IterFragment : IterFragments)
+		{
+			if (IterFragment == nullptr) continue;
+
+			if (IterFragment->GetNodeGuid() == Guid) return IterFragment;
+		}
+	}
+
+	return nullptr;
+}
+
 UJointFragment* UJointManager::FindManagerFragmentWithTag(FGameplayTag InNodeTag, const bool bExact)
 {
 	for (UJointNodeBase* ManagerFragment : ManagerFragments)
@@ -452,11 +483,27 @@ TArray<UJointFragment*> UJointManager::FindManagerFragmentsWithAllTags(FGameplay
 	return OutFragments;
 }
 
+UJointFragment* UJointManager::FindManagerFragmentWithGuid(const FGuid Guid) const
+{
+	for (UJointNodeBase* ManagerFragment : ManagerFragments)
+	{
+		if (ManagerFragment == nullptr) continue;
+
+		if (ManagerFragment->GetNodeGuid() == Guid)
+		{
+			return Cast<UJointFragment>(ManagerFragment);
+		}
+	}
+
+	return nullptr;
+}
+
 
 #if WITH_EDITOR
 
 void UJointManager::PreEditChange(FProperty* PropertyAboutToChange)
 {
+	
 	Super::PreEditChange(PropertyAboutToChange);
 
 	ensure(this);
@@ -472,6 +519,7 @@ void UJointManager::PreEditChange(FProperty* PropertyAboutToChange)
 
 void UJointManager::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
+	
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	ensure(this);
@@ -527,4 +575,5 @@ UWorld* UJointManager::GetWorld() const
 void UJointManager::Serialize(FArchive& Ar)
 {
 	UObject::Serialize(Ar);
+	
 }

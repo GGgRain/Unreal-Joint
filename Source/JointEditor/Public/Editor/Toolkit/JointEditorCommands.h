@@ -56,6 +56,14 @@ public:
 	TSharedPtr<FUICommandInfo> DissolveOnlySubNodesIntoParentNode;
 
 	TSharedPtr<FUICommandInfo> SolidifySubNodesFromParentNode;
+	
+public:
+	
+	TSharedPtr<FUICommandInfo> CreateNodePresetFromSelectedBaseNode;
+
+public:
+	
+	TSharedPtr<FUICommandInfo> UnlinkScriptFromSelectedNodes;
 
 public:
 
@@ -68,10 +76,6 @@ public:
 public:
 
 	TSharedPtr<FUICommandInfo> DeleteEntry;
-	
-public:
-	
-	TSharedPtr<FUICommandInfo> CreateJointNodePresetFromSelection;
 
 private:
 	

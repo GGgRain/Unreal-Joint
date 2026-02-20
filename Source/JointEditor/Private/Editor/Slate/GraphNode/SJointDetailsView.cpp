@@ -21,11 +21,17 @@ SJointDetailsView::SJointDetailsView()
 
 SJointDetailsView::~SJointDetailsView()
 {
+	OwnerGraphNode.Reset();
+	
+	if (JointRetainerWidget.IsValid())
+	{
+		// we have to detach the detail view from the retainer widget before we reset it, otherwise it can cause issues with garbage collection and memory leaks.
+		JointRetainerWidget.Pin()->GetChildSlot().DetachWidget();
+	}
+	
+	DetailViewWidget.Reset();
 	JointRetainerWidget.Reset();
 
-	OwnerGraphNode.Reset();
-	DetailViewWidget.Reset();
-	
 	Object = nullptr;
 	EdNode = nullptr;
 
@@ -145,8 +151,6 @@ EActiveTimerReturnType SJointDetailsView::InitializationTimer(double InCurrentTi
 				
 				ThisPtr->JointRetainerWidget.Pin()->GetChildSlot().AttachWidget(View);
 				
-				//ThisPtr->ChildSlot.AttachWidget(ThisPtr->DetailViewWidget.ToSharedRef());
-
 				ThisPtr->bInitializing = false;
 				ThisPtr->bInitialized = true;
 			}

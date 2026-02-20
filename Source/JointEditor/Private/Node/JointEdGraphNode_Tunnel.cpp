@@ -20,7 +20,7 @@
 
 UJointEdGraphNode_Tunnel::UJointEdGraphNode_Tunnel()
 {
-	bIsNodeResizeable = false;
+	DefaultEdNodeSetting.bIsNodeResizeable = false;
 
 	bCanRenameNode = false;
 }

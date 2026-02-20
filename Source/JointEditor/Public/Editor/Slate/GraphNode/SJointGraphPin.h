@@ -39,7 +39,7 @@ public:
 
 public:
 
-	TSharedPtr<STextBlock> TextBlock;
+	TWeakPtr<STextBlock> TextBlock;
 	
 public:
 	

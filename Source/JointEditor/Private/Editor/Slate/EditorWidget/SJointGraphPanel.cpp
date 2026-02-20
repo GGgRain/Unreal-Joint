@@ -44,6 +44,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogGraphPanel, Log, All);
 void SJointGraphPanel::Construct(const SJointGraphPanel::FArguments& InArgs)
 {
 	Joint_DisplayAsReadOnly = InArgs._DisplayAsReadOnly;
+	IsInPreviewModeAttr = InArgs._IsInPreviewMode;
 
 	const SGraphPanel::FArguments& NestedArgs = SGraphPanel::FArguments()
 		.OnGetContextMenuFor(InArgs._OnGetContextMenuFor)
@@ -360,7 +361,7 @@ void SJointGraphPanel::PaintBackground(const FSlateBrush* BackgroundImage, const
 		DrawLayerId,
 		AllottedGeometry.ToPaintGeometry(),
 		BackgroundImage,
-		ESlateDrawEffect::NoGamma | ESlateDrawEffect::NoPixelSnapping,
+		ESlateDrawEffect::NoPixelSnapping, //ESlateDrawEffect::NoGamma | ESlateDrawEffect::NoPixelSnapping,
 		GraphBackGroundImageColor
 	);
 
@@ -1416,4 +1417,9 @@ void SJointGraphPanel::Joint_OnSplineHoverStateChanged(const FGraphSplineOverlap
 			TimeWhenMouseEnteredPin -= 0.75f;
 		}
 	}
+}
+
+bool SJointGraphPanel::IsInPreviewMode() const
+{
+	return IsInPreviewModeAttr.Get();
 }

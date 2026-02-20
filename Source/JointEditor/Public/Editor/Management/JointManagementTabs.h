@@ -42,12 +42,12 @@ public:
 };
 
 
-class JOINTEDITOR_API FJointManagementTab_JointEditorExportingImportingTab : public IJointManagementSubTab
+class JOINTEDITOR_API FJointManagementTab_JointEditorScriptLinkerTab : public IJointManagementSubTab
 {
 public:
-	FJointManagementTab_JointEditorExportingImportingTab();
+	FJointManagementTab_JointEditorScriptLinkerTab();
 
-	virtual ~FJointManagementTab_JointEditorExportingImportingTab() override;
+	virtual ~FJointManagementTab_JointEditorScriptLinkerTab() override;
 
 public:
 	static TSharedRef<IJointManagementSubTab> MakeInstance();
@@ -109,10 +109,10 @@ public:
 /**
  * Content widget for the FJointManagementTab_JointEditorUtilityTab. it's just a pure slate. make something like this for your own extension.
  */
-class JOINTEDITOR_API SJointEditorExportingImportingTab : public SCompoundWidget
+class JOINTEDITOR_API SJointEditorScriptLinkerTab : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SJointEditorExportingImportingTab)
+	SLATE_BEGIN_ARGS(SJointEditorScriptLinkerTab)
 	{
 	}
 
@@ -123,7 +123,12 @@ public:
 public:
 	
 	FReply ImportJointManager();
+	FReply ReimportFiles();
 
+public:
+
+	TSharedPtr<IDetailsView> DetailsView;
+	
 };
 
 
@@ -252,7 +257,7 @@ public:
 		{
 		}
 
-		SLATE_ARGUMENT(FJointGraphNodeClassData, ClassData)
+		SLATE_ARGUMENT(FJointSharedClassData, ClassData)
 		SLATE_ARGUMENT(TSharedPtr<SJointEditorTap_MissingClassesMap>, Owner)
 	SLATE_END_ARGS();
 
@@ -267,7 +272,7 @@ public:
 	FReply Apply();
 
 public:
-	FJointGraphNodeClassData ClassData;
+	FJointSharedClassData ClassData;
 
 	TSubclassOf<UJointNodeBase> SelectedClass;
 

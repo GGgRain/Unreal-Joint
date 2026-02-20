@@ -298,6 +298,12 @@ UJointNodeBase* UJointFunctionLibrary::GetCorrespondingJointNodeForJointManager(
 	return nullptr;
 }
 
+
+const bool UJointFunctionLibrary::IsPinDataNull(const FJointEdPinData& PinDataToCheck)
+{
+	return PinDataToCheck.IsNull();
+}
+
 bool UJointFunctionLibrary::DoesClassImplementInterface(TSubclassOf<UObject> ClassToCheck, TSubclassOf<UInterface> InterfaceToCheck)
 {
 	if (!ClassToCheck || !InterfaceToCheck) return false;

@@ -15,6 +15,7 @@
 
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
+#include "JointEditorToolkitToastMessages.h"
 #include "SGraphPanel.h"
 
 #include "Engine/Engine.h"
@@ -81,8 +82,8 @@ int32 SJointGraphNodeSubNodeBase::OnPaint(const FPaintArgs& Args, const FGeometr
 			if (GetCastedGraphNode()
 				&& GetCastedGraphNode()->GetCastedGraph()
 				&& GetCastedGraphNode()->GetCastedGraph()->GetToolkit().IsValid())
-				GetCastedGraphNode()->GetCastedGraph()->GetToolkit().Pin()->PopulateNeedReopeningToastMessage();
-
+				JointEditorToolkitToastMessages::PopulateNeedReopeningToastMessage(GetCastedGraphNode()->GetCastedGraph()->GetToolkit());
+			
 			return LayerId;
 		}
 	}
@@ -142,6 +143,7 @@ TSharedRef<SWidget> SJointGraphNodeSubNodeBase::CreateNodeContentArea()
 		[
 			// RIGHT
 			SAssignNew(CenterContentBox, SVerticalBox)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		];
 }
 
@@ -252,6 +254,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
+					.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 					.Visibility(EVisibility::SelfHitTestInvisible)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -307,6 +310,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
+					.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 					.Visibility(EVisibility::SelfHitTestInvisible)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -382,6 +386,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 				.Padding(ContentPadding)
 				[
 					SAssignNew(CenterWholeBox, SVerticalBox)
+					.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 					.Visibility(EVisibility::SelfHitTestInvisible)
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -453,6 +458,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 		case EJointEdSlateDetailLevel::SlateDetailLevel_Stow:
 
 			SAssignNew(CenterWholeBox, SVerticalBox)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -484,6 +490,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 		case EJointEdSlateDetailLevel::SlateDetailLevel_Minimal_Content:
 
 			SAssignNew(CenterWholeBox, SVerticalBox)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -523,6 +530,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 		case EJointEdSlateDetailLevel::SlateDetailLevel_Maximum:
 
 			SAssignNew(CenterWholeBox, SVerticalBox)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 			.Visibility(EVisibility::SelfHitTestInvisible)
 			+ SVerticalBox::Slot()
 			.AutoHeight()

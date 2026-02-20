@@ -131,6 +131,7 @@ void SJointGraphNodeBase::Construct(const FArguments& InArgs, UEdGraphNode* InNo
 
 SJointGraphNodeBase::~SJointGraphNodeBase()
 {
+	ClearSlates();
 }
 
 void SJointGraphNodeBase::InitializeSlate()
@@ -141,6 +142,9 @@ void SJointGraphNodeBase::InitializeSlate()
 
 TSharedRef<SWidget> SJointGraphNodeBase::PopulateSimpleDisplayForProperties()
 {
+	//check if the parent graph panel is on preview mode. If so, we don't populate the simple display section for properties, as it is used for debugging and previewing purposes, not for editing.
+	//CHECK THE ACTUAL parent of the widget on the layout. it's because we reuse this widget for both the actual graph node and the preview graph node.
+		
 	if (UJointEdGraphNode* InGraphNode = GetCastedGraphNode())
 	{
 		if (UJointNodeBase* InNodeInstance = InGraphNode->GetCastedNodeInstance())
@@ -437,10 +441,12 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	UpdateErrorInfo();
 
 	SAssignNew(LeftNodeBox, SVerticalBox)
-	.Visibility(EVisibility::SelfHitTestInvisible);
+	.Visibility(EVisibility::SelfHitTestInvisible)
+	.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable);
 
 	SAssignNew(RightNodeBox, SVerticalBox)
-	.Visibility(EVisibility::SelfHitTestInvisible);
+	.Visibility(EVisibility::SelfHitTestInvisible)
+	.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable);
 
 	
 	CreateNodeBody();
@@ -456,6 +462,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 	NodeBody->SetContent(
 		SNew(SOverlay)
 		.Visibility(EVisibility::SelfHitTestInvisible)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
@@ -687,6 +694,7 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 	NodeBackgroundOutBorderImage = OuterBorderImage;
 
 	return SAssignNew(NodeBackground, SJointOutlineBorder)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		.RenderTransformPivot(FVector2D(0.5))
 			//.Visibility(EVisibility::SelfHitTestInvisible)
 		.NormalColor(NormalColor)
@@ -1585,6 +1593,32 @@ void SJointGraphNodeBase::UpdateNameBox()
 				CreateDissolvedSubNodeIndication()
 			];
 		}
+		
+		
+		
+		
+		
+		
+		
+		// populate the imported indicator if needed.
+		if (ImportedIndicator)
+		{
+			NameBox->RemoveSlot(ImportedIndicator.ToSharedRef());
+		}
+		// Reset the imported indicator.
+		ImportedIndicator = nullptr;
+
+		if (CheckHasExternalLink())
+		{
+			NameBox->AddSlot()
+				   .AutoWidth()
+				   .HAlign(HAlign_Left)
+				   .VAlign(VAlign_Center)
+				   .Padding(FJointEditorStyle::Margin_Normal)
+			[
+				CreateImportedNodeIndication()
+			];
+		}
 	}
 }
 
@@ -2060,6 +2094,27 @@ void SJointGraphNodeBase::InitializeVoltVariables()
 	}
 }
 
+bool SJointGraphNodeBase::CheckHasExternalLink() const
+{
+	if (GetCastedGraphNode())
+	{
+		return GetCastedGraphNode()->IsLinkedWithExternalSource();
+	}
+	
+	return false;
+}
+
+bool SJointGraphNodeBase::IsNodeEditable() const
+{
+	bool bIsEditable = OwnerGraphPanelPtr.IsValid() ? OwnerGraphPanelPtr.Pin()->IsGraphEditable() : true;
+	return IsEditable.Get() && bIsEditable;
+}
+
+bool SJointGraphNodeBase::IsNodeNotEditable() const
+{
+	return !IsNodeEditable();
+}
+
 const FSlateBrush* SJointGraphNodeBase::GetShadowBrush(bool bSelected) const
 {
 	return FStyleDefaults::GetNoBrush();
@@ -2081,6 +2136,7 @@ BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterContentBox()
 {
 	return SAssignNew(CenterContentBox, SVerticalBox)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		.Visibility(EVisibility::SelfHitTestInvisible);
 }
 
@@ -2313,6 +2369,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterWholeBox()
 		                           : EVisibility::Collapsed;
 
 	SAssignNew(CenterWholeBox, SVerticalBox)
+	.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 	.Visibility(EVisibility::SelfHitTestInvisible)
 	+ SVerticalBox::Slot()
 	.AutoHeight()
@@ -2338,6 +2395,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateCenterWholeBox()
 		.Visibility(InVisibility)
 		.AllowOverscroll(EAllowOverscroll::Yes)
 		.AnimateWheelScrolling(true)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		+ SScrollBox::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
@@ -2422,6 +2480,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 	                                                                                                  IsNearlyZero() && IconBrush->DrawAs != ESlateBrushDrawType::NoDrawType)
 	{
 		SAssignNew(NameBox, SHorizontalBox)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		.Visibility(Node->GetShouldHideNameBox()
 			? EVisibility::Collapsed
 			: EVisibility::SelfHitTestInvisible)
@@ -2443,6 +2502,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		                 FJointEditorStyle::Margin_Large.Bottom))
 		[
 			SAssignNew(NodeTitleHintTextBlock, STextBlock)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 			.Visibility(NodeHintTextVisibility)
 			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
 			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
@@ -2455,6 +2515,8 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
+			.IsReadOnly(this , &SJointGraphNodeBase::IsNodeNotEditable)
 			.Visibility(NodeTitleVisibility)
 			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
 			.Text(GetGraphNodeName())
@@ -2467,6 +2529,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 	else
 	{
 		SAssignNew(NameBox, SHorizontalBox)
+		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 		.Visibility(Node->GetShouldHideNameBox()
 			? EVisibility::Collapsed
 			: EVisibility::SelfHitTestInvisible)
@@ -2489,6 +2552,8 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 		.Padding(FJointEditorStyle::Margin_Large)
 		[
 			SAssignNew(InlineEditableText, SInlineEditableTextBlock)
+			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
+			.IsReadOnly(this , &SJointGraphNodeBase::IsNodeNotEditable)
 			.Visibility(NodeTitleVisibility)
 			.Style(FJointEditorStyle::Get(), "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText")
 			.Text(GetGraphNodeName())
@@ -2538,6 +2603,32 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateDissolvedSubNodeIndication()
 	return DissolveIndicator.ToSharedRef();
 }
 
+TSharedRef<SWidget> SJointGraphNodeBase::CreateImportedNodeIndication()
+{
+	SAssignNew(ImportedIndicator, SHorizontalBox)
+	.Visibility(EVisibility::Visible)
+	.ToolTipText(
+		FText::Format(
+		LOCTEXT("ImportedIndicatorToolTip", "This node has a link with an external source. (e.g., JSON file, csv file).\nLinked File Name: {0}\nLinked File Source Path: {1}\nYou can edit node directly, but it is recommended to edit the external source file to keep consistency."),
+		FText::FromString(*GetCastedGraphNode()->GetExternalSourceEntry().FileName), 
+		FText::FromString(*GetCastedGraphNode()->GetExternalSourceEntry().FilePath)
+		)
+	)
+	+ SHorizontalBox::Slot()
+	.AutoWidth()
+	.HAlign(HAlign_Left)
+	.VAlign(VAlign_Center)
+	.Padding(FMargin(0))
+	[
+		SNew(SImage)
+		.Visibility(EVisibility::SelfHitTestInvisible)
+		.DesiredSizeOverride(FVector2D(12, 12))
+		.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Link"))
+	];
+
+	return ImportedIndicator.ToSharedRef();
+}
+
 TSharedRef<SWidget> SJointGraphNodeBase::CreateSubNodePanelSection()
 {
 	if (!SubNodePanel.IsValid()) PopulateSubNodePanel();
@@ -2581,6 +2672,7 @@ void SJointGraphNodeBase::PopulateSubNodePanel()
 		});
 
 	SAssignNew(SubNodePanel, SWrapBox)
+	.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 	.Visibility(EVisibility::SelfHitTestInvisible)
 	.Orientation(GetCastedGraphNode()->GetSubNodeBoxOrientation())
 	.PreferredSize(WrapRowSize_Attr);

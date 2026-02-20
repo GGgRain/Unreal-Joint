@@ -28,8 +28,10 @@ class JOINT_API UJointManager : public UObject
 	GENERATED_BODY()
 
 public:
+	
 	UJointManager();
 
+	virtual void BeginDestroy() override;
 public:
 	/**
 	 * The node that has been connected with the start pin of the Joint manager.
@@ -190,8 +192,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Fragment")
 	TArray<class UJointFragment*> FindManagerFragmentsWithAllTagsOnLowerHierarchy(FGameplayTagContainer InNodeTagContainer,
 	                                                                    const bool bExact = false);
-public:
 	
+	/**
+	 * Find a fragment with a given node Guid while iterating through the lower hierarchy.
+	 * @param Guid The node Guid to search.
+	 * @return Found node for the class.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UJointFragment* FindManagerFragmentWithGuidOnLowerHierarchy(const FGuid Guid) const;
+	
+public:
 	
 	/**
 	 * Find a fragment by the provided tag.
@@ -250,7 +260,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Fragment")
 	TArray<class UJointFragment*> FindManagerFragmentsWithAllTags(FGameplayTagContainer InNodeTagContainer,
 	                                                                    const bool bExact = false);
-	
+
+	/**
+	 * Find a fragment with a given node Guid.
+	 * @param Guid The node Guid to search.
+	 * @return Found node for the class.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Fragment")
+	UJointFragment* FindManagerFragmentWithGuid(const FGuid Guid) const;
+
 public:
 #if WITH_EDITORONLY_DATA
 

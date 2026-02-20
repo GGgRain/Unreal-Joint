@@ -92,12 +92,15 @@ public:
 	 * @param NeededPinSignature Total list of Pins we need to implement. if ExistingPins array already has pins that we need, it will use that instead of implementing it newly.
 	 * @return New Total pins.
 	 */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Text Utilities")
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Pin Utilities")
 	static TArray<FJointEdPinData> ImplementPins(const TArray<FJointEdPinData>& ExistingPins,const TArray<FJointEdPinData>& NeededPinSignature);
 
 
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Text Utilities")
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Pin Utilities")
 	static const bool AreBothPinHaveSameSignature(const FJointEdPinData& A, const FJointEdPinData& B);
+	
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Joint Pin Utilities")
+	static const bool IsPinDataNull(const FJointEdPinData& PinDataToCheck);
 
 public:
 

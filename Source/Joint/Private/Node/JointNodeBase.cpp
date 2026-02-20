@@ -27,7 +27,8 @@
 
 UJointNodeBase::UJointNodeBase()
 {
-	
+	NodeGuid = FGuid::NewGuid();
+
 #if WITH_EDITORONLY_DATA
 
 	EdNodeSetting.IconicNodeImageBrush = FSlateBrush();

@@ -3,25 +3,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointEdGraphNode.h"
+#include "Engine/DataTable.h"
 #include "UObject/NoExportTypes.h"
 #include "JointNodePreset.generated.h"
 
+class UJointManager;
+class UEdGraph;
 class UJointNodeBase;
 
+
 /**
- * Joint Node Preset is an asset that stores a template of a Joint Node.
- * You can create a Joint Node Preset from any base Joint Node in the Joint Editor. it will copy all the properties of the node (including sub nodes) into the preset asset.
- * 
- * You can use preset nodes to quickly create new nodes with pre-configured settings and sub nodes - just by dragging and dropping the preset asset into the Joint Editor graph.
- * Any nodes that are created from a preset will be synchronized with the preset asset - if you update the preset asset, all the nodes that are created from it will be updated as well.
- * You can still, break the synchronization by converting the node back to a normal node.
- * 
- * Joint Node Preset is the core component of external import & export system of Joint Editor because it works with the node preset level instead of the whole joint node level - each row in external csv and json files represent a node preset, not a node instance.
- * You can specify which preset to use for each row in the external file, and Joint Editor will create nodes based on the specified presets.
+ * A preset asset for Joint nodes, which can be used to save and apply commonly used settings for Joint nodes.
+ * This has been introduced to provide a convenient way for users to manage and reuse their preferred configurations for Joint nodes across different projects or within the same project. Especially with the script parsers.
  */
-UCLASS(Blueprintable)
+UCLASS(BlueprintType)
 class JOINTEDITOR_API UJointNodePreset : public UObject
 {
+public:
+	
 	GENERATED_BODY()
 	
 public:
@@ -30,14 +30,36 @@ public:
 
 private:
 	
-	UPROPERTY(VisibleAnywhere, Category = "Joint Node Preset")
-	UObject* NodeTemplate;
-	
-	// only FJointEdUtils can access.
-	friend class FJointEdUtils;
-	
 #if WITH_EDITOR
 	virtual bool IsEditorOnly() const override { return true; }
 #endif
+
+public:
 	
+	/**
+	 * Editor only Joint Manager that will be used to store the settings for the Joint nodes.
+	 * This will not be used at runtime.
+	 */
+	UPROPERTY(VisibleAnywhere, Category = "Joint Node Preset")
+	UJointManager* InternalJointManager;
+	
+public:
+	
+	/**
+	 * The display name of the preset, which will be shown in the UI when selecting a preset to apply to a Joint node.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
+	FText PresetDisplayName;
+	
+	/**
+	 * A brief description of the preset, which can provide additional information about the settings and use cases of the preset to users when selecting a preset to apply to a Joint node.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
+	FText PresetDescription;
+	
+	/**
+	 * The category of the preset, which can be used to organize presets into different groups in the UI when selecting a preset to apply to a Joint node.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
+	FText PresetCategory;
 };

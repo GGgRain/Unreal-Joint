@@ -52,12 +52,15 @@ public:
 	
 	UJointNodeBase();
 
-public:
+private:
+	
 	/**
 	 * The Guid of the node. Use this value to find specific node on the graph.
 	 */
-	UPROPERTY(AdvancedDisplay, BlueprintReadOnly, VisibleAnywhere, Category = "Node Base Data")
+	UPROPERTY(AdvancedDisplay, VisibleAnywhere, Category = "Node Base Data")
 	FGuid NodeGuid;
+	
+	friend class UJointEdGraphNode; // to allow the graph node to reset the guid when duplicating nodes.
 
 public:
 	/**

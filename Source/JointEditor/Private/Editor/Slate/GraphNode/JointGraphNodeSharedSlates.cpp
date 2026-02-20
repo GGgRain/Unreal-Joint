@@ -21,6 +21,7 @@
 #include "JointEdGraphNodesCustomization.h"
 #include "JointEditorNodePickingManager.h"
 #include "JointEditorSettings.h"
+#include "JointEditorToolkitToastMessages.h"
 
 #include "JointEdUtils.h"
 #include "SGraphPanel.h"
@@ -688,7 +689,10 @@ const FText SJointNodePointerSlate::GetRawName()
 
 void SJointNodePointerSlate::StartHighlightingNodeOnGraph()
 {
-	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
+	// check if this widget itself is valid
+	if (!this->IsParentValid()) return;
+
+	if (!PointerToTargetStructure || !PointerToTargetStructure->Node.IsNull() || !PointerToTargetStructure->Node) return;
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
 
@@ -938,7 +942,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
 	{
-		Toolkit->PopulateNodePickerCopyToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerCopyToastMessage(SharedThis(Toolkit));
 	}
 	
 	BlinkSelf();
@@ -988,7 +992,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
 	{
-		Toolkit->PopulateNodePickerPastedToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerPastedToastMessage(SharedThis(Toolkit));
 	}
 	
 	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();

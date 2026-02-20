@@ -4,9 +4,7 @@
 
 #include "AssetTypeActions_Base.h"
 
-/**
- * Implements an action for Joint manager assets.
- */
+
 class JOINTEDITOR_API FJointNodePresetActions : public FAssetTypeActions_Base
 {
 public:

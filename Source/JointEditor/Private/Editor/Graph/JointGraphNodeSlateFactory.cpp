@@ -70,3 +70,4 @@ TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNode(class UEdGr
 
 	return nullptr;
 }
+

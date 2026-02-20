@@ -13,6 +13,8 @@
 #include "SharedType/JointSharedTypes.h"
 
 #include "Misc/EngineVersionComparison.h"
+#include "Editor/Script/JointScriptLinker.h"
+
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
 #include "AIGraph/Classes/AIGraphTypes.h"
 #else
@@ -39,7 +41,7 @@ class FReply;
  *
  * Note: This class is designed to work on the C++ only. So, for the full customization of the editor node's action, you must start to override it on the native code side.
  */
-UCLASS(Abstract)
+UCLASS(Blueprintable, BlueprintType)
 class JOINTEDITOR_API UJointEdGraphNode : public UEdGraphNode, public IJointEdNodeInterface
 {
 	GENERATED_BODY()
@@ -49,6 +51,10 @@ public:
 	UJointEdGraphNode();
 
 	virtual ~UJointEdGraphNode() override;
+	
+public:
+	
+	virtual void BeginDestroy() override;
 
 public:
 	
@@ -69,7 +75,7 @@ public:
 	
 	//The class data of the instance of the runtime Joint node. It is used to restore the node instance if the instance becomes invalid. 
 	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
-	struct FJointGraphNodeClassData NodeClassData;
+	struct FJointSharedClassData NodeClassData;
 
 public:
 	
@@ -95,7 +101,7 @@ public:
 	/**
 	 * The orientation of the sub nodes' alignment on this node.
 	 */
-	UPROPERTY(EditAnywhere, Category="Visual")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Visual")
 	TEnumAsByte<EOrientation> SubNodeBoxOrientation = Orient_Horizontal;
 	
 	/**
@@ -131,16 +137,27 @@ public:
 
 	TWeakPtr<FJointEditorToolkit> OptionalToolkit;
 
-public:
+private:
 	
 	/**
-	 * TODO : make a synchronization code
+	 * Entry data for the external source that this node is from.
+	 * If the node is not from external source, it's IsNull() will return false.
 	 */
 	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
-	bool bFromExternal = true;
+	FJointScriptLinkerFileEntry ExternalSourceEntry;
+	
+	friend class UJointEditorFunctionLibrary; 
+	friend class FJointEdGraphNodesCustomizationBase;
 	
 public:
-
+	
+	UFUNCTION(BlueprintPure, Category="Joint Editor Node")
+	FJointScriptLinkerFileEntry GetExternalSourceEntry() const;
+	
+	UFUNCTION(BlueprintPure, Category="Joint Editor Node")
+	bool IsLinkedWithExternalSource() const;
+	
+public:
 
 	//Slate Action
 	
@@ -156,9 +173,9 @@ public:
 	virtual void ModifyGraphNodeSlate();
 	
 	/**
-	 * Set the graph node's slate that is populated on the Joint graph editor.
+	 * Add the graph node's slate that is populated on the Joint graph editor.
 	 */
-	void SetGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& GraphNodeSlate);
+	void SetGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate);
 
 	void ClearGraphNodeSlate();
 
@@ -166,12 +183,9 @@ public:
 	 * Get the graph node's slate that is populated on the Joint graph editor.
 	 * In most case, you don't need to cast it to derived slate class but if you need, then you can try to cast it with 'StaticCastSharedPtr<SJointGraphNodeSubNodeBase>(GetGraphNodeSlate());'
 	 * But you make sure to whether it is valid first, and whether it has the type you want by GetGraphNodeSlate()->GetType() == "SJointGraphNodeSubNodeBase" (or something else you want).  
-	 * 
-	 * NOTE: It's about the weak pointer general usage - you have to pin it and store it on a local shared pointer variable before using it - avoid calling functions on .Pin()->Function()!!!!!
-	 * This will cause the slate's internal shared pointer to be destroyed. (don't know why)
 	 */
 	TWeakPtr<SJointGraphNodeBase> GetGraphNodeSlate() const;
-
+	
 	/**
 	 * Check whether the graph node's slate can be reused on the provided graph.
 	 * If it returns false, the graph editor will throw out the old slate and create a new one.
@@ -322,7 +336,7 @@ public:
 	virtual void ReplicateSubNodePins();
 
 	/**
-	 * Find the original pin of that provided node pin is replicated from. If the provided pin is not a replicated pin, it will return the provided pin itself.
+	 * Find the original pin of the provided node pin is replicated from. If the provided pin is not a replicated pin, it will return the provided pin itself.
 	 */
 	UEdGraphPin* FindOriginalPin(UEdGraphPin* InReplicatedPin);
 	
@@ -557,13 +571,6 @@ public:
 protected:
 	
 	/**
-	 * Whether this node can use fixed custom size.
-	 * If false, it will wrapped down to its minimum size.
-	 */
-	UPROPERTY()
-	bool bIsNodeResizeable = true;
-	
-	/**
 	 * Depth of the node in the graph. Used on coloring the node.
 	 */
 	UPROPERTY(Transient)
@@ -724,7 +731,7 @@ public:
 	virtual void UpdateNodeClassData();
 
 	//Update ClassData from provided UClass.
-	static void UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGraphNodeClassData& UpdatedData);
+	static void UpdateNodeClassDataFrom(UClass* InstanceClass, FJointSharedClassData& UpdatedData);
 
 protected:
 
@@ -818,3 +825,4 @@ public:
 	void AddContextMenuActions_Fragments(UToolMenu* Menu, const FName SectionName, UGraphNodeContextMenuContext* Context) const;
 
 };
+

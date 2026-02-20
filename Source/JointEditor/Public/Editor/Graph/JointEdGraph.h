@@ -82,6 +82,14 @@ public:
 	static TArray<UJointEdGraph*> GetAllGraphsFrom(UEdGraph* InGraph);
 	
 	static TArray<UJointEdGraph*> GetAllGraphsFrom(const UJointManager* InJointManager);
+	
+public:
+
+	/**
+	 * Find the entry node of this graph. This can refer UJointEdGraphNode_Manager or UJointEdGraphNode_Tunnel (output direction) nodes.
+	 * @return Entry node of this graph
+	 */
+	UJointEdGraphNode* FindEntryNode() const;
 
 public:
 
@@ -387,8 +395,9 @@ public:
 
 public:
 	
-#if WITH_EDITOR
-
+#if WITH_EDITOR 
+	// With Editor doesn't do anything, but just for the indication that these properties are only for the devs and internal use.
+	
 	UPROPERTY(Category="Developer", VisibleAnywhere, Transient, DuplicateTransient, SkipSerialization)
 	TArray<TObjectPtr<class UEdGraphNode>> Nodes_Captured;
 	
@@ -399,7 +408,7 @@ public:
 	TArray<FJointNodeDebugData> Schema_Captured;
 
 #endif
-	
+
 public:
 	
 	static UJointEdGraph* CreateNewJointGraph(UObject* InOuter, UJointManager* InJointManager, const FName& GraphName);

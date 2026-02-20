@@ -48,7 +48,7 @@ FCoreRedirectObjectName FJointCoreRedirectObjectName::ConvertToCoreRedirectObjec
 	return FCoreRedirectObjectName(InObjectName.ObjectName, InObjectName.OuterName, InObjectName.PackageName);
 }
 
-FJointGraphNodeClassData::FJointGraphNodeClassData(UClass* InClass):
+FJointSharedClassData::FJointSharedClassData(UClass* InClass):
 	bIsHidden(0),
 	bHideParent(0),
 	Class(InClass)
@@ -61,7 +61,7 @@ FJointGraphNodeClassData::FJointGraphNodeClassData(UClass* InClass):
 	}
 }
 
-FJointGraphNodeClassData::FJointGraphNodeClassData(UClass* InClass, const FString& InDeprecatedMessage) :
+FJointSharedClassData::FJointSharedClassData(UClass* InClass, const FString& InDeprecatedMessage) :
 	bIsHidden(0),
 	bHideParent(0),
 	Class(InClass),
@@ -75,7 +75,7 @@ FJointGraphNodeClassData::FJointGraphNodeClassData(UClass* InClass, const FStrin
 	}
 }
 
-FJointGraphNodeClassData::FJointGraphNodeClassData(const FString& InAssetName, const FString& InGeneratedClassPackage,
+FJointSharedClassData::FJointSharedClassData(const FString& InAssetName, const FString& InGeneratedClassPackage,
                                                    const FString& InClassName, UClass* InClass) :
 	bIsHidden(0),
 	bHideParent(0),
@@ -87,7 +87,7 @@ FJointGraphNodeClassData::FJointGraphNodeClassData(const FString& InAssetName, c
 	Category = GetCategory();
 }
 
-FString FJointGraphNodeClassData::ToString() const
+FString FJointSharedClassData::ToString() const
 {
 	FString ShortName = GetDisplayName();
 	if (!ShortName.IsEmpty())
@@ -121,27 +121,27 @@ FString FJointGraphNodeClassData::ToString() const
 	return AssetName;
 }
 
-FString FJointGraphNodeClassData::GetClassName() const
+FString FJointSharedClassData::GetClassName() const
 {
 	return Class.IsValid() ? Class->GetName() : ClassName;
 }
 
-FString FJointGraphNodeClassData::GetDisplayName() const
+FString FJointSharedClassData::GetDisplayName() const
 {
 	return Class.IsValid() ? Class->GetMetaData(TEXT("DisplayName")) : FString();
 }
 
-FText FJointGraphNodeClassData::GetCategory() const
+FText FJointSharedClassData::GetCategory() const
 {
 	return Class.IsValid() ? FObjectEditorUtils::GetCategoryText(Class.Get()) : Category;
 }
 
-bool FJointGraphNodeClassData::IsAbstract() const
+bool FJointSharedClassData::IsAbstract() const
 {
 	return Class.IsValid() ? Class.Get()->HasAnyClassFlags(CLASS_Abstract) : false;
 }
 
-UClass* FJointGraphNodeClassData::GetClass(bool bSilent)
+UClass* FJointSharedClassData::GetClass(bool bSilent)
 {
 	UClass* RetClass = Class.Get();
 	if (RetClass == NULL && GeneratedClassPackage.Len())
@@ -180,7 +180,7 @@ UClass* FJointGraphNodeClassData::GetClass(bool bSilent)
 }
 
 //////////////////////////////////////////////////////////////////////////
-TArray<FJointGraphNodeClassData> FJointGraphNodeClassHelper::UnknownPackages;
+TArray<FJointSharedClassData> FJointGraphNodeClassHelper::UnknownPackages;
 TMap<UClass*, int32> FJointGraphNodeClassHelper::BlueprintClassCount;
 FJointGraphNodeClassHelper::FOnPackageListUpdated FJointGraphNodeClassHelper::OnPackageListUpdated;
 
@@ -243,7 +243,7 @@ void FJointGraphNodeClassNode::AddUniqueSubNode(TSharedPtr<FJointGraphNodeClassN
 }
 
 void FJointGraphNodeClassHelper::GatherClasses(const UClass* BaseClass,
-                                               TArray<FJointGraphNodeClassData>& AvailableClasses)
+                                               TArray<FJointSharedClassData>& AvailableClasses)
 {
 	const FString BaseClassName = BaseClass->GetName();
 	if (!RootNode.IsValid())
@@ -274,12 +274,12 @@ FString FJointGraphNodeClassHelper::GetDeprecationMessage(const UClass* Class)
 	return DeprecatedMessage;
 }
 
-bool FJointGraphNodeClassHelper::IsClassKnown(const FJointGraphNodeClassData& ClassData)
+bool FJointGraphNodeClassHelper::IsClassKnown(const FJointSharedClassData& ClassData)
 {
 	return !ClassData.IsBlueprint() || !UnknownPackages.Contains(ClassData);
 }
 
-void FJointGraphNodeClassHelper::AddUnknownClass(const FJointGraphNodeClassData& ClassData)
+void FJointGraphNodeClassHelper::AddUnknownClass(const FJointSharedClassData& ClassData)
 {
 	if (ClassData.IsBlueprint())
 	{
@@ -316,12 +316,12 @@ void FJointGraphNodeClassHelper::OnAssetAdded(const struct FAssetData& AssetData
 
 		if (!IsPackageSaved(AssetData.PackageName))
 		{
-			UnknownPackages.AddUnique(FJointGraphNodeClassData(AssetData.GetClass()));
+			UnknownPackages.AddUnique(FJointSharedClassData(AssetData.GetClass()));
 		}
 		else
 		{
 			const int32 PrevListCount = UnknownPackages.Num();
-			UnknownPackages.RemoveSingleSwap(FJointGraphNodeClassData(AssetData.GetClass()));
+			UnknownPackages.RemoveSingleSwap(FJointSharedClassData(AssetData.GetClass()));
 
 			if (UnknownPackages.Num() != PrevListCount)
 			{
@@ -379,7 +379,7 @@ void FJointGraphNodeClassHelper::OnReloadComplete(EReloadCompleteReason Reason)
 	InvalidateCache();
 }
 
-void FJointGraphNodeClassHelper::RemoveUnknownClass(const FJointGraphNodeClassData& ClassData)
+void FJointGraphNodeClassHelper::RemoveUnknownClass(const FJointSharedClassData& ClassData)
 {
 	if (ClassData.IsBlueprint())
 	{
@@ -409,7 +409,7 @@ TSharedPtr<FJointGraphNodeClassNode> FJointGraphNodeClassHelper::CreateClassData
 		UBlueprint* AssetBP = Cast<UBlueprint>(AssetOb);
 		UClass* AssetClass = AssetBP ? *AssetBP->GeneratedClass : AssetOb ? AssetOb->GetClass() : NULL;
 
-		FJointGraphNodeClassData NewData(AssetData.AssetName.ToString(), AssetData.PackageName.ToString(),
+		FJointSharedClassData NewData(AssetData.AssetName.ToString(), AssetData.PackageName.ToString(),
 		                                 AssetClassName, AssetClass);
 		Node->Data = NewData;
 	}
@@ -442,7 +442,7 @@ TSharedPtr<FJointGraphNodeClassNode> FJointGraphNodeClassHelper::FindBaseClassNo
 }
 
 void FJointGraphNodeClassHelper::FindAllSubClasses(TSharedPtr<FJointGraphNodeClassNode> Node,
-                                                   TArray<FJointGraphNodeClassData>& AvailableClasses)
+                                                   TArray<FJointSharedClassData>& AvailableClasses)
 {
 	if (Node.IsValid())
 	{
@@ -490,7 +490,7 @@ void FJointGraphNodeClassHelper::BuildClassGraph()
 			NewNode->ParentClassName = TestClass->GetSuperClass()->GetName();
 
 			FString DeprecatedMessage = GetDeprecationMessage(TestClass);
-			FJointGraphNodeClassData NewData(TestClass, DeprecatedMessage);
+			FJointSharedClassData NewData(TestClass, DeprecatedMessage);
 
 			NewData.bHideParent = IsHidingParentClass(TestClass);
 			if (NewData.bHideParent)

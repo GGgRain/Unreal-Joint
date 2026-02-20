@@ -82,6 +82,8 @@ public class JointEditor : ModuleRules
 
 			"DeveloperSettings",
 			"AppFramework",
+			
+			"AssetTools",
 
 			//For restarting the editor
 			"SettingsEditor",

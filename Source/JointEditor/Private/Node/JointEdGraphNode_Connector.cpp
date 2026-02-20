@@ -22,7 +22,7 @@
 
 UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 {
-	bIsNodeResizeable = false;
+	DefaultEdNodeSetting.bIsNodeResizeable = false;
 
 	bCanRenameNode = false;
 

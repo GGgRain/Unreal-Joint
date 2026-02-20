@@ -122,12 +122,8 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	Style->Set("ClassIcon.JointNodePreset", new Joint_IMAGE_BRUSH("Icon/Ico_JointNodePreset", Icon16x16));
 	Style->Set("ClassThumbnail.JointScriptParser", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptParser", Icon128x128));
 	Style->Set("ClassIcon.JointScriptParser", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptParser", Icon16x16));
-
-
-	//Pin Images
-	Style->Set("Pin.InOut", new Joint_IMAGE_BRUSH("Graph/Pin/InOut_24x", Icon24x24));
-	Style->Set("Pin.SelectAnswerOut", new Joint_IMAGE_BRUSH("Graph/Pin/SelectAnswerOut_24x", Icon24x24));
-	Style->Set("Pin.RandomOut", new Joint_IMAGE_BRUSH("Graph/Pin/RandomOut_24x", Icon24x24));
+	Style->Set("ClassThumbnail.JointScriptLinker", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptLinker", Icon128x128));
+	Style->Set("ClassIcon.JointScriptLinker", new Joint_IMAGE_BRUSH("Icon/Ico_JointScriptLinker", Icon16x16));
 
 	//UX Border 
 

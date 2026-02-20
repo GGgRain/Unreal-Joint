@@ -3,8 +3,12 @@
 
 #include "Node/JointFragment.h"
 
-UJointFragment::UJointFragment()
+UJointFragment::UJointFragment() 
+	: UJointNodeBase()
 {
+#if WITH_EDITORONLY_DATA
+	EdNodeSetting.bIsNodeResizeable = false;
+#endif
 }
 
 bool UJointFragment::IsManagerFragment(UJointNodeBase* InFragment)

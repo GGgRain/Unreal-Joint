@@ -57,8 +57,15 @@ void FJointEditorCommands::RegisterCommands()
 	UI_COMMAND(SolidifySubNodesFromParentNode, "Solidify Sub Nodes", "Solidify all the sub nodes of this node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::S));
 	
 	UI_COMMAND(ShowIndividualVisibilityButtonForSimpleDisplayProperty, "Show Individual Visibility Button For Simple Display Property", "Show Individual Visibility Button For Simple Display Property.",  EUserInterfaceActionType::ToggleButton, FInputChord(EKeys::X));
-
-	UI_COMMAND(CreateJointNodePresetFromSelection, "Create Joint Node Preset From Selection", "Create a Joint Node Preset asset from the selected node. You must select a single base node for the action.", EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::P) );
+	
+	UI_COMMAND(CreateNodePresetFromSelectedBaseNode, "Create Node Preset From Selected Base Node", "Create a node preset from the selected base node, and save it as an asset in the content browser.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::P));
+	
+	UI_COMMAND(UnlinkScriptFromSelectedNodes, 
+		"Unlink Script From Selected Nodes",
+		"Unlink the script link of the selected nodes, making them independent from the original Joint script and able to be modified in the Joint editor.",
+		EUserInterfaceActionType::Button, 
+		FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::B)
+	);
 	
 	// SMyBlueprint ported commands for Joint Editor Outliner
 	UI_COMMAND( DeleteEntry, "Delete", "Delete the selected entry.", EUserInterfaceActionType::Button, FInputChord(EKeys::Delete) );

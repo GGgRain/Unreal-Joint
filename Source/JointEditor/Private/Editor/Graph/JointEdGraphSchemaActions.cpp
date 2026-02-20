@@ -11,10 +11,12 @@
 #include "Editor.h"
 #include "GraphEditor.h"
 #include "JointEdGraphNode_Composite.h"
+#include "JointEditorFunctionLibrary.h"
 #include "JointEdUtils.h"
 #include "Node/JointNodeBase.h"
 #include "ScopedTransaction.h"
 #include "GraphNode/SJointGraphNodeBase.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Misc/EngineVersionComparison.h"
 
 
@@ -44,70 +46,76 @@ FJointSchemaAction_NewSubNode::FJointSchemaAction_NewSubNode(FText InNodeCategor
 {
 }
 
-UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-                                                              const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
+	class UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin,
+	const FVector2D Location, 
+	bool bSelectNewNode)
 {
+	if (!NodeTemplate || !ParentGraph) return nullptr;
 
-	//Check if we are okay to proceed.
-	if (!NodeTemplate|| !ParentGraph) return nullptr;
+	UClass* NodeClass = NodeTemplate->NodeClassData.GetClass();
 	
-	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewSubNode", "Add new sub node (Fragment): {0}"), FText::FromString(NodeTemplate->NodeClassData.GetClass()->GetName())));
+	if (!NodeClass) return nullptr;
 
-	//Notify the modification for the transaction.
-	ParentGraph->Modify();
-
-	if (NodeTemplate) NodeTemplate->Modify();
+	GEditor->BeginTransaction(
+		FText::Format(NSLOCTEXT("JointEdTransaction","TransactionTitle_AddNewSubNode","Add new sub node (Fragment): {0}"),
+			FText::FromString(NodeClass->GetName())
+		)
+	);
 	
-	for (UObject* Node : NodesToAttachTo)
+	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
+	if (!CastedGraph) return nullptr;
+
+	CastedGraph->Modify();
+	NodeTemplate->Modify();
+
+	UJointEdGraphNode* LastCreatedNode = nullptr;
+
+	for (UObject* NodeObj : NodesToAttachTo)
 	{
-		if(Node == nullptr || !Node->IsValidLowLevel()) continue;
+		UJointEdGraphNode* ParentJointEdGraphNode = Cast<UJointEdGraphNode>(NodeObj);
 
-		if(UJointEdGraphNode* ParentJointEdGraphNode = Cast<UJointEdGraphNode>(Node); ParentJointEdGraphNode && ParentJointEdGraphNode->GetCastedNodeInstance())
+		if (!ParentJointEdGraphNode) continue;
+
+		ParentJointEdGraphNode->Modify();
+
+		if (UJointNodeBase* Inst = ParentJointEdGraphNode->GetCastedNodeInstance())
 		{
-			ParentJointEdGraphNode->Modify();
-			ParentJointEdGraphNode->GetCastedNodeInstance()->Modify();
+			Inst->Modify();
 		}
+
+		LastCreatedNode = UJointEditorFunctionLibrary::AddFragment(
+			CastedGraph->GetJointManager(),
+			ParentJointEdGraphNode,
+			NodeClass
+		);
 	}
-
-	for (UObject* Node : NodesToAttachTo)
-	{
-		if(Node == nullptr) continue;
-
-		if(UJointEdGraphNode* ParentJointEdGraphNode = Cast<UJointEdGraphNode>(Node); ParentJointEdGraphNode)
-		{
-			ParentJointEdGraphNode->Modify();
-			if(ParentJointEdGraphNode->GetCastedNodeInstance()) ParentJointEdGraphNode->GetCastedNodeInstance()->Modify();
-
-			UJointEdGraphNode* GraphNode = DuplicateObject<UJointEdGraphNode>(NodeTemplate, NodeTemplate->GetOuter());
-		
-			GraphNode->SetFlags(RF_Transactional);
-
-			GraphNode->Rename(nullptr, ParentGraph, REN_NonTransactional);
-
-			UJointNodeBase* NodeData = NewObject<UJointNodeBase>(ParentGraph->GetOuter(),
-																	   NodeTemplate->NodeClassData.GetClass(), NAME_None,
-																	   RF_Transactional);
-			GraphNode->NodeInstance = NodeData;
-			GraphNode->CreateNewGuid();
-			GraphNode->PostPlacedNewNode();
-			GraphNode->AllocateDefaultPins();
-			
-			ParentJointEdGraphNode->AddSubNode(GraphNode);
-
-			if(UJointEdGraph* CastedGraph = ParentJointEdGraphNode->GetCastedGraph())
-			{
-				GraphNode->OptionalToolkit = CastedGraph->GetToolkit();
-
-				ParentJointEdGraphNode->GetCastedGraph()->CacheJointGraphNodes();
-			}
-		}
-	}
-
 	
+	if (!LastCreatedNode)
+	{
+		FJointEdUtils::FireNotification(	
+			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Failed_Title", "Failed to add new sub node"),
+			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Failed_Message", "No valid parent nodes to attach the new sub node to."),
+			EJointMDAdmonitionType::Error,
+			10
+		);
+	}else
+	{
+		FJointEdUtils::FireNotification(	
+			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Success_Title", "New sub node added"),
+			FText::Format(
+			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Success_Message", "A new sub node \'{0}\' has been successfully added to the parent nodes."),
+				LastCreatedNode->GetNodeTitle(ENodeTitleType::FullTitle)
+			),
+			EJointMDAdmonitionType::Mention,
+			7
+		);
+	}
 
 	GEditor->EndTransaction();
-	
-	return NULL;
+
+	return LastCreatedNode;
 }
 
 UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* ParentGraph,
@@ -143,76 +151,63 @@ void FJointSchemaAction_NewSubNode::AddReferencedObjects(FReferenceCollector& Co
 	
 }
 
-
-UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-														   const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
+	UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin,
+	const FVector2D Location,
+	bool bSelectNewNode)
 {
-	UJointEdGraphNode* ResultNode = NodeTemplate;
+	if (!NodeTemplate || !ParentGraph) return nullptr;
 
-	if (!ResultNode || !ResultNode->NodeClassData.GetClass()) return nullptr;
-	if (!ParentGraph) return nullptr;
-
+	UClass* NodeClass = NodeTemplate->NodeClassData.GetClass();
+	if (!NodeClass) return nullptr;
 	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
-
 	if (!CastedGraph) return nullptr;
-
 	UJointManager* Manager = CastedGraph->GetJointManager();
-
 	if (!Manager) return nullptr;
 
+	GEditor->BeginTransaction(
+		FText::Format(
+			NSLOCTEXT("JointEdTransaction",
+			          "TransactionTitle_AddNewNode",
+			          "Add new node: {0}"),
+			FText::FromString(NodeClass->GetName())
+		)
+	);
 
-	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewNode", "Add new node: {0}"), FText::FromString(ResultNode->NodeClassData.GetClass()->GetName())));
-
-	//Notify the modification for the transaction.
-	ResultNode->Modify();
 	ParentGraph->Modify();
 	Manager->Modify();
 
+	UJointEdGraphNode* ResultNode = UJointEditorFunctionLibrary::AddBaseNode(
+		Manager,
+		ParentGraph,
+		NodeClass,
+		Location
+	);
 
-	ResultNode->SetFlags(RF_Transactional);
-	//Set outer to be the graph so it doesn't go away
-	ResultNode->Rename(nullptr, ParentGraph, REN_NonTransactional);
+	if (ResultNode)
+	{
+		ResultNode->Modify();
 
-	UJointNodeBase* NodeData = NewObject<UJointNodeBase>(ParentGraph->GetOuter(),
-															   ResultNode->NodeClassData.GetClass(), NAME_None,
-															   RF_Transactional);
-
-	ResultNode->NodeInstance = NodeData;
-	ResultNode->NodeClassData = FJointGraphNodeClassData(ResultNode->NodeClassData.GetClass(),
-												FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
-	ResultNode->CreateNewGuid();
-	ResultNode->NodePosX = Location.X;
-	ResultNode->NodePosY = Location.Y;
-
-	//Set up pins after placing node
-	ResultNode->AllocateDefaultPins();
-	ResultNode->UpdatePins();
-
-	//Set up the connection from the from pin if needed.
-	FJointEdUtils::MakeConnectionFromTheDraggedPin(FromPin, ResultNode);
-
-	//Add the newly created node to the Joint graph.
-	ParentGraph->AddNode(ResultNode, true);
+		FJointEdUtils::MakeConnectionFromTheDraggedPin(FromPin, ResultNode);
+	}
 
 	GEditor->EndTransaction();
-
 
 	return ResultNode;
 }
 
-UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location,
+UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_FromShortcut(UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location,
 	bool bSelectNewNode)
 {
 	if (!NodeClass || !ParentGraph || !EdClass) return nullptr;
 
 	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
-
 	if (!CastedGraph) return nullptr;
 
 	UJointEdGraphNode* ResultNode = NewObject<UJointEdGraphNode>(ParentGraph,EdClass);
 	
 	UJointManager* Manager = CastedGraph->GetJointManager();
-
 	if (!Manager) return nullptr;
 
 	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction", "TransactionTitle_AddNewNode", "Add new node: {0}"), FText::FromString(NodeClass->GetName())));
@@ -230,7 +225,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* Parent
 	UJointNodeBase* NodeData = NewObject<UJointNodeBase>(Manager, NodeClass, NAME_None,RF_Transactional);
 
 	ResultNode->NodeInstance = NodeData;
-	ResultNode->NodeClassData = FJointGraphNodeClassData(NodeClass, FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
+	ResultNode->NodeClassData = FJointSharedClassData(NodeClass, FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
 	ResultNode->CreateNewGuid();
 	ResultNode->NodePosX = Location.X;
 	ResultNode->NodePosY = Location.Y;
@@ -248,9 +243,33 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_Command(UEdGraph* Parent
 	return ResultNode;
 }
 
+FJointSchemaAction_NewNodePreset::FJointSchemaAction_NewNodePreset()
+{
+}
+
+FJointSchemaAction_NewNodePreset::FJointSchemaAction_NewNodePreset(FText InNodeCategory, FText InMenuDesc, FText InToolTip, const int32 InGrouping)
+	: FEdGraphSchemaAction(MoveTemp(InNodeCategory), MoveTemp(InMenuDesc), MoveTemp(InToolTip), InGrouping)
+{
+}
+
+UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+{
+	return FEdGraphSchemaAction::PerformAction(ParentGraph, FromPin, Location, bSelectNewNode);
+}
+
+UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode)
+{
+	return FEdGraphSchemaAction::PerformAction(ParentGraph, FromPins, Location, bSelectNewNode);
+}
+
+void FJointSchemaAction_NewNodePreset::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	FEdGraphSchemaAction::AddReferencedObjects(Collector);
+}
+
 
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins,
-                                                           const FVector2D Location, bool bSelectNewNode)
+                                                        const FVector2D Location, bool bSelectNewNode)
 {
 	if (FromPins.Num() > 0) return PerformAction(ParentGraph, FromPins[0], Location, bSelectNewNode);
 

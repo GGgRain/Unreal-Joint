@@ -124,6 +124,11 @@ void FJointEdPinData::CopyPropertiesFrom(const FJointEdPinData& Other)
 	Settings = Other.Settings;
 }
 
+bool FJointEdPinData::IsNull() const
+{
+	return *this != PinData_Null;
+}
+
 bool FJointEdPinData::operator==(const FJointEdPinData& Other) const
 {
 	return HasSameSignature(Other)
@@ -372,6 +377,8 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 
 #endif
 
+//NullNodeSetting
+
 FJointEdNodeSetting::FJointEdNodeSetting()
 {
 	
@@ -384,7 +391,6 @@ FJointEdNodeSetting::FJointEdNodeSetting()
 #endif
 
 }
-
 
 void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
 {

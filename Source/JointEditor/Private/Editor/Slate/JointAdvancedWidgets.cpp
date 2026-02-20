@@ -218,6 +218,22 @@ EActiveTimerReturnType SJointOutlineBorder::CheckUnhovered(double InCurrentTime,
 	return EActiveTimerReturnType::Stop;
 }
 
+void SJointOutlineBorder::SetContent(TSharedRef<SWidget> InContent)
+{
+	Content = InContent;
+
+	if (InnerBorder)
+	{
+		InnerBorder->SetContent(InContent);
+	}
+	else
+	{
+		ChildSlot[
+			InContent
+		];
+	}
+}
+
 
 void SJointOutlineButton::Construct(const FArguments& InArgs)
 {

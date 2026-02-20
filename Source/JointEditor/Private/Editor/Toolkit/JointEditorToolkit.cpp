@@ -36,6 +36,7 @@
 
 #include "Node/JointEdGraphNode.h"
 #include "EdGraphUtilities.h"
+#include "EditorModeManager.h"
 #include "IMessageLogListing.h"
 #include "MessageLogModule.h"
 #include "ScopedTransaction.h"
@@ -59,16 +60,20 @@
 #include "JointEdGraphNode_Foundation.h"
 #include "JointEdGraphNode_Fragment.h"
 #include "JointEdGraphNode_Reroute.h"
+#include "JointEditorFunctionLibrary.h"
 #include "JointEditorGraphDocument.h"
 #include "JointEditorNameValidator.h"
 #include "JointEditorNodePickingManager.h"
+#include "JointEditorToolkitToastMessages.h"
 #include "JointEdUtils.h"
+#include "JointManagerFactory.h"
 #include "JointNodePreset.h"
 
 #include "EditorWidget/JointToolkitToastMessages.h"
 #include "EditorWidget/SJointEditorOutliner.h"
 #include "EditorWidget/SJointFragmentPalette.h"
 #include "EditorWidget/SJointGraphPanel.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Markdown/SJointMDSlate_Admonitions.h"
@@ -76,6 +81,9 @@
 
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
+#include "Script/JointScriptSettings.h"
+#include "Thumbnail/JointManagerThumbnailRenderer.h"
+#include "UnrealEd/Private/Toolkits/SStandaloneAssetEditorToolkitHost.h"
 #include "Widgets/Images/SImage.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
@@ -139,13 +147,14 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
                                           UJointManager* InJointManager)
 {
 	JointManager = InJointManager;
+	
+	FJointManagerThumbnailRendererResourcePool::Get().ClearGraphPreviewerFor(JointManager.Get());
+	FJointManagerThumbnailRendererResourcePool::Get().LockFor(JointManager.Get());
 
 	//StandaloneMode = MakeShareable(new FJointEditorApplicationMode(SharedThis(this)));
 	//StandaloneMode->Initialize();
 	//AddApplicationMode(EJointEditorModes::StandaloneMode, StandaloneMode.ToSharedRef());
-
-	CreateNewRootGraphForJointManagerIfNeeded();
-
+	
 	GetOrCreateGraphToastMessageHub();
 	GetOrCreateNodePickingManager();
 
@@ -245,13 +254,18 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
 
 	//SetCurrentMode(EJointEditorModes::StandaloneMode);
 
-	if (GetJointManager() != nullptr && !GetJointManager()->IsAsset())
+	if (GetJointManager() != nullptr)
 	{
-		PopulateTransientEditingWarningToastMessage();
+		if ( GetJointManager()->HasAnyFlags(RF_Transient) )
+		{
+			JointEditorToolkitToastMessages::PopulateTransientEditingWarningToastMessage(SharedThis(this));
+		}else if (!GetJointManager()->IsAsset())
+		{
+			JointEditorToolkitToastMessages::PopulateNonStandaloneAssetEditingWarningToastMessage(SharedThis(this));
+		}
 	}
 	// Create a command, pay attention to setcurrentmode ()
 }
-
 
 void FJointEditorToolkit::CleanUp()
 {
@@ -264,6 +278,8 @@ void FJointEditorToolkit::CleanUp()
 		Graph->OnClosed();
 	};
 
+	FJointManagerThumbnailRendererResourcePool::Get().UnlockFor(JointManager.Get());
+
 	JointManager.Reset();
 
 	EditorPreferenceViewPtr.Reset();
@@ -271,7 +287,7 @@ void FJointEditorToolkit::CleanUp()
 	DetailsViewPtr.Reset();
 	ManagerViewerPtr.Reset();
 	JointFragmentPalettePtr.Reset();
-	Toolbar.Reset();
+	JointEditorToolbar.Reset();
 
 	CleanUpGraphToastMessageHub();
 }
@@ -324,7 +340,11 @@ void FJointEditorToolkit::InitializePaletteView()
 void FJointEditorToolkit::InitializeOutliner()
 {
 	JointEditorOutlinerPtr = SNew(SJointEditorOutliner)
-		.ToolKitPtr(SharedThis(this));
+		.ToolKitPtr(SharedThis(this))
+		.Visibility_Lambda([&]()
+		{
+			return IsInNodePresetEditingMode() ? EVisibility::Collapsed : EVisibility::Visible;
+		});
 }
 
 void FJointEditorToolkit::InitializeManagerViewer()
@@ -503,10 +523,10 @@ void FJointEditorToolkit::ExtendToolbar()
 	//Assign this extender to the toolkit.
 	AddToolbarExtender(ToolbarExtender);
 
-	Toolbar = MakeShareable(new FJointEditorToolbar(SharedThis(this)));
-	Toolbar->AddJointToolbar(ToolbarExtender);
-	Toolbar->AddEditorModuleToolbar(ToolbarExtender);
-	Toolbar->AddDebuggerToolbar(ToolbarExtender);
+	JointEditorToolbar = MakeShareable(new FJointEditorToolbar(SharedThis(this)));
+	JointEditorToolbar->AddJointToolbar(ToolbarExtender);
+	JointEditorToolbar->AddEditorModuleToolbar(ToolbarExtender);
+	JointEditorToolbar->AddDebuggerToolbar(ToolbarExtender);
 }
 
 void FJointEditorToolkit::InitializeDocumentManager()
@@ -979,11 +999,16 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 		                           this,
 		                           &FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty));
 	
+	ToolkitCommands->MapAction(Commands.UnlinkScriptFromSelectedNodes,
+		 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnUnlinkScriptFromSelectedNodes),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanUnlinkScriptFromSelectedNodes)
+	);
 	
-	ToolkitCommands->MapAction(Commands.CreateJointNodePresetFromSelection,
-	                           FExecuteAction::CreateSP(
-		                           this, &FJointEditorToolkit::OnCreateJointNodePresetFromSelection),
-	                           FCanExecuteAction().CreateSP(this, &FJointEditorToolkit::CanCreateJointNodePresetFromSelection));
+	ToolkitCommands->MapAction(Commands.CreateNodePresetFromSelectedBaseNode,
+	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnCreateNodePresetFromSelectedBaseNode),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode)
+	);
+	
 }
 
 void FJointEditorToolkit::BindDebuggerCommands()
@@ -1101,17 +1126,6 @@ bool FJointEditorToolkit::IsGraphInCurrentJointManager(UEdGraph* Graph)
 	if (Graph == nullptr) return false;
 
 	return UJointEdGraph::GetAllGraphsFrom(GetJointManager()).Contains(Graph);
-}
-
-void FJointEditorToolkit::CreateNewRootGraphForJointManagerIfNeeded() const
-{
-	if (GetJointManager() == nullptr) return;
-
-	if (GetJointManager()->JointGraph != nullptr) return;
-
-	GetJointManager()->JointGraph = UJointEdGraph::CreateNewJointGraph(GetJointManager(), GetJointManager(), FName("MainGraph"));
-	GetJointManager()->JointGraph->bAllowDeletion = false;
-	
 }
 
 TSharedPtr<SDockTab> FJointEditorToolkit::OpenDocument(UObject* DocumentID, FDocumentTracker::EOpenDocumentCause OpenMode)
@@ -1291,10 +1305,14 @@ void FJointEditorToolkit::CleanInvalidDocumentTabs()
 	}
 }
 
-
 TSharedPtr<FDocumentTracker> FJointEditorToolkit::GetDocumentManager() const
 {
 	return DocumentManager;
+}
+
+void FJointEditorToolkit::RebuildFragmentPalette()
+{
+	if (JointFragmentPalettePtr) JointFragmentPalettePtr->RebuildWidget();
 }
 
 void FJointEditorToolkit::OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEditor)
@@ -1313,7 +1331,7 @@ void FJointEditorToolkit::OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEdi
 		if (DetailsViewPtr.IsValid()) DetailsViewPtr->SetObjects(FocusedGraphEditorPtr.Pin()->GetSelectedNodes().Array());
 	}
 
-	if (JointFragmentPalettePtr) JointFragmentPalettePtr->RebuildWidget();
+	RebuildFragmentPalette();
 
 	if (ManagerViewerPtr) ManagerViewerPtr->RequestTreeRebuild();
 }
@@ -1949,7 +1967,7 @@ void FJointEditorToolkit::OnCreateFoundation()
 			{
 				FJointSchemaAction_NewNode Action;
 
-				Action.PerformAction_Command(Graph, UJointEdGraphNode_Foundation::StaticClass(),
+				Action.PerformAction_FromShortcut(Graph, UJointEdGraphNode_Foundation::StaticClass(),
 				                             UJN_Foundation::StaticClass(), GraphEditor->GetPasteLocation());
 			}
 		}
@@ -2097,8 +2115,6 @@ void FJointEditorToolkit::CollapseNodes(TSet<class UEdGraphNode*>& InCollapsable
 void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* InGatewayNode, UJointEdGraphNode_Tunnel* InEntryNode, UJointEdGraphNode_Tunnel* InResultNode, UEdGraph* InSourceGraph, UEdGraph* InDestinationGraph,
                                                  TSet<UEdGraphNode*>& InCollapsableNodes, bool bCanDiscardEmptyReturnNode, bool bCanHaveWeakObjPtrParam)
 {
-	const UJointEdGraphSchema* JointGraphSchema = GetDefault<UJointEdGraphSchema>();
-
 	// Keep track of the statistics of the node positions so the new nodes can be located reasonably well
 	int32 SumNodeX = 0;
 	int32 SumNodeY = 0;
@@ -2176,7 +2192,7 @@ void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* In
 					if (EntryNodePin)
 					{
 						LocalPin->BreakAllPinLinks();
-						JointGraphSchema->TryCreateConnection(LocalPin,EntryNodePin);
+						FJointEdUtils::TryMakeConnectionBetweenPins(LocalPin,EntryNodePin);
 						continue;
 					}
 				}
@@ -2233,7 +2249,7 @@ void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* In
 						// which is bad! Then there would be a pin connecting to itself and cause an ensure
 						if (RemotePin->GetOwningNode()->GetOuter() == RemotePortPin->GetOwningNode()->GetOuter())
 						{
-							JointGraphSchema->TryCreateConnection(RemotePin,RemotePortPin);
+							FJointEdUtils::TryMakeConnectionBetweenPins(RemotePin,RemotePortPin);
 						}
 
 						// The Entry Node only supports a single link, so if we made links above
@@ -2246,7 +2262,7 @@ void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* In
 						// Fix up the local pin
 						LocalPin->LinkedTo.Remove(RemotePin);
 						--LinkIndex;
-						JointGraphSchema->TryCreateConnection(LocalPin,LocalPortPin);
+						FJointEdUtils::TryMakeConnectionBetweenPins(LocalPin,LocalPortPin);
 					}
 				}
 			}
@@ -3556,12 +3572,12 @@ void FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty()
 
 	if (bIsOnVisibilityChangeModeForSimpleDisplayProperty)
 	{
-		PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		JointEditorToolkitToastMessages::PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage(SharedThis(this));
 		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted();
 	}
 	else
 	{
-		ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		JointEditorToolkitToastMessages::ClearToastMessage(SharedThis(this), EJointEditorToastMessage::VisibilityChangeModeForSimpleDisplayProperty);
 		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded();
 	}
 }
@@ -3605,85 +3621,125 @@ void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPrope
 	}
 }
 
-void FJointEditorToolkit::OnCreateJointNodePresetFromSelection()
+void FJointEditorToolkit::OnUnlinkScriptFromSelectedNodes()
 {
-	//open dialog to ask for preset name
-	
-	EAppReturnType::Type Result = FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(TEXT("Create Joint Node Preset from selected foundation node?")));
-	
-	if (Result == EAppReturnType::Ok)
-	{
-		// proceed to create preset
-
-		// only allow when exactly one node is selected and that node is a foundation node.
-		const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-		if (SelectedNodes.Num() == 1)
-		{
-			for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-			{
-				UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
-
-				if (SelectedNode)
-				{
-					if (SelectedNode->GetCastedNodeInstance<UJN_Foundation>())
-					{
-						// Create preset asset from the selected foundation node on the project.
-						FString Path = GetJointManager()->GetPathName();
-						
-						if (UJointNodePreset* Asset = FJointEdUtils::CreateNewAssetForClass<UJointNodePreset>(UJointNodePreset::StaticClass(), FPaths::GetPath(Path)))
-						{
-							FJointEdUtils::FireNotification(
-								LOCTEXT("Notification_Title_JointNodePresetCreated", "Joint Node Preset Created"),
-								FText::Format(
-									LOCTEXT("Notification_Sub_JointNodePresetCreated", "A new Joint Node Preset asset has been created from the selected foundation node on path \'{0}\'."),
-									FText::FromString(Asset->GetPathName())
-								),
-								EJointMDAdmonitionType::Note
-							);
-							
-							//copy the foundation node data to the preset asset.
-							FJointEdUtils::AllocateNodeTemplate(Asset,SelectedNode);
-							
-							return;
-						}
-					}
-				}
-			}
-		}
-		
-		FJointEdUtils::FireNotification(
-			LOCTEXT("Notification_Title_JointNodePresetCreationFailed", "Joint Node Preset Creation Failed"),
-			LOCTEXT("Notification_Sub_JointNodePresetCreationFailed", "Failed to create Joint Node Preset asset from the selected foundation node for unknown reason."),
-			EJointMDAdmonitionType::Error
-		);
-	
-		return;
-		
-	}
-	
-}
-
-bool FJointEditorToolkit::CanCreateJointNodePresetFromSelection() const
-{
-	// only allow when exactly one node is selected and that node is a foundation node.
+	// Break script link of all selected nodes.
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 	
-	if (SelectedNodes.Num() != 1) return false;
+	FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_UnlinkScriptFromSelectedNodes", "Unlink Script From Selected Nodes")
+	);
 	
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	UJointScriptSettings::Get()->Modify();
+	
+	for (UObject* Obj : SelectedNodes)
 	{
-		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt);
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+		
+		SelectedNode->Modify();
 
-		if (SelectedNode)
-		{
-			if (SelectedNode->GetCastedNodeInstance<UJN_Foundation>())
-			{
-				return true;
-			}
-		}
+		UJointEditorFunctionLibrary::UnlinkNodeFromScript(SelectedNode);
 	}
 	
+	UJointScriptSettings::Save();
+}
+
+bool FJointEditorToolkit::CanUnlinkScriptFromSelectedNodes()
+{
+	// Check if at least one selected node has script link to break.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (SelectedNode->IsLinkedWithExternalSource()) return true;
+	}
+	
+	return false;
+}
+
+void FJointEditorToolkit::OnCreateNodePresetFromSelectedBaseNode()
+{
+	// Create a node preset from the first selected node that can be used as a preset base.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			// We currently do not support creating node preset from fragment nodes, so skip it.
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_CannotCreateNodePresetFromFragmentNode", "Cannot create node preset from fragment node."),
+				LOCTEXT("Notification_CannotCreateNodePresetFromFragmentNode_Desc", "Please select a base node to create a node preset."),
+				EJointMDAdmonitionType::Error
+			);
+			
+			return;
+		}
+		
+		UJointNodePreset* NodePreset = FJointEdUtils::CreateNewAssetForClass<UJointNodePreset>(
+			UJointNodePreset::StaticClass(),
+			FPaths::GetPath(GetJointManager()->GetPathName()),
+			false
+		);
+		
+		if (NodePreset)
+		{
+			// TODO: initialize the node preset with the selected node's data.
+			
+			UJointManagerFactory::CreateDefaultRootGraphForJointManager(NodePreset->InternalJointManager);
+			
+			// copy - paste the selected node to the node preset's graph to create the preset data.
+			SelectedNode->PrepareForCopying();
+			UJointEdGraphNode* PastedNode = DuplicateObject<UJointEdGraphNode>(SelectedNode, NodePreset->InternalJointManager->JointGraph);
+			SelectedNode->PostCopyNode();
+			
+			NodePreset->InternalJointManager->JointGraph->AddNode(PastedNode);
+			PastedNode->PostPasteNode();
+			PastedNode->BreakAllNodeLinks();
+			
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_NodePresetCreated", "Node preset created"),
+				FText::Format(LOCTEXT("Notification_NodePresetCreated_Desc", "A node preset has been created from the selected node on '{0}'"), FText::FromString(NodePreset->GetPathName())),
+				EJointMDAdmonitionType::Mention
+			);
+		}else
+		{
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_FailedToCreateNodePreset", "Failed to create node preset"),
+				LOCTEXT("Notification_FailedToCreateNodePreset_Desc", "An error occurred while creating node preset. Please check the log for more details."),
+				EJointMDAdmonitionType::Error
+			);
+		}
+		return;
+	}
+}
+
+bool FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode() const
+{
+	// check if we selected one base node that can be used to create a node preset.
+	
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			return false;
+		}
+		
+		return true;
+	}
+
 	return false;
 }
 
@@ -3739,591 +3795,6 @@ void FJointEditorToolkit::OpenReplaceTab() const
 	}
 }
 
-void FJointEditorToolkit::PopulateNodePickingToastMessage()
-{
-	ClearNodePickingToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					.Clipping(EWidgetClipping::ClipToBounds)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle", "Node Picking Enabled"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled", "Click the node to select. Press ESC to escape."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateQuickNodePickingToastMessage()
-{
-	ClearNodePickingToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					.Clipping(EWidgetClipping::ClipToBounds)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle", "Quick Node Picking Enabled"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled", "Click the node to pick the reference of. Press ESC to escape.\nOnce you pick a node, paste it on your node pointers."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
-{
-	ClearTransientEditingWarningToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		TransientEditingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		TransientEditingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle",
-							              "You are editing a transient & PIE duplicated object."))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled",
-						              "Any modification on this graph will not be applied to the original asset."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage()
-{
-	ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("PickingEnabledTitle",
-								              "Modifying Simple Display Property Visibility"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabled",
-							              "Press the eye buttons to change their visibility. Press \'X\' to end."))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
-{
-	ClearNodePickerCopyToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickerCopyToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickerCopyToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.SizeDecreaseInterpolationSpeed(2)
-			.RemoveAnimationDuration(0.5)
-			.Duration(1.5)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("CopyTitle",
-								              "Node Pointer Copied!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("CopyTitleEnabled",
-							              "Press paste button on others to put this there"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
-{
-	ClearNodePickerPastedToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(NodePickerPasteToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickerPasteToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.SizeDecreaseInterpolationSpeed(2)
-			.RemoveAnimationDuration(0.5)
-			.Duration(1.5)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("PasteTitle",
-								              "Node Pointer Pasted!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-							]
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNeedReopeningToastMessage()
-{
-	//You can only show this message once, so if the message is already shown, do not show it again.
-	if (!GetOrCreateGraphToastMessageHub()->HasToasterMessage(RequestReopenToastMessageGuid))
-	{
-		TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(RequestReopenToastMessageGuid);
-
-		if (Message.IsValid())
-		{
-			Message.Pin()->PlayAppearAnimation();
-		}
-		else
-		{
-			RequestReopenToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-				SNew(SJointToolkitToastMessage)
-				.Duration(-1)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SBorder)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.BorderBackgroundColor(FJointEditorStyle::Color_Node_Invalid)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SVerticalBox)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Normal)
-								[
-									SNew(SBox)
-									.WidthOverride(24)
-									.HeightOverride(24)
-									[
-										SNew(SImage)
-										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-									]
-								]
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Normal)
-								[
-									SNew(STextBlock)
-									.Clipping(EWidgetClipping::ClipToBounds)
-									.Text(LOCTEXT("ReopeningRequest",
-									              "Graph Editor Reported Invalidated Slate Reference Error.\nPlease reopen the editor to solve the issue."))
-									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-								]
-							]
-						]
-					]
-				]
-			);
-		}
-	}
-}
-
-void FJointEditorToolkit::ClearNodePickingToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickingToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearTransientEditingWarningToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(TransientEditingToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid())
-		GraphToastMessageHub->RemoveToasterMessage(
-			VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearNodePickerCopyToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickerCopyToastMessageGuid, true);
-}
-
-void FJointEditorToolkit::ClearNodePickerPastedToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickerPasteToastMessageGuid, true);
-}
-
 void FJointEditorToolkit::OnContentBrowserAssetDoubleClicked(const FAssetData& AssetData)
 {
 	if (AssetData.GetAsset()) AssetViewUtils::OpenEditorForAsset(AssetData.GetAsset());
@@ -4367,6 +3838,38 @@ void FJointEditorToolkit::JumpToNode(UEdGraphNode* Node, const bool bRequestRena
 	}
 
 	GetFocusedGraphEditor()->JumpToNode(FinalCenterTo, false, false);
+}
+
+void FJointEditorToolkit::JumpToNodeGuid(const FGuid& NodeGuid)
+{
+	if (UJointManager* Manager = GetJointManager())
+	{
+		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
+
+		for (UJointEdGraph* Graph : Graphs)
+		{
+			if (!Graph) continue;
+
+			//GetCachedJointNodeInstances
+			for (TWeakObjectPtr<UObject>& CachedJointNodeInstance : Graph->GetCachedJointNodeInstances(true))
+			{
+				if (!CachedJointNodeInstance.IsValid()) continue;
+
+				if (UJointNodeBase* NodeInstance = Cast<UJointNodeBase>(CachedJointNodeInstance.Get()))
+				{
+					if (NodeInstance->GetNodeGuid() == NodeGuid)
+					{
+						OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
+
+						JumpToNode(Graph->FindGraphNodeForNodeInstance(NodeInstance), false);
+						
+						return;
+					}
+				}
+			}
+		}
+	}
+	
 }
 
 void FJointEditorToolkit::JumpToHyperlink(UObject* ObjectReference, bool bRequestRename)
@@ -4643,6 +4146,27 @@ bool FJointEditorToolkit::IsInEditingMode() const
 	}
 
 	return false;
+}
+
+bool FJointEditorToolkit::IsInNodePresetEditingMode() const
+{
+	return IsInNodePresetEditingModeFlag;
+}
+
+void FJointEditorToolkit::SetIsInNodePresetEditingMode(const bool bInIsInNodePresetEditingMode)
+{
+	IsInNodePresetEditingModeFlag = bInIsInNodePresetEditingMode;
+	
+	if (IsInNodePresetEditingModeFlag)
+	{
+		// If we are exiting node preset editing mode, we need to refresh the graph and fragment palette to make sure everything is up to date.
+		JointEditorToolkitToastMessages::PopulateNodePresetEditingToastMessage(SharedThis(this));
+		// kill NonStandaloneAssetEditingWarning toast message.
+		JointEditorToolkitToastMessages::ClearToastMessage(SharedThis(this), EJointEditorToastMessage::NonStandaloneAssetEditingWarning);
+	}
+	
+	RefreshJointEditorOutliner();
+	RebuildFragmentPalette();
 }
 
 #undef LOCTEXT_NAMESPACE

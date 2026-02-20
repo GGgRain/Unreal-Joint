@@ -11,6 +11,7 @@
 
 UJointEdGraphNode_Foundation::UJointEdGraphNode_Foundation()
 {
+	DefaultEdNodeSetting.bIsNodeResizeable = true;
 }
 
 TSubclassOf<UJointNodeBase> UJointEdGraphNode_Foundation::SupportedNodeClass()

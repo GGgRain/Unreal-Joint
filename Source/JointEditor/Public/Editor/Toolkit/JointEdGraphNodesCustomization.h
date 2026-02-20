@@ -5,9 +5,12 @@
 #include "CoreMinimal.h"
 #include "DetailWidgetRow.h"
 #include "IDetailCustomization.h"
+#include "JointAdvancedWidgets.h"
 #include "JointEditorNodePickingManager.h"
+#include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
 #include "VoltAnimationTrack.h"
+#include "PropertyHandle.h"
 
 
 class SJointNodePointerSlateFeatureButtons;
@@ -20,8 +23,8 @@ class SMultiLineEditableTextBox;
 class IDetailLayoutBuilder;
 class UJointManager;
 
+class SWindow;
 class SWidget;
-class IPropertyHandle;
 
 //EdGraphNode Customization
 
@@ -108,6 +111,7 @@ public:
 	UJointEdGraphNode* EdNode = nullptr;
 	TSharedPtr<class SWidget> NameWidget;
 	TSharedPtr<class IPropertyHandle> PropertyHandle;
+	
 	
 };
 		
@@ -213,7 +217,19 @@ public:
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
 	// End of IDetailCustomization interface
 	
+	virtual void PendingDelete() override;
+
+public:
+	
+	FReply OnEditButtonClicked();
+	
+public:
+	
+	TSharedPtr<IPropertyHandle> JointManagerHandle;
+
 };
+
+
 
 //Type Customization (usually structures)
 
@@ -282,4 +298,251 @@ public:
 	
 	FVoltAnimationTrack BlinkAnimTrack;
 	
+};
+
+
+class JOINTEDITOR_API FJointScriptLinkerDataCustomization : public IStructCustomization
+{
+public:
+	
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+	
+public:
+	
+	TSharedPtr<IPropertyHandle> ThisStructPropertyHandle;
+
+public:
+	virtual void CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils) override;
+	virtual void CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils) override;
+	
+public:
+	
+	TSharedPtr<SWidget> CreateQuickReimportAllButtonWidget();
+	TSharedPtr<SWidget> CreateRefreshWidgetButtonWidget();
+	
+public:
+	
+	TWeakPtr<IPropertyUtilities> PropertyUtils;
+
+};
+
+class JOINTEDITOR_API FJointScriptLinkerDataElementCustomization : public IStructCustomization
+{
+public:
+	
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+
+public:
+	
+	virtual void CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils) override;
+	virtual void CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils) override;
+	
+public:
+
+	TSharedPtr<SWidget> CreateReimportButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+
+};
+
+
+class JOINTEDITOR_API FJointScriptLinkerFileEntryCustomization : public IStructCustomization
+{
+public:
+	
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+	
+public:
+	
+	FDetailWidgetRow* HeaderRowPtr = nullptr;
+	TSharedPtr<IPropertyHandle> ThisStructPropertyHandle;
+	
+public:
+	
+	virtual void CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils) override;
+	virtual void CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils) override;
+
+public:
+	
+	TSharedPtr<SWidget> CreateValidityIconWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+	TSharedPtr<SWidget> CreateNameTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+	TSharedPtr<SWidget> CreatePathTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+	
+public:
+	
+	TSharedPtr<SWidget> CreateOpenOnFileExplorerButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+	TSharedPtr<SWidget> CreateReassignFileButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle);
+
+};
+
+
+class JOINTEDITOR_API FJointArrayElementBuilder : public IDetailCustomNodeBuilder, public TSharedFromThis<FJointArrayElementBuilder>
+{
+public:
+
+	FJointArrayElementBuilder(TSharedPtr<IPropertyHandle> InPropertyHandle);
+
+	virtual void SetOnRebuildChildren( FSimpleDelegate InOnRebuildChildren ) override;
+
+	virtual void GenerateHeaderRowContent( FDetailWidgetRow& NodeRow ) override;
+
+	virtual void GenerateChildContent( IDetailChildrenBuilder& ChildrenBuilder ) override;
+
+	virtual bool RequiresTick() const override;
+
+	virtual void Tick( float DeltaTime ) override;
+
+	virtual FName GetName() const override;
+
+	virtual bool InitiallyCollapsed() const override;
+
+public:
+	
+ 	TSharedPtr<IPropertyHandle> PropertyHandle;	
+};
+
+
+class JOINTEDITOR_API FJointScriptLinkerMappingCustomization : public IStructCustomization
+{
+public:
+	
+	static TSharedRef<IPropertyTypeCustomization> MakeInstance();
+
+public:
+	
+	struct FNodeStatusItem
+	{
+		FString Key;              // Map Key
+		FGuid Guid;
+		bool bExistsInGraph = false;
+	};
+
+public:
+	
+	// Build UI data for list view
+	struct FCandidateItem
+	{
+		TWeakObjectPtr<UJointManager> Manager;
+		FString Name;
+		FString Path;
+		uint32 MatchingNodeCount;
+	};
+	
+	class SCandidateRow : public SMultiColumnTableRow<TSharedPtr<FCandidateItem>>
+	{
+	public:
+		SLATE_BEGIN_ARGS(SCandidateRow);
+		SLATE_ARGUMENT(TSharedPtr<FCandidateItem>, Item)
+		SLATE_END_ARGS()
+		
+	public:
+
+		void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& OwnerTable);
+		virtual TSharedRef<SWidget> GenerateWidgetForColumn(const FName& ColumnName) override;
+	
+	public:
+	
+		FReply OnOpenEditorButtonPressed();
+		FReply OnGoToButtonPressed();
+
+	private:
+		TSharedPtr<FCandidateItem> Item;
+	};
+	
+	
+	class SReallocationPopup : public SCompoundWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SReallocationPopup);
+		SLATE_ARGUMENT(TWeakPtr<IPropertyHandle>, JointManagerHandle)
+		SLATE_ARGUMENT(TWeakPtr<SWindow>, ParentWindow)
+		SLATE_ARGUMENT(TArray<TSharedPtr<FCandidateItem>>, CandidateItems)
+		SLATE_ARGUMENT(TWeakPtr<FJointScriptLinkerMappingCustomization>, ParentCustomizationPtr)
+		SLATE_END_ARGS()
+		
+	public:
+		
+		virtual void Construct(const FArguments& InArgs);
+		
+	public:
+		
+		void OnColumnSort(EColumnSortPriority::Type, const FName& ColumnId, EColumnSortMode::Type SortMode);
+		EColumnSortMode::Type GetColumnSortMode(FName ColumnId) const;
+		
+	public:
+		
+		// Parent window and property handle for performing reallocation
+		TWeakPtr<SWindow> ParentWindow;
+		TSharedPtr<IPropertyHandle> ParentJointManagerHandle;
+		TWeakPtr<FJointScriptLinkerMappingCustomization> ParentCustomizationPtr;
+		
+	public:
+		
+		// Slate components
+		TSharedPtr<SListView<TSharedPtr<FCandidateItem>>> ReallocationPopupListView;
+
+	public:
+		
+		// Data
+		TArray<TSharedPtr<FCandidateItem>> CandidateItems;
+		TWeakPtr<FCandidateItem> SelectedItem;
+		
+		// Sorting
+		FName ReallocationCurrentSortColumn = "Match";
+		EColumnSortMode::Type ReallocationCurrentSortMode = EColumnSortMode::Descending;
+	};
+public:
+
+	// widget constructions
+	TSharedRef<SWidget> CreateContentWidget();
+
+public:
+	
+	virtual void CustomizeStructHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IStructCustomizationUtils& StructCustomizationUtils) override;
+	virtual void CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils) override;
+	
+public:
+	
+	void CleanUp();
+
+public:
+	
+	TSharedPtr<IPropertyHandle> ThisStructPropertyHandle;
+	FDetailWidgetRow* HeaderRowPtr;
+	
+public:
+	
+	TSharedPtr<SJointOutlineBorder> BodyBorder;
+	
+public:
+
+	TArray<TSharedPtr<FNodeStatusItem>> NodeStatusItems;
+
+public:
+	
+	// Reallocation
+	FReply OnReallocateButtonPressed();
+	TSharedPtr<SWindow> ReallocationWindow;
+	
+	FReply OnReimportButtonPressed();
+	FReply OnQuickReimportButtonPressed();
+
+	
+	FReply OnCleanAllButtonClicked();
+	FReply OnCleanInvalidButtonClicked();
+	
+public:
+	
+	void RefreshVisual();
+	
+public:
+	
+	void BuildNodeStatusItems();
+	void BuildFilterString();
+
+public:
+	
+	FScriptMapHelper GetMapHelpers(
+		TSharedPtr<IPropertyHandle> InNodeMappingsHandle,
+		FMapProperty*& OutMapProp,
+		void*& OutMapContainer
+	);
 };

@@ -22,6 +22,7 @@ enum class EJointMDAdmonitionStyleType : uint8
 enum class EJointMDAdmonitionType : uint8
 {
 	Info,
+	Mention,
 	Note,
 	Warning,
 	Caution,

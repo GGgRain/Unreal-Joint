@@ -467,7 +467,6 @@ TSharedRef<SWidget> FJointEditorToolbar::GenerateJointUtilitiesMenu() const
 			ShowMenuBuilder.AddMenuEntry(Commands.QuickPickSelection);
 			ShowMenuBuilder.AddMenuEntry(Commands.JumpToSelection);
 			ShowMenuBuilder.AddMenuEntry(Commands.CreateFoundation);
-			ShowMenuBuilder.AddMenuEntry(Commands.CreateJointNodePresetFromSelection);
 		}
 		ShowMenuBuilder.EndSection();
 
