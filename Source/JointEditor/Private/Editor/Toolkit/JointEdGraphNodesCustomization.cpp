@@ -2932,7 +2932,9 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateReassignFile
 		{
 			TArray<FString> OutFilePaths;
 
-			FJointEdUtils::OpenJointScriptImportWindow(OutFilePaths, false);
+			FJointEdUtils::OpenJointScriptFileSelectionWindow(
+				OutFilePaths, 
+				false);
 
 			if (!OutFilePaths.IsEmpty())
 			{

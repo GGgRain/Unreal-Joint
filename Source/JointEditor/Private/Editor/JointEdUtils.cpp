@@ -1252,7 +1252,7 @@ void FJointEdUtils::FireNotification(const FText& NotificationTitleText, const F
 	}
 }
 
-void FJointEdUtils::OpenJointScriptImportWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection)
+void FJointEdUtils::OpenJointScriptFileSelectionWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection)
 {
 	OutFilePaths.Empty();
 	//1. Open file dialog to select the file

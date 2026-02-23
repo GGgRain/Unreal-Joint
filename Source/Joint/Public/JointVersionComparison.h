@@ -3,7 +3,7 @@
 #pragma once
 
 #define JOINT_MAJOR_VERSION	2
-#define JOINT_MINOR_VERSION	12
+#define JOINT_MINOR_VERSION	13
 #define JOINT_PATCH_VERSION	0
 
 

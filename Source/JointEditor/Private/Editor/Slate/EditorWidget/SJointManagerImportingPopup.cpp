@@ -615,7 +615,7 @@ FReply SJointManagerImportingPopup::OnSelectFileButtonClicked()
 	//1. Open file dialog to select the file
 	TArray<FString> OutFiles;
 	
-	FJointEdUtils::OpenJointScriptImportWindow(OutFiles, true);
+	FJointEdUtils::OpenJointScriptFileSelectionWindow(OutFiles, true);
 	
 	ExternalFilePaths = OutFiles;
 	

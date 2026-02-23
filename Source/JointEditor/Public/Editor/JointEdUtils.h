@@ -267,7 +267,7 @@ public:
 	
 public:
 	
-	static void OpenJointScriptImportWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection);
+	static void OpenJointScriptFileSelectionWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection);
 
 	/**
 	 * Import files to the provided Joint manager. (e.g., importing csv files to create & update nodes)
