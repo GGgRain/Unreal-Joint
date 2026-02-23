@@ -230,13 +230,13 @@ void SJointGraphNodeBase::OnVisibilityChangeModeForSimpleDisplayPropertyExit()
 	}
 }
 
-void SJointGraphNodeBase::ModifySlateFromGraphNode() const
+void SJointGraphNodeBase::ModifySlateFromGraphNode()
 {
 	if (!this->GraphNode) return;
 
 	if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(this->GraphNode))
 	{
-		CastedGraphNode->ModifyGraphNodeSlate();
+		CastedGraphNode->ModifyGraphNodeSlate(SharedThis(this));
 	}
 }
 
@@ -281,7 +281,7 @@ void SJointGraphNodeBase::AssignSlateToGraphNode()
 
 	if (UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(this->GraphNode))
 	{
-		CastedGraphNode->SetGraphNodeSlate(SharedThis(this));
+		CastedGraphNode->AddGraphNodeSlate(SharedThis(this));
 	}
 }
 
@@ -717,6 +717,7 @@ TSharedPtr<SGraphNode> SJointGraphNodeBase::CreateSubNodeWidget(const TSharedPtr
 
 	if (OwnerGraphPanel.IsValid())
 	{
+		EdFragment->AddGraphNodeSlate(StaticCastSharedPtr<SJointGraphNodeBase>(NewNode));
 		NewNode->SetOwner(OwnerGraphPanel.ToSharedRef());
 		OwnerGraphPanel->AttachGraphEvents(NewNode);
 	}
@@ -874,9 +875,9 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 	{
 		if (Node == nullptr) continue;
 
-		if (!Node->GetGraphNodeSlate().IsValid()) continue;
+		TWeakPtr<SJointGraphNodeBase> SubNode = Node->GetGraphNodeSlateForPanel(GetOwnerPanel());
 
-		SubNodeSlates.Add(Node->GetGraphNodeSlate().Pin());
+		SubNodeSlates.Add(SubNode.Pin());
 	}
 
 	SubNodes.RemoveAll([SubNodeSlates](TSharedPtr<SGraphNode> SubNodeSlate)
@@ -900,25 +901,15 @@ void SJointGraphNodeBase::PopulateSubNodeSlates()
 		UJointEdGraphNode_Fragment* EdFragment = Cast<UJointEdGraphNode_Fragment>(SubNode);
 
 		if (EdFragment == nullptr) continue;
-
-		if (EdFragment->ShouldManuallyImplementSlate()) continue;
-
-
-		TSharedPtr<SGraphNode> SubNodeSlateToAdd;
-
-		//When the slate already has a valid slate, just grab that and use that. + Check if the owner is correct - otherwise, reassign it.
-		if (EdFragment->CheckGraphNodeSlateReusableOn(OwnerPanel))
-		{
-			SubNodeSlateToAdd = EdFragment->GetGraphNodeSlate().Pin();
-			//SubNodeSlateToAdd->SetOwner(OwnerPanel.ToSharedRef());
-		}
-		else //if not, make a new one.
+		
+		TSharedPtr<SGraphNode> SubNodeSlateToAdd = SubNode->GetGraphNodeSlateForPanel(OwnerPanel).Pin();
+		
+		if (!SubNodeSlateToAdd)
 		{
 			SubNodeSlateToAdd = CreateSubNodeWidget(OwnerPanel, EdFragment);
-
-			AssignSubNode(SubNodeSlateToAdd);
 		}
-
+		
+		AssignSubNode(SubNodeSlateToAdd);
 
 		TSharedPtr<SJointGraphNodeInsertPoint> Point1;
 
@@ -975,6 +966,8 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 void SJointGraphNodeBase::AssignSubNode(const TSharedPtr<SGraphNode>& SubNodeWidget)
 {
+	if (!SubNodeWidget.IsValid()) return;
+	if (SubNodes.Contains(SubNodeWidget.ToSharedRef())) return;
 	SubNodes.Add(SubNodeWidget);
 }
 
@@ -1048,25 +1041,20 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 					GraphNode->GetGraph()->NotifyGraphChanged();
 				}
 				
-				if (DraggedNode->GetGraphNodeSlate().IsValid())
+				FOREACH_GRAPHNODESLATE_BASE_WITH(DraggedNode, NodeSlate)
 				{
-					TSharedPtr<SJointGraphNodeBase> DraggedNodeSlate = DraggedNode->GetGraphNodeSlate().Pin();
-				
-					DraggedNodeSlate->PlayDropAnimation();
-					DraggedNodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();	
+					NodeSlate->PlayDropAnimation();
+					NodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();	
 				}
 
 				TArray<UJointEdGraphNode*> SubSubNodes = DraggedNode->GetAllSubNodesInHierarchy();
 
 				for (UJointEdGraphNode* SubSubNode : SubSubNodes)
 				{
-					TSharedPtr<SJointGraphNodeBase> SubSubNodeSlate = SubSubNode->GetGraphNodeSlate().Pin();
-					
-					if (SubSubNodeSlate)
+					FOREACH_GRAPHNODESLATE_BASE_WITH(SubSubNode, NodeSlate)
 					{
-						SubSubNodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();
+						NodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();	
 					}
-					
 				}
 			}
 		}
@@ -2609,8 +2597,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateImportedNodeIndication()
 	.Visibility(EVisibility::Visible)
 	.ToolTipText(
 		FText::Format(
-		LOCTEXT("ImportedIndicatorToolTip", "This node has a link with an external source. (e.g., JSON file, csv file).\nLinked File Name: {0}\nLinked File Source Path: {1}\nYou can edit node directly, but it is recommended to edit the external source file to keep consistency."),
-		FText::FromString(*GetCastedGraphNode()->GetExternalSourceEntry().FileName), 
+		LOCTEXT("ImportedIndicatorToolTip", "This node has a link with an external source. (e.g., JSON file, csv file).\nLinked File Source Path: {0}\nYou can edit node directly, but it is recommended to edit the external source file to keep consistency."),
 		FText::FromString(*GetCastedGraphNode()->GetExternalSourceEntry().FilePath)
 		)
 	)

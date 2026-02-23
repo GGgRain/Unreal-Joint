@@ -137,7 +137,7 @@ void UJointEdGraph::ResetGraphNodeSlates()
 {
 	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
 	{
-		if (GraphNode.IsValid()) GraphNode->SetGraphNodeSlate(nullptr);
+		if (GraphNode.IsValid()) GraphNode->ClearGraphNodeSlates();
 	}
 }
 
@@ -162,23 +162,6 @@ void UJointEdGraph::NotifyNodeConnectionChanged()
 	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
 	{
 		if (GraphNode.IsValid()) GraphNode->NodeConnectionListChanged();
-	}
-}
-
-void UJointEdGraph::ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel)
-{
-	if (!GraphPanel.IsValid()) return;
-
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes(true))
-	{
-		if (!GraphNode.IsValid()) continue;
-
-		TWeakPtr<SJointGraphNodeBase> Slate = GraphNode->GetGraphNodeSlate();
-
-		if (Slate.IsValid())
-		{
-			Slate.Pin()->SetOwner(GraphPanel.ToSharedRef());
-		}
 	}
 }
 
@@ -354,7 +337,7 @@ void UJointEdGraph::OnSave()
 
 void UJointEdGraph::OnClosed()
 {
-	CleanUpNodes();
+	
 }
 
 void UJointEdGraph::BindEdNodeEvents()
@@ -564,19 +547,6 @@ void UJointEdGraph::GrabUnknownClassDataFromGraph()
 	}
 }
 
-
-void UJointEdGraph::CleanUpNodes()
-{
-	TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = GetCachedJointGraphNodes();
-
-	for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : GraphNodes)
-	{
-		if (JointEdGraphNode.IsValid())
-		{
-			JointEdGraphNode->ClearGraphNodeSlate();
-		}
-	}
-}
 
 void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
 {

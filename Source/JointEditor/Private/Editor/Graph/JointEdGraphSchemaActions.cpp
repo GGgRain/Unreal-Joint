@@ -20,19 +20,6 @@
 #include "Misc/EngineVersionComparison.h"
 
 
-FJointSchemaAction_NewNode::FJointSchemaAction_NewNode()
-	: FEdGraphSchemaAction(),
-	  NodeTemplate(nullptr)
-{
-}
-
-FJointSchemaAction_NewNode::FJointSchemaAction_NewNode(FText InNodeCategory, FText InMenuDesc, FText InToolTip,
-                                                             const int32 InGrouping)
-	: FEdGraphSchemaAction(MoveTemp(InNodeCategory), MoveTemp(InMenuDesc), MoveTemp(InToolTip), InGrouping),
-	  NodeTemplate(nullptr)
-{
-}
-
 FJointSchemaAction_NewSubNode::FJointSchemaAction_NewSubNode()
 	: FEdGraphSchemaAction(),
 	  NodeTemplate(nullptr)
@@ -40,7 +27,7 @@ FJointSchemaAction_NewSubNode::FJointSchemaAction_NewSubNode()
 }
 
 FJointSchemaAction_NewSubNode::FJointSchemaAction_NewSubNode(FText InNodeCategory, FText InMenuDesc,
-                                                                   FText InToolTip, const int32 InGrouping)
+                                                             FText InToolTip, const int32 InGrouping)
 	: FEdGraphSchemaAction(MoveTemp(InNodeCategory), MoveTemp(InMenuDesc), MoveTemp(InToolTip), InGrouping),
 	  NodeTemplate(nullptr)
 {
@@ -60,7 +47,7 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
 
 	GEditor->BeginTransaction(
 		FText::Format(NSLOCTEXT("JointEdTransaction","TransactionTitle_AddNewSubNode","Add new sub node (Fragment): {0}"),
-			FText::FromString(NodeClass->GetName())
+		              FText::FromString(NodeClass->GetName())
 		)
 	);
 	
@@ -105,7 +92,7 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
 		FJointEdUtils::FireNotification(	
 			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Success_Title", "New sub node added"),
 			FText::Format(
-			NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Success_Message", "A new sub node \'{0}\' has been successfully added to the parent nodes."),
+				NSLOCTEXT("JointEdSchemaAction_NewSubNode", "AddNewSubNode_Success_Message", "A new sub node \'{0}\' has been successfully added to the parent nodes."),
 				LastCreatedNode->GetNodeTitle(ENodeTitleType::FullTitle)
 			),
 			EJointMDAdmonitionType::Mention,
@@ -119,36 +106,31 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
 }
 
 UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* ParentGraph,
-                                                              TArray<UEdGraphPin*>& FromPins, const FVector2D Location,
-                                                              bool bSelectNewNode)
+                                                           TArray<UEdGraphPin*>& FromPins, const FVector2D Location,
+                                                           bool bSelectNewNode)
 {
 	return PerformAction(ParentGraph, NULL, Location, bSelectNewNode);
 }
 
-
 void FJointSchemaAction_NewSubNode::AddReferencedObjects(FReferenceCollector& Collector)
 {
-	FEdGraphSchemaAction::AddReferencedObjects(Collector);
-
 	// These don't get saved to disk, but we want to make sure the objects don't get GC'd while the action array is around
-
-
-#if UE_VERSION_OLDER_THAN(5,3,0)
 	Collector.AddReferencedObject(NodeTemplate);
 	Collector.AddReferencedObjects(NodesToAttachTo);
-#else
-	TObjectPtr<UObject> NodeTemplateObj = NodeTemplate;
-	Collector.AddReferencedObject(NodeTemplateObj);
+}
 
-	for (UObject* ToAttachTo : NodesToAttachTo)
-	{
-		if(ToAttachTo == nullptr) continue;
-		TObjectPtr<UObject> ParentNodeObj = ToAttachTo;
-		
-		Collector.AddReferencedObject(ParentNodeObj);
-	}
-#endif
-	
+FJointSchemaAction_NewNode::FJointSchemaAction_NewNode()
+	: FEdGraphSchemaAction(),
+	  NodeTemplate(nullptr)
+{
+}
+
+
+FJointSchemaAction_NewNode::FJointSchemaAction_NewNode(FText InNodeCategory, FText InMenuDesc, FText InToolTip,
+                                                       const int32 InGrouping)
+	: FEdGraphSchemaAction(MoveTemp(InNodeCategory), MoveTemp(InMenuDesc), MoveTemp(InToolTip), InGrouping),
+	  NodeTemplate(nullptr)
+{
 }
 
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
@@ -197,8 +179,22 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
 	return ResultNode;
 }
 
+UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins,
+                                                        const FVector2D Location, bool bSelectNewNode)
+{
+	if (FromPins.Num() > 0) return PerformAction(ParentGraph, FromPins[0], Location, bSelectNewNode);
+
+	return PerformAction(ParentGraph, nullptr, Location, bSelectNewNode);
+}
+
+void FJointSchemaAction_NewNode::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	// These don't get saved to disk, but we want to make sure the objects don't get GC'd while the action array is around
+	Collector.AddReferencedObject(NodeTemplate);
+}
+
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_FromShortcut(UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location,
-	bool bSelectNewNode)
+                                                                     bool bSelectNewNode)
 {
 	if (!NodeClass || !ParentGraph || !EdClass) return nullptr;
 
@@ -225,7 +221,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_FromShortcut(UEdGraph* P
 	UJointNodeBase* NodeData = NewObject<UJointNodeBase>(Manager, NodeClass, NAME_None,RF_Transactional);
 
 	ResultNode->NodeInstance = NodeData;
-	ResultNode->NodeClassData = FJointSharedClassData(NodeClass, FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
+	ResultNode->NodeClassData = FJointGraphNodeClassData(NodeClass, FJointGraphNodeClassHelper::GetDeprecationMessage(NodeData->GetClass()));
 	ResultNode->CreateNewGuid();
 	ResultNode->NodePosX = Location.X;
 	ResultNode->NodePosY = Location.Y;
@@ -254,8 +250,38 @@ FJointSchemaAction_NewNodePreset::FJointSchemaAction_NewNodePreset(FText InNodeC
 
 UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
-	return FEdGraphSchemaAction::PerformAction(ParentGraph, FromPin, Location, bSelectNewNode);
+	if (!NodePreset || !ParentGraph) return nullptr;
+	
+	UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(ParentGraph);
+	if (!CastedGraph) return nullptr;
+	
+	UJointManager* Manager = CastedGraph->GetJointManager();
+	if (!Manager) return nullptr;
+
+	GEditor->BeginTransaction(FText::Format(NSLOCTEXT("JointEdTransaction","TransactionTitle_AddNodePreset","Add new node preset: {0}"), FText::FromString(NodePreset->GetName())));
+
+	ParentGraph->Modify();
+	Manager->Modify();
+
+	TArray<UJointEdGraphNode*> Nodes = UJointEditorFunctionLibrary::AddNodePreset(
+		Manager,
+		ParentGraph,
+		NodePreset,
+		Location
+	);
+
+	for (UJointEdGraphNode*& Node : Nodes)
+	{
+		if (!Node) continue;
+		
+		Node->Modify();
+	}
+
+	GEditor->EndTransaction();
+
+	return Nodes.Num() > 0 ? Nodes[0] : nullptr;
 }
+
 
 UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode)
 {
@@ -264,37 +290,13 @@ UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* Pa
 
 void FJointSchemaAction_NewNodePreset::AddReferencedObjects(FReferenceCollector& Collector)
 {
-	FEdGraphSchemaAction::AddReferencedObjects(Collector);
-}
-
-
-UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins,
-                                                        const FVector2D Location, bool bSelectNewNode)
-{
-	if (FromPins.Num() > 0) return PerformAction(ParentGraph, FromPins[0], Location, bSelectNewNode);
-
-	return PerformAction(ParentGraph, nullptr, Location, bSelectNewNode);
-}
-
-void FJointSchemaAction_NewNode::AddReferencedObjects(FReferenceCollector& Collector)
-{
-	FEdGraphSchemaAction::AddReferencedObjects(Collector);
 	// These don't get saved to disk, but we want to make sure the objects don't get GC'd while the action array is around
-
-#if UE_VERSION_OLDER_THAN(5,3,0)
-	Collector.AddReferencedObject(NodeTemplate);
-#else
-	TObjectPtr<UObject> NodeTemplateObj = NodeTemplate;
-	
-	Collector.AddReferencedObject(NodeTemplateObj);
-#endif
-
-	
+	Collector.AddReferencedObject(NodePreset);
 }
 
 
 UEdGraphNode* FJointSchemaAction_AddComment::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-                                                              const FVector2D Location, bool bSelectNewNode)
+                                                           const FVector2D Location, bool bSelectNewNode)
 {
 	UEdGraphNode_Comment* const CommentTemplate = NewObject<UEdGraphNode_Comment>();
 	CommentTemplate->bCanRenameNode = true; // make it able to rename.
@@ -317,7 +319,7 @@ UEdGraphNode* FJointSchemaAction_AddComment::PerformAction(class UEdGraph* Paren
 }
 
 UEdGraphNode* FJointSchemaAction_AddConnector::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-                                                                const FVector2D Location, bool bSelectNewNode)
+                                                             const FVector2D Location, bool bSelectNewNode)
 {
 	UJointEdGraphNode_Connector* const ConnectorTemplate = NewObject<UJointEdGraphNode_Connector>();
 

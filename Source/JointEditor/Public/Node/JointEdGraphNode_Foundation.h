@@ -33,6 +33,9 @@ public:
 
 	virtual void NodeConnectionListChanged() override;
 	
+	virtual void PostPlacedNewNode() override;
+
+	
 public:
 	
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

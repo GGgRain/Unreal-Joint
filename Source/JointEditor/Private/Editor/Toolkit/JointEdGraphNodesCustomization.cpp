@@ -1994,25 +1994,9 @@ namespace JointScriptLinkerCustomizationHelpers
 	{
 		if (StructPropertyHandle_FJointScriptLinkerDataElement.IsValid())
 		{
-			TSharedPtr<IPropertyHandle> JointManagerHandle = StructPropertyHandle_FJointScriptLinkerDataElement->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
-
 			TSharedPtr<IPropertyHandle> ParserDataHandle = StructPropertyHandle_FJointScriptLinkerDataElement->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, ParserData));
 			TSharedPtr<IPropertyHandle> ParserData_ScriptParser = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ScriptParser));
-
-			//Skip if Joint manager is null
-			UObject* JointManagerObj = nullptr;
-			JointManagerHandle->GetValue(JointManagerObj);
-
-			if (JointManagerObj == nullptr)
-			{
-				FJointEdUtils::FireNotification(
-					LOCTEXT("ReimportFileFailedTitle_NullJointManager", "Reimport File Skipped"),
-					LOCTEXT("ReimportFileFailedDesc_NullJointManager", "A mapping had a null Joint Manager reference. Skipping reimport for that mapping."),
-					EJointMDAdmonitionType::Warning
-				);
-
-				return;
-			}
+			TSharedPtr<IPropertyHandle> ParserData_ParserInstanceData = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ParserInstanceData));
 
 			FString OutputString;
 
@@ -2020,6 +2004,16 @@ namespace JointScriptLinkerCustomizationHelpers
 			// make a soft object path and try to load it, if it fails, skip and fire notification
 			FSoftClassPath SoftClassPath(OutputString);
 			UClass* ParserClass = SoftClassPath.TryLoadClass<UJointScriptParser>();
+			
+			//TArray<uint8> ParserInstanceData -> we have to get raw data.
+			TArray<uint8> ParserInstanceData;
+			void* ParserInstanceDataPtr = nullptr;
+
+			if (ParserData_ParserInstanceData->GetValueData(ParserInstanceDataPtr) == FPropertyAccess::Success && ParserInstanceDataPtr != nullptr)
+			{
+				const TArray<uint8>* SourceArrayPtr = static_cast<TArray<uint8>*>(ParserInstanceDataPtr);
+				ParserInstanceData = *SourceArrayPtr;
+			}
 
 			UJointScriptParser* ParserCasted = ParserClass->GetDefaultObject<UJointScriptParser>();
 
@@ -2033,17 +2027,50 @@ namespace JointScriptLinkerCustomizationHelpers
 
 				return;
 			}
-
-			UJointManager* JointManagerCasted = Cast<UJointManager>(JointManagerObj);
-
-			if (JointManagerCasted == nullptr) return;
-
-			FJointEdUtils::ImportFileToJointManager(
-				JointManagerCasted,
-				FilePath,
-				ParserCasted,
-				true
+			
+			FJointScriptLinkerParserData::DeserializeParserInstanceFromDataToExistingParser(
+				ParserCasted, 
+				ParserInstanceData
 			);
+
+			//TArray<FJointScriptLinkerMapping> Mappings
+			TSharedPtr<IPropertyHandle> MappingsHandle = StructPropertyHandle_FJointScriptLinkerDataElement->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
+
+			//iterate through each element and call ImportFileToJointManager
+			TSharedPtr<IPropertyHandleArray> MappingsArrayHandle = MappingsHandle->AsArray();
+
+			uint32 NumElements = 0;
+			MappingsArrayHandle->GetNumElements(NumElements);
+
+			for (uint32 i = 0; i < NumElements; ++i)
+			{
+				TSharedPtr<IPropertyHandle> ElementHandle = MappingsArrayHandle->GetElement(i);
+				TSharedPtr<IPropertyHandle> JointManagerHandle = ElementHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerMapping, JointManager));
+
+				if (!JointManagerHandle.IsValid()) continue;
+
+				UObject* JointManagerObj = nullptr;
+				JointManagerHandle->GetValue(JointManagerObj);
+
+				if (JointManagerObj == nullptr)
+				{
+					FJointEdUtils::FireNotification(
+					   LOCTEXT("ReimportFileFailedTitle_NullJointManager", "Reimport File Skipped"),
+					   FText::Format(LOCTEXT("ReimportFileFailedDesc_NullJointManager", "Mapping index [{0}] has a null Joint Manager. Skipping."), FText::AsNumber(i)),
+					   EJointMDAdmonitionType::Warning
+					);
+					continue;
+				}
+				if (UJointManager* JointManagerCasted = Cast<UJointManager>(JointManagerObj))
+				{
+					FJointEdUtils::ImportFileToJointManager(
+						JointManagerCasted,
+						FilePath,
+						ParserCasted,
+						true
+					);
+				}
+			}
 		}
 	}
 
@@ -2054,24 +2081,15 @@ namespace JointScriptLinkerCustomizationHelpers
 	{
 		if (StructPropertyHandle_FJointScriptLinkerDataElement_Array.IsValid())
 		{
-			//TArray<FJointScriptLinkerMapping>
-			TSharedPtr<IPropertyHandle> MappingsHandle = StructPropertyHandle_FJointScriptLinkerDataElement_Array->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
+			TSharedPtr<IPropertyHandleArray> ArrayHandle = StructPropertyHandle_FJointScriptLinkerDataElement_Array->AsArray();
 
-			//iterate through each element and call ImportFileToJointManager
-			TSharedPtr<class IPropertyHandleArray> ArrayPH = MappingsHandle->AsArray();
+			uint32 NumElements = 0;
+			ArrayHandle->GetNumElements(NumElements);
 
-			if (ArrayPH.IsValid())
+			for (uint32 i = 0; i < NumElements; ++i)
 			{
-				uint32 NumElements = 0;
-				ArrayPH->GetNumElements(NumElements);
-
-				for (uint32 Index = 0; Index < NumElements; ++Index)
-				{
-					if (TSharedPtr<IPropertyHandle> ElementHandle = ArrayPH->GetElement(Index); ElementHandle.IsValid())
-					{
-						Reimport_FJointScriptLinkerDataElement(FilePath, ElementHandle);
-					}
-				}
+				TSharedPtr<IPropertyHandle> ElementHandle = ArrayHandle->GetElement(i);
+				Reimport_FJointScriptLinkerDataElement(FilePath, ElementHandle);
 			}
 		}
 	}
@@ -2150,6 +2168,111 @@ namespace JointScriptLinkerCustomizationHelpers
 		UJointManager* JM = Cast<UJointManager>(LoadedObject);
 		return JM;
 	}
+	
+	TSharedRef<SWidget> CreateImportButtonContentWidget()
+	{
+		return SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+			];
+	}
+
+	TSharedRef<SWidget> CreateReimportButtonContentWidget()
+	{
+		return SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+					.DesiredSizeOverride(FVector2D(10, 10))
+					.ColorAndOpacity(FLinearColor::White)
+					.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+				]
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+					.DesiredSizeOverride(FVector2D(10, 10))
+					.ColorAndOpacity(FLinearColor::White)
+					.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+				]
+			];
+	}
+	
+	TSharedRef<SWidget> CreateQuickReimportButtonContentWidget()
+	{
+		return SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
+					.DesiredSizeOverride(FVector2D(10, 10))
+					.ColorAndOpacity(FLinearColor::White)
+					.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+				]
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+					.DesiredSizeOverride(FVector2D(10, 10))
+					.ColorAndOpacity(FLinearColor::White)
+					.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+				]
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SNew(SImage)
+					.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("EditorViewport.ToggleRealTime"))
+					.DesiredSizeOverride(FVector2D(7, 7))
+					.ColorAndOpacity(FLinearColor::White)
+					.RenderTransform(FSlateRenderTransform(FVector2D(2, -4)))
+				]
+			];
+	}
+
+	TSharedRef<SWidget> CreateReallocateButtonContentWidget()
+	{
+		return 
+			SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+			];
+	}
 }
 
 
@@ -2190,9 +2313,15 @@ void FJointScriptLinkerDataElementCustomization::CustomizeStructChildren(TShared
 
 TSharedPtr<SWidget> FJointScriptLinkerDataElementCustomization::CreateReimportButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
 {
-	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	
+	TWeakPtr<IPropertyTypeCustomization> WeakThisPtr = AsShared();
+	TWeakPtr<IPropertyHandle> WeakStructPropertyHandle = StructPropertyHandle;
+	
+	auto ValidityCheck = [WeakStructPropertyHandle]() -> const bool
 	{
-		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+		if (!WeakStructPropertyHandle.IsValid()) return false;
+		
+		const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 		FString OutputString;
 
@@ -2209,14 +2338,18 @@ TSharedPtr<SWidget> FJointScriptLinkerDataElementCustomization::CreateReimportBu
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 		.ContentPadding(FJointEditorStyle::Margin_Normal)
-		.ToolTipText(LOCTEXT("ReimportFileToolTip", "Reimport the file to all mapped Joint Managers."))
-		.IsEnabled_Lambda([this, StructPropertyHandle]() -> const bool
+		.ToolTipText(LOCTEXT("QuickReimportButtonTooltip", "Reimport from the file path specified in this entry. Will use the same parser as the initial import."))
+		.IsEnabled_Lambda([WeakStructPropertyHandle]() -> const bool
 		{
-			return JointScriptLinkerCustomizationHelpers::CheckPathValidity(StructPropertyHandle);
+			if (!WeakStructPropertyHandle.IsValid()) return false;
+			
+			return JointScriptLinkerCustomizationHelpers::CheckPathValidity(WeakStructPropertyHandle.Pin());
 		})
-		.OnClicked_Lambda([StructPropertyHandle, this]()
+		.OnClicked_Lambda([WeakStructPropertyHandle]()
 		{
-			const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+			if (!WeakStructPropertyHandle.IsValid()) return FReply::Handled();
+			
+			const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 			FString OutputString;
 
@@ -2233,31 +2366,29 @@ TSharedPtr<SWidget> FJointScriptLinkerDataElementCustomization::CreateReimportBu
 				return FReply::Handled();
 			}
 
-			//TArray<FJointScriptLinkerMapping>
-			const TSharedPtr<IPropertyHandle> MappingsHandle = StructPropertyHandle->GetChildHandle(
-				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, Mappings));
-
-			JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement_Array(OutputString, StructPropertyHandle);
+			JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement(OutputString,  WeakStructPropertyHandle.Pin());
 
 			return FReply::Handled();
 		})
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot()
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
 			[
-				SNew(SImage)
-				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
-				.DesiredSizeOverride(FVector2D(12, 12))
-				.ColorAndOpacity(FLinearColor::White)
-				.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+				JointScriptLinkerCustomizationHelpers::CreateQuickReimportButtonContentWidget()
 			]
-			+ SOverlay::Slot()
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
 			[
-				SNew(SImage)
-				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
-				.DesiredSizeOverride(FVector2D(12, 12))
-				.ColorAndOpacity(FLinearColor::White)
-				.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.Text(LOCTEXT("QuickReimportAllButtonLabel", "Quick Reimport All"))
 			]
 		];
 }
@@ -2321,6 +2452,13 @@ void FJointScriptLinkerDataCustomization::CustomizeStructHeader(TSharedRef<IProp
 			.VAlign(VAlign_Center)
 			.Padding(FJointEditorStyle::Margin_Tiny)
 			[
+				CreateImportButtonWidget().ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Tiny)
+			[
 				CreateQuickReimportAllButtonWidget().ToSharedRef()
 			]
 			+ SHorizontalBox::Slot()
@@ -2343,6 +2481,67 @@ void FJointScriptLinkerDataCustomization::CustomizeStructHeader(TSharedRef<IProp
 void FJointScriptLinkerDataCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
 {
 	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerData, ScriptLinks)).ToSharedRef());
+}
+
+TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateImportButtonWidget()
+{
+	//Reimport button
+	return SNew(SJointOutlineButton)
+		.NormalColor(FLinearColor::Transparent)
+		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
+		.OutlineNormalColor(FLinearColor::Transparent)
+		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
+		.ContentPadding(FJointEditorStyle::Margin_Normal)
+		.ToolTipText(LOCTEXT("ImportJointManagerToolTip", "Import a Joint Manager by selecting a script file. This will create a new Joint Manager asset based on the provided script and parser."))
+		.OnClicked_Lambda([this]()
+		{
+			FScopedTransaction ImportTransaction(LOCTEXT("ImportJointManagerTransaction", "Import Joint Manager"));
+	
+			UJointScriptSettings::Get()->Modify();
+			
+			// Create a simple modal window with a list and OK/Cancel
+			TSharedPtr<SWindow> ImportWindow = SNew(SWindow)
+				.Title(LOCTEXT("ImportJointManagerWindowTitle", "Import Joint Manager"))
+				.ClientSize(FVector2D(1200, 800))
+				.SupportsMinimize(false)
+				.SupportsMaximize(false)
+				.FocusWhenFirstShown(true);
+
+			// List view widget
+			ImportWindow->SetContent(
+				SNew(SJointManagerImportingPopup)
+				.ParentWindow(ImportWindow)
+			);
+			
+			// Show the window modally
+			FSlateApplication::Get().AddModalWindow(ImportWindow.ToSharedRef(), nullptr);
+
+			UJointScriptSettings::Save();
+
+			return FReply::Handled();
+		})
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
+			[
+				JointScriptLinkerCustomizationHelpers::CreateImportButtonContentWidget()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
+			[
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.Text(LOCTEXT("ImportButtonLabel", "Import Joint Manager"))
+			]
+		];
 }
 
 TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateQuickReimportAllButtonWidget()
@@ -2394,34 +2593,30 @@ TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateQuickReimportAllB
 
 			// Simply refresh the details panel. 
 			if (PropertyUtils.IsValid()) PropertyUtils.Pin()->ForceRefresh();
-
+			
+			UJointScriptSettings::Save();
 
 			return FReply::Handled();
 		})
 		[
-			SNew(SOverlay)
-			+ SOverlay::Slot()
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
 			[
-				SNew(SImage)
-				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
-				.DesiredSizeOverride(FVector2D(12, 12))
-				.ColorAndOpacity(FLinearColor::White)
+				JointScriptLinkerCustomizationHelpers::CreateQuickReimportButtonContentWidget()
 			]
-			+ SOverlay::Slot()
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
 			[
-				SNew(SImage)
-				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("EditorViewport.ToggleRealTime"))
-				.DesiredSizeOverride(FVector2D(12, 12))
-				.ColorAndOpacity(FLinearColor::White)
-				.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
-			]
-			+ SOverlay::Slot()
-			[
-				SNew(SImage)
-				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
-				.DesiredSizeOverride(FVector2D(12, 12))
-				.ColorAndOpacity(FLinearColor::White)
-				.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
+				SNew(STextBlock)
+				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
+				.Text(LOCTEXT("QuickReimportAllButtonLabel", "Quick Reimport All"))
 			]
 		];
 }
@@ -2445,10 +2640,17 @@ TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateRefreshWidgetButt
 			return FReply::Handled();
 		})
 		[
-			SNew(SImage)
-			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
-			.DesiredSizeOverride(FVector2D(12, 12))
-			.ColorAndOpacity(FLinearColor::White)
+			SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
+				.DesiredSizeOverride(FVector2D(12, 12))
+				.ColorAndOpacity(FLinearColor::White)
+			]
 		];
 }
 
@@ -2465,15 +2667,11 @@ void FJointScriptLinkerFileEntryCustomization::CustomizeStructHeader(TSharedRef<
 
 	if (HeaderRowPtr)
 	{
-		TSharedPtr<IPropertyHandle> FileNameHandle = StructPropertyHandle->GetChildHandle(
-			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName));
-
 		TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
 			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 		HeaderRowPtr->PropertyHandles = TArray<TSharedPtr<IPropertyHandle>>{
 			StructPropertyHandle,
-			FileNameHandle,
 			FilePathHandle
 		};
 
@@ -2522,17 +2720,20 @@ void FJointScriptLinkerFileEntryCustomization::CustomizeStructHeader(TSharedRef<
 
 void FJointScriptLinkerFileEntryCustomization::CustomizeStructChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& ChildBuilder, IStructCustomizationUtils& StructCustomizationUtils)
 {
-	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName)).ToSharedRef()); //.Visibility(EVisibility::Collapsed);
 	ChildBuilder.AddProperty(StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath)).ToSharedRef()); //.Visibility(EVisibility::Collapsed);
 }
 
 
 TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateValidityIconWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
 {
+	TWeakPtr<IPropertyHandle> WeakStructPropertyHandle = StructPropertyHandle;
+	
 	//lambda for validity check
-	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	auto ValidityCheck = [WeakStructPropertyHandle]() -> const bool
 	{
-		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+		if (!WeakStructPropertyHandle.IsValid()) return false;
+		
+		const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 		FString OutputString;
 
@@ -2543,16 +2744,16 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateValidityIcon
 
 	//Validity icon - change the icon based on whether the file exists or not
 	return SNew(SImage)
-		.ColorAndOpacity_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FSlateColor
+		.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
 		{
 			return ValidityCheck() ? FLinearColor::Green + FLinearColor(0.15, 0.15, 0.15) : FLinearColor::Red + FLinearColor(0.15, 0.15, 0.15);
 		})
-		.Image_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FSlateBrush*
+		.Image_Lambda([ValidityCheck]() -> const FSlateBrush*
 		{
 			return ValidityCheck() ? FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Check") : FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Error");
 		})
 		.DesiredSizeOverride(FVector2D(16, 16))
-		.ToolTipText_Lambda([StructPropertyHandle, this, ValidityCheck]() -> const FText
+		.ToolTipText_Lambda([ValidityCheck]() -> const FText
 		{
 			return ValidityCheck() ? LOCTEXT("FileEntryValidToolTip", "The specified file path is valid.") : LOCTEXT("FileEntryInvalidToolTip", "The specified file path is missing or invalid.");
 		});
@@ -2560,21 +2761,30 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateValidityIcon
 
 TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateNameTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
 {
+	TWeakPtr<IPropertyTypeCustomization> WeakThisPtr = AsShared();
+	TWeakPtr<IPropertyHandle> WeakStructPropertyHandle = StructPropertyHandle;
+
 	// show name of the file first and then the path in ()
 	return SNew(STextBlock)
 		.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Black.h4"))
-		.HighlightText_Lambda([this]() -> const FText
+		.HighlightText_Lambda([WeakThisPtr]() -> const FText
 		{
-			return (HeaderRowPtr != nullptr) ? HeaderRowPtr->FilterTextString : FText::GetEmpty();
+			if (!WeakThisPtr.IsValid()) return FText::GetEmpty();
+			
+			TSharedPtr<FJointScriptLinkerFileEntryCustomization> CastedPtr = StaticCastSharedPtr<FJointScriptLinkerFileEntryCustomization>(WeakThisPtr.Pin());
+			
+			return (CastedPtr->HeaderRowPtr != nullptr) ? CastedPtr->HeaderRowPtr->FilterTextString : FText::GetEmpty();
 		})
-		.Text_Lambda([StructPropertyHandle, this]() -> const FText
+		.Text_Lambda([WeakStructPropertyHandle]() -> const FText
 		{
-			const TSharedPtr<IPropertyHandle> FileNameHandle = StructPropertyHandle->GetChildHandle(
-				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FileName));
+			if (!WeakStructPropertyHandle.IsValid()) return FText::FromString(TEXT("N/A"));
+			
+			const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(
+				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 			FString FileNameString;
 
-			FileNameHandle->GetValueAsFormattedString(FileNameString);
+			FilePathHandle->GetValueAsFormattedString(FileNameString);
 
 			if (FileNameString.IsEmpty())
 			{
@@ -2583,24 +2793,31 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateNameTextWidg
 
 			return FText::Format(
 				LOCTEXT("FileEntryNameWithPathTemplate", "{0}"),
-				FText::FromString(FileNameString)
+				FText::FromString(FPaths::GetCleanFilename(FileNameString))
 			);
 		});
 }
 
 TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreatePathTextWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
 {
+	TWeakPtr<IPropertyTypeCustomization> WeakThisPtr = AsShared();
+	TWeakPtr<IPropertyHandle> WeakStructPropertyHandle = StructPropertyHandle;
+
 	// show name of the file first and then the path in ()
 	return SNew(STextBlock)
 		.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h5"))
 		.ColorAndOpacity(FLinearColor(0.66, 0.66, 0.66))
-		.HighlightText_Lambda([this]() -> const FText
+		.HighlightText_Lambda([WeakThisPtr]() -> const FText
 		{
-			return (HeaderRowPtr != nullptr) ? HeaderRowPtr->FilterTextString : FText::GetEmpty();
+			if (!WeakThisPtr.IsValid()) return FText::GetEmpty();
+			TSharedPtr<FJointScriptLinkerFileEntryCustomization> CastedPtr = StaticCastSharedPtr<FJointScriptLinkerFileEntryCustomization>(WeakThisPtr.Pin());
+			return (CastedPtr->HeaderRowPtr != nullptr) ? CastedPtr->HeaderRowPtr->FilterTextString : FText::GetEmpty();
 		})
-		.Text_Lambda([StructPropertyHandle, this]() -> const FText
+		.Text_Lambda([WeakStructPropertyHandle]() -> const FText
 		{
-			const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+			if (!WeakStructPropertyHandle.IsValid()) return FText::FromString(TEXT("N/A"));
+			
+			const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(
 				GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 			FString FilePathString;
@@ -2621,10 +2838,14 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreatePathTextWidg
 
 TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileExplorerButtonWidget(TSharedPtr<IPropertyHandle> StructPropertyHandle)
 {
+	TWeakPtr<IPropertyHandle> WeakStructPropertyHandle = StructPropertyHandle;
+	
 	//lambda for validity check
-	auto ValidityCheck = [StructPropertyHandle, this]() -> const bool
+	auto ValidityCheck = [WeakStructPropertyHandle]() -> const bool
 	{
-		const TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(
+		if (!WeakStructPropertyHandle.IsValid()) return false;
+		
+		const TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(
 			GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 		FString OutputString;
@@ -2642,9 +2863,11 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileEx
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 		.ContentPadding(FJointEditorStyle::Margin_Normal)
 		.ToolTipText(LOCTEXT("OpenInExplorerToolTip", "Open file location in Explorer"))
-		.OnClicked_Lambda([StructPropertyHandle, this]()
+		.OnClicked_Lambda([WeakStructPropertyHandle]()
 		{
-			TSharedPtr<IPropertyHandle> FilePathHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
+			if (!WeakStructPropertyHandle.IsValid()) return FReply::Handled();
+			
+			TSharedPtr<IPropertyHandle> FilePathHandle = WeakStructPropertyHandle.Pin()->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerFileEntry, FilePath));
 
 			FString OutputString;
 
@@ -2676,13 +2899,20 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileEx
 			return FReply::Handled();
 		})
 		[
-			SNew(SImage)
-			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.FolderOpen"))
-			.DesiredSizeOverride(FVector2D(16, 16))
-			.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
-			{
-				return ValidityCheck() ? FLinearColor(1, 1, 1) : FLinearColor(0.5, 0.5, 0.5);
-			})
+			SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.FolderOpen"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+				.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
+				{
+					return ValidityCheck() ? FLinearColor(1, 1, 1) : FLinearColor(0.5, 0.5, 0.5);
+				})
+			]
 		];
 
 	return Widget;
@@ -2719,6 +2949,12 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateReassignFile
 				{
 					ParentStructHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
 				}
+				
+				FJointEdUtils::FireNotification(
+					LOCTEXT("FileReassignSuccessTitle", "File Reassigned"),
+					FText::Format(LOCTEXT("FileReassignSuccessDesc", "File has been reassigned to {0}."), FText::FromString(FirstFilePath)),
+					EJointMDAdmonitionType::Mention
+				);
 			}
 			else
 			{
@@ -2728,14 +2964,23 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateReassignFile
 					EJointMDAdmonitionType::Warning
 				);
 			}
+			
+			UJointScriptSettings::Save();
 
 			return FReply::Handled();
 		})
 		[
-			SNew(SImage)
-			.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Audit"))
-			.DesiredSizeOverride(FVector2D(16, 16))
-			.ColorAndOpacity(FLinearColor::White)
+			SNew(SBox)
+			.WidthOverride(14)
+			.HeightOverride(14)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			[
+				SNew(SImage)
+				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Audit"))
+				.DesiredSizeOverride(FVector2D(16, 16))
+				.ColorAndOpacity(FLinearColor::White)
+			]
 		];
 
 	return Widget;
@@ -3059,6 +3304,8 @@ void FJointScriptLinkerMappingCustomization::SReallocationPopup::Construct(const
 					if (ParentWindow.IsValid()) ParentWindow.Pin()->RequestDestroyWindow();
 
 					if (ParentCustomizationPtr.Pin()) ParentCustomizationPtr.Pin()->RefreshVisual();
+					
+					UJointScriptSettings::Save();
 
 					return FReply::Handled();
 				})
@@ -3142,10 +3389,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 					.ToolTipText(LOCTEXT("ReallocateToolTip", "Reallocate the Joint Manager reference for this mapping (useful if the Joint Manager was deleted and recreated)"))
 					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnReallocateButtonPressed)
 					[
-						SNew(SImage)
-						.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-						.DesiredSizeOverride(FVector2D(12, 12))
-						.ColorAndOpacity(FLinearColor::White)
+						JointScriptLinkerCustomizationHelpers::CreateReallocateButtonContentWidget()
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -3162,23 +3406,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 					.ToolTipText(LOCTEXT("ReimportToolTip", "Reimport the file for this specific mapping"))
 					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnReimportButtonPressed)
 					[
-						SNew(SOverlay)
-						+ SOverlay::Slot()
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
-							.DesiredSizeOverride(FVector2D(12, 12))
-							.ColorAndOpacity(FLinearColor::White)
-							.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
-						]
-						+ SOverlay::Slot()
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
-							.DesiredSizeOverride(FVector2D(12, 12))
-							.ColorAndOpacity(FLinearColor::White)
-							.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
-						]
+						JointScriptLinkerCustomizationHelpers::CreateReimportButtonContentWidget()
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -3195,30 +3423,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 					.ToolTipText(LOCTEXT("QuickReimportToolTip", "Quickly reimport the file for this mapping using the same parser settings as the last import (if available)"))
 					.OnClicked(this, &FJointScriptLinkerMappingCustomization::OnQuickReimportButtonPressed)
 					[
-						SNew(SOverlay)
-						+ SOverlay::Slot()
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Refresh"))
-							.DesiredSizeOverride(FVector2D(12, 12))
-							.ColorAndOpacity(FLinearColor::White)
-						]
-						+ SOverlay::Slot()
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("EditorViewport.ToggleRealTime"))
-							.DesiredSizeOverride(FVector2D(12, 12))
-							.ColorAndOpacity(FLinearColor::White)
-							.RenderTransform(FSlateRenderTransform(FVector2D(3, 3)))
-						]
-						+ SOverlay::Slot()
-						[
-							SNew(SImage)
-							.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Import"))
-							.DesiredSizeOverride(FVector2D(12, 12))
-							.ColorAndOpacity(FLinearColor::White)
-							.RenderTransform(FSlateRenderTransform(FVector2D(-3, -3)))
-						]
+						JointScriptLinkerCustomizationHelpers::CreateQuickReimportButtonContentWidget()
 					]
 				]
 			]
@@ -3233,6 +3438,14 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 						FJointScriptLinkerMapping,
 						JointManager
 					))->CreatePropertyValueWidget()
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(FJointEditorStyle::Margin_Small)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Left)
+			[
+				ThisStructPropertyHandle->CreateDefaultPropertyButtonWidgets()
 			]
 			+ SHorizontalBox::Slot()
 			.FillWidth(1)
@@ -3639,6 +3852,9 @@ FReply FJointScriptLinkerMappingCustomization::OnReallocateButtonPressed()
 
 	// Show modal
 	FSlateApplication::Get().AddWindow(ReallocationWindow.ToSharedRef(), true);
+	
+	UJointScriptSettings::Save();
+
 
 	return FReply::Handled();
 }
@@ -3667,6 +3883,7 @@ FReply FJointScriptLinkerMappingCustomization::OnReimportButtonPressed()
 
 	TSharedPtr<IPropertyHandle> ParserDataHandle = ParentStructHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerDataElement, ParserData));
 	TSharedPtr<IPropertyHandle> ParserData_ScriptParser = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ScriptParser));
+	TSharedPtr<IPropertyHandle> ParserInstanceData_ScriptParser = ParserDataHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FJointScriptLinkerParserData, ParserInstanceData));
 
 
 	if (!ParserData_ScriptParser) return FReply::Handled();
@@ -3678,7 +3895,19 @@ FReply FJointScriptLinkerMappingCustomization::OnReimportButtonPressed()
 	UClass* ScriptParserClass = nullptr;
 	FString SoftClassPath;
 	ParserData_ScriptParser->GetValueAsFormattedString(SoftClassPath);
+	
+	
+	//TArray<uint8> ParserInstanceData -> we have to get raw data.
+	TArray<uint8> ParserInstanceData;
+	void* ParserInstanceDataPtr = nullptr;
 
+	if (ParserInstanceData_ScriptParser->GetValueData(ParserInstanceDataPtr) == FPropertyAccess::Success && ParserInstanceDataPtr != nullptr)
+	{
+		const TArray<uint8>* SourceArrayPtr = static_cast<TArray<uint8>*>(ParserInstanceDataPtr);
+		ParserInstanceData = *SourceArrayPtr;
+	}
+	
+	
 
 	FSoftClassPath SoftClassPathObj(SoftClassPath);
 	if (SoftClassPathObj.IsValid())
@@ -3708,6 +3937,7 @@ FReply FJointScriptLinkerMappingCustomization::OnReimportButtonPressed()
 		.bIsReimporting(true)
 		.OptionalJointManagerToImport(JointManagerObj)
 		.InitiallySelectedParserClass(ScriptParserClass)
+		.InitiallySelectedParserInstanceData(ParserInstanceData)
 		.InitialImportMode(SJointManagerImportingPopup::EJointImportMode::ToSpecifiedJointManager)
 		.ExternalFilePaths(TArray<FString>{FilePathString})
 		.ParentWindow(ImportWindow)
@@ -3788,6 +4018,8 @@ FReply FJointScriptLinkerMappingCustomization::OnQuickReimportButtonPressed()
 	JointScriptLinkerCustomizationHelpers::Reimport_FJointScriptLinkerDataElement(
 		FilePathString,
 		ParentStructHandle);
+	
+	UJointScriptSettings::Save();
 
 	RefreshVisual();
 
@@ -3849,6 +4081,8 @@ FReply FJointScriptLinkerMappingCustomization::OnCleanAllButtonClicked()
 
 	ThisStructPropertyHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
 	ThisStructPropertyHandle->NotifyFinishedChangingProperties();
+
+	UJointScriptSettings::Save();
 
 	//refresh the details panel to reflect the changes
 	RefreshVisual();
@@ -3936,6 +4170,8 @@ FReply FJointScriptLinkerMappingCustomization::OnCleanInvalidButtonClicked()
 		LOCTEXT("CleanInvalidMappingsSuccessDesc", "All invalid node mappings have been removed. Please verify the remaining mappings in the Joint Manager asset."),
 		EJointMDAdmonitionType::Mention
 	);
+	
+	UJointScriptSettings::Save();
 
 	//refresh the details panel to reflect the changes
 	RefreshVisual();

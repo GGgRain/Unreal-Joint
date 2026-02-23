@@ -44,7 +44,7 @@ TArray<UJointEdGraphNode*> UJointScriptParser::ParseTextData_Implementation(
 	return TArray<UJointEdGraphNode*>();
 }
 
-void UJointScriptParser::HandleImporting_Implementation(
+bool UJointScriptParser::HandleImporting_Implementation(
 	UJointManager* TargetJointManager,
 	const FString& InTextData,
 	const FJointScriptLinkerFileEntry& FileEntry)
@@ -71,7 +71,7 @@ void UJointScriptParser::HandleImporting_Implementation(
 			EJointMDAdmonitionType::Error
 		);
 		
-		return;
+		return false;
 	}
 	
 	UJointEditorFunctionLibrary::LinkParserWithScript(this, FileEntry);
@@ -80,6 +80,8 @@ void UJointScriptParser::HandleImporting_Implementation(
 	{
 		TArray<UJointEdGraphNode*> RecognizedNode = ParseTextData(TargetJointManager,Line,FileEntry);
 	}
+	
+	return true;
 }
 
 

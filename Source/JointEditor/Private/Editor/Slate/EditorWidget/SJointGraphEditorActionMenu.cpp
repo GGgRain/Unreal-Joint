@@ -9,16 +9,20 @@
 #include "Widgets/Layout/SBox.h"
 #include "EditorStyleSet.h"
 #include "JointAdvancedWidgets.h"
+#include "JointEdGraph.h"
 
 #include "SGraphActionMenu.h"
 #include "JointEdGraphSchema.h"
 #include "JointEditorStyle.h"
-#include "Chaos/AABB.h"
-#include "Chaos/AABB.h"
+#include "JointEditorToolkit.h"
+#include "JointEdUtils.h"
 
 #include "Misc/EngineVersionComparison.h"
+#include "Node/JointFragment.h"
 
-void SJointGraphEditorActionMenu::Construct( const FArguments& InArgs )
+#define LOCTEXT_NAMESPACE "SJointGraphEditorActionMenu"
+
+void SJointGraphEditorActionMenu::Construct(const FArguments& InArgs)
 {
 	this->GraphObj = InArgs._GraphObj;
 	this->GraphNodes = InArgs._GraphNodes;
@@ -26,18 +30,18 @@ void SJointGraphEditorActionMenu::Construct( const FArguments& InArgs )
 	this->NewNodePosition = InArgs._NewNodePosition;
 	this->AutoExpandActionMenu = InArgs._AutoExpandActionMenu;
 	this->bUseCustomActionSelected = InArgs._bUseCustomActionSelected;
-	
+
 	this->OnCollectAllActionsCallback = InArgs._OnCollectAllActions;
 	this->OnActionSelectedCallback = InArgs._OnActionSelected;
 	this->OnCreateWidgetForActionCallback = InArgs._OnCreateWidgetForAction;
 	this->OnClosedCallback = InArgs._OnClosedCallback;
 
 	SetCanTick(false);
-	
+
 	// Build the widget layout
-	SBorder::Construct( SBorder::FArguments()
-	                    .BorderImage( FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Menu.Background") )
-	                    .Padding(FJointEditorStyle::Margin_Normal)
+	SBorder::Construct(SBorder::FArguments()
+	.BorderImage(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Menu.Background"))
+	.Padding(FJointEditorStyle::Margin_Normal)
 		[
 			// Achieving fixed width by nesting items within a fixed width box.
 			SNew(SBox)
@@ -62,13 +66,14 @@ SJointGraphEditorActionMenu::~SJointGraphEditorActionMenu()
 void SJointGraphEditorActionMenu::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& SelectedActions, ESelectInfo::Type InSelectionType)
 {
 	// If the user has bound a custom action selected handler, use that instead of the default behavior
-	if(bUseCustomActionSelected)
+	if (bUseCustomActionSelected)
 	{
-		OnActionSelectedCallback.ExecuteIfBound(SelectedActions,InSelectionType);
-	}else
+		OnActionSelectedCallback.ExecuteIfBound(SelectedActions, InSelectionType);
+	}
+	else
 	{
 		// fallback to default behavior (performing the action)
-		ActivateAction(SelectedActions, InSelectionType);	
+		ActivateAction(SelectedActions, InSelectionType);
 	}
 }
 
@@ -76,27 +81,57 @@ void SJointGraphEditorActionMenu::OnActionSelected(const TArray<TSharedPtr<FEdGr
 void SJointGraphEditorActionMenu::CollectAllActions(FGraphActionListBuilderBase& OutAllActions)
 {
 	// If the user has bound a custom action collector, use that instead of the default behavior
-	if(OnCollectAllActionsCallback.IsBound())
+	if (OnCollectAllActionsCallback.IsBound())
 	{
 		OnCollectAllActionsCallback.Execute(OutAllActions);
-	}else
+	}
+	else
 	{
 		CollectActionsFromJointGraphSchema(OutAllActions);
 	}
 }
 
-TSharedRef<SWidget> SJointGraphEditorActionMenu::CreateDefaultGraphActionWidgetForAction(FCreateWidgetForActionData* CreateWidgetForActionData)
-{
-	return SNew(SDefaultGraphActionWidget, CreateWidgetForActionData);
-}
-
 TSharedRef<SWidget> SJointGraphEditorActionMenu::OnCreateWidgetForAction(FCreateWidgetForActionData* CreateWidgetForActionData)
 {
-	if(OnCreateWidgetForActionCallback.IsBound())
+	if (OnCreateWidgetForActionCallback.IsBound())
 	{
 		return OnCreateWidgetForActionCallback.Execute(CreateWidgetForActionData);
-	}else
+	}
+	else
 	{
+		if (CreateWidgetForActionData == nullptr || CreateWidgetForActionData->Action == nullptr)
+		{
+			return SNew(STextBlock).Text(LOCTEXT("InvalidAction", "Invalid Action"));
+		}
+	
+		FName ActionTypeId = CreateWidgetForActionData->Action->GetTypeId();
+	
+		if (ActionTypeId == FJointSchemaAction_NewSubNode::StaticGetTypeId())
+		{
+			TSharedPtr<FJointSchemaAction_NewSubNode> SubNodeAction = StaticCastSharedPtr<FJointSchemaAction_NewSubNode>(CreateWidgetForActionData->Action);
+
+			if (SubNodeAction->NodeTemplate != nullptr)
+			{
+				UClass* NodeClass = SubNodeAction->NodeTemplate->NodeClassData.GetClass();
+				UJointFragment* CDO = NodeClass ? Cast<UJointFragment>(NodeClass->GetDefaultObject()) : nullptr;
+			
+				if (CDO) 
+				{
+					return SNew(SJointGraphActionWidget_Fragment, CreateWidgetForActionData)
+					.Fragment(CDO);
+				}
+			}
+		}else if (ActionTypeId == FJointSchemaAction_NewNodePreset::StaticGetTypeId())
+		{
+			TSharedPtr<FJointSchemaAction_NewNodePreset> NodePresetAction = StaticCastSharedPtr<FJointSchemaAction_NewNodePreset>(CreateWidgetForActionData->Action);
+
+			if (NodePresetAction->NodePreset != nullptr)
+			{
+				return SNew(SJointGraphActionWidget_NodePreset, CreateWidgetForActionData)
+					.NodePreset(NodePresetAction->NodePreset);
+			}
+		}
+	
 		return CreateDefaultGraphActionWidgetForAction(CreateWidgetForActionData);
 	}
 }
@@ -105,22 +140,22 @@ void SJointGraphEditorActionMenu::ActivateAction(const TArray<TSharedPtr<FEdGrap
 {
 	// Guard against invalid graph object
 	if (!GraphObj) return;
-	
-	if (InSelectionType == ESelectInfo::OnMouseClick  || InSelectionType == ESelectInfo::OnKeyPress || SelectedActions.Num() == 0)
+
+	if (InSelectionType == ESelectInfo::OnMouseClick || InSelectionType == ESelectInfo::OnKeyPress || SelectedActions.Num() == 0)
 	{
 		bool bDoDismissMenus = false;
-		
+
 		for (const TSharedPtr<FEdGraphSchemaAction>& Action : SelectedActions)
 		{
 			if (Action.IsValid())
 			{
 				// Perform the action.
 				Action->PerformAction(GraphObj, DraggedFromPins, NewNodePosition);
-						
+
 				bDoDismissMenus = true;
 			}
 		}
-		
+
 		if (bDoDismissMenus) FSlateApplication::Get().DismissAllMenus();
 	}
 }
@@ -131,26 +166,46 @@ void SJointGraphEditorActionMenu::CollectActionsFromJointGraphSchema(FGraphActio
 	FGraphContextMenuBuilder ContextMenuBuilder(GraphObj);
 	for (UJointEdGraphNode* GraphNode : GraphNodes)
 	{
-		if(!(GraphNode != nullptr && GraphNode->IsValidLowLevel())) continue;
-		
-		ContextMenuBuilder.SelectedObjects.Add((UObject*)GraphNode);
+		if (!GraphNode) continue;
+
+		ContextMenuBuilder.SelectedObjects.Add(GraphNode);
 	}
-	
+
 	// If we were dragging from a pin, add that information to the context
 	ContextMenuBuilder.FromPin = DraggedFromPins.Num() > 0 ? DraggedFromPins[0] : nullptr;
 	
+	
+	bool bShouldAddNodePresets = true;
+	
 	// Determine all possible actions
-	if(GraphObj && GraphObj->GetSchema())
+	if (GraphObj && GraphObj->GetSchema())
 	{
+		if (UJointEdGraph* JointGraph = Cast<UJointEdGraph>(GraphObj))
+		{
+			if (ContextMenuBuilder.SelectedObjects.Num() > 0)
+			{
+				//We're not going to add a node preset option if there are already nodes selected (only fragments)
+				bShouldAddNodePresets = false;
+			}else if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(JointGraph, false, false))
+			{
+				bShouldAddNodePresets = !Toolkit->IsInNodePresetEditingMode();
+			}
+		}
+		
 		if (const UJointEdGraphSchema* MySchema = Cast<const UJointEdGraphSchema>(GraphObj->GetSchema()))
 		{
 			MySchema->ImplementAddFragmentActions(ContextMenuBuilder);
-			MySchema->ImplementAddNodePresetActions(ContextMenuBuilder);
+			if (bShouldAddNodePresets) MySchema->ImplementAddNodePresetActions(ContextMenuBuilder);
 		}
 	}
 
 	// Copy the added options back to the main list
 	GraphActionListBuilderBase.Append(ContextMenuBuilder);
+}
+
+TSharedRef<SWidget> SJointGraphEditorActionMenu::CreateDefaultGraphActionWidgetForAction(FCreateWidgetForActionData* CreateWidgetForActionData)
+{
+	return SNew(SDefaultGraphActionWidget, CreateWidgetForActionData);
 }
 
 TSharedRef<SEditableTextBox> SJointGraphEditorActionMenu::GetFilterTextBox() const
@@ -166,13 +221,13 @@ FText SJointGraphEditorActionMenu::GetFilterText() const
 
 void SJointActionMenuExpander::Construct(const FArguments& InArgs, const FCustomExpanderData& ActionMenuData)
 {
-	OwnerRowPtr  = ActionMenuData.TableRow;
+	OwnerRowPtr = ActionMenuData.TableRow;
 #if UE_VERSION_OLDER_THAN(5, 7, 0)
 	IndentAmount = InArgs._IndentAmount;
 #else
 	SetIndentAmount(InArgs._IndentAmount);
 #endif
-	ActionPtr    = ActionMenuData.RowAction;
+	ActionPtr = ActionMenuData.RowAction;
 
 	if (!ActionPtr.IsValid())
 	{
@@ -182,7 +237,7 @@ void SJointActionMenuExpander::Construct(const FArguments& InArgs, const FCustom
 		SExpanderArrow::Construct(SuperArgs, ActionMenuData.TableRow);
 	}
 	else
-	{			
+	{
 		ChildSlot.Padding(TAttribute<FMargin>(this, &SJointActionMenuExpander::GetCustomIndentPadding));
 	}
 }
@@ -198,19 +253,34 @@ TSharedRef<SExpanderArrow> SJointActionMenuExpander::CreateExpander(const FCusto
 	return SNew(SJointActionMenuExpander, ActionMenuData);
 }
 
-void SJointGraphActionWidget::Construct(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData)
+void SJointGraphActionWidget_Fragment::CreateActionWidgetWithNodeSettings(const SJointGraphActionWidget_Fragment::FArguments& InArgs, const FCreateWidgetForActionData* InCreateData, const FJointEdNodeSetting* NodeSetting)
 {
-	ActionPtr = InCreateData->Action;
-	MouseButtonDownDelegate = InCreateData->MouseButtonDownDelegate;
-	
-	
-	const uint16 IconSizeY = 16;
-	uint16 IconSizeX = 16;
-	if (InArgs._IconBrush)
-	{
-		IconSizeX = InArgs._IconBrush->ImageSize.X * IconSizeY / InArgs._IconBrush->ImageSize.Y;
-	}
-	
+	const FSlateBrush* IconBrush = &NodeSetting->IconicNodeImageBrush;
+
+	FLinearColor NormalColor;
+	FLinearColor HoverColor;
+	FLinearColor OutlineNormalColor;
+	FLinearColor OutlineHoverColor;
+
+	FLinearColor Color = NodeSetting->NodeBodyColor;
+	const FLinearColor HSV = Color.LinearRGBToHSV();
+	const float Value = HSV.B;
+	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001;
+
+	NormalColor = Color;
+	HoverColor = Color;
+	OutlineNormalColor = Color * 1.25 + OffsetColor;
+	OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
+
+	const FSlateBrush* InnerBorderImage = nullptr;
+	const FSlateBrush* OuterBorderImage = nullptr;
+		
+	InnerBorderImage = FJointEditorStyle::Get().GetBrush("JointUI.Border.Round");
+	OuterBorderImage = FJointEditorStyle::Get().GetBrush("JointUI.Border.Round");
+
+	if (NodeSetting->bUseCustomInnerNodeBodyImageBrush) InnerBorderImage = &NodeSetting->InnerNodeBodyImageBrush;
+	if (NodeSetting->bUseCustomOuterNodeBodyImageBrush) OuterBorderImage = &NodeSetting->OuterNodeBodyImageBrush;
+		
 	this->ChildSlot
 	[
 		SNew(SHorizontalBox)
@@ -218,21 +288,27 @@ void SJointGraphActionWidget::Construct(const FArguments& InArgs, const FCreateW
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Tiny)
+		.Padding(FJointEditorStyle::Margin_Small)
 		[
-			SNew(SBox)
-				.WidthOverride(IconSizeX)
-				.HeightOverride(IconSizeY)
-				[
-					SNew(SImage)
-					.Image(InArgs._IconBrush)
-					.ColorAndOpacity(InArgs._IconColor)
-				]
+			SNew(SJointOutlineBorder)
+			.RenderTransformPivot(FVector2D(0.5))
+			.NormalColor(NormalColor)
+			.HoverColor(HoverColor)
+			.OutlineNormalColor(OutlineNormalColor)
+			.OutlineHoverColor(OutlineHoverColor)
+			.UnHoverAnimationSpeed(9)
+			.HoverAnimationSpeed(9)
+			.InnerBorderImage(InnerBorderImage)
+			.OuterBorderImage(OuterBorderImage)
+			.ContentPadding(FMargin(0))
+			[
+				GetIcon(IconBrush)
+			]
 		]
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		.VAlign(VAlign_Center)
-		.Padding(FJointEditorStyle::Margin_Tiny)
+		.Padding(FJointEditorStyle::Margin_Small)
 		[
 			SNew(STextBlock)
 			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
@@ -242,9 +318,21 @@ void SJointGraphActionWidget::Construct(const FArguments& InArgs, const FCreateW
 	];
 }
 
-FReply SJointGraphActionWidget::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+
+void SJointGraphActionWidget_Fragment::Construct(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData)
 {
-	if( MouseButtonDownDelegate.Execute( ActionPtr ) )
+	ActionPtr = InCreateData->Action;
+	MouseButtonDownDelegate = InCreateData->MouseButtonDownDelegate;
+	FragmentPtr = InArgs._Fragment;
+
+	const FJointEdNodeSetting* NodeSetting = &FragmentPtr->EdNodeSetting;
+	if (!NodeSetting) return;
+	CreateActionWidgetWithNodeSettings(InArgs, InCreateData, NodeSetting);
+}
+
+FReply SJointGraphActionWidget_Fragment::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseButtonDownDelegate.Execute(ActionPtr))
 	{
 		return FReply::Handled();
 	}
@@ -252,3 +340,136 @@ FReply SJointGraphActionWidget::OnMouseButtonDown(const FGeometry& MyGeometry, c
 	return FReply::Unhandled();
 }
 
+TSharedRef<SWidget> SJointGraphActionWidget_Fragment::GetIcon(const FSlateBrush* IconBrush)
+{
+	if (IconBrush && IconBrush->DrawAs != ESlateBrushDrawType::NoDrawType && !IconBrush->ImageSize.IsNearlyZero())
+	{
+		const uint16 IconSizeY = 14;
+		uint16 IconSizeX = IconBrush->ImageSize.X * IconSizeY / IconBrush->ImageSize.Y;
+
+		return SNew(SBox)
+			.WidthOverride(IconSizeX)
+			.HeightOverride(IconSizeY)
+			[
+				SNew(SImage)
+				.Image(IconBrush)
+			];
+	}
+	else
+	{
+		return SNew(SBox)
+			.WidthOverride(8)
+			.HeightOverride(8);
+	}
+}
+
+
+void SJointGraphActionWidget_NodePreset::CreateActionWidget(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData)
+{
+	UJointNodePreset* NodePreset = NodePresetPtr.Get(); 
+	
+	if (!NodePreset) return;
+	
+	const FSlateBrush* IconBrush = NodePreset->bUseCustomIcon ? &NodePreset->PresetIconBrush : FJointEditorStyle::Get().GetBrush("ClassIcon.JointNodePreset");
+	const FLinearColor Color = NodePreset->PresetColor;
+	
+	const FSlateBrush* BorderImage = FJointEditorStyle::Get().GetBrush("JointUI.Border.Round");
+	
+	FLinearColor NormalColor;
+	FLinearColor HoverColor;
+	FLinearColor OutlineNormalColor;
+	FLinearColor OutlineHoverColor;
+
+	const FLinearColor HSV = Color.LinearRGBToHSV();
+	const float Value = HSV.B;
+	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001;
+
+	NormalColor = Color;
+	HoverColor = Color;
+	OutlineNormalColor = Color * 1.25 + OffsetColor;
+	OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
+	
+	this->ChildSlot
+	.HAlign(HAlign_Left)
+	.VAlign(VAlign_Center)
+	[
+		SNew(SJointOutlineBorder)
+		.RenderTransformPivot(FVector2D(0.5))
+		.NormalColor(NormalColor)
+		.HoverColor(HoverColor)
+		.OutlineNormalColor(OutlineNormalColor)
+		.OutlineHoverColor(OutlineHoverColor)
+		.UnHoverAnimationSpeed(9)
+		.HoverAnimationSpeed(9)
+		.InnerBorderImage(BorderImage)
+		.OuterBorderImage(BorderImage)
+		.ContentPadding(FMargin(0))
+		[
+			SNew(SHorizontalBox)
+			.ToolTipText(InCreateData->Action->GetTooltipDescription())
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
+			[
+				GetIcon(IconBrush)
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(FJointEditorStyle::Margin_Small)
+			[
+				SNew(STextBlock)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
+				.Text(InCreateData->Action->GetMenuDescription())
+				.HighlightText(InArgs._HighlightText)
+			]
+		]
+	];	
+}
+
+void SJointGraphActionWidget_NodePreset::Construct(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData)
+{
+	ActionPtr = InCreateData->Action;
+	MouseButtonDownDelegate = InCreateData->MouseButtonDownDelegate;
+	NodePresetPtr = InArgs._NodePreset;
+	
+	CreateActionWidget(InArgs, InCreateData);
+}
+
+FReply SJointGraphActionWidget_NodePreset::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseButtonDownDelegate.Execute(ActionPtr))
+	{
+		return FReply::Handled();
+	}
+
+	return FReply::Unhandled();
+}
+
+TSharedRef<SWidget> SJointGraphActionWidget_NodePreset::GetIcon(const FSlateBrush* IconBrush)
+{
+	if (IconBrush && IconBrush->DrawAs != ESlateBrushDrawType::NoDrawType && !IconBrush->ImageSize.IsNearlyZero())
+	{
+		const uint16 IconSizeY = 14;
+		uint16 IconSizeX = IconBrush->ImageSize.X * IconSizeY / IconBrush->ImageSize.Y;
+
+		return SNew(SBox)
+			.WidthOverride(IconSizeX)
+			.HeightOverride(IconSizeY)
+			[
+				SNew(SImage)
+				.Image(IconBrush)
+			];
+	}
+	else
+	{
+		return SNew(SBox)
+			.WidthOverride(8)
+			.HeightOverride(8);
+	}
+}
+
+
+
+#undef LOCTEXT_NAMESPACE

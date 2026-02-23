@@ -25,4 +25,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Fragment")
 	static bool IsManagerFragment(UJointNodeBase* InFragment);
+	
+#if WITH_EDITOR
+	virtual void PostPlacedNewNode_Implementation() override;
+#endif
 };

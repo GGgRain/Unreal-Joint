@@ -118,7 +118,7 @@ private:
 	void SetNodeFactory(const TSharedRef<class FGraphNodeFactory>& NewNodeFactory);
 	
 	void Joint_OnSplineHoverStateChanged(const FGraphSplineOverlapResult& NewSplineHoverState);
-	
+
 public:
 	
 	bool IsInPreviewMode() const;

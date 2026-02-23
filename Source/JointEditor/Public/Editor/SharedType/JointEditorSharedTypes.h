@@ -97,14 +97,14 @@ public:
 };
 
 USTRUCT()
-struct JOINTEDITOR_API FJointSharedClassData
+struct JOINTEDITOR_API FJointGraphNodeClassData
 {
 	GENERATED_USTRUCT_BODY()
 
-	FJointSharedClassData() {}
-	FJointSharedClassData(UClass* InClass);
-	FJointSharedClassData(UClass* InClass, const FString& InDeprecatedMessage);
-	FJointSharedClassData(const FString& InAssetName, const FString& InGeneratedClassPackage, const FString& InClassName, UClass* InClass);
+	FJointGraphNodeClassData() {}
+	FJointGraphNodeClassData(UClass* InClass);
+	FJointGraphNodeClassData(UClass* InClass, const FString& InDeprecatedMessage);
+	FJointGraphNodeClassData(const FString& InAssetName, const FString& InGeneratedClassPackage, const FString& InClassName, UClass* InClass);
 
 	FString ToString() const;
 	FString GetClassName() const;
@@ -149,27 +149,27 @@ public:
 
 public:
 
-	bool operator==(const FJointSharedClassData& Other) const
+	bool operator==(const FJointGraphNodeClassData& Other) const
 	{
 		return Class == Other.Class && AssetName == Other.AssetName && GeneratedClassPackage == Other.GeneratedClassPackage
 			&& ClassName == Other.ClassName && Category.EqualTo(Other.Category) && DeprecatedMessage == Other.DeprecatedMessage;
 	}
 
-	bool operator!=(const FJointSharedClassData& Other) const
+	bool operator!=(const FJointGraphNodeClassData& Other) const
 	{
 		return !(*this == Other);
 	}
 };
 
-FORCEINLINE uint32 GetTypeHash(const FJointSharedClassData& Struct)
+FORCEINLINE uint32 GetTypeHash(const FJointGraphNodeClassData& Struct)
 {
-	return FCrc::MemCrc32(&Struct, sizeof(FJointSharedClassData));
+	return FCrc::MemCrc32(&Struct, sizeof(FJointGraphNodeClassData));
 }
 
 
 struct JOINTEDITOR_API FJointGraphNodeClassNode
 {
-	FJointSharedClassData Data;
+	FJointGraphNodeClassData Data;
 	FString ParentClassName;
 
 	TSharedPtr<FJointGraphNodeClassNode> ParentNode;
@@ -185,7 +185,7 @@ struct JOINTEDITOR_API FJointGraphNodeClassHelper
 	FJointGraphNodeClassHelper(UClass* InRootClass);
 	~FJointGraphNodeClassHelper();
 
-	void GatherClasses(const UClass* BaseClass, TArray<FJointSharedClassData>& AvailableClasses);
+	void GatherClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& AvailableClasses);
 	static FString GetDeprecationMessage(const UClass* Class);
 
 	void OnAssetAdded(const struct FAssetData& AssetData);
@@ -195,9 +195,9 @@ struct JOINTEDITOR_API FJointGraphNodeClassHelper
 
 public:
 
-	static void RemoveUnknownClass(const FJointSharedClassData& ClassData);
-	static void AddUnknownClass(const FJointSharedClassData& ClassData);
-	static bool IsClassKnown(const FJointSharedClassData& ClassData);
+	static void RemoveUnknownClass(const FJointGraphNodeClassData& ClassData);
+	static void AddUnknownClass(const FJointGraphNodeClassData& ClassData);
+	static bool IsClassKnown(const FJointGraphNodeClassData& ClassData);
 	static FOnPackageListUpdated OnPackageListUpdated;
 
 	static int32 GetObservedBlueprintClassCount(UClass* BaseNativeClass);
@@ -212,7 +212,7 @@ public:
 
 public:
 	
-	static TArray<FJointSharedClassData> UnknownPackages;
+	static TArray<FJointGraphNodeClassData> UnknownPackages;
 	
 	static TMap<UClass*, int32> BlueprintClassCount;
 	
@@ -220,7 +220,7 @@ private:
 	
 	TSharedPtr<FJointGraphNodeClassNode> CreateClassDataNode(const struct FAssetData& AssetData);
 	TSharedPtr<FJointGraphNodeClassNode> FindBaseClassNode(TSharedPtr<FJointGraphNodeClassNode> Node, const FString& ClassName);
-	void FindAllSubClasses(TSharedPtr<FJointGraphNodeClassNode> Node, TArray<FJointSharedClassData>& AvailableClasses);
+	void FindAllSubClasses(TSharedPtr<FJointGraphNodeClassNode> Node, TArray<FJointGraphNodeClassData>& AvailableClasses);
 
 	UClass* FindAssetClass(const FString& GeneratedClassPackage, const FString& AssetName);
 	void BuildClassGraph();

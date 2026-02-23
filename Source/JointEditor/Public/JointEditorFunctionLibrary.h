@@ -6,9 +6,12 @@
 #include "SharedType/JointSharedTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Editor/Script/JointScriptLinker.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Node/JointFragment.h"
 #include "JointEditorFunctionLibrary.generated.h"
 
+enum class EJointMDAdmonitionType : uint8;
+class UJointNodePreset;
 class UJointEdGraphNode;
 class UJointManager;
 
@@ -54,6 +57,22 @@ public:
 	);
 	
 public:
+	
+	/**
+	 * Add a Joint Ed Graph Node based on the provided node preset to the provided graph.
+	 * @param TargetJointManager The target Joint manager that will own the created node.
+	 * @param OptionalTargetGraph The target graph to add the node to. If null, it will add to the root graph of the Target Joint Manager.
+	 * @param NodePreset The node preset to create the node with.
+	 * @param Position The position to place the created node at.
+	 * @return Created Joint Ed Graph Node.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static TArray<UJointEdGraphNode*> AddNodePreset(
+		UJointManager* TargetJointManager, 
+		UEdGraph* OptionalTargetGraph,
+		UJointNodePreset* NodePreset,
+		const FVector2D Position
+	);
 	
 	/**
 	 * Add a base Joint Ed Graph Node to the provided graph.
@@ -107,7 +126,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static bool RemoveNodeFromJointManager(
-		UJointEdGraphNode* TargetEdNode
+		UJointEdGraphNode* TargetEdNode,
+		const FJointScriptLinkerFileEntry& FileEntry
 	);
 	
 	/**
@@ -122,6 +142,18 @@ public:
 		UJointManager* TargetJointManager,
 		const FJointScriptLinkerFileEntry& FileEntry,
 		const TArray<FString>& KnownIds
+	);
+	
+	/**
+	 * Remove all Joint Ed Graph Nodes linked with the provided script file entry from the Joint manager.
+	 * @param TargetJointManager The target Joint manager to remove the nodes from.
+	 * @param FileEntry The script file entry associated with the nodes.
+	 * @return true if at least one node was successfully removed, false otherwise.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static void RemoveAllNodesLinkedWithScript(
+		UJointManager* TargetJointManager,
+		const FJointScriptLinkerFileEntry& FileEntry
 	);
 	
 
@@ -247,6 +279,12 @@ public:
 	);
 	
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static void ClearNodeGuidFromScriptLinkage(
+		const FJointScriptLinkerFileEntry& FileEntry,
+		const FGuid& NodeGuid
+	);
+	
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void LinkNodesWithScriptBulk(
 		const TArray<UJointEdGraphNode*>& TargetEdNodes,
 		const FJointScriptLinkerFileEntry& FileEntry,
@@ -281,6 +319,12 @@ public:
 		const FString& Id
 	);
 	
+	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
+	static TMap<FString, FJointScriptLinkerNodeSet> GetAllNodeGuidsLinkedWithScript(
+		UJointManager* TargetJointManager,
+		const FJointScriptLinkerFileEntry& FileEntry
+	);
+	
 public:
 	
 	/**
@@ -297,6 +341,13 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void SetNodePosition(UJointEdGraphNode* TargetEdNode, const FVector2D& NewPosition);
+	
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static void AlignNodes(
+		UJointManager* TargetJointManager,
+		float LevelSpacingX = 600.f,
+		float NodeSpacingY = 600.f
+	);
 	
 public:
 	
@@ -390,6 +441,25 @@ public:
 	);
 	
 public:
+
+	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
+	static UJointEdGraphNode* FindEntryNode(
+		UJointManager* TargetJointManager
+	);
+	
+	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
+	static TArray<UJointEdGraphNode*> GetConnectedNodesOnInputPins(
+		UJointEdGraphNode* TargetEdNode,
+		bool bSearchSubNodes = true
+	);
+	
+	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
+	static TArray<UJointEdGraphNode*> GetConnectedNodesOnOutputPins(
+		UJointEdGraphNode* TargetEdNode,
+		bool bSearchSubNodes = true
+	);
+	
+public:
 	
 	/**
 	 * Modify the target object (for undo/redo support, Introduced for the Blueprint)
@@ -406,5 +476,19 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
 	static FGameplayTag GetGameplayTagFromString(const FString& TagString);
+	
+public:
+	
+	/**
+	 * Fire a notification.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static void FireNotification(
+		FText NotificationTitleText,
+		FText NotificationText,
+		EJointMDAdmonitionType AdmonitionType = EJointMDAdmonitionType::Info,
+		float DurationSeconds = 5.f,
+		bool bReportOnLog = true
+	);
 	
 };

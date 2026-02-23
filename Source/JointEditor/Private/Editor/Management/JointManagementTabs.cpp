@@ -1015,7 +1015,7 @@ void SJointEditorScriptLinkerTab::Construct(const FArguments& InArgs)
 			+ SScrollBox::Slot()
 			.Padding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
+			.VAlign(VAlign_Center)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -1042,184 +1042,10 @@ void SJointEditorScriptLinkerTab::Construct(const FArguments& InArgs)
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
 			[
-				SNew(SJointOutlineBorder)
-					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
-					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
-					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Fill)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("ImportWholeJointManager", "Importing external file as Joint Manager asset"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SJointOutlineButton)
-							.ContentPadding(FJointEditorStyle::Margin_Large)
-							.OnClicked(this, &SJointEditorScriptLinkerTab::ImportJointManager)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("ImportJointManagerButton", "Import Joint Manager"))
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("Reimport", "Re-importing external file to Joint Managers."))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SJointOutlineButton)
-							.ContentPadding(FJointEditorStyle::Margin_Large)
-							.OnClicked(this, &SJointEditorScriptLinkerTab::ReimportFiles)
-							[
-								SNew(STextBlock)
-								.Text(LOCTEXT("ReimportJointManagerButton", "Re-import"))
-							]
-						]
-					]
+				DetailsView.ToSharedRef()
 			]
-			+ SScrollBox::Slot()
-			.Padding(FJointEditorStyle::Margin_Normal)
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SJointOutlineBorder)
-					.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.NormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.HoverColor(FLinearColor(0.04, 0.04, 0.06))
-					.OutlineNormalColor(FLinearColor(0.015, 0.015, 0.02))
-					.OutlineHoverColor(FLinearColor(0.5, 0.5, 0.5))
-					.ContentPadding(FJointEditorStyle::Margin_Normal * 2)
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Fill)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Text(LOCTEXT("Settings", "Joint Script Settings"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							DetailsView.ToSharedRef()
-						]
-					]
-				]
 		]
 	];
-}
-
-FReply SJointEditorScriptLinkerTab::ImportJointManager()
-{
-	FScopedTransaction ReimportTransaction(LOCTEXT("ReimportJointManagersTransaction","Re-import Joint Managers from external files"));
-	
-	UJointScriptSettings::Get()->Modify();
-	
-	// Create a simple modal window with a list and OK/Cancel
-	TSharedPtr<SWindow> ImportWindow = SNew(SWindow)
-		.Title(LOCTEXT("ImportJointManagerWindowTitle", "Import Joint Manager"))
-		.ClientSize(FVector2D(1200, 800))
-		.SupportsMinimize(false)
-		.SupportsMaximize(false)
-		.FocusWhenFirstShown(true);
-
-	// List view widget
-	ImportWindow->SetContent(
-		SNew(SJointManagerImportingPopup)
-		.ParentWindow(ImportWindow)
-	);
-	
-	// Show the window modally
-	FSlateApplication::Get().AddModalWindow(ImportWindow.ToSharedRef(), nullptr);
-
-	UJointScriptSettings::Save();
-	
-	return FReply::Handled();
-}
-
-FReply SJointEditorScriptLinkerTab::ReimportFiles()
-{
-	if (UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks.Num() == 0)
-	{
-		FJointEdUtils::FireNotification(
-			LOCTEXT("NoScriptLinksTitle", "No Script Links Found"),
-			LOCTEXT("NoScriptLinksMessage", "There are no saved script links to re-import. Please import Joint Managers first."),
-			EJointMDAdmonitionType::Warning
-		);
-		
-		return FReply::Handled();
-	}
-	
-	FScopedTransaction ReimportTransaction(LOCTEXT("ReimportJointManagersTransaction","Re-import Joint Managers from external files"));
-	
-	UJointScriptSettings::Get()->Modify();
-	
-	for (FJointScriptLinkerDataElement& Link : UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks) 
-	{
-		//1. 임포트 path를 바탕으로 해당 위치의 파일을 다시 리드하는 것을 시도한다. (ScriptLink.Key.FilePath 이용)
-		
-		FString FileContent;
-
-		if (FFileHelper::LoadFileToString(FileContent, *Link.FileEntry.FilePath))
-		{
-			FJointEdUtils::FireNotification(
-				LOCTEXT("ReimportSuccessTitle", "Re-import Success"),
-				FText::Format(LOCTEXT("ReimportSuccessMessage", "Successfully loaded file at path: {0}."), FText::FromString(Link.FileEntry.FilePath)),
-				EJointMDAdmonitionType::Mention
-			);
-		}
-		else
-		{
-			FJointEdUtils::FireNotification(
-				LOCTEXT("ReimportFailedTitle", "Re-import Failed"),
-				FText::Format(LOCTEXT("ReimportFailedMessage", "Failed to load file at path: {0}. Please check if the file exists and is accessible."), FText::FromString(Link.FileEntry.FilePath)),
-				EJointMDAdmonitionType::Error
-			);
-			
-			continue;
-		}
-		
-		
-		//2. Joint Manager 및 매핑된 모든 타겟 Joint Manager에 대해 파일을 임포트한다. -> 이거 한방이면 싹 다 업데이트 함.
-		
-		for (FJointScriptLinkerMapping& Mapping : Link.Mappings)
-		{
-			if (UJointManager* TargetJointManager = Mapping.JointManager.LoadSynchronous())
-			{
-				FJointEdUtils::ImportFileToJointManager(TargetJointManager, Link.FileEntry.FilePath, false);
-				
-				TargetJointManager->MarkPackageDirty();
-			}
-		}
-	}
-	
-	UJointScriptSettings::Save();
-	
-	return FReply::Handled();
 }
 
 FJointManagementTab_NodeClassManagementTab::FJointManagementTab_NodeClassManagementTab()
@@ -1821,7 +1647,7 @@ FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 	{
 		bool bEverCreated = false;
 
-		for (const FJointSharedClassData& UnknownPackage : Module->GetClassCache()->UnknownPackages)
+		for (const FJointGraphNodeClassData& UnknownPackage : Module->GetClassCache()->UnknownPackages)
 		{
 			bEverCreated = true;
 

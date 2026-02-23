@@ -32,4 +32,11 @@ public:
 
 	virtual bool IsSupportedForNetworking() const override;
 	
+public:
+	
+#if WITH_EDITOR
+	
+	virtual void PostPlacedNewNode_Implementation() override;
+	
+#endif
 };

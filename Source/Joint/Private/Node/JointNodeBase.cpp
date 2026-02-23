@@ -901,6 +901,13 @@ int32 UJointNodeBase::GetFunctionCallspace(UFunction* Function, FFrame* Stack)
 	
 }
 
+#if WITH_EDITOR
+void UJointNodeBase::PostPlacedNewNode_Implementation()
+{
+	EdNodeSetting.bDefaultIsNodeResizeable = true;
+}
+#endif
+
 void UJointNodeBase::SetHostingJointInstance(const TWeakObjectPtr<AJointActor>& InHostingJointInstance)
 {
 	HostingJointInstance = InHostingJointInstance;

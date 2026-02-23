@@ -649,7 +649,22 @@ private:
 	 * When the top-level sub-node is marked as PendingEndPlay, the Joint node enters the EndPlay state.
 	 * In essence, PendingEndPlay is a flag added for internal playback control, unlike EndPlay and BeginPlay, which are for external control.
 	 */
+	
+public:
+ 
+#if WITH_EDITOR
 
+	/**
+	 * This function will be executed when the node is placed on the graph for the first time. You can put some initialization logic for the node here.
+	 * Please notice that this function will not be executed when the node is duplicated. If you want to execute some logic when the node is duplicated, please check out PostEditImport() function.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Node")
+	void PostPlacedNewNode();
+	
+	virtual void PostPlacedNewNode_Implementation();
+	
+#endif
+	
 private:
 	
 	UPROPERTY(transient)

@@ -121,11 +121,6 @@ public:
 	void Construct(const FArguments& InArgs);
 
 public:
-	
-	FReply ImportJointManager();
-	FReply ReimportFiles();
-
-public:
 
 	TSharedPtr<IDetailsView> DetailsView;
 	
@@ -257,7 +252,7 @@ public:
 		{
 		}
 
-		SLATE_ARGUMENT(FJointSharedClassData, ClassData)
+		SLATE_ARGUMENT(FJointGraphNodeClassData, ClassData)
 		SLATE_ARGUMENT(TSharedPtr<SJointEditorTap_MissingClassesMap>, Owner)
 	SLATE_END_ARGS();
 
@@ -272,7 +267,7 @@ public:
 	FReply Apply();
 
 public:
-	FJointSharedClassData ClassData;
+	FJointGraphNodeClassData ClassData;
 
 	TSubclassOf<UJointNodeBase> SelectedClass;
 

@@ -29,17 +29,10 @@ public:
 public:
 
 	virtual void AllocateDefaultPins() override;
-
-
-public:
 	
-	/**
-	 * Return whether to implement this fragment's graph slate on the parent node's sub node box automatically or not.
-	 * This is useful when you have to attach its graph node at somewhere else.
-	 * Check out the UJointEdFragment_Condition and UJointEdFragment_ConditionInstance.
-	 */
-	virtual bool ShouldManuallyImplementSlate() const;
+	virtual void PostPlacedNewNode() override;
 
+	
 public:
 
 	const bool& IsDissolvedSubNode() const { return bIsDissolvedSubNode; }

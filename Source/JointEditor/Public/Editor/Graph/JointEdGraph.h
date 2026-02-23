@@ -14,7 +14,7 @@ class UJointEdGraphSchema;
 class FJointEditorToolkit;
 DECLARE_MULTICAST_DELEGATE(FOnGraphRequestUpdate);
 
-UCLASS()
+UCLASS(Blueprintable)
 class JOINTEDITOR_API UJointEdGraph : public UEdGraph
 {
 	GENERATED_BODY()
@@ -89,6 +89,7 @@ public:
 	 * Find the entry node of this graph. This can refer UJointEdGraphNode_Manager or UJointEdGraphNode_Tunnel (output direction) nodes.
 	 * @return Entry node of this graph
 	 */
+	UFUNCTION(BlueprintPure, Category="Joint Editor|Graph")
 	UJointEdGraphNode* FindEntryNode() const;
 
 public:
@@ -209,19 +210,12 @@ public:
 	
 	//Grab Unknown class data from the graph
 	void GrabUnknownClassDataFromGraph();
-	
-public:
-
-	void ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel);
 
 private:
 	
 	void RecacheNodes();
 
 public:
-
-	//Update class data of the graph nodes.
-	void CleanUpNodes();
 	
 	//Reconstruct the nodes on this graph.
 	void ReconstructAllNodes(bool bPropagateUnder = false);

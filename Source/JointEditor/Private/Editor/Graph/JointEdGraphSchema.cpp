@@ -219,6 +219,7 @@ void UJointEdGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& Conte
 	ImplementAddCommentAction(ContextMenuBuilder);
 	ImplementAddConnectorAction(ContextMenuBuilder);
 	ImplementAddNodeActions(ContextMenuBuilder);
+	ImplementAddNodePresetActions(ContextMenuBuilder);
 }
 
 
@@ -231,11 +232,11 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
 
 	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-	TArray<FJointSharedClassData> NodeClasses;
+	TArray<FJointGraphNodeClassData> NodeClasses;
 
 	FJointEdUtils::GetNodeSubClasses(UJointNodeBase::StaticClass(), NodeClasses);
 
-	for (FJointSharedClassData& NodeClass : NodeClasses)
+	for (FJointGraphNodeClassData& NodeClass : NodeClasses)
 	{
 		if (NodeClass.GetClass() == nullptr) continue;
 
@@ -277,10 +278,10 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
 
 	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
-	TArray<FJointSharedClassData> FragmentClasses;
+	TArray<FJointGraphNodeClassData> FragmentClasses;
 	FJointEdUtils::GetNodeSubClasses(UJointFragment::StaticClass(), FragmentClasses);
 
-	for (FJointSharedClassData& NodeClass : FragmentClasses)
+	for (FJointGraphNodeClassData& NodeClass : FragmentClasses)
 	{
 		//Make sure we are going to display this action or not.
 		if (NodeClass.GetClass() == nullptr) continue;

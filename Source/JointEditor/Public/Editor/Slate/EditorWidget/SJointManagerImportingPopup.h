@@ -24,8 +24,8 @@ public:
 	
 	enum class EJointImportMode : uint8
 	{
-		ToSpecifiedJointManager,
-		AsIndividualJointManagers
+		AsIndividualJointManagers,
+		ToSpecifiedJointManager
 	};
 	
 	class FParserCandidateItem : public TSharedFromThis<FParserCandidateItem>, public FGCObject
@@ -72,7 +72,8 @@ public:
 public:
 	
 	SJointManagerImportingPopup();
-	
+	void ConstructParserCandidateItems();
+
 public:
 	void ConstructLayout();
 
@@ -81,6 +82,7 @@ public:
 	SLATE_BEGIN_ARGS(SJointManagerImportingPopup)
 		:
 		_bIsReimporting(false),
+		_InitialImportMode(EJointImportMode::AsIndividualJointManagers),
 		_OptionalJointManagerToImport(nullptr)
 		{}
 	SLATE_ARGUMENT(bool, bIsReimporting)
@@ -113,14 +115,17 @@ private:
 	TWeakPtr<FParserCandidateItem> SelectedParserItem;
 	
 	TSharedPtr<SBox> ParserSettingsBox;
-	
+	TSharedPtr<SBox> InfoBox;
+
 public:
 	
 	void UpdateParserSettingsWidget();
+	void UpdateInfoWidget();
 	
 private:
 	
 	TSharedRef<SWidget> CreateParserSettingsWidget();
+	TSharedRef<SWidget> CreateInfoWidget();
 	
 private:
 
@@ -132,7 +137,7 @@ private:
 	TArray<FString> ExternalFilePaths;
 	
 	// A path that will be used for importing if user choose "AsIndividualJointManagers" mode. it will be the path of the folder that contains all the imported Joint Managers.
-	FString SelectedContentPath = "/Game/JointManager/Imported";
+	FString SelectedContentPath = "/Game";
 	
 public:
 	

@@ -301,6 +301,10 @@ public:
 };
 
 
+
+
+
+
 class JOINTEDITOR_API FJointScriptLinkerDataCustomization : public IStructCustomization
 {
 public:
@@ -317,6 +321,7 @@ public:
 	
 public:
 	
+	TSharedPtr<SWidget> CreateImportButtonWidget();
 	TSharedPtr<SWidget> CreateQuickReimportAllButtonWidget();
 	TSharedPtr<SWidget> CreateRefreshWidgetButtonWidget();
 	

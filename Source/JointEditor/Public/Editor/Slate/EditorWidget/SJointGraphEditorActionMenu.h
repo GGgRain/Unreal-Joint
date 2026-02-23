@@ -162,21 +162,57 @@ public:
 
 };
 
-
-/** Default widget for GraphActionMenu */
-class JOINTEDITOR_API SJointGraphActionWidget : public SCompoundWidget
+class JOINTEDITOR_API SJointGraphActionWidget_Fragment : public SCompoundWidget
 {
-	SLATE_BEGIN_ARGS( SJointGraphActionWidget ) {}
-	SLATE_ARGUMENT(const FSlateBrush*, IconBrush)
-	SLATE_ARGUMENT(FLinearColor, IconColor)
-	SLATE_ATTRIBUTE(FText, HighlightText)
+	SLATE_BEGIN_ARGS( SJointGraphActionWidget_Fragment ) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<UJointFragment>, Fragment)
+		SLATE_ATTRIBUTE(FText, HighlightText)
 	SLATE_END_ARGS()
-
+	
+public:
+	
+	void CreateActionWidgetWithNodeSettings(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData, const FJointEdNodeSetting* NodeSetting);
 	void Construct(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData);
 	virtual FReply OnMouseButtonDown( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent ) override;
+	TSharedRef<SWidget> GetIcon(const FSlateBrush* IconBrush);
 
+private:
+	
 	/** The item that we want to display with this widget */
 	TWeakPtr<FEdGraphSchemaAction> ActionPtr;
 	/** Delegate executed when mouse button goes down */
 	FCreateWidgetMouseButtonDown MouseButtonDownDelegate;
+	
+private:
+	
+	TWeakObjectPtr<UJointFragment> FragmentPtr;
+};
+
+class JOINTEDITOR_API SJointGraphActionWidget_NodePreset : public SCompoundWidget
+{
+	SLATE_BEGIN_ARGS( SJointGraphActionWidget_NodePreset ) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<UJointNodePreset>, NodePreset)
+		SLATE_ATTRIBUTE(FText, HighlightText)
+	SLATE_END_ARGS()
+	
+public:
+	
+	void Construct(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData);
+	virtual FReply OnMouseButtonDown( const FGeometry& MyGeometry, const FPointerEvent& MouseEvent ) override;
+	
+public:
+	
+	void CreateActionWidget(const FArguments& InArgs, const FCreateWidgetForActionData* InCreateData);
+	TSharedRef<SWidget> GetIcon(const FSlateBrush* IconBrush);
+	
+private:
+	
+	/** The item that we want to display with this widget */
+	TWeakPtr<FEdGraphSchemaAction> ActionPtr;
+	/** Delegate executed when mouse button goes down */
+	FCreateWidgetMouseButtonDown MouseButtonDownDelegate;
+	
+private:
+	
+	TWeakObjectPtr<UJointNodePreset> NodePresetPtr;
 };

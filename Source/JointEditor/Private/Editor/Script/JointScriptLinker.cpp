@@ -7,8 +7,7 @@
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 
 FJointScriptLinkerFileEntry::FJointScriptLinkerFileEntry() 
-	: FileName(TEXT(""))
-	, FilePath(TEXT(""))
+	: FilePath(TEXT(""))
 {
 }
 

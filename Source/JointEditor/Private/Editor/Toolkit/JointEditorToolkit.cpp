@@ -71,7 +71,7 @@
 
 #include "EditorWidget/JointToolkitToastMessages.h"
 #include "EditorWidget/SJointEditorOutliner.h"
-#include "EditorWidget/SJointFragmentPalette.h"
+#include "EditorWidget/SJointNodePalette.h"
 #include "EditorWidget/SJointGraphPanel.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Framework/Application/SlateApplication.h"
@@ -148,8 +148,8 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
 {
 	JointManager = InJointManager;
 	
-	FJointManagerThumbnailRendererResourcePool::Get().ClearGraphPreviewerFor(JointManager.Get());
-	FJointManagerThumbnailRendererResourcePool::Get().LockFor(JointManager.Get());
+	//FJointManagerThumbnailRendererResourcePool::Get().ClearGraphPreviewerFor(JointManager.Get());
+	//FJointManagerThumbnailRendererResourcePool::Get().LockFor(JointManager.Get());
 
 	//StandaloneMode = MakeShareable(new FJointEditorApplicationMode(SharedThis(this)));
 	//StandaloneMode->Initialize();
@@ -278,7 +278,7 @@ void FJointEditorToolkit::CleanUp()
 		Graph->OnClosed();
 	};
 
-	FJointManagerThumbnailRendererResourcePool::Get().UnlockFor(JointManager.Get());
+	//FJointManagerThumbnailRendererResourcePool::Get().UnlockFor(JointManager.Get());
 
 	JointManager.Reset();
 
@@ -286,7 +286,7 @@ void FJointEditorToolkit::CleanUp()
 	ContentBrowserPtr.Reset();
 	DetailsViewPtr.Reset();
 	ManagerViewerPtr.Reset();
-	JointFragmentPalettePtr.Reset();
+	JointNodePalettePtr.Reset();
 	JointEditorToolbar.Reset();
 
 	CleanUpGraphToastMessageHub();
@@ -295,6 +295,8 @@ void FJointEditorToolkit::CleanUp()
 void FJointEditorToolkit::OnClose()
 {
 	//Clean Up;
+	
+	FJointManagerThumbnailRendererResourceManager::Get().FindOrAddResourcePoolElementFor(GetJointManager())->RequestUpdateGraphPreviewer();
 
 	SaveEditedObjectState();
 
@@ -333,7 +335,7 @@ void FJointEditorToolkit::InitializeEditorPreferenceView()
 
 void FJointEditorToolkit::InitializePaletteView()
 {
-	JointFragmentPalettePtr = SNew(SJointFragmentPalette)
+	JointNodePalettePtr = SNew(SJointNodePalette)
 		.ToolKitPtr(SharedThis(this));
 }
 
@@ -400,11 +402,11 @@ TSharedRef<SDockTab> FJointEditorToolkit::SpawnTab_Palettes(const FSpawnTabArgs&
 {
 	TSharedRef<SDockTab> JointFragmentPaletteTabPtr = SNew(SDockTab)
 		.TabRole(ETabRole::PanelTab)
-		.Label(LOCTEXT("JointFragmentPaletteTabTitle", "Fragment Palette"));
+		.Label(LOCTEXT("JointNodePaletteTabTitle", "Node Palette"));
 
-	if (TabIdentifier == EJointEditorTapIDs::PaletteID && JointFragmentPalettePtr.IsValid())
+	if (TabIdentifier == EJointEditorTapIDs::PaletteID && JointNodePalettePtr.IsValid())
 	{
-		JointFragmentPaletteTabPtr->SetContent(JointFragmentPalettePtr.ToSharedRef());
+		JointFragmentPaletteTabPtr->SetContent(JointNodePalettePtr.ToSharedRef());
 	}
 
 	return JointFragmentPaletteTabPtr;
@@ -774,13 +776,10 @@ void FJointEditorToolkit::OnEndPIE(bool bArg)
 
 		for (TWeakObjectPtr<UJointEdGraphNode> CachedJointGraphNode : GraphNodes)
 		{
-			if (CachedJointGraphNode == nullptr) continue;
-
-			if (!CachedJointGraphNode->GetGraphNodeSlate().IsValid()) continue;
-			
-			TSharedPtr<SJointGraphNodeBase> GraphNodeSlatePtr = CachedJointGraphNode->GetGraphNodeSlate().Pin();
-
-			GraphNodeSlatePtr->ResetNodeBodyColorAnimation();
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->ResetNodeBodyColorAnimation();	
+			}
 		}
 	}
 }
@@ -1312,7 +1311,7 @@ TSharedPtr<FDocumentTracker> FJointEditorToolkit::GetDocumentManager() const
 
 void FJointEditorToolkit::RebuildFragmentPalette()
 {
-	if (JointFragmentPalettePtr) JointFragmentPalettePtr->RebuildWidget();
+	if (JointNodePalettePtr) JointNodePalettePtr->RebuildWidget();
 }
 
 void FJointEditorToolkit::OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEditor)
@@ -1384,13 +1383,10 @@ void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, c
 
 		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
 		{
-			if (!GraphNode.IsValid()) continue;
-
-			const TSharedPtr<SJointGraphNodeBase> NodeSlate = GraphNode->GetGraphNodeSlate().Pin();
-
-			if (!NodeSlate.IsValid()) continue;
-
-			NodeSlate->OnGraphSelectionChanged(NewSelection);
+			FOREACH_GRAPHNODESLATE_BASE_WITH(GraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->OnGraphSelectionChanged(NewSelection);	
+			}
 		}
 	}
 
@@ -2321,13 +2317,7 @@ void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* In
 				if (!Subnode) continue;
 
 				Subnode->SetOuterAs(InDestinationGraph);
-
-				// Clean up the slate.
-				Subnode->SetGraphNodeSlate(nullptr);
 			}
-			
-			// Clean up the slate.
-			JointNode->SetGraphNodeSlate(nullptr);
 
 			JointNode->Update();
 		}
@@ -2514,13 +2504,7 @@ void FJointEditorToolkit::ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InS
 				if (!Subnode) continue;
 
 				Subnode->SetOuterAs(DestinationGraph);
-
-				// Clean up the slate.
-				Subnode->SetGraphNodeSlate(nullptr);
-				
 			}
-			JointNode->SetGraphNodeSlate(nullptr);
-			// Clean up the slate.
 			
 			JointNode->Update();
 		}
@@ -3593,12 +3577,9 @@ void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPrope
 	{
 		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
 		{
-			if (CachedJointGraphNode.IsValid())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
 			{
-				if (TSharedPtr<SJointGraphNodeBase> GraphNodeWidget = CachedJointGraphNode->GetGraphNodeSlate().Pin())
-				{
-					GraphNodeWidget->OnVisibilityChangeModeForSimpleDisplayPropertyEnter();
-				}
+				NodeSlate->OnVisibilityChangeModeForSimpleDisplayPropertyEnter();	
 			}
 		}
 	}
@@ -3610,12 +3591,9 @@ void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPrope
 	{
 		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
 		{
-			if (CachedJointGraphNode.IsValid())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
 			{
-				if (TSharedPtr<SJointGraphNodeBase> GraphNodeWidget = CachedJointGraphNode->GetGraphNodeSlate().Pin())
-				{
-					GraphNodeWidget->OnVisibilityChangeModeForSimpleDisplayPropertyExit();
-				}
+				NodeSlate->OnVisibilityChangeModeForSimpleDisplayPropertyExit();	
 			}
 		}
 	}
@@ -3700,9 +3678,10 @@ void FJointEditorToolkit::OnCreateNodePresetFromSelectedBaseNode()
 			UJointEdGraphNode* PastedNode = DuplicateObject<UJointEdGraphNode>(SelectedNode, NodePreset->InternalJointManager->JointGraph);
 			SelectedNode->PostCopyNode();
 			
+			PastedNode->BreakAllNodeLinks();
 			NodePreset->InternalJointManager->JointGraph->AddNode(PastedNode);
 			PastedNode->PostPasteNode();
-			PastedNode->BreakAllNodeLinks();
+			PastedNode->Update();
 			
 			FJointEdUtils::FireNotification(
 				LOCTEXT("Notification_NodePresetCreated", "Node preset created"),
@@ -3803,24 +3782,21 @@ void FJointEditorToolkit::OnContentBrowserAssetDoubleClicked(const FAssetData& A
 void FJointEditorToolkit::StartHighlightingNode(UJointEdGraphNode* NodeToHighlight, bool bBlinkForOnce)
 {
 	if (NodeToHighlight == nullptr) return;
-
-	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
-
-	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
-
-	GraphNodeSlate->PlayHighlightAnimation(bBlinkForOnce);
+	
+	FOREACH_GRAPHNODESLATE_BASE_WITH(NodeToHighlight, NodeSlate)
+	{
+		NodeSlate->PlayHighlightAnimation(bBlinkForOnce);
+	}
 }
 
 void FJointEditorToolkit::StopHighlightingNode(UJointEdGraphNode* NodeToHighlight)
 {
 	if (NodeToHighlight == nullptr) return;
-
-	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
-
-	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
-
-	GraphNodeSlate->StopHighlightAnimation();
-
+	
+	FOREACH_GRAPHNODESLATE_BASE_WITH(NodeToHighlight, NodeSlate)
+	{
+		NodeSlate->StopHighlightAnimation();
+	}
 }
 
 void FJointEditorToolkit::JumpToNode(UEdGraphNode* Node, const bool bRequestRename)

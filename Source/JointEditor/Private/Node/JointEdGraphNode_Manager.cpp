@@ -79,7 +79,7 @@ void UJointEdGraphNode_Manager::ReconstructNode()
 {
 	UpdatePins();
 
-	RequestUpdateSlate();
+	RequestRefreshingGraphNodeSlate();
 }
 
 void UJointEdGraphNode_Manager::NodeConnectionListChanged()

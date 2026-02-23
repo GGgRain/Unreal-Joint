@@ -19,17 +19,6 @@ public:
 	FJointScriptLinkerFileEntry();
 	
 public:
-	
-	/**
-	 * File name of the file entry.
-	 * This property is used as the unique identifier for the file entry.
-	 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint Script Linker File Entry")
-	FString FileName;
-	
-public:
-	
-	// additional data for the identification
 
 	/**
 	 * Full file path of the file entry.
@@ -41,7 +30,7 @@ public:
 	
 	bool operator==(const FJointScriptLinkerFileEntry& Other) const
 	{
-		return FileName == Other.FileName;
+		return FilePath == Other.FilePath;
 	}
 	
 	bool operator!=(const FJointScriptLinkerFileEntry& Other) const
@@ -51,18 +40,18 @@ public:
 	
 	bool IsValid() const
 	{
-		return !FileName.IsEmpty();
+		return !FilePath.IsEmpty();
 	}
 	
 	bool IsNull() const
 	{
-		return FileName.IsEmpty() && FilePath.IsEmpty();
+		return FilePath.IsEmpty();
 	}
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointScriptLinkerFileEntry& Entry)
 {
-	return GetTypeHash(Entry.FileName);
+	return GetTypeHash(Entry.FilePath);
 }
 
 USTRUCT(BlueprintType)
@@ -105,7 +94,7 @@ public:
 	 * Node mappings for the Joint nodes.
 	 * Key is the external node identifier (e.g., node name in the script file), value is the corresponding Joint node's GUID.
 	 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint Script Linker Node Mapping")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Script Linker Node Mapping")
 	TMap<FString, FJointScriptLinkerNodeSet> NodeMappings;
 	
 public:
@@ -247,7 +236,7 @@ public:
 	/**
 	 * List of node mappings for different Joint managers.
 	 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint Script Linker Node Mapping List")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Script Linker Node Mapping List")
 	TArray<FJointScriptLinkerMapping> Mappings;
 	
 public:

@@ -53,7 +53,7 @@ SJointManagerImportingPopup::SJointManagerImportingPopup()
 {
 }
 
-void SJointManagerImportingPopup::ConstructLayout()
+void SJointManagerImportingPopup::ConstructParserCandidateItems()
 {
 	ParserCandidateItems.Empty();
 	
@@ -102,7 +102,10 @@ void SJointManagerImportingPopup::ConstructLayout()
 			ParserCandidateItems.Add(NewItem);
 		}
 	}
-	
+}
+
+void SJointManagerImportingPopup::ConstructLayout()
+{
 	FContentBrowserModule& ContentBrowserModule =FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
 	FPathPickerConfig PathPickerConfig;
@@ -202,12 +205,12 @@ void SJointManagerImportingPopup::ConstructLayout()
 			.IsEnabled(!bIsReimporting)
 			.OnValueChanged(this, &SJointManagerImportingPopup::OnImportModeChanged)
 			.Value(this, &SJointManagerImportingPopup::GetCurrentImportMode)
-			+ SSegmentedControl<EJointImportMode>::Slot(EJointImportMode::ToSpecifiedJointManager)
-			.Text(LOCTEXT("ImportMode_ToSpecified", "To Specified Joint Manager"))
-			.Icon(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("LevelEditor.Tabs.Details") )
 			+ SSegmentedControl<EJointImportMode>::Slot(EJointImportMode::AsIndividualJointManagers)
 			.Text(LOCTEXT("ImportMode_AsIndividual", "As New Individual Joint Managers"))
 			.Icon(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("LevelEditor.Tabs.Layers") )
+			+ SSegmentedControl<EJointImportMode>::Slot(EJointImportMode::ToSpecifiedJointManager)
+			.Text(LOCTEXT("ImportMode_ToSpecified", "To Specified Joint Manager"))
+			.Icon(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("LevelEditor.Tabs.Details") )
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -284,6 +287,7 @@ void SJointManagerImportingPopup::ConstructLayout()
 				{
 					SelectedParserItem = NewSelection;
 					UpdateParserSettingsWidget();
+					UpdateInfoWidget();
 				})
 				.HeaderRow
 				(
@@ -320,11 +324,23 @@ void SJointManagerImportingPopup::ConstructLayout()
 		+ SVerticalBox::Slot()
 		.FillHeight(1)
 		.VAlign(VAlign_Bottom)
+		.HAlign(HAlign_Fill)
 		.Padding(FJointEditorStyle::Margin_Normal)
 		[
 			SAssignNew(ParserSettingsBox, SBox)
 			[
 				CreateParserSettingsWidget()
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.VAlign(VAlign_Bottom)
+		.HAlign(HAlign_Fill)
+		.Padding(FJointEditorStyle::Margin_Normal)
+		[
+			SAssignNew(InfoBox, SBox)
+			[
+				CreateInfoWidget()
 			]
 		]
 		+ SVerticalBox::Slot()
@@ -372,14 +388,8 @@ void SJointManagerImportingPopup::Construct(const FArguments& InArgs)
 	ParentWindow = InArgs._ParentWindow;
 	ExternalFilePaths = InArgs._ExternalFilePaths;
 	CurrentImportMode = InArgs._InitialImportMode;
-
-	// We have to ask:
-	// 1. to select the file to import.
-	// 2. to select OptionalJointManagerToImport, if user want.
-	// 3. show the list of the parsers that can import the file, and ask user to select one of them.
-	// 4. show the import option of the selected parser, and ask user to confirm the import.
 	
-	ConstructLayout();
+	ConstructParserCandidateItems();
 	
 	if ( InArgs._InitiallySelectedParserClass )
 	{
@@ -394,10 +404,22 @@ void SJointManagerImportingPopup::Construct(const FArguments& InArgs)
 				}
 
 				SelectedParserItem = ParserCandidateItem;
-				if (ParserListView) ParserListView->SetSelection(SelectedParserItem.Pin());
 				break;
 			}
 		}
+	}
+	
+	// We have to ask:
+	// 1. to select the file to import.
+	// 2. to select OptionalJointManagerToImport, if user want.
+	// 3. show the list of the parsers that can import the file, and ask user to select one of them.
+	// 4. show the import option of the selected parser, and ask user to confirm the import.
+	
+	ConstructLayout();
+	
+	if (SelectedParserItem.IsValid())
+	{
+		if (ParserListView) ParserListView->SetSelection(SelectedParserItem.Pin());
 	}
 }
 
@@ -409,6 +431,7 @@ FString SJointManagerImportingPopup::GetOptionalJointManagerPath() const
 void SJointManagerImportingPopup::OnOptionalJointManagerChanged(const FAssetData& AssetData)
 {
 	OptionalJointManagerToImport = AssetData.ToSoftObjectPath();
+	UpdateInfoWidget(); 
 }
 
 void SJointManagerImportingPopup::UpdateParserSettingsWidget()
@@ -417,6 +440,16 @@ void SJointManagerImportingPopup::UpdateParserSettingsWidget()
 	{
 		ParserSettingsBox->SetContent(
 			CreateParserSettingsWidget()
+		);
+	}
+}
+
+void SJointManagerImportingPopup::UpdateInfoWidget()
+{
+	if (InfoBox.IsValid())
+	{
+		InfoBox->SetContent(
+			CreateInfoWidget()
 		);
 	}
 }
@@ -434,11 +467,13 @@ TSharedRef<SWidget> SJointManagerImportingPopup::CreateParserSettingsWidget()
 			TArray<FProperty*> PropertiesToShow;
 			TArray<FName> PropertyNamesToShow;
 			
-			for (const FString& PropName : Parser->OptionPropertyNames)
+			// get SaveGame properties
+			for (TFieldIterator<FProperty> PropIt(Parser->GetClass(), EFieldIteratorFlags::IncludeSuper); PropIt; ++PropIt)
 			{
-				if (FProperty* Prop = Parser->GetClass()->FindPropertyByName(*PropName))
+				FProperty* Property = *PropIt;
+				if (Property->HasAnyPropertyFlags(CPF_SaveGame))
 				{
-					PropertiesToShow.Add(Prop);
+					PropertiesToShow.Add(Property);
 				}
 			}
 			
@@ -447,7 +482,7 @@ TSharedRef<SWidget> SJointManagerImportingPopup::CreateParserSettingsWidget()
 				return SNew(SJointMDSlate_Admonitions)
 					.AdmonitionType(EJointMDAdmonitionType::Info)
 					.bUseDescriptionText(true)
-					.DescriptionText(LOCTEXT("NoOptions", "This parser has no customizable options. (If you are a developer and can't find the options you added for your parser, make sure to add the property names to the OptionPropertyNames array in your parser class.)"));
+					.DescriptionText(LOCTEXT("NoOptions", "This parser has no customizable options. (If you are a developer and can't find the options you added for your parser, make sure to mark your properties for the options as 'SaveGame (IsSaveGame for Blueprint properties)' in your parser class.)"));
 			}
 			
 			for (FProperty*& ToShow : PropertiesToShow)
@@ -481,11 +516,55 @@ TSharedRef<SWidget> SJointManagerImportingPopup::CreateParserSettingsWidget()
 		}
 	}
 	
-	return SNew(SJointMDSlate_Admonitions)
-		.AdmonitionType(EJointMDAdmonitionType::Note)
-		.CustomHeaderText(LOCTEXT("ParserSettingsHeader", "No parser selected"))
-		.bUseDescriptionText(true)
-		.DescriptionText(LOCTEXT("ParserSettingsDescription", "Select a parser from the list above to see its settings here."));
+	return SNullWidget::NullWidget;
+}
+
+TSharedRef<SWidget> SJointManagerImportingPopup::CreateInfoWidget()
+{
+	// 1. if there is no parser selected, show a message asking user to select a parser.
+
+	if (!SelectedParserItem.IsValid())
+	{
+		return SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Note)
+			.CustomHeaderText(LOCTEXT("ParserHeader", "No parser selected"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("ParserDescription", "Select a parser from the list above."));
+	}
+	
+	// 2. if no file is selected, show a message asking user to select a file.
+	
+	if (ExternalFilePaths.Num() == 0)
+	{
+		return SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Note)
+			.CustomHeaderText(LOCTEXT("NoFileSelectedHeader", "No file selected"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("NoFileSelectedDescription", "Select a file to import by clicking the 'Select...' button above."));
+	}
+	
+	// 3 - 1. (AsIndividualJointManagers mode) if OptionalJointManagerToImport is not valid, show a message asking user to select a Joint Manager to import to.
+	// 3 - 2. (ToSpecifiedJointManager mode) if there is no valid path, show a message asking user to select a location for the new Joint Managers.
+	
+	
+	if (CurrentImportMode == EJointImportMode::ToSpecifiedJointManager && !OptionalJointManagerToImport.IsValid())
+	{
+		return SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Note)
+			.CustomHeaderText(LOCTEXT("NoTargetManagerHeader", "No target Joint Manager selected"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("NoTargetManagerDescription", "Select a target Joint Manager to import to by clicking the box next to 'Joint Manager' label above."));
+	}else if (CurrentImportMode == EJointImportMode::AsIndividualJointManagers && SelectedContentPath.IsEmpty())
+	{
+		return SNew(SJointMDSlate_Admonitions)
+			.AdmonitionType(EJointMDAdmonitionType::Note)
+			.CustomHeaderText(LOCTEXT("NoTargetLocationHeader", "No target location selected"))
+			.bUseDescriptionText(true)
+			.DescriptionText(LOCTEXT("NoTargetLocationDescription", "Select a target location for the new Joint Managers by clicking the box next to 'Location for new Joint Managers' label above."));
+	}
+	
+	// 4. if every condition is satisfied, don't show any message.
+	return SNullWidget::NullWidget;
 }
 
 SJointManagerImportingPopup::EJointImportMode SJointManagerImportingPopup::GetCurrentImportMode() const
@@ -496,6 +575,7 @@ SJointManagerImportingPopup::EJointImportMode SJointManagerImportingPopup::GetCu
 void SJointManagerImportingPopup::OnImportModeChanged(EJointImportMode JointImportMode)
 {
 	CurrentImportMode = JointImportMode;
+	UpdateInfoWidget();
 }
 
 void SJointManagerImportingPopup::OnColumnSort(
@@ -539,6 +619,7 @@ FReply SJointManagerImportingPopup::OnSelectFileButtonClicked()
 	
 	ExternalFilePaths = OutFiles;
 	
+	UpdateInfoWidget();
 	
 	return FReply::Handled();
 }
@@ -571,6 +652,8 @@ FReply SJointManagerImportingPopup::OnProceedButtonClicked()
 				FilePath,
 				SelectedParserItem.Pin()->Parser.Get()
 			);
+			
+			DM->MarkPackageDirty();
 		}
 	}
 	

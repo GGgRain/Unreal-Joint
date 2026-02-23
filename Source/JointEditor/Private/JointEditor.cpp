@@ -69,11 +69,6 @@ void FJointEditorModule::StartupModule()
 	
 	//Joint 2.9: JointCoreRedirects
 	AppendActiveJointRedirects();
-	
-	UThumbnailManager::Get().RegisterCustomRenderer(
-		UJointManager::StaticClass(),
-		UJointManagerThumbnailRenderer::StaticClass()
-	);
 
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();
 

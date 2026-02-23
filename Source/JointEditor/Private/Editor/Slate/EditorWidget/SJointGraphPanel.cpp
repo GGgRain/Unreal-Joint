@@ -19,6 +19,7 @@
 #include "JointEdGraphSchema.h"
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
+#include "JointGraphNodeSlateFactory.h"
 
 #include "ScopedTransaction.h"
 

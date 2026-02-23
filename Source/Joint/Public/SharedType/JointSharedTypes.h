@@ -351,7 +351,7 @@ public:
 	 * @note We don't recommend to set this to true for fragments. (we don't provide proper handling for it yet.)
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
-	bool bIsNodeResizeable = true;
+	bool bDefaultIsNodeResizeable = true;
 	
 public:
 	/**

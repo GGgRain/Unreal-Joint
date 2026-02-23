@@ -21,20 +21,26 @@ class JOINTEDITOR_API FJointEdUtils
 public:
 	
 	//Get the editor node's subclasses of the provided class on the ClassCache of the engine instance.
-	static void GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointSharedClassData>& ClassData);
+	static void GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
 
 	//Get the node's subclasses of the provided class on the ClassCache of the engine instance.
-	static void GetNodeSubClasses(const UClass* BaseClass, TArray<FJointSharedClassData>& ClassData);
+	static void GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData);
 	
 	/**
 	 * Find class data for the provided Joint node class.
 	 * @param NodeClass Node class to find class data for.
 	 * @param OutClassData Output class data for the provided node class.
 	 */
-	static FJointSharedClassData FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass);
+	static FJointGraphNodeClassData FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass);
 
 	//Find and return the first EditorGraphNode for the provided Joint node class. If there is no class for the node, returns nullptr;
-	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FJointSharedClassData Class);
+	static TSubclassOf<UJointEdGraphNode> FindEdClassForNode(FJointGraphNodeClassData Class);
+
+
+	/**
+	 * Store the editor node class cache and node class cache on the engine instance. It will be called when the module is loaded to make sure the cache is ready to use.
+	 */
+	static void StoreEditorModuleClassCache();
 
 
 	template <typename Type>
@@ -262,7 +268,7 @@ public:
 public:
 	
 	static void OpenJointScriptImportWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection);
-	
+
 	/**
 	 * Import files to the provided Joint manager. (e.g., importing csv files to create & update nodes)
 	 */

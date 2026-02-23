@@ -4,6 +4,8 @@
 
 #include "AssetTypeActions_Base.h"
 
+class FJointManagerThumbnailRendererResourcePoolElement;
+class UJointManager;
 /**
  * Implements an action for Joint manager assets.
  */
@@ -28,11 +30,32 @@ public:
 	virtual bool HasActions(const TArray<UObject*>& InObjects) const override;
 	virtual void OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor) override;
 	virtual TSharedPtr<class SWidget> GetThumbnailOverlay(const FAssetData& AssetData) const override;
-	
+
 public:
 	
-	static void StoreEditorModuleClassCache();
-
+	void CaptureThumbnailFromGraph(TArray<TWeakObjectPtr<UJointManager>> Array);
+	
+private:
+	
+	void StartRenderChain(
+		UJointManager* JointManager,
+		TSharedPtr<FJointManagerThumbnailRendererResourcePoolElement> Elem,
+		int32 SizeX,
+		int32 SizeY,
+		float SleepPerPass,
+		TSharedRef<FThreadSafeCounter> CompletedCount,
+		int32 TotalCount,
+		TArray<TWeakObjectPtr<UJointManager>> AllAssets);
+	
+	void FinalizeCapture(
+		UJointManager* JointManager,
+		TSharedPtr<FJointManagerThumbnailRendererResourcePoolElement> Elem,
+		int32 SizeX,
+		int32 SizeY,
+		TSharedRef<FThreadSafeCounter> CompletedCount,
+		int32 TotalCount,
+		TArray<TWeakObjectPtr<UJointManager>> AllAssets);
+	
 public:
 
 	//Category of the asset that this asset will be displayed at on the content browser and elsewhere.

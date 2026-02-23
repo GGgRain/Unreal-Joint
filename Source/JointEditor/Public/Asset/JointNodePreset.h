@@ -62,4 +62,23 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
 	FText PresetCategory;
+	
+	/**
+	 * An optional color for the preset, which can be used to visually distinguish different presets in the UI when selecting a preset to apply to a Joint node.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
+	FLinearColor PresetColor;
+	
+	/**
+	 * Whether to use an icon for the preset. If true, the PresetIconBrush will be used as the icon for the preset in the UI when selecting a preset to apply to a Joint node.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset")
+	bool bUseCustomIcon;
+	
+	/**
+	 * An optional icon for the preset, which can be used to visually distinguish different presets in the UI when selecting a preset to apply to a Joint node.
+	 * Make sure to 
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Joint Node Preset", meta = (EditCondition = "bUseCustomIcon"))
+	FSlateBrush PresetIconBrush;
 };

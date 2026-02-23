@@ -15,7 +15,6 @@ EActiveTimerReturnType SJointGraphPreviewer::RefreshGraphTimer(const double InCu
 		if (GraphPanel.IsValid())
 		{
 			GraphPanel.Pin()->ZoomToFit(false);
-			GraphPanel.Pin()->Update();
 		}
 		NeedsRefreshCounter--;
 		

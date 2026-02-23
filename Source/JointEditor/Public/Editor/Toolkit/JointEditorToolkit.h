@@ -242,7 +242,7 @@ public:
 	TSharedPtr<class SJointList> ContentBrowserPtr;
 	TSharedPtr<class IDetailsView> DetailsViewPtr;
 	TSharedPtr<class SJointManagerViewer> ManagerViewerPtr;
-	TSharedPtr<class SJointFragmentPalette> JointFragmentPalettePtr;
+	TSharedPtr<class SJointNodePalette> JointNodePalettePtr;
 	TSharedPtr<class SJointEditorOutliner> JointEditorOutlinerPtr;
 
 	TSharedPtr<class FJointEditorToolbar> JointEditorToolbar;

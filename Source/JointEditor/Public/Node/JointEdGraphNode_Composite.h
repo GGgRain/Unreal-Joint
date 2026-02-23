@@ -71,18 +71,15 @@ public:
 	virtual void UpdateNodeInstance() override;
 	virtual bool CanUserDeleteNode() const override;
 	virtual void DestroyNode() override;
-	virtual void ModifyGraphNodeSlate() override;
+	
+public:
+	
+	virtual void ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate) override;
 
 public:
 
 	virtual bool CanHaveBreakpoint() const override;
 	virtual void GetNodeContextMenuActions(class UToolMenu* Menu, class UGraphNodeContextMenuContext* Context) const override;
-
-public:
-
-	bool UseLowDetailedRendering() const;
-	
-	bool UseCaptureDetailedRendering() const;
 	
 public:
 

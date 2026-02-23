@@ -19,6 +19,7 @@ enum class EJointMDAdmonitionStyleType : uint8
 
 
 //type enum
+UENUM(BlueprintType)
 enum class EJointMDAdmonitionType : uint8
 {
 	Info,

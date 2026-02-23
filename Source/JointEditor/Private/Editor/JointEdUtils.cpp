@@ -44,7 +44,7 @@
 
 class FJointEditorModule;
 
-void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointSharedClassData>& ClassData)
+void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData)
 {
 	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<
 		FJointEditorModule>(TEXT("JointEditor"));
@@ -56,7 +56,7 @@ void FJointEdUtils::GetEditorNodeSubClasses(const UClass* BaseClass, TArray<FJoi
 	}
 }
 
-void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FJointSharedClassData>& ClassData)
+void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FJointGraphNodeClassData>& ClassData)
 {
 	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<
 		FJointEditorModule>(TEXT("JointEditor"));
@@ -70,13 +70,13 @@ void FJointEdUtils::GetNodeSubClasses(const UClass* BaseClass, TArray<FJointShar
 }
 
 
-FJointSharedClassData FJointEdUtils::FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass)
+FJointGraphNodeClassData FJointEdUtils::FindClassDataForNodeClass(const TSubclassOf<UJointNodeBase> NodeClass)
 {
-	TArray<FJointSharedClassData> ClassData;
+	TArray<FJointGraphNodeClassData> ClassData;
 
 	FJointEdUtils::GetNodeSubClasses(UJointNodeBase::StaticClass(), ClassData);
 
-	for (FJointSharedClassData& SubclassData : ClassData)
+	for (FJointGraphNodeClassData& SubclassData : ClassData)
 	{
 		if (SubclassData.GetClass() == NodeClass)
 		{
@@ -84,16 +84,16 @@ FJointSharedClassData FJointEdUtils::FindClassDataForNodeClass(const TSubclassOf
 		}
 	}
 
-	return FJointSharedClassData();
+	return FJointGraphNodeClassData();
 }
 
-TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FJointSharedClassData Class)
+TSubclassOf<UJointEdGraphNode> FJointEdUtils::FindEdClassForNode(FJointGraphNodeClassData Class)
 {
-	TArray<FJointSharedClassData> ClassData;
+	TArray<FJointGraphNodeClassData> ClassData;
 
 	FJointEdUtils::GetEditorNodeSubClasses(UJointEdGraphNode::StaticClass(), ClassData);
 
-	for (FJointSharedClassData& SubclassData : ClassData)
+	for (FJointGraphNodeClassData& SubclassData : ClassData)
 	{
 		TSubclassOf<UJointEdGraphNode> EdNodeClass = SubclassData.GetClass();
 
@@ -294,6 +294,7 @@ UBlueprint* FJointEdUtils::CreateNewBlueprintAssetForClass(
 
 			// Mark the package dirty...
 			Package->MarkPackageDirty();
+			NewBP->MarkPackageDirty();
 		}
 	}
 
@@ -367,6 +368,7 @@ UObject* FJointEdUtils::CreateNewAssetForClass(
 
 			// Mark the package dirty...
 			Package->MarkPackageDirty();
+			NewAsset->MarkPackageDirty();
 		}
 	}
 
@@ -1016,11 +1018,13 @@ void FJointEdUtils::RemoveNode(class UObject* NodeRemove)
 				}
 			}
 
+			const bool bShouldRefreshParent = SavedParentNode && SavedParentNode != Node;
+			
 			Node->DestroyNode();
 
-			if (SavedParentNode)
+			if (bShouldRefreshParent)
 			{
-				SavedParentNode->RequestUpdateSlate();
+				SavedParentNode->RequestRefreshingGraphNodeSlate();
 			}
 		}
 		else
@@ -1075,7 +1079,7 @@ void FJointEdUtils::RemoveNodes(TArray<class UObject*> NodesToRemove)
 
 				if (SavedParentNode && SavedParentNode != Node)
 				{
-					SavedParentNode->RequestUpdateSlate();
+					SavedParentNode->RequestRefreshingGraphNodeSlate();
 				}
 			}
 			else
@@ -1271,7 +1275,7 @@ void FJointEdUtils::OpenJointScriptImportWindow(TArray<FString>& OutFilePaths, b
 		LOCTEXT("ImportJointManagerTitle", "Import Joint Manager").ToString(),
 		DefaultPath,
 		TEXT(""),
-		TEXT("Sheet Files (*.csv)|*.csv|Json Files (*.json)|*.json|All Files (*.*)|*.*"),
+		TEXT("All Files (*.*)|*.*"),
 		bAllowMultipleSelection ? EFileDialogFlags::Multiple : EFileDialogFlags::None,
 		OutFilePaths
 	);
@@ -1292,6 +1296,14 @@ void FJointEdUtils::OpenJointScriptImportWindow(TArray<FString>& OutFilePaths, b
 	}
 }
 
+void FJointEdUtils::StoreEditorModuleClassCache()
+{
+	FJointEditorModule& EditorModule = FModuleManager::GetModuleChecked<FJointEditorModule>(TEXT("JointEditor"));
+
+	//Store the class caches here. This is due to the synchronization issue.
+	EditorModule.StoreClassCaches();
+}
+
 void FJointEdUtils::ImportFileToJointManager(
 	UJointManager* TargetManager,
 	const FString& FilePath,
@@ -1299,6 +1311,10 @@ void FJointEdUtils::ImportFileToJointManager(
 	const bool& bFireNotifications
 )
 {
+	// we make sure to cache the classes before importing, to avoid the issue of "class not found" when importing a script that references certain node classes that haven't been cached yet.
+	// This is due to the fact that the import process can trigger the construction of nodes before the cache is built, which can lead to the classes not being found and thus failing to construct the nodes properly.
+	StoreEditorModuleClassCache();
+	
 	// Validate inputs
 	if (TargetManager == nullptr || FilePath.IsEmpty() || !Parser)
 	{
@@ -1327,10 +1343,9 @@ void FJointEdUtils::ImportFileToJointManager(
 
 
 	FJointScriptLinkerFileEntry FileEntry;
-	FileEntry.FileName = FPaths::GetCleanFilename(FilePath);
 	FileEntry.FilePath = FilePath;
 
-	Parser->HandleImporting(
+	const bool& Result = Parser->HandleImporting(
 		TargetManager,
 		FileContents,
 		FileEntry
@@ -1338,13 +1353,30 @@ void FJointEdUtils::ImportFileToJointManager(
 	
 	if (bFireNotifications)
 	{
-		FJointEdUtils::FireNotification(
-			LOCTEXT("JointScriptImport_Success_Title", "Joint Script Import Successful"),
-			FText::Format(
-				LOCTEXT("JointScriptImport_Success_Message", "Successfully imported the file: {0}"),
-				FText::FromString(FPaths::GetCleanFilename(FilePath))
-			),
-			EJointMDAdmonitionType::Info);
+		if (Result)
+		{
+			FJointEdUtils::FireNotification(
+				LOCTEXT("JointScriptImport_Success_Title", "Joint Script Import Successful"),
+				FText::Format(
+					LOCTEXT("JointScriptImport_Success_Message", "Successfully imported the file '{0}' with {1} parser."),
+					FText::FromString(FPaths::GetCleanFilename(FilePath)),
+					FText::FromString(Parser->GetName())
+				),
+				EJointMDAdmonitionType::Info);
+			
+			TargetManager->MarkPackageDirty();
+
+		}else
+		{
+			FJointEdUtils::FireNotification(
+				LOCTEXT("JointScriptImport_Failure_Title", "Joint Script Import Failed"),
+				FText::Format(
+					LOCTEXT("JointScriptImport_Failure_Message_ParserFailed", "The parser '{0}' failed to import the file '{1}'."),
+					FText::FromString(Parser->GetName()),
+					FText::FromString(FPaths::GetCleanFilename(FilePath))
+				),
+				EJointMDAdmonitionType::Error);
+		}
 	}
 }
 

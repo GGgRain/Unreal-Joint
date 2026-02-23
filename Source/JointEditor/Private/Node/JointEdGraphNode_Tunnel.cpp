@@ -20,7 +20,7 @@
 
 UJointEdGraphNode_Tunnel::UJointEdGraphNode_Tunnel()
 {
-	DefaultEdNodeSetting.bIsNodeResizeable = false;
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
 
 	bCanRenameNode = false;
 }
@@ -283,11 +283,11 @@ void UJointEdGraphNode_Tunnel::DestroyNode()
 	Super::DestroyNode();
 }
 
-void UJointEdGraphNode_Tunnel::ModifyGraphNodeSlate()
+void UJointEdGraphNode_Tunnel::ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
+	if (!InGraphNodeSlate.IsValid()) return;
 
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
+	const TSharedPtr<SJointGraphNodeBase> NodeSlate = InGraphNodeSlate;
 
 	if (bCanHaveInputs)
 	{

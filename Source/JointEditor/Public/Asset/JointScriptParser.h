@@ -19,7 +19,9 @@ class UJointNodeBase;
  * It can work with csv, json, xml and other text formats.
  * It's designed to be extended as blueprint or c++ class to implement custom parsing logic.
  * 
- * It should support both exporting and importing Joint graph and nodes. (ideally)
+ * If you want to implement 'options' for the parser, you can add properties and set it "SaveGame" to let it be serialized and saved to the script linker when linking the parser with the script,
+ * so that the options can be used for reimporting and other operations that require the parser's settings.
+ * 
  * @see JSP_CSVParser for the reference implementation.
  */
 UCLASS(Abstract)
@@ -46,17 +48,7 @@ private:
 	 */
 	UPROPERTY(EditAnywhere, Category = "Script Parser", meta = (EditCondition="bCheckExtensionOnImport"))
 	bool bCheckTextFormatOnImport = true;
-	
-public:
-	
-	/**
-	 * List of option property names that can be used to customize the parsing behavior.
-	 * The properties in this list will be displayed in the importer/exporter UI for the user to set.
-	 * Use this to add custom options for your parser.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Script Parser")
-	TArray<FString> OptionPropertyNames;
-	
+
 public:
 	
 	/**
@@ -111,13 +103,13 @@ public:
 	 * @return true if the parsing succeeded, false otherwise.
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Script Parser")
-	void HandleImporting(
+	bool HandleImporting(
 		UJointManager* TargetJointManager,
 		const FString& InTextData,
 		const FJointScriptLinkerFileEntry& FileEntry
 	);
 	
-	virtual void HandleImporting_Implementation(
+	virtual bool HandleImporting_Implementation(
 		UJointManager* TargetJointManager,
 		const FString& InTextData,
 		const FJointScriptLinkerFileEntry& FileEntry

@@ -49,15 +49,13 @@ UJointEdGraphNode::UJointEdGraphNode() :
 	NodeHeight = JointGraphNodeResizableDefs::MinNodeSize.Y;
 
 	bCanRenameNode = true;
-
-	DefaultEdNodeSetting.bIsNodeResizeable = true;
-
+	
 	CompileMessages.Empty();
 }
 
 UJointEdGraphNode::~UJointEdGraphNode()
 {
-	ClearGraphNodeSlate();
+	ClearGraphNodeSlates();
 }
 
 void UJointEdGraphNode::BeginDestroy()
@@ -611,42 +609,66 @@ UJointEdGraphNode* GetParentmostNodeOf(UJointEdGraphNode* InNode)
 }
 
 
-void UJointEdGraphNode::RequestUpdateSlate()
+void UJointEdGraphNode::RequestModifyOfGraphNodeSlate()
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		ModifyGraphNodeSlate(GraphNodeSlate.Pin());
+	}
+}
 
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
+void UJointEdGraphNode::RequestUpdateOfGraphNodeSlate()
+{
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		UpdateGraphNodeSlate(GraphNodeSlate.Pin());
+	}
+}
 
-	if (NodeSlate.IsValid()) NodeSlate->UpdateGraphNode();
+void UJointEdGraphNode::RequestRefreshingGraphNodeSlate()
+{
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->UpdateGraphNode();
+	}
 }
 
 void UJointEdGraphNode::RequestPopulationOfPinWidgets()
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate.IsValid()) NodeSlate->PopulatePinWidgets();
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->PopulatePinWidgets();
+	}
 }
 
 void UJointEdGraphNode::NotifyNodeInstancePropertyChangeToGraphNodeWidget(
 	const FPropertyChangedEvent& PropertyChangedEvent, const FString& PropertyName)
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate.IsValid()) NodeSlate->OnNodeInstancePropertyChanged(PropertyChangedEvent, PropertyName);
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->OnNodeInstancePropertyChanged(PropertyChangedEvent, PropertyName);
+	}
 }
 
 void UJointEdGraphNode::NotifyGraphNodePropertyChangeToGraphNodeWidget(
 	const FPropertyChangedEvent& PropertyChangedEvent)
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate.IsValid()) NodeSlate->OnGraphNodePropertyChanged(PropertyChangedEvent);
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->OnGraphNodePropertyChanged(PropertyChangedEvent);
+	}
 }
 
 void UJointEdGraphNode::ReplaceNodeClassTo(TSubclassOf<UJointNodeBase> Class)
@@ -950,11 +972,16 @@ void UJointEdGraphNode::RestoreOuterChainFromCopy()
 
 void UJointEdGraphNode::PostPlacedNewNode()
 {
+	if (UJointNodeBase* CastedNode = GetCastedNodeInstance())
+	{
+		CastedNode->PostPlacedNewNode();
+	}
+	
 	PatchNodeInstanceFromClassDataIfNeeded();
 
 	UpdateNodeInstance();
 
-	GrabSlateDetailLevelFromNodeInstance();
+	GrabNodeInstanceEdSettingData();
 }
 
 void UJointEdGraphNode::PrepareForCopying()
@@ -970,8 +997,20 @@ void UJointEdGraphNode::PostCopyNode()
 	RestoreOuterChainFromCopy();
 }
 
+void UJointEdGraphNode::ClearPinLinkedTo()
+{
+	for (UEdGraphPin* Pin : Pins)
+	{
+		if (!Pin) continue;
+		
+		Pin->LinkedTo.Empty(); 
+	}
+}
+
 void UJointEdGraphNode::PostPasteNode()
 {
+	ClearPinLinkedTo();
+	
 	ResetPinDataGuid();
 	
 	//Set this node's outer to the graph or the parent node, to prevent the issues during the copy-paste action.
@@ -1188,14 +1227,12 @@ void UJointEdGraphNode::OnRenameNode(const FString& DesiredNewName)
 
 void UJointEdGraphNode::RequestStartRenaming()
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
-
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate)
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
 	{
-		NodeSlate->RequestRename();
-		NodeSlate->ApplyRename();
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->RequestRename();
+		GraphNodeSlate.Pin()->ApplyRename();
 	}
 }
 
@@ -1320,7 +1357,7 @@ void UJointEdGraphNode::Update()
 
 	NodeConnectionListChanged();
 
-	RequestUpdateSlate();
+	RequestRefreshingGraphNodeSlate();
 }
 
 void UJointEdGraphNode::RearrangeSubNodeAt(UJointEdGraphNode* SubNode, int32 DropIndex, const bool bIsUpdateLocked)
@@ -1447,7 +1484,7 @@ EOrientation UJointEdGraphNode::GetSubNodeBoxOrientation()
 
 bool UJointEdGraphNode::GetUseFixedNodeSize() const
 {
-	return GetEdNodeSetting().bIsNodeResizeable;
+	return bIsNodeResizable;
 }
 
 void UJointEdGraphNode::RecalculateNodeDepth()
@@ -1661,10 +1698,13 @@ bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPi
 	return true;
 }
 
-void UJointEdGraphNode::GrabSlateDetailLevelFromNodeInstance()
+void UJointEdGraphNode::GrabNodeInstanceEdSettingData()
 {
 	if (UJointNodeBase* CastedNodeInstance = GetCastedNodeInstance())
+	{
 		SlateDetailLevel = GetEdNodeSetting().DefaultEdSlateDetailLevel;
+		bIsNodeResizable = GetEdNodeSetting().bDefaultIsNodeResizeable;
+	}
 }
 
 
@@ -1678,7 +1718,7 @@ void UJointEdGraphNode::ReconstructNode()
 
 	UpdatePins();
 
-	RequestUpdateSlate();
+	RequestRefreshingGraphNodeSlate();
 
 	NodeConnectionListChanged();
 
@@ -1898,16 +1938,18 @@ void UJointEdGraphNode::GetNodeContextMenuActions(UToolMenu* Menu, UGraphNodeCon
 }
 
 
-void UJointEdGraphNode::CreateAddFragmentSubMenu(UToolMenu* Menu, UEdGraph* Graph) const
+void UJointEdGraphNode::CreateAddFragmentSubMenu(UToolMenu* Menu, UGraphNodeContextMenuContext* Context) const
 {
-	TSharedRef<SJointGraphEditorActionMenu> Widget =
-		SNew(SJointGraphEditorActionMenu)
-		.GraphObj(Graph)
-		.GraphNodes(TArray<UJointEdGraphNode*>({const_cast<UJointEdGraphNode*>(this)}))
-		.AutoExpandActionMenu(true);
-
-	FToolMenuSection& Section = Menu->FindOrAddSection("Fragment");
-	Section.AddEntry(FToolMenuEntry::InitWidget("FragmentWidget", Widget, FText(), false));
+	TArray<UJointEdGraphNode*> GraphNodes = { const_cast<UJointEdGraphNode*>(this) };
+	
+	TSharedRef<SJointGraphEditorActionMenu> ActionMenuWidget =
+	   SNew(SJointGraphEditorActionMenu)
+	   .GraphObj(this->GetCastedGraph())
+	   .GraphNodes(GraphNodes)
+	   .AutoExpandActionMenu(true);
+	
+	FToolMenuSection& Section = Menu->AddSection("FragmentSection", LOCTEXT("FragmentHeader", "Fragments"));
+	Section.AddEntry(FToolMenuEntry::InitWidget("FragmentWidget", ActionMenuWidget, FText::GetEmpty(), true));
 }
 
 
@@ -1923,10 +1965,11 @@ void UJointEdGraphNode::AddContextMenuActions_Fragments(UToolMenu* Menu, const F
 			"AddFragment"
 			, LOCTEXT("AddFragment", "Add Fragment...")
 			, LOCTEXT("AddFragmentTooltip", "Adds new fragment as a subnode")
-			, FNewToolMenuDelegate::CreateUObject(this, &UJointEdGraphNode::CreateAddFragmentSubMenu,
-												  (UEdGraph*)Context->Graph));	
+			, FNewToolMenuDelegate::CreateUObject(this, &UJointEdGraphNode::CreateAddFragmentSubMenu, Context)
+			, true
+			, FSlateIcon(FJointEditorStyle::Get().GetStyleSetName(), "ClassIcon.JointFragment")
+		);
 	}
-	
 }
 
 void CollectAllSubNodesOf(const UJointEdGraphNode* Node, TArray<UJointEdGraphNode*>& Nodes)
@@ -1959,7 +2002,7 @@ bool UJointEdGraphNode::IsLinkedWithExternalSource() const
 	return !ExternalSourceEntry.IsNull();
 }
 
-void UJointEdGraphNode::ModifyGraphNodeSlate()
+void UJointEdGraphNode::ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
 	return;
 
@@ -1976,27 +2019,59 @@ void UJointEdGraphNode::ModifyGraphNodeSlate()
 	// ];
 }
 
-void UJointEdGraphNode::SetGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
+void UJointEdGraphNode::UpdateGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
-	GraphNodeSlate = InGraphNodeSlate;
+	// empty in base class, you can override this function to update the slate when needed.
+	
+	return;
 }
 
-void UJointEdGraphNode::ClearGraphNodeSlate()
+void UJointEdGraphNode::AddGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
-	GraphNodeSlate.Reset();
+	GraphNodeSlates.Add(InGraphNodeSlate);
 }
 
-TWeakPtr<SJointGraphNodeBase> UJointEdGraphNode::GetGraphNodeSlate() const
+void UJointEdGraphNode::RemoveGraphNodeSlateForPanel(const TSharedPtr<SGraphPanel>& OwnerGraphPanel)
 {
-	return GraphNodeSlate;
+	GraphNodeSlates.RemoveAll([OwnerGraphPanel](const TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate)
+	{
+		if (!GraphNodeSlate.IsValid()) return true;
+
+		return GraphNodeSlate.Pin()->GetOwnerPanel() == OwnerGraphPanel;
+	});
 }
 
-bool UJointEdGraphNode::CheckGraphNodeSlateReusableOn(TWeakPtr<SGraphPanel> InGraphPanel) const
+void UJointEdGraphNode::ClearGraphNodeSlates()
 {
-	return GraphNodeSlate.IsValid()
-		&& InGraphPanel.IsValid()
-		&& GraphNodeSlate.Get()->GetOwnerPanel()
-		&& GraphNodeSlate.Get()->GetOwnerPanel() == InGraphPanel.Pin();
+	GraphNodeSlates.Empty();
+}
+
+void UJointEdGraphNode::ClearInvalidGraphNodeSlates()
+{
+	GraphNodeSlates.RemoveAll([](const TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate)
+	{
+		return !GraphNodeSlate.IsValid();
+	});
+}
+
+TArray<TWeakPtr<SJointGraphNodeBase>> UJointEdGraphNode::GetGraphNodeSlates() const
+{
+	return GraphNodeSlates;
+}
+
+TWeakPtr<SJointGraphNodeBase> UJointEdGraphNode::GetGraphNodeSlateForPanel(const TSharedPtr<SGraphPanel>& OwnerGraphPanel) const
+{
+	for (const TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+
+		if (GraphNodeSlate.Pin()->GetOwnerPanel() == OwnerGraphPanel)
+		{
+			return GraphNodeSlate;
+		}
+	}
+
+	return nullptr;
 }
 
 TArray<UJointEdGraphNode*> UJointEdGraphNode::GetAllSubNodesInHierarchy() const
@@ -2066,13 +2141,13 @@ void UJointEdGraphNode::UpdateNodeClassData()
 	UpdateNodeClassDataFrom(NodeInstance->GetClass(), NodeClassData);
 }
 
-void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointSharedClassData& UpdatedData)
+void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointGraphNodeClassData& UpdatedData)
 {
 	if (!InstanceClass) return;
 
 	if (const UBlueprint* BPOwner = Cast<UBlueprint>(InstanceClass->ClassGeneratedBy))
 	{
-		UpdatedData = FJointSharedClassData(
+		UpdatedData = FJointGraphNodeClassData(
 			BPOwner->GetName(),
 			BPOwner->GetOutermost()->GetName(),
 			InstanceClass->GetName(),
@@ -2081,7 +2156,7 @@ void UJointEdGraphNode::UpdateNodeClassDataFrom(UClass* InstanceClass, FJointSha
 	}
 	else
 	{
-		UpdatedData = FJointSharedClassData(
+		UpdatedData = FJointGraphNodeClassData(
 			InstanceClass,
 			FJointGraphNodeClassHelper::GetDeprecationMessage(InstanceClass)
 		);
@@ -2124,11 +2199,12 @@ void UJointEdGraphNode::CompileNode(const TSharedPtr<class IMessageLogListing>& 
 		}
 	}
 	
-	if (!GetGraphNodeSlate().IsValid()) return;
-	
-	TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-	
-	NodeSlate->UpdateErrorInfo();
+	for (TWeakPtr<SJointGraphNodeBase>& GraphNodeSlate : GraphNodeSlates)
+	{
+		if (!GraphNodeSlate.IsValid()) continue;
+		
+		GraphNodeSlate.Pin()->UpdateErrorInfo();
+	}
 }
 
 void UJointEdGraphNode::OnCompileNode()

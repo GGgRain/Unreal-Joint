@@ -15,11 +15,11 @@ class FJointEditorToolkit;
 //////////////////////////////////////////////////////////////////////////
 // SJointFragmentPalette
 
-class JOINTEDITOR_API SJointFragmentPalette : public SCompoundWidget
+class JOINTEDITOR_API SJointNodePalette : public SCompoundWidget
 {
 
 public:
-	SLATE_BEGIN_ARGS(SJointFragmentPalette){}
+	SLATE_BEGIN_ARGS(SJointNodePalette){}
 		SLATE_ARGUMENT(TWeakPtr<FJointEditorToolkit>, ToolKitPtr)
 	SLATE_END_ARGS()
 public:
@@ -35,10 +35,8 @@ private:
 
 public:
 	
-	void OnFragmentActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& Shareds, ESelectInfo::Type Arg);
-	void CollectFragmentActions(FGraphActionListBuilderBase& GraphActionListBuilderBase);
-	TSharedRef<SWidget> OnCreateWidgetForAction(FCreateWidgetForActionData* CreateWidgetForActionData);
-
+	void OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& Shareds, ESelectInfo::Type Arg);
+	
 public:
 
 	TArray< TSharedPtr<struct FJointFragmentPaletteAction> > ActionEntries;
