@@ -40,33 +40,43 @@ TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNode(class UEdGr
 	
 	if (UJointEdGraphNode_Fragment* SubNode = Cast<UJointEdGraphNode_Fragment>(InNode))
 	{
-		//Reuse the old one.
-		if(SubNode->GetGraphNodeSlate().IsValid())
-		{
-			TSharedPtr<SJointGraphNodeBase> ExistingSlate = SubNode->GetGraphNodeSlate().Pin();
-			
-			ExistingSlate->UpdateGraphNode();
-			
-			return ExistingSlate;
-		}
 		return SNew(SJointGraphNodeSubNodeBase, SubNode);
 	}
 	
 	if (UJointEdGraphNode* BaseNode = Cast<UJointEdGraphNode>(InNode))
 	{
-		//Reuse the old one.
-		if (BaseNode->GetGraphNodeSlate().IsValid())
-		{
-			TSharedPtr<SJointGraphNodeBase> ExistingSlate = BaseNode->GetGraphNodeSlate().Pin();
-			
-			ExistingSlate->UpdateGraphNode();
-			
-			return ExistingSlate;
-		}
-		
 		return SNew(SJointGraphNodeBase, BaseNode);
 	}
 
+
+	return nullptr;
+}
+
+
+TSharedPtr<class SGraphNode> FJointGraphNodeSlateFactory::CreateNodeForGraphPanel(class UEdGraphNode* InNode, const TSharedPtr<SGraphPanel>& InGraphPanel)
+{
+	if (UJointEdGraphNode_Reroute* RerouteNode = Cast<UJointEdGraphNode_Reroute>(InNode))
+	{
+		return SNew(SJointGraphNodeKnot, RerouteNode);
+	}
+	
+	if (UJointEdGraphNode_Fragment* SubNode = Cast<UJointEdGraphNode_Fragment>(InNode))
+	{
+		TWeakPtr<SJointGraphNodeBase> Slate = SubNode->GetGraphNodeSlateForPanel(InGraphPanel);
+		
+		if (Slate.IsValid()) return Slate.Pin();// If the subnode already has a slate for this graph panel, return it instead of creating a new one
+		
+		return SNew(SJointGraphNodeSubNodeBase, SubNode);
+	}
+	
+	if (UJointEdGraphNode* BaseNode = Cast<UJointEdGraphNode>(InNode))
+	{
+		TWeakPtr<SJointGraphNodeBase> Slate = BaseNode->GetGraphNodeSlateForPanel(InGraphPanel);
+		
+		if (Slate.IsValid()) return Slate.Pin();// If the subnode already has a slate for this graph panel, return it instead of creating a new one
+		
+		return SNew(SJointGraphNodeBase, BaseNode);
+	}
 
 	return nullptr;
 }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointNodePreset.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "JointEdGraphSchemaActions.generated.h"
 
@@ -40,6 +41,11 @@ public:
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
 	
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+
+public:
+
+	static FName StaticGetTypeId() {static FName Type("FEdGraphSchemaAction_NewSubNode"); return Type;}
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); } 
 };
 
 
@@ -64,7 +70,6 @@ public:
 	TObjectPtr<UJointEdGraphNode> NodeTemplate;
 
 public:
-	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode);
 	
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
@@ -73,7 +78,7 @@ public:
 
 public:
 
-	UEdGraphNode* PerformAction_Command(class UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location, bool bSelectNewNode = true);
+	UEdGraphNode* PerformAction_FromShortcut(class UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location, bool bSelectNewNode = true);
 
 	template<typename T=UJointEdGraphNode>
 	static T* SpawnNode(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true)
@@ -86,7 +91,41 @@ public:
 		return NewNode;
 	}
 	
+public:
+	
+	static FName StaticGetTypeId() {static FName Type("FEdGraphSchemaAction_NewNode"); return Type;}
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); } 
+
 };
+
+USTRUCT()
+struct JOINTEDITOR_API FJointSchemaAction_NewNodePreset : public FEdGraphSchemaAction
+{
+public:
+	GENERATED_BODY();
+public:
+
+	FJointSchemaAction_NewNodePreset();
+	FJointSchemaAction_NewNodePreset(FText InNodeCategory, FText InMenuDesc, FText InToolTip, const int32 InGrouping);
+	
+public:
+	
+	UPROPERTY()
+	TObjectPtr<UJointNodePreset> NodePreset = nullptr;
+	
+public:
+	
+	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
+	
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	
+public:
+	static FName StaticGetTypeId() {static FName Type("FEdGraphSchemaAction_NewNodePreset"); return Type;}
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); } 
+
+};
+
 
 
 
@@ -106,6 +145,12 @@ struct JOINTEDITOR_API FJointSchemaAction_AddComment : public FEdGraphSchemaActi
 	// FEdGraphSchemaAction interface
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override final;
 	// End of FEdGraphSchemaAction interface
+	
+public:
+	
+	static FName StaticGetTypeId() {static FName Type("FEdGraphSchemaAction_AddComment"); return Type;}
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); } 
+
 };
 
 
@@ -125,6 +170,11 @@ struct JOINTEDITOR_API FJointSchemaAction_AddConnector : public FEdGraphSchemaAc
 	// FEdGraphSchemaAction interface
 	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override final;
 	// End of FEdGraphSchemaAction interface
+	
+public:
+	static FName StaticGetTypeId() {static FName Type("FEdGraphSchemaAction_AddConnector"); return Type;}
+	virtual FName GetTypeId() const override { return StaticGetTypeId(); } 
+
 };
 
 /** Action to add a pair of connector to the graph */

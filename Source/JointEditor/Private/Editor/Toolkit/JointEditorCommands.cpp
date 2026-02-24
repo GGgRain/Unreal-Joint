@@ -38,7 +38,7 @@ void FJointEditorCommands::RegisterCommands()
 
 	UI_COMMAND(JumpToSelection, "Jump To Selection", "Jump To Selected Node. It will boost your development speed, especially when you want to go back to the original node after node picking.", EUserInterfaceActionType::Button, FInputChord(EKeys::SpaceBar));
 
-	UI_COMMAND(QuickPickSelection, "Quick Pick Selection", "Pick a reference to the target node directly, so you can paste it on the Joint Node Pointer.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control, EKeys::Q));
+	UI_COMMAND(QuickPickSelection, "Start Quick Pick Selection", "Start picking a reference to the target node directly, so you can paste it on the Joint Node Pointer.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control, EKeys::Q));
 	UI_COMMAND(EscapeNodePickingMode, "Escape Node Picking Mode", "Escape node picking mode without selecting any of the nodes.",  EUserInterfaceActionType::Button, FInputChord(EKeys::Escape));
 
 	//It's a bit mask with shift op - you can use + to combine multiple modifier keys.
@@ -46,7 +46,7 @@ void FJointEditorCommands::RegisterCommands()
 	UI_COMMAND(EnableAllBreakpoints, "Enable All Breakpoints", "Enable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::F10));
 	UI_COMMAND(DisableAllBreakpoints, "Disable All Breakpoints", "Disable all Breakpoints",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::F11));
 
-	UI_COMMAND(CreateFoundation, "Create Foundation", "Create a foundation node", EUserInterfaceActionType::Button, FInputChord(EKeys::F));
+	UI_COMMAND(CreateFoundation, "Create Foundation", "Create a foundation node on the cursor location.", EUserInterfaceActionType::Button, FInputChord(EKeys::F));
 
 	UI_COMMAND(ToggleDebuggerExecution, "Toggle Debugger Execution", "Toggle the debugger's execution to prevent any exection halting by the breakpoints on any Joint.",  EUserInterfaceActionType::ToggleButton, FInputChord(EModifierKey::FromBools(1,1,1,0), EKeys::F11));
 	
@@ -57,7 +57,16 @@ void FJointEditorCommands::RegisterCommands()
 	UI_COMMAND(SolidifySubNodesFromParentNode, "Solidify Sub Nodes", "Solidify all the sub nodes of this node.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::S));
 	
 	UI_COMMAND(ShowIndividualVisibilityButtonForSimpleDisplayProperty, "Show Individual Visibility Button For Simple Display Property", "Show Individual Visibility Button For Simple Display Property.",  EUserInterfaceActionType::ToggleButton, FInputChord(EKeys::X));
-
+	
+	UI_COMMAND(CreateNodePresetFromSelectedBaseNode, "Create Node Preset From Selected Base Node", "Create a node preset from the selected base node, and save it as an asset in the content browser.",  EUserInterfaceActionType::Button, FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::P));
+	
+	UI_COMMAND(UnlinkScriptFromSelectedNodes, 
+		"Unlink Script From Selected Nodes",
+		"Unlink the script link of the selected nodes, making them independent from the original Joint script and able to be modified in the Joint editor.",
+		EUserInterfaceActionType::Button, 
+		FInputChord(EModifierKey::Control + EModifierKey::Shift, EKeys::B)
+	);
+	
 	// SMyBlueprint ported commands for Joint Editor Outliner
 	UI_COMMAND( DeleteEntry, "Delete", "Delete the selected entry.", EUserInterfaceActionType::Button, FInputChord(EKeys::Delete) );
 }

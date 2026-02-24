@@ -14,7 +14,13 @@ UJointEdGraphNode_Fragment::UJointEdGraphNode_Fragment()
 {
 	NodeWidth = JointGraphNodeResizableDefs::MinFragmentSize.X;
 	NodeHeight = JointGraphNodeResizableDefs::MinFragmentSize.Y;
-	bIsNodeResizeable = false;
+	bIsNodeResizable = false;
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
+}
+
+void UJointEdGraphNode_Fragment::PostPlacedNewNode()
+{
+	Super::PostPlacedNewNode();
 }
 
 void UJointEdGraphNode_Fragment::ResizeNode(const FVector2D& NewSize)
@@ -41,11 +47,6 @@ TSubclassOf<UJointNodeBase> UJointEdGraphNode_Fragment::SupportedNodeClass()
 void UJointEdGraphNode_Fragment::AllocateDefaultPins()
 {
 	//Doesn't have anything by default
-}
-
-bool UJointEdGraphNode_Fragment::ShouldManuallyImplementSlate() const
-{
-	return false;
 }
 
 void UJointEdGraphNode_Fragment::DissolveSelf()

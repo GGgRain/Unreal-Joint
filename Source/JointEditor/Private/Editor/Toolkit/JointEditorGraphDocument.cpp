@@ -64,14 +64,6 @@ FJointGraphEditorSummoner::FJointGraphEditorSummoner(
 void FJointGraphEditorSummoner::OnTabActivated(TSharedPtr<SDockTab> Tab) const
 {
 	TSharedRef<SGraphEditor> GraphEditor = StaticCastSharedRef<SGraphEditor>(Tab->GetContent());
-
-	if (UEdGraph* Graph = GraphEditor->GetCurrentGraph())
-	{
-		if (UJointEdGraph* JointGraph = Cast<UJointEdGraph>(Graph))
-		{
-			JointGraph->ReallocateGraphPanelToGraphNodeSlates(SharedThis(GraphEditor->GetGraphPanel())); // Notify the graph that it has been loaded (in case it needs to refresh any internal data)
-		}
-	}
 	
 	JointEditorToolkitPtr.Pin()->OnGraphEditorFocused(GraphEditor);
 }

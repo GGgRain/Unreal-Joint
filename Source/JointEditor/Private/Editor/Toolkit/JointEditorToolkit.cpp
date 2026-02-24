@@ -36,6 +36,7 @@
 
 #include "Node/JointEdGraphNode.h"
 #include "EdGraphUtilities.h"
+#include "EditorModeManager.h"
 #include "IMessageLogListing.h"
 #include "MessageLogModule.h"
 #include "ScopedTransaction.h"
@@ -59,20 +60,30 @@
 #include "JointEdGraphNode_Foundation.h"
 #include "JointEdGraphNode_Fragment.h"
 #include "JointEdGraphNode_Reroute.h"
+#include "JointEditorFunctionLibrary.h"
 #include "JointEditorGraphDocument.h"
 #include "JointEditorNameValidator.h"
 #include "JointEditorNodePickingManager.h"
+#include "JointEditorToolkitToastMessages.h"
 #include "JointEdUtils.h"
+#include "JointManagerFactory.h"
+#include "JointNodePreset.h"
 
 #include "EditorWidget/JointToolkitToastMessages.h"
 #include "EditorWidget/SJointEditorOutliner.h"
-#include "EditorWidget/SJointFragmentPalette.h"
+#include "EditorWidget/SJointNodePalette.h"
 #include "EditorWidget/SJointGraphPanel.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
+#include "Misc/MessageDialog.h"
 
 #include "Node/JointFragment.h"
 #include "Node/Derived/JN_Foundation.h"
+#include "Script/JointScriptSettings.h"
+#include "Thumbnail/JointManagerThumbnailRenderer.h"
+#include "UnrealEd/Private/Toolkits/SStandaloneAssetEditorToolkitHost.h"
 #include "Widgets/Images/SImage.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
@@ -136,13 +147,14 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
                                           UJointManager* InJointManager)
 {
 	JointManager = InJointManager;
+	
+	//FJointManagerThumbnailRendererResourcePool::Get().ClearGraphPreviewerFor(JointManager.Get());
+	//FJointManagerThumbnailRendererResourcePool::Get().LockFor(JointManager.Get());
 
 	//StandaloneMode = MakeShareable(new FJointEditorApplicationMode(SharedThis(this)));
 	//StandaloneMode->Initialize();
 	//AddApplicationMode(EJointEditorModes::StandaloneMode, StandaloneMode.ToSharedRef());
-
-	CreateNewRootGraphForJointManagerIfNeeded();
-
+	
 	GetOrCreateGraphToastMessageHub();
 	GetOrCreateNodePickingManager();
 
@@ -242,13 +254,18 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
 
 	//SetCurrentMode(EJointEditorModes::StandaloneMode);
 
-	if (GetJointManager() != nullptr && !GetJointManager()->IsAsset())
+	if (GetJointManager() != nullptr)
 	{
-		PopulateTransientEditingWarningToastMessage();
+		if ( GetJointManager()->HasAnyFlags(RF_Transient) )
+		{
+			JointEditorToolkitToastMessages::PopulateTransientEditingWarningToastMessage(SharedThis(this));
+		}else if (!GetJointManager()->IsAsset())
+		{
+			JointEditorToolkitToastMessages::PopulateNonStandaloneAssetEditingWarningToastMessage(SharedThis(this));
+		}
 	}
 	// Create a command, pay attention to setcurrentmode ()
 }
-
 
 void FJointEditorToolkit::CleanUp()
 {
@@ -261,14 +278,16 @@ void FJointEditorToolkit::CleanUp()
 		Graph->OnClosed();
 	};
 
+	//FJointManagerThumbnailRendererResourcePool::Get().UnlockFor(JointManager.Get());
+
 	JointManager.Reset();
 
 	EditorPreferenceViewPtr.Reset();
 	ContentBrowserPtr.Reset();
 	DetailsViewPtr.Reset();
 	ManagerViewerPtr.Reset();
-	JointFragmentPalettePtr.Reset();
-	Toolbar.Reset();
+	JointNodePalettePtr.Reset();
+	JointEditorToolbar.Reset();
 
 	CleanUpGraphToastMessageHub();
 }
@@ -276,6 +295,8 @@ void FJointEditorToolkit::CleanUp()
 void FJointEditorToolkit::OnClose()
 {
 	//Clean Up;
+	
+	FJointManagerThumbnailRendererResourceManager::Get().FindOrAddResourcePoolElementFor(GetJointManager())->RequestUpdateGraphPreviewer();
 
 	SaveEditedObjectState();
 
@@ -314,14 +335,18 @@ void FJointEditorToolkit::InitializeEditorPreferenceView()
 
 void FJointEditorToolkit::InitializePaletteView()
 {
-	JointFragmentPalettePtr = SNew(SJointFragmentPalette)
+	JointNodePalettePtr = SNew(SJointNodePalette)
 		.ToolKitPtr(SharedThis(this));
 }
 
 void FJointEditorToolkit::InitializeOutliner()
 {
 	JointEditorOutlinerPtr = SNew(SJointEditorOutliner)
-		.ToolKitPtr(SharedThis(this));
+		.ToolKitPtr(SharedThis(this))
+		.Visibility_Lambda([&]()
+		{
+			return IsInNodePresetEditingMode() ? EVisibility::Collapsed : EVisibility::Visible;
+		});
 }
 
 void FJointEditorToolkit::InitializeManagerViewer()
@@ -377,11 +402,11 @@ TSharedRef<SDockTab> FJointEditorToolkit::SpawnTab_Palettes(const FSpawnTabArgs&
 {
 	TSharedRef<SDockTab> JointFragmentPaletteTabPtr = SNew(SDockTab)
 		.TabRole(ETabRole::PanelTab)
-		.Label(LOCTEXT("JointFragmentPaletteTabTitle", "Fragment Palette"));
+		.Label(LOCTEXT("JointNodePaletteTabTitle", "Node Palette"));
 
-	if (TabIdentifier == EJointEditorTapIDs::PaletteID && JointFragmentPalettePtr.IsValid())
+	if (TabIdentifier == EJointEditorTapIDs::PaletteID && JointNodePalettePtr.IsValid())
 	{
-		JointFragmentPaletteTabPtr->SetContent(JointFragmentPalettePtr.ToSharedRef());
+		JointFragmentPaletteTabPtr->SetContent(JointNodePalettePtr.ToSharedRef());
 	}
 
 	return JointFragmentPaletteTabPtr;
@@ -500,10 +525,10 @@ void FJointEditorToolkit::ExtendToolbar()
 	//Assign this extender to the toolkit.
 	AddToolbarExtender(ToolbarExtender);
 
-	Toolbar = MakeShareable(new FJointEditorToolbar(SharedThis(this)));
-	Toolbar->AddJointToolbar(ToolbarExtender);
-	Toolbar->AddEditorModuleToolbar(ToolbarExtender);
-	Toolbar->AddDebuggerToolbar(ToolbarExtender);
+	JointEditorToolbar = MakeShareable(new FJointEditorToolbar(SharedThis(this)));
+	JointEditorToolbar->AddJointToolbar(ToolbarExtender);
+	JointEditorToolbar->AddEditorModuleToolbar(ToolbarExtender);
+	JointEditorToolbar->AddDebuggerToolbar(ToolbarExtender);
 }
 
 void FJointEditorToolkit::InitializeDocumentManager()
@@ -751,13 +776,10 @@ void FJointEditorToolkit::OnEndPIE(bool bArg)
 
 		for (TWeakObjectPtr<UJointEdGraphNode> CachedJointGraphNode : GraphNodes)
 		{
-			if (CachedJointGraphNode == nullptr) continue;
-
-			if (!CachedJointGraphNode->GetGraphNodeSlate().IsValid()) continue;
-			
-			TSharedPtr<SJointGraphNodeBase> GraphNodeSlatePtr = CachedJointGraphNode->GetGraphNodeSlate().Pin();
-
-			GraphNodeSlatePtr->ResetNodeBodyColorAnimation();
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->ResetNodeBodyColorAnimation();	
+			}
 		}
 	}
 }
@@ -846,10 +868,10 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 
 	
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().ExpandNodes,
-							   FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnExpandNodes),
-							   FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanExpandNodes),
-							   FIsActionChecked(),
-							   FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanExpandNodes)
+	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnExpandNodes),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanExpandNodes),
+	                           FIsActionChecked(),
+	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanExpandNodes)
 	);
 
 
@@ -967,8 +989,7 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnSolidifySubNodes),
 	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CheckCanSolidifySubNodes)
 	);
-
-
+	
 	ToolkitCommands->MapAction(Commands.ShowIndividualVisibilityButtonForSimpleDisplayProperty,
 	                           FExecuteAction::CreateSP(
 		                           this, &FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty),
@@ -976,6 +997,17 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	                           FIsActionChecked::CreateSP(
 		                           this,
 		                           &FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty));
+	
+	ToolkitCommands->MapAction(Commands.UnlinkScriptFromSelectedNodes,
+		 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnUnlinkScriptFromSelectedNodes),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanUnlinkScriptFromSelectedNodes)
+	);
+	
+	ToolkitCommands->MapAction(Commands.CreateNodePresetFromSelectedBaseNode,
+	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnCreateNodePresetFromSelectedBaseNode),
+	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode)
+	);
+	
 }
 
 void FJointEditorToolkit::BindDebuggerCommands()
@@ -1093,17 +1125,6 @@ bool FJointEditorToolkit::IsGraphInCurrentJointManager(UEdGraph* Graph)
 	if (Graph == nullptr) return false;
 
 	return UJointEdGraph::GetAllGraphsFrom(GetJointManager()).Contains(Graph);
-}
-
-void FJointEditorToolkit::CreateNewRootGraphForJointManagerIfNeeded() const
-{
-	if (GetJointManager() == nullptr) return;
-
-	if (GetJointManager()->JointGraph != nullptr) return;
-
-	GetJointManager()->JointGraph = UJointEdGraph::CreateNewJointGraph(GetJointManager(), GetJointManager(), FName("MainGraph"));
-	GetJointManager()->JointGraph->bAllowDeletion = false;
-	
 }
 
 TSharedPtr<SDockTab> FJointEditorToolkit::OpenDocument(UObject* DocumentID, FDocumentTracker::EOpenDocumentCause OpenMode)
@@ -1283,10 +1304,14 @@ void FJointEditorToolkit::CleanInvalidDocumentTabs()
 	}
 }
 
-
 TSharedPtr<FDocumentTracker> FJointEditorToolkit::GetDocumentManager() const
 {
 	return DocumentManager;
+}
+
+void FJointEditorToolkit::RebuildFragmentPalette()
+{
+	if (JointNodePalettePtr) JointNodePalettePtr->RebuildWidget();
 }
 
 void FJointEditorToolkit::OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEditor)
@@ -1305,7 +1330,7 @@ void FJointEditorToolkit::OnGraphEditorFocused(TSharedRef<SGraphEditor> GraphEdi
 		if (DetailsViewPtr.IsValid()) DetailsViewPtr->SetObjects(FocusedGraphEditorPtr.Pin()->GetSelectedNodes().Array());
 	}
 
-	if (JointFragmentPalettePtr) JointFragmentPalettePtr->RebuildWidget();
+	RebuildFragmentPalette();
 
 	if (ManagerViewerPtr) ManagerViewerPtr->RequestTreeRebuild();
 }
@@ -1320,11 +1345,60 @@ void FJointEditorToolkit::OnGraphEditorTabClosed(TSharedRef<SDockTab> DockTab)
 	SaveEditedObjectState();
 }
 
+void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection)
+{
+	if (GetNodePickingManager().IsValid() && GetNodePickingManager()->IsInNodePicking())
+	{
+		for (UObject* Selection : NewSelection)
+		{
+			if (Selection == nullptr) continue;
+
+			UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(Selection);
+
+			if (CastedGraphNode == nullptr) continue;
+
+			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
+			Result->Node = CastedGraphNode->GetCastedNodeInstance();
+			Result->OptionalEdNode = CastedGraphNode;
+
+			GetNodePickingManager()->PerformNodePicking(Result);
+
+			break;
+		}
+	}
+	else
+	{
+		SelectProvidedObjectOnDetail(NewSelection);
+		NotifySelectionChangeToNodeSlates(InGraph, NewSelection);
+	}
+}
+
+void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection) const
+{
+	if (JointManager == nullptr) return;
+
+	if (UJointEdGraph* CastedGraph = InGraph ? Cast<UJointEdGraph>(InGraph) : nullptr)
+	{
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
+
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		{
+			FOREACH_GRAPHNODESLATE_BASE_WITH(GraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->OnGraphSelectionChanged(NewSelection);	
+			}
+		}
+	}
+
+	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
+}
+
 TSharedPtr<SJointGraphEditor> FJointEditorToolkit::GetFocusedGraphEditor() const
 {
 	//cast to SJointGraphEditor
 	return FocusedGraphEditorPtr.Pin();
 }
+
 
 void FJointEditorToolkit::CompileAllJointGraphs()
 {
@@ -1346,11 +1420,11 @@ void FJointEditorToolkit::CompileAllJointGraphs()
 	}
 }
 
+
 bool FJointEditorToolkit::CanCompileAllJointGraphs()
 {
 	return !UJointDebugger::IsPIESimulating();
 }
-
 
 void FJointEditorToolkit::OnCompileJointGraphFinished(
 	const UJointEdGraph::FJointGraphCompileInfo& CompileInfo) const
@@ -1370,7 +1444,7 @@ void FJointEditorToolkit::OnCompileJointGraphFinished(
 			const TSharedRef<FTokenizedMessage> Token = FTokenizedMessage::Create(
 				EMessageSeverity::Error,
 				LOCTEXT("JointCompileLogMsg_Error_NoJointManager",
-						"No valid Joint manager. This editor might be opened compulsively or refer to a PIE transient Joint manager.")
+				        "No valid Joint manager. This editor might be opened compulsively or refer to a PIE transient Joint manager.")
 			);
 
 			WeakCompileResultPtr.Pin()->AddMessage(Token);
@@ -1399,14 +1473,14 @@ void FJointEditorToolkit::OnCompileJointGraphFinished(
 		TSharedRef<FTokenizedMessage> Token = FTokenizedMessage::Create(
 			EMessageSeverity::Info,
 			FText::Format(LOCTEXT("CompileFinished",
-								  "Compilation finished. [{0}] {1} Fatal Issue(s) {2} Warning(s) {3} Info. (Compiled through {4} nodes total, {5}ms elapsed on the compilation.)")
-						  , FText::FromString(GetJointManager()->GetPathName())
-						  , NumError
+			                      "Compilation finished. [{0}] {1} Fatal Issue(s) {2} Warning(s) {3} Info. (Compiled through {4} nodes total, {5}ms elapsed on the compilation.)")
+			              , FText::FromString(GetJointManager()->GetPathName())
+			              , NumError
 
-						  , NumWarning + NumPerformanceWarning
-						  , NumInfo
-						  , CompileInfo.NodeCount
-						  , CompileInfo.ElapsedTime)
+			              , NumWarning + NumPerformanceWarning
+			              , NumInfo
+			              , CompileInfo.NodeCount
+			              , CompileInfo.ElapsedTime)
 		);
 
 		WeakCompileResultPtr.Pin()->AddMessage(Token);
@@ -1451,11 +1525,11 @@ void FJointEditorToolkit::OnCompileResultTokenClicked(const TSharedRef<IMessageT
 	}
 }
 
+
 TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetNodePickingManager() const
 {
 	return NodePickingManager;
 }
-
 
 TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetOrCreateNodePickingManager()
 {
@@ -1467,1537 +1541,6 @@ TSharedPtr<FJointEditorNodePickingManager> FJointEditorToolkit::GetOrCreateNodeP
 	return NodePickingManager;
 }
 
-
-bool FJointEditorToolkit::CanSelectAllNodes() const
-{
-	return true;
-}
-
-bool FJointEditorToolkit::CanCopyNodes() const
-{
-	// If any of the nodes can be duplicated then we should allow copying
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
-	{
-		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
-		if (Node && Node->CanDuplicateNode())
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool FJointEditorToolkit::CanPasteNodes() const
-{
-	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
-
-	if (!CurrentGraphEditor.IsValid())
-	{
-		return false;
-	}
-
-	FString ClipboardContent;
-	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
-
-	return FEdGraphUtilities::CanImportNodesFromText(CurrentGraphEditor->GetCurrentGraph(), ClipboardContent);
-}
-
-bool FJointEditorToolkit::CanCutNodes() const
-{
-	return CanCopyNodes() && CanDeleteNodes();
-}
-
-bool FJointEditorToolkit::CanDuplicateNodes() const
-{
-	return CanCopyNodes();
-}
-
-void FJointEditorToolkit::RenameNodes()
-{
-	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
-	if (FocusedGraphEd.IsValid())
-	{
-		const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-		for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-		{
-			if (UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt); SelectedNode != nullptr &&
-				SelectedNode->GetCanRenameNode())
-			{
-				SelectedNode->RequestStartRenaming();
-				break;
-			}
-		}
-	}
-}
-
-bool FJointEditorToolkit::CanRenameNodes() const
-{
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	const UEdGraphNode* SelectedNode = (SelectedNodes.Num() == 1)
-		                                   ? Cast<UEdGraphNode>(*SelectedNodes.CreateConstIterator())
-		                                   : nullptr;
-
-	if (SelectedNode)
-	{
-		return SelectedNode->GetCanRenameNode();
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::DeleteSelectedNodes()
-{
-	const TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
-
-	if (!CurrentGraphEditor.IsValid()) return;
-
-	const FScopedTransaction Transaction(FGenericCommands::Get().Delete->GetDescription());
-	
-	FJointToolkitInlineUtils::StartModifyingGraphs(UJointEdGraph::GetAllGraphsFrom(GetJointManager()));
-
-	const FGraphPanelSelectionSet SelectedNodes = CurrentGraphEditor->GetSelectedNodes();
-
-	FJointEdUtils::RemoveNodes(SelectedNodes.Array());
-
-	CurrentGraphEditor->ClearSelectionSet();
-
-	FJointToolkitInlineUtils::EndModifyingGraphs(UJointEdGraph::GetAllGraphsFrom(GetJointManager()));
-
-	RequestManagerViewerRefresh();
-	RefreshJointEditorOutliner();
-	CleanInvalidDocumentTabs();
-}
-
-void FJointEditorToolkit::DeleteSelectedDuplicatableNodes()
-{
-	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
-	if (!CurrentGraphEditor.IsValid())
-	{
-		return;
-	}
-
-	const FGraphPanelSelectionSet OldSelectedNodes = CurrentGraphEditor->GetSelectedNodes();
-
-	CurrentGraphEditor->ClearSelectionSet();
-
-	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(OldSelectedNodes); SelectedIter; ++SelectedIter)
-	{
-		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
-		if (Node && Node->CanDuplicateNode())
-		{
-			CurrentGraphEditor->SetNodeSelection(Node, true);
-		}
-	}
-
-	// Delete the duplicatable nodes
-	DeleteSelectedNodes();
-
-	CurrentGraphEditor->ClearSelectionSet();
-
-	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(OldSelectedNodes); SelectedIter; ++SelectedIter)
-	{
-		if (UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter))
-		{
-			CurrentGraphEditor->SetNodeSelection(Node, true);
-		}
-	}
-}
-
-bool FJointEditorToolkit::CanDeleteNodes() const
-{
-	// If any of the nodes can be deleted then we should allow deleting
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
-	{
-		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
-		if (Node && Node->CanUserDeleteNode())
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnCreateComment()
-{
-	TSharedPtr<SJointGraphEditor> GraphEditor = GetFocusedGraphEditor();
-	if (GraphEditor.IsValid())
-	{
-		if (UEdGraph* Graph = GraphEditor->GetCurrentGraph())
-		{
-			if (const UEdGraphSchema* Schema = Graph->GetSchema())
-			{
-				FJointSchemaAction_AddComment CommentAction;
-				CommentAction.PerformAction(Graph, nullptr, GraphEditor->GetPasteLocation());
-			}
-		}
-	}
-}
-
-void FJointEditorToolkit::OnCreateFoundation()
-{
-	TSharedPtr<SJointGraphEditor> GraphEditor = GetFocusedGraphEditor();
-
-	if (GraphEditor.IsValid())
-	{
-		if (UEdGraph* Graph = GraphEditor->GetCurrentGraph())
-		{
-			if (const UEdGraphSchema* Schema = Graph->GetSchema())
-			{
-				FJointSchemaAction_NewNode Action;
-
-				Action.PerformAction_Command(Graph, UJointEdGraphNode_Foundation::StaticClass(),
-				                             UJN_Foundation::StaticClass(), GraphEditor->GetPasteLocation());
-			}
-		}
-	}
-}
-
-bool FJointEditorToolkit::CanJumpToSelection()
-{
-	const FGraphPanelSelectionSet& Selection = GetSelectedNodes();
-
-	return !Selection.IsEmpty();
-}
-
-void FJointEditorToolkit::OnJumpToSelection()
-{
-	const FGraphPanelSelectionSet& Selection = GetSelectedNodes();
-
-	for (UObject* Object : Selection)
-	{
-		if (!Object) continue;
-
-		JumpToHyperlink(Object, false);
-
-		return;
-	}
-}
-
-
-void FJointEditorToolkit::OnCollapseSelectionToSubGraph()
-{
-	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
-	if (!FocusedGraphEd.IsValid())
-	{
-		return;
-	}
-
-	const FGraphPanelSelectionSet SelectedNodes = FocusedGraphEd->GetSelectedNodes();
-
-	TSet<UEdGraphNode*> CollapsableNodes;
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (!(*NodeIt)) continue;
-
-		if (UJointEdGraphNode* JointEdGraphNode = Cast<UJointEdGraphNode>(*NodeIt))
-		{
-			if (!JointEdGraphNode->IsSubNode())
-			{
-				if (JointEdGraphNode->CanUserDeleteNode())
-				{
-					CollapsableNodes.Add(JointEdGraphNode);
-				}
-			}
-		}
-		else if (UEdGraphNode* EdGraphNode = Cast<UEdGraphNode>(*NodeIt))
-		{
-			if (EdGraphNode->CanUserDeleteNode())
-			{
-				CollapsableNodes.Add(EdGraphNode);
-			}
-		}
-	}
-
-	if (CollapsableNodes.Num() > 0)
-	{
-		const FScopedTransaction Transaction(LOCTEXT("CollapseNodes", "Collapse Nodes to Sub-Graph"));
-		CollapseNodes(CollapsableNodes);
-	}
-}
-
-bool FJointEditorToolkit::CanCollapseSelectionToSubGraph() const
-{
-	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
-	if (!FocusedGraphEd.IsValid())
-	{
-		return false;
-	}
-
-	const FGraphPanelSelectionSet SelectedNodes = FocusedGraphEd->GetSelectedNodes();
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (!(*NodeIt)) continue;
-
-		if (UJointEdGraphNode* JointEdGraphNode = Cast<UJointEdGraphNode>(*NodeIt))
-		{
-			if (!JointEdGraphNode->IsSubNode())
-			{
-				if (JointEdGraphNode->CanUserDeleteNode())
-				{
-					return true;
-				}
-			}
-		}
-		else if (UEdGraphNode* EdGraphNode = Cast<UEdGraphNode>(*NodeIt))
-		{
-			if (EdGraphNode->CanUserDeleteNode())
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::OnExpandNodes()
-{
-	const FScopedTransaction Transaction( FGraphEditorCommands::Get().ExpandNodes->GetLabel() );
-	GetJointManager()->Modify();
-
-	TSet<UEdGraphNode*> ExpandedNodes;
-	TSharedPtr<SJointGraphEditor> FocusedGraphEd = FocusedGraphEditorPtr.Pin();
-
-	// Expand selected nodes into the focused graph context.
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	
-	if(FocusedGraphEd)
-	{
-		FocusedGraphEd->ClearSelectionSet();
-	}
-
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		ExpandedNodes.Empty();
-		bool bExpandedNodesNeedUniqueGuid = true;
-
-		DocumentManager->CleanInvalidTabs();
-
-		if (UJointEdGraphNode_Composite* SelectedCompositeNode = Cast<UJointEdGraphNode_Composite>(*NodeIt))
-		{
-			// No need to assign unique GUIDs since the source graph will be removed.
-			bExpandedNodesNeedUniqueGuid = false;
-
-			// Expand the composite node back into the world
-			UEdGraph* SourceGraph = SelectedCompositeNode->BoundGraph;
-			ExpandNode(SelectedCompositeNode, SourceGraph, /*inout*/ ExpandedNodes);
-
-			FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
-		}
-		
-		UEdGraphNode* SourceNode = CastChecked<UEdGraphNode>(*NodeIt);
-		check(SourceNode);
-		MoveNodesToAveragePos(ExpandedNodes, FVector2D(SourceNode->NodePosX, SourceNode->NodePosY), bExpandedNodesNeedUniqueGuid);
-	}
-
-	//update editor UI
-	RequestManagerViewerRefresh();
-	RefreshJointEditorOutliner();
-	CleanInvalidDocumentTabs();
-}
-
-
-
-void FJointEditorToolkit::MoveNodesToGraph(TArray<TObjectPtr<class UEdGraphNode>>& SourceNodes, UEdGraph* DestinationGraph, TSet<UEdGraphNode*>& OutExpandedNodes, UEdGraphNode** OutEntry, UEdGraphNode** OutResult, const bool bIsCollapsedGraph)
-{
-	// Move the nodes over, remembering any that are boundary nodes
-	while (SourceNodes.Num())
-	{
-		UEdGraphNode* Node = SourceNodes.Pop();
-		UEdGraph* OriginalGraph = Node->GetGraph();
-
-		Node->Modify();
-		OriginalGraph->Modify();
-		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph, REN_DontCreateRedirectors);
-
-		// Remove the node from the original graph
-		OriginalGraph->RemoveNode(Node, false);
-		
-		// We do not check CanPasteHere when determining CanCollapseNodes, unlike CanCollapseSelectionToFunction/Macro,
-		// so when expanding a collapsed graph we don't want to check the CanPasteHere function:
-		if (!bIsCollapsedGraph && !Node->CanPasteHere(DestinationGraph))
-		{
-			Node->BreakAllNodeLinks();
-			continue;
-		}
-
-		// Successfully added the node to the graph, we may need to remove flags
-		if (Node->HasAllFlags(RF_Transient) && !DestinationGraph->HasAllFlags(RF_Transient))
-		{
-			Node->SetFlags(RF_Transactional);
-			Node->ClearFlags(RF_Transient);
-			TArray<UObject*> Subobjects;
-			GetObjectsWithOuter(Node, Subobjects);
-			for (UObject* Subobject : Subobjects)
-			{
-				Subobject->ClearFlags(RF_Transient);
-				Subobject->SetFlags(RF_Transactional);
-			}
-		}
-		
-		DestinationGraph->AddNode(Node, /* bFromUI */ false, /* bSelectNewNode */ false);
-		
-		if(UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
-		{
-			OriginalGraph->SubGraphs.Remove(Composite->BoundGraph);
-			DestinationGraph->SubGraphs.Add(Composite->BoundGraph);
-		}
-
-		// Want to test exactly against tunnel, we shouldn't collapse embedded collapsed
-		// nodes or macros, only the tunnels in/out of the collapsed graph
-		if (Node->GetClass() == UJointEdGraphNode_Tunnel::StaticClass())
-		{
-			UJointEdGraphNode_Tunnel* TunnelNode = Cast<UJointEdGraphNode_Tunnel>(Node);
-			if (TunnelNode->bCanHaveOutputs)
-			{
-				*OutEntry = Node;
-			}
-			else if (TunnelNode->bCanHaveInputs)
-			{
-				*OutResult = Node;
-			}
-		}
-		else
-		{
-			OutExpandedNodes.Add(Node);
-		}
-	}
-}
-
-
-void FJointEditorToolkit::ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InSourceGraph, TSet<UEdGraphNode*>& OutExpandedNodes)
-{
- 	UEdGraph* DestinationGraph = InNodeToExpand->GetGraph(); // Graph that the composite node is in (parent graph)
-	UEdGraph* SourceGraph = InSourceGraph; // Bound graph of the composite node
-	check(SourceGraph);
-
-	// Mark all edited objects so they will appear in the transaction record if needed.
-	DestinationGraph->Modify();
-	SourceGraph->Modify();
-	InNodeToExpand->Modify();
-
-	UEdGraphNode* Entry = nullptr;
-	UEdGraphNode* Result = nullptr;
-
-	const bool bIsCollapsedGraph = InNodeToExpand->IsA<UJointEdGraphNode_Composite>();
-
-	// Move all of the nodes from the source graph to the destination graph
-
-	MoveNodesToGraph(SourceGraph->Nodes, DestinationGraph, OutExpandedNodes, &Entry, &Result, bIsCollapsedGraph);
-	
-	// Handle the destruction of the component nodes
-	const UJointEdGraphSchema* GraphSchema = GetDefault<UJointEdGraphSchema>();
-	GraphSchema->PruneGatewayNode(Cast<UJointEdGraphNode_Composite>(InNodeToExpand), Entry, Result, nullptr, &OutExpandedNodes);
-
-	if(Entry) Entry->DestroyNode();
-	if(Result) Result->DestroyNode();
-
-	// Make sure any subgraphs get propagated appropriately
-	if (SourceGraph->SubGraphs.Num() > 0)
-	{
-		DestinationGraph->SubGraphs.Append(SourceGraph->SubGraphs);
-		SourceGraph->SubGraphs.Empty();
-	}
-
-	// Fix up the outer for all of the nodes that were moved
-	for (UEdGraphNode* OutExpandedNode : OutExpandedNodes)
-	{
-		if (!OutExpandedNode) continue;
-
-		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(OutExpandedNode))
-		{
-			JointNode->SetOuterAs(DestinationGraph);
-
-			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
-			{
-				if (!Subnode) continue;
-
-				Subnode->SetOuterAs(DestinationGraph);
-
-				// Clean up the slate.
-				Subnode->SetGraphNodeSlate(nullptr);
-				
-			}
-			JointNode->SetGraphNodeSlate(nullptr);
-			// Clean up the slate.
-			
-			JointNode->Update();
-		}
-		else
-		{
-			OutExpandedNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph);
-		}
-	}
-	
-	// Remove the gateway node and source graph
-	InNodeToExpand->DestroyNode();
-	
-}
-
-bool FJointEditorToolkit::CanExpandNodes() const
-{
-	// Does the selection set contain any composite nodes that are legal to expand?
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
-	{
-		if (Cast<UJointEdGraphNode_Composite>(*NodeIt))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void FJointEditorToolkit::CollapseNodes(TSet<class UEdGraphNode*>& InCollapsableNodes)
-{
-	const UEdGraphSchema_K2* K2Schema = GetDefault<UEdGraphSchema_K2>();
-
-	TSharedPtr<SGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
-	if (!FocusedGraphEd.IsValid())
-	{
-		return;
-	}
-
-	UEdGraph* SourceGraph = FocusedGraphEd->GetCurrentGraph();
-	SourceGraph->Modify();
-
-	//UK2Node_Composite
-	// Create the composite node that will serve as the gateway into the subgraph
-	UJointEdGraphNode_Composite* GatewayNode = nullptr;
-	{
-		GatewayNode = FJointSchemaAction_NewNode::SpawnNode<UJointEdGraphNode_Composite>(SourceGraph, nullptr, FVector2D(0, 0), true);
-		check(GatewayNode);
-	}
-
-	FName GraphName;
-	GraphName = MakeUniqueObjectName(GetJointManager(), UJointEdGraph::StaticClass(), TEXT("CollapseGraph"));
-
-	// Rename the graph to the correct name
-	UEdGraph* DestinationGraph = GatewayNode->BoundGraph;
-
-	TSharedPtr<INameValidatorInterface> NameValidator = MakeShareable(new FJointEditorNameValidator(GetJointManager(), GraphName));
-
-	FString NewName = GraphName.ToString();
-	NameValidator->FindValidString(NewName);
-	DestinationGraph->Rename(*DestinationGraph->GetName(), DestinationGraph->GetOuter(), REN_DontCreateRedirectors);
-
-	CollapseNodesIntoGraph(GatewayNode, GatewayNode->GetInputSink(), GatewayNode->GetOutputSource(), SourceGraph, DestinationGraph, InCollapsableNodes, false, true);
-
-	RefreshJointEditorOutliner();
-	CleanInvalidDocumentTabs();
-}
-
-void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* InGatewayNode, UJointEdGraphNode_Tunnel* InEntryNode, UJointEdGraphNode_Tunnel* InResultNode, UEdGraph* InSourceGraph, UEdGraph* InDestinationGraph,
-                                                 TSet<UEdGraphNode*>& InCollapsableNodes, bool bCanDiscardEmptyReturnNode, bool bCanHaveWeakObjPtrParam)
-{
-	const UJointEdGraphSchema* JointGraphSchema = GetDefault<UJointEdGraphSchema>();
-
-	// Keep track of the statistics of the node positions so the new nodes can be located reasonably well
-	int32 SumNodeX = 0;
-	int32 SumNodeY = 0;
-	int32 MinNodeX = std::numeric_limits<int32>::max();
-	int32 MinNodeY = std::numeric_limits<int32>::max();
-	int32 MaxNodeX = std::numeric_limits<int32>::min();
-	int32 MaxNodeY = std::numeric_limits<int32>::min();
-
-	UEdGraphNode* InterfaceTemplateNode = nullptr;
-
-	TArray<UEdGraphPin*> GatewayPins;
-
-	// Move the nodes over, which may create cross-graph references that we need fix up ASAP
-	for (TSet<UEdGraphNode*>::TConstIterator NodeIt(InCollapsableNodes); NodeIt; ++NodeIt)
-	{
-		UEdGraphNode* Node = *NodeIt;
-		Node->Modify();
-
-		// Update stats
-		SumNodeX += Node->NodePosX;
-		SumNodeY += Node->NodePosY;
-		MinNodeX = FMath::Min<int32>(MinNodeX, Node->NodePosX);
-		MinNodeY = FMath::Min<int32>(MinNodeY, Node->NodePosY);
-		MaxNodeX = FMath::Max<int32>(MaxNodeX, Node->NodePosX);
-		MaxNodeY = FMath::Max<int32>(MaxNodeY, Node->NodePosY);
-
-		// Move the node over
-		InSourceGraph->Nodes.Remove(Node);
-		InDestinationGraph->Nodes.Add(Node);
-		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ InDestinationGraph);
-
-		// Move the sub-graph to the new sub graph - 
-		if (UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
-		{
-			InSourceGraph->SubGraphs.Remove(Composite->BoundGraph);
-			InDestinationGraph->SubGraphs.Add(Composite->BoundGraph);
-		}
-
-		// Find cross-graph links
-		for (int32 PinIndex = 0; PinIndex < Node->Pins.Num(); ++PinIndex)
-		{
-			UEdGraphPin* LocalPin = Node->Pins[PinIndex];
-
-			bool bIsGatewayPin = false;
-			if (LocalPin->LinkedTo.Num())
-			{
-				for (int32 LinkIndex = 0; LinkIndex < LocalPin->LinkedTo.Num(); ++LinkIndex)
-				{
-					UEdGraphPin* TrialPin = LocalPin->LinkedTo[LinkIndex];
-					if (!InCollapsableNodes.Contains(TrialPin->GetOwningNode()))
-					{
-						bIsGatewayPin = true;
-						break;
-					}
-				}
-			}
-
-			// Thunk cross-graph links thru the gateway
-			if (bIsGatewayPin)
-			{
-				// Local port is either the entry or the result node in the collapsed graph
-				// Remote port is the node placed in the source graph
-				UJointEdGraphNode_Tunnel* LocalPort = (LocalPin->Direction == EGPD_Input) ? InEntryNode : InResultNode;
-
-				// Add a new pin to the entry/exit node and to the composite node
-				UEdGraphPin* LocalPortPin = nullptr;
-				UEdGraphPin* RemotePortPin = nullptr;
-
-
-				// If there is a custom event being used as a template, we must check to see if any connected pins have already been built
-				if (InterfaceTemplateNode && LocalPin->Direction == EGPD_Input)
-				{
-					// Find the pin on the entry node, we will use that pin's name to find the pin on the remote port
-					UEdGraphPin* EntryNodePin = InEntryNode->FindPin(LocalPin->LinkedTo[0]->PinName);
-					if (EntryNodePin)
-					{
-						LocalPin->BreakAllPinLinks();
-						JointGraphSchema->TryCreateConnection(LocalPin,EntryNodePin);
-						continue;
-					}
-				}
-
-				if (LocalPin->LinkedTo[0]->GetOwningNode() != InEntryNode)
-				{
-					const FName UniquePortName = InGatewayNode->CreateUniquePinName(LocalPin->PinName);
-
-					if (!RemotePortPin && !LocalPortPin)
-					{
-						FEdGraphPinType PinType = LocalPin->PinType;
-						if (PinType.bIsWeakPointer && !PinType.IsContainer() && !bCanHaveWeakObjPtrParam)
-						{
-							PinType.bIsWeakPointer = false;
-						}
-						//add pin to the entry/result node
-
-						FJointEdPinDataSetting Setting;
-						Setting.bAlwaysDisplayNameText = true;
-						
-						FJointEdPinData& PinData1 = InGatewayNode->PinData.Add_GetRef(FJointEdPinData(UniquePortName, LocalPin->Direction, Setting));
-
-						InGatewayNode->LockSynchronizing();
-						InGatewayNode->UpdatePins();
-						RemotePortPin = InGatewayNode->GetPinForPinDataFromThis(PinData1);
-
-						FJointEdPinData& PinData2 = LocalPort->PinData.Add_GetRef(FJointEdPinData(UniquePortName, (LocalPin->Direction == EGPD_Input) ? EGPD_Output : EGPD_Input, Setting));
-						LocalPort->LockSynchronizing();
-						LocalPort->UpdatePins();
-						LocalPortPin = LocalPort->GetPinForPinDataFromThis(PinData2);
-
-						InGatewayNode->UnlockSynchronizing();
-						LocalPort->UnlockSynchronizing();
-					}
-				}
-
-
-				check(LocalPortPin);
-				check(RemotePortPin);
-
-				LocalPin->Modify();
-
-				// Route the links
-				for (int32 LinkIndex = 0; LinkIndex < LocalPin->LinkedTo.Num(); ++LinkIndex)
-				{
-					UEdGraphPin* RemotePin = LocalPin->LinkedTo[LinkIndex];
-					RemotePin->Modify();
-
-					if (!InCollapsableNodes.Contains(RemotePin->GetOwningNode()) && RemotePin->GetOwningNode() != InEntryNode && RemotePin->GetOwningNode() != InResultNode)
-					{
-						// Fix up the remote pin
-						RemotePin->LinkedTo.Remove(LocalPin);
-						// When given a composite node, we could possibly be given a pin with a different outer
-						// which is bad! Then there would be a pin connecting to itself and cause an ensure
-						if (RemotePin->GetOwningNode()->GetOuter() == RemotePortPin->GetOwningNode()->GetOuter())
-						{
-							JointGraphSchema->TryCreateConnection(RemotePin,RemotePortPin);
-						}
-
-						// The Entry Node only supports a single link, so if we made links above
-						// we need to break them now, to make room for the new link.
-						if (LocalPort == InEntryNode)
-						{
-							LocalPortPin->BreakAllPinLinks();
-						}
-
-						// Fix up the local pin
-						LocalPin->LinkedTo.Remove(RemotePin);
-						--LinkIndex;
-						JointGraphSchema->TryCreateConnection(LocalPin,LocalPortPin);
-					}
-				}
-			}
-		}
-	}
-
-	// Reposition the newly created nodes
-	const int32 NumNodes = InCollapsableNodes.Num();
-
-
-	/*
-	// Using the result pin, we will ensure that there is a path through the function by checking if it is connected. If it is not, link it to the entry node.
-	if (UEdGraphPin* ResultExecFunc = JointGraphSchema->FindExecutionPin(*InResultNode, EGPD_Input))
-	{
-		if (ResultExecFunc->LinkedTo.Num() == 0)
-		{
-			JointGraphSchema->FindExecutionPin(*InEntryNode, EGPD_Output)->MakeLinkTo(JointGraphSchema->FindExecutionPin(*InResultNode, EGPD_Input));
-		}
-	}
-	*/
-
-	const int32 CenterX = (NumNodes == 0) ? SumNodeX : SumNodeX / NumNodes;
-	const int32 CenterY = (NumNodes == 0) ? SumNodeY : SumNodeY / NumNodes;
-	const int32 MinusOffsetX = 560; //@TODO: Random magic numbers
-	const int32 PlusOffsetX = 600;
-
-	// Put the gateway node at the center of the empty space in the old graph
-	InGatewayNode->NodePosX = CenterX;
-	InGatewayNode->NodePosY = CenterY;
-	InGatewayNode->SnapToGrid(SNodePanel::GetSnapGridSize());
-
-	// Put the entry and exit nodes on either side of the nodes in the new graph
-	//@TODO: Should we recenter the whole ensemble?
-	if (NumNodes != 0)
-	{
-		InEntryNode->NodePosX = MinNodeX - MinusOffsetX;
-		InEntryNode->NodePosY = CenterY;
-		InEntryNode->SnapToGrid(SNodePanel::GetSnapGridSize());
-
-		InResultNode->NodePosX = MaxNodeX + PlusOffsetX;
-		InResultNode->NodePosY = CenterY;
-		InResultNode->SnapToGrid(SNodePanel::GetSnapGridSize());
-	}
-
-	//Update the collapsed node's outers to the new graph
-	for (UEdGraphNode* InCollapsableNode : InCollapsableNodes)
-	{
-		if (!InCollapsableNode) continue;
-
-		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(InCollapsableNode))
-		{
-			JointNode->SetOuterAs(InDestinationGraph);
-
-			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
-			{
-				if (!Subnode) continue;
-
-				Subnode->SetOuterAs(InDestinationGraph);
-
-				// Clean up the slate.
-				Subnode->SetGraphNodeSlate(nullptr);
-			}
-			
-			// Clean up the slate.
-			JointNode->SetGraphNodeSlate(nullptr);
-
-			JointNode->Update();
-		}
-		else
-		{
-			InCollapsableNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ InDestinationGraph);
-		}
-	}
-}
-
-void FJointEditorToolkit::ToggleShowNormalConnection()
-{
-	UJointEditorSettings::Get()->bDrawNormalConnection = !UJointEditorSettings::Get()->bDrawNormalConnection;
-}
-
-bool FJointEditorToolkit::IsShowNormalConnectionChecked() const
-{
-	return UJointEditorSettings::Get()->bDrawNormalConnection;
-}
-
-
-void FJointEditorToolkit::ToggleShowRecursiveConnection()
-{
-	UJointEditorSettings::Get()->bDrawRecursiveConnection = !UJointEditorSettings::Get()->
-		bDrawRecursiveConnection;
-}
-
-bool FJointEditorToolkit::IsShowRecursiveConnectionChecked() const
-{
-	return UJointEditorSettings::Get()->bDrawRecursiveConnection;
-}
-
-void FJointEditorToolkit::StartQuickPicking()
-{
-	TSharedPtr<FJointEditorNodePickingManager> PickingManager = GetOrCreateNodePickingManager();
-	if (!PickingManager.IsValid())
-	{
-		return;
-	}
-
-	if (PickingManager->IsInNodePicking())
-	{
-		const TWeakPtr<FJointEditorNodePickingManagerRequest> ActiveRequest = PickingManager->GetActiveRequest();
-		const TSharedPtr<FJointEditorNodePickingManagerRequest> PinnedRequest = ActiveRequest.Pin();
-
-		if (!PinnedRequest.IsValid() ||
-			PinnedRequest->NodePickingType != EJointNodePickingType::QuickPickSelection)
-		{
-			PickingManager->EndNodePicking();
-		}
-		else
-		{
-			PickingManager->EndNodePicking();
-			return;
-		}
-	}
-
-	PickingManager->StartQuickPicking();
-}
-
-
-void FJointEditorToolkit::OpenSearchTab() const
-{
-	if (!ManagerViewerPtr.IsValid()) return;
-
-	if (TSharedPtr<SDockTab> FoundTab = TabManager->FindExistingLiveTab(EJointEditorTapIDs::SearchReplaceID))
-	{
-		if (ManagerViewerPtr->GetMode() != EJointManagerViewerMode::Search)
-		{
-			//If the tab is already opened and not showing the search mode, change it to search mode.
-			ManagerViewerPtr->SetMode(EJointManagerViewerMode::Search);
-		}
-		else
-		{
-			//If the tab is already opened and showing the search mode, close it.
-			FoundTab->RequestCloseTab();
-		}
-	}
-	else
-	{
-		//If the tab is not live, then open it.
-		TSharedPtr<SDockTab> Tab = TabManager->TryInvokeTab(EJointEditorTapIDs::SearchReplaceID);
-
-		ManagerViewerPtr->SetMode(EJointManagerViewerMode::Search);
-	}
-}
-
-void FJointEditorToolkit::OpenReplaceTab() const
-{
-	if (!ManagerViewerPtr.IsValid()) return;
-
-	if (TSharedPtr<SDockTab> FoundTab = TabManager->FindExistingLiveTab(EJointEditorTapIDs::SearchReplaceID))
-	{
-		if (ManagerViewerPtr->GetMode() != EJointManagerViewerMode::Replace)
-		{
-			//If the tab is already opened and not showing the search mode, change it to search mode.
-			ManagerViewerPtr->SetMode(EJointManagerViewerMode::Replace);
-		}
-		else
-		{
-			//If the tab is already opened and showing the search mode, close it.
-			FoundTab->RequestCloseTab();
-		}
-	}
-	else
-	{
-		//If the tab is not live, then open it.
-		TSharedPtr<SDockTab> Tab = TabManager->TryInvokeTab(EJointEditorTapIDs::SearchReplaceID);
-
-		ManagerViewerPtr->SetMode(EJointManagerViewerMode::Replace);
-	}
-}
-
-void FJointEditorToolkit::PopulateNodePickingToastMessage()
-{
-	ClearNodePickingToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					.Clipping(EWidgetClipping::ClipToBounds)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle", "Node Picking Enabled"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled", "Click the node to select. Press ESC to escape."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateQuickNodePickingToastMessage()
-{
-	ClearNodePickingToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					.Clipping(EWidgetClipping::ClipToBounds)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.EyeDropper"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle", "Quick Node Picking Enabled"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled", "Click the node to pick the reference of. Press ESC to escape.\nOnce you pick a node, paste it on your node pointers."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateTransientEditingWarningToastMessage()
-{
-	ClearTransientEditingWarningToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		TransientEditingToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		TransientEditingToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal * 2)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SHorizontalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SBox)
-							.WidthOverride(24)
-							.HeightOverride(24)
-							[
-								SNew(SImage)
-								.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabledTitle",
-							              "You are editing a transient & PIE duplicated object."))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-						]
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.HAlign(HAlign_Center)
-					.VAlign(VAlign_Center)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(STextBlock)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						.Text(LOCTEXT("PickingEnabled",
-						              "Any modification on this graph will not be applied to the original asset."))
-						.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h5")
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage()
-{
-	ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("PickingEnabledTitle",
-								              "Modifying Simple Display Property Visibility"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("PickingEnabled",
-							              "Press the eye buttons to change their visibility. Press \'X\' to end."))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNodePickerCopyToastMessage()
-{
-	ClearNodePickerCopyToastMessage();
-
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(
-		NodePickerCopyToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickerCopyToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.SizeDecreaseInterpolationSpeed(2)
-			.RemoveAnimationDuration(0.5)
-			.Duration(1.5)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("CopyTitle",
-								              "Node Pointer Copied!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h2")
-							]
-						]
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(STextBlock)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							.Text(LOCTEXT("CopyTitleEnabled",
-							              "Press paste button on others to put this there"))
-							.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNodePickerPastedToastMessage()
-{
-	ClearNodePickerPastedToastMessage();
-
-	TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(NodePickerPasteToastMessageGuid);
-
-	if (Message.IsValid())
-	{
-		Message.Pin()->PlayAppearAnimation();
-	}
-	else
-	{
-		NodePickerPasteToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-			SNew(SJointToolkitToastMessage)
-			.SizeDecreaseInterpolationSpeed(2)
-			.RemoveAnimationDuration(0.5)
-			.Duration(1.5)
-			[
-				SNew(SBorder)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				.VAlign(VAlign_Center)
-				.HAlign(HAlign_Center)
-				.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-				.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-				.Padding(FJointEditorStyle::Margin_Normal)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SVerticalBox)
-						.Clipping(EWidgetClipping::ClipToBounds)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.HAlign(HAlign_Center)
-						.VAlign(VAlign_Center)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(SBox)
-								.WidthOverride(24)
-								.HeightOverride(24)
-								[
-									SNew(SImage)
-									.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Star"))
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							.Padding(FJointEditorStyle::Margin_Normal)
-							[
-								SNew(STextBlock)
-								.Clipping(EWidgetClipping::ClipToBounds)
-								.Text(LOCTEXT("PasteTitle",
-								              "Node Pointer Pasted!"))
-								.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-							]
-						]
-					]
-				]
-			]
-		);
-	}
-}
-
-void FJointEditorToolkit::PopulateNeedReopeningToastMessage()
-{
-	//You can only show this message once, so if the message is already shown, do not show it again.
-	if (!GetOrCreateGraphToastMessageHub()->HasToasterMessage(RequestReopenToastMessageGuid))
-	{
-		TWeakPtr<SJointToolkitToastMessage> Message = GetOrCreateGraphToastMessageHub()->FindToasterMessage(RequestReopenToastMessageGuid);
-
-		if (Message.IsValid())
-		{
-			Message.Pin()->PlayAppearAnimation();
-		}
-		else
-		{
-			RequestReopenToastMessageGuid = GetOrCreateGraphToastMessageHub()->AddToasterMessage(
-				SNew(SJointToolkitToastMessage)
-				.Duration(-1)
-				[
-					SNew(SBorder)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-					.BorderBackgroundColor(FJointEditorStyle::Color_Normal)
-					.Padding(FJointEditorStyle::Margin_Normal)
-					[
-						SNew(SBorder)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-						.BorderBackgroundColor(FJointEditorStyle::Color_Node_Invalid)
-						.Padding(FJointEditorStyle::Margin_Normal)
-						[
-							SNew(SVerticalBox)
-							.Clipping(EWidgetClipping::ClipToBounds)
-							+ SVerticalBox::Slot()
-							.AutoHeight()
-							.HAlign(HAlign_Center)
-							.VAlign(VAlign_Center)
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Normal)
-								[
-									SNew(SBox)
-									.WidthOverride(24)
-									.HeightOverride(24)
-									[
-										SNew(SImage)
-										.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Edit"))
-									]
-								]
-								+ SHorizontalBox::Slot()
-								.AutoWidth()
-								.HAlign(HAlign_Center)
-								.VAlign(VAlign_Center)
-								.Padding(FJointEditorStyle::Margin_Normal)
-								[
-									SNew(STextBlock)
-									.Clipping(EWidgetClipping::ClipToBounds)
-									.Text(LOCTEXT("ReopeningRequest",
-									              "Graph Editor Reported Invalidated Slate Reference Error.\nPlease reopen the editor to solve the issue."))
-									.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h1")
-								]
-							]
-						]
-					]
-				]
-			);
-		}
-	}
-}
-
-void FJointEditorToolkit::ClearNodePickingToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickingToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearTransientEditingWarningToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(TransientEditingToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid())
-		GraphToastMessageHub->RemoveToasterMessage(
-			VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid);
-}
-
-void FJointEditorToolkit::ClearNodePickerCopyToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickerCopyToastMessageGuid, true);
-}
-
-void FJointEditorToolkit::ClearNodePickerPastedToastMessage() const
-{
-	if (GraphToastMessageHub.IsValid()) GraphToastMessageHub->RemoveToasterMessage(NodePickerPasteToastMessageGuid, true);
-}
-
-void FJointEditorToolkit::OnContentBrowserAssetDoubleClicked(const FAssetData& AssetData)
-{
-	if (AssetData.GetAsset()) AssetViewUtils::OpenEditorForAsset(AssetData.GetAsset());
-}
-
-void FJointEditorToolkit::StartHighlightingNode(UJointEdGraphNode* NodeToHighlight, bool bBlinkForOnce)
-{
-	if (NodeToHighlight == nullptr) return;
-
-	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
-
-	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
-
-	GraphNodeSlate->PlayHighlightAnimation(bBlinkForOnce);
-}
-
-void FJointEditorToolkit::StopHighlightingNode(UJointEdGraphNode* NodeToHighlight)
-{
-	if (NodeToHighlight == nullptr) return;
-
-	if (!NodeToHighlight->GetGraphNodeSlate().IsValid()) return;
-
-	TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = NodeToHighlight->GetGraphNodeSlate().Pin();
-
-	GraphNodeSlate->StopHighlightAnimation();
-
-}
-
-void FJointEditorToolkit::JumpToNode(UEdGraphNode* Node, const bool bRequestRename)
-{
-	if (!GetFocusedGraphEditor().IsValid()) return;
-
-	const UEdGraphNode* FinalCenterTo = Node;
-
-	//if the node was UJointEdGraphNode type, then make it sure to be centered to its parentmost node.
-	if (Cast<UJointEdGraphNode>(Node))
-	{
-		StartHighlightingNode(Cast<UJointEdGraphNode>(Node), true);
-
-		FinalCenterTo = Cast<UJointEdGraphNode>(Node)->GetParentmostNode();
-	}
-
-	GetFocusedGraphEditor()->JumpToNode(FinalCenterTo, false, false);
-}
-
-void FJointEditorToolkit::JumpToHyperlink(UObject* ObjectReference, bool bRequestRename)
-{
-	if (UEdGraphNode* GraphNodeNode = Cast<UEdGraphNode>(ObjectReference))
-	{
-		OpenDocument(GraphNodeNode->GetGraph(), FDocumentTracker::OpenNewDocument);
-
-		JumpToNode(GraphNodeNode, false);
-	}
-	else if (UJointNodeBase* Node = Cast<UJointNodeBase>(ObjectReference))
-	{
-		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
-
-		for (UJointEdGraph* Graph : Graphs)
-		{
-			if (!Graph) continue;
-
-			if (!Graph->GetCachedJointNodeInstances().Contains(Node)) continue;
-
-			OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
-
-			JumpToNode(Graph->FindGraphNodeForNodeInstance(Node), false);
-		}
-	}
-	else if (const UBlueprintGeneratedClass* Class = Cast<const UBlueprintGeneratedClass>(ObjectReference))
-	{
-		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Class->ClassGeneratedBy);
-	}
-	else if ((ObjectReference != nullptr) && ObjectReference->IsAsset())
-	{
-		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(const_cast<UObject*>(ObjectReference));
-	}
-	else if (UJointEdGraph* Graph = Cast<UJointEdGraph>(ObjectReference))
-	{
-		// open or create or activate the editor for this graph
-		OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
-	}
-	else
-	{
-		UE_LOG(LogBlueprint, Warning, TEXT("Unknown type of hyperlinked object (%s), cannot focus it"),
-		       *GetNameSafe(ObjectReference));
-	}
-}
-
-
 void FJointEditorToolkit::SelectAllNodes()
 {
 	if (TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
@@ -3006,6 +1549,10 @@ void FJointEditorToolkit::SelectAllNodes()
 	}
 }
 
+bool FJointEditorToolkit::CanSelectAllNodes() const
+{
+	return true;
+}
 
 void FJointEditorToolkit::CopySelectedNodes()
 {
@@ -3075,6 +1622,22 @@ void FJointEditorToolkit::CopySelectedNodes()
 
 }
 
+bool FJointEditorToolkit::CanCopyNodes() const
+{
+	// If any of the nodes can be duplicated then we should allow copying
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
+	{
+		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
+		if (Node && Node->CanDuplicateNode())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void FJointEditorToolkit::PasteNodes()
 {
 	if (const TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor())
@@ -3083,73 +1646,6 @@ void FJointEditorToolkit::PasteNodes()
 	}
 
 	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::CutSelectedNodes()
-{
-	CopySelectedNodes();
-	DeleteSelectedDuplicatableNodes();
-
-	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::DuplicateNodes()
-{
-	CopySelectedNodes();
-	PasteNodes();
-
-	RequestManagerViewerRefresh();
-}
-
-void FJointEditorToolkit::OnGraphSelectedNodesChanged(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection)
-{
-	if (GetNodePickingManager().IsValid() && GetNodePickingManager()->IsInNodePicking())
-	{
-		for (UObject* Selection : NewSelection)
-		{
-			if (Selection == nullptr) continue;
-
-			UJointEdGraphNode* CastedGraphNode = Cast<UJointEdGraphNode>(Selection);
-
-			if (CastedGraphNode == nullptr) continue;
-
-			TSharedPtr<FJointEditorNodePickingManagerResult> Result = FJointEditorNodePickingManagerResult::MakeInstance();
-			Result->Node = CastedGraphNode->GetCastedNodeInstance();
-			Result->OptionalEdNode = CastedGraphNode;
-
-			GetNodePickingManager()->PerformNodePicking(Result);
-
-			break;
-		}
-	}
-	else
-	{
-		SelectProvidedObjectOnDetail(NewSelection);
-		NotifySelectionChangeToNodeSlates(InGraph, NewSelection);
-	}
-}
-
-void FJointEditorToolkit::NotifySelectionChangeToNodeSlates(UEdGraph* InGraph, const TSet<class UObject*>& NewSelection) const
-{
-	if (JointManager == nullptr) return;
-
-	if (UJointEdGraph* CastedGraph = InGraph ? Cast<UJointEdGraph>(InGraph) : nullptr)
-	{
-		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = CastedGraph->GetCachedJointGraphNodes();
-
-		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
-		{
-			if (!GraphNode.IsValid()) continue;
-
-			const TSharedPtr<SJointGraphNodeBase> NodeSlate = GraphNode->GetGraphNodeSlate().Pin();
-
-			if (!NodeSlate.IsValid()) continue;
-
-			NodeSlate->OnGraphSelectionChanged(NewSelection);
-		}
-	}
-
-	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
 
 void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
@@ -3287,6 +1783,790 @@ void FJointEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	
 }
 
+bool FJointEditorToolkit::CanPasteNodes() const
+{
+	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
+
+	if (!CurrentGraphEditor.IsValid())
+	{
+		return false;
+	}
+
+	FString ClipboardContent;
+	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
+
+	return FEdGraphUtilities::CanImportNodesFromText(CurrentGraphEditor->GetCurrentGraph(), ClipboardContent);
+}
+
+void FJointEditorToolkit::CutSelectedNodes()
+{
+	CopySelectedNodes();
+	DeleteSelectedDuplicatableNodes();
+
+	RequestManagerViewerRefresh();
+}
+
+bool FJointEditorToolkit::CanCutNodes() const
+{
+	return CanCopyNodes() && CanDeleteNodes();
+}
+
+void FJointEditorToolkit::DuplicateNodes()
+{
+	CopySelectedNodes();
+	PasteNodes();
+
+	RequestManagerViewerRefresh();
+}
+
+bool FJointEditorToolkit::CanDuplicateNodes() const
+{
+	return CanCopyNodes();
+}
+
+void FJointEditorToolkit::RenameNodes()
+{
+	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
+	if (FocusedGraphEd.IsValid())
+	{
+		const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+		for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+		{
+			if (UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(*NodeIt); SelectedNode != nullptr &&
+				SelectedNode->GetCanRenameNode())
+			{
+				SelectedNode->RequestStartRenaming();
+				break;
+			}
+		}
+	}
+}
+
+
+bool FJointEditorToolkit::CanRenameNodes() const
+{
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	const UEdGraphNode* SelectedNode = (SelectedNodes.Num() == 1)
+		                                   ? Cast<UEdGraphNode>(*SelectedNodes.CreateConstIterator())
+		                                   : nullptr;
+
+	if (SelectedNode)
+	{
+		return SelectedNode->GetCanRenameNode();
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::DeleteSelectedNodes()
+{
+	const TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
+
+	if (!CurrentGraphEditor.IsValid()) return;
+
+	const FScopedTransaction Transaction(FGenericCommands::Get().Delete->GetDescription());
+	
+	FJointToolkitInlineUtils::StartModifyingGraphs(UJointEdGraph::GetAllGraphsFrom(GetJointManager()));
+
+	const FGraphPanelSelectionSet SelectedNodes = CurrentGraphEditor->GetSelectedNodes();
+
+	FJointEdUtils::RemoveNodes(SelectedNodes.Array());
+
+	CurrentGraphEditor->ClearSelectionSet();
+
+	FJointToolkitInlineUtils::EndModifyingGraphs(UJointEdGraph::GetAllGraphsFrom(GetJointManager()));
+
+	RequestManagerViewerRefresh();
+	RefreshJointEditorOutliner();
+	CleanInvalidDocumentTabs();
+}
+
+void FJointEditorToolkit::DeleteSelectedDuplicatableNodes()
+{
+	TSharedPtr<SJointGraphEditor> CurrentGraphEditor = GetFocusedGraphEditor();
+	if (!CurrentGraphEditor.IsValid())
+	{
+		return;
+	}
+
+	const FGraphPanelSelectionSet OldSelectedNodes = CurrentGraphEditor->GetSelectedNodes();
+
+	CurrentGraphEditor->ClearSelectionSet();
+
+	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(OldSelectedNodes); SelectedIter; ++SelectedIter)
+	{
+		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
+		if (Node && Node->CanDuplicateNode())
+		{
+			CurrentGraphEditor->SetNodeSelection(Node, true);
+		}
+	}
+
+	// Delete the duplicatable nodes
+	DeleteSelectedNodes();
+
+	CurrentGraphEditor->ClearSelectionSet();
+
+	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(OldSelectedNodes); SelectedIter; ++SelectedIter)
+	{
+		if (UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter))
+		{
+			CurrentGraphEditor->SetNodeSelection(Node, true);
+		}
+	}
+}
+
+
+
+bool FJointEditorToolkit::CanDeleteNodes() const
+{
+	// If any of the nodes can be deleted then we should allow deleting
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
+	{
+		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
+		if (Node && Node->CanUserDeleteNode())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+void FJointEditorToolkit::OnCreateComment()
+{
+	TSharedPtr<SJointGraphEditor> GraphEditor = GetFocusedGraphEditor();
+	if (GraphEditor.IsValid())
+	{
+		if (UEdGraph* Graph = GraphEditor->GetCurrentGraph())
+		{
+			if (const UEdGraphSchema* Schema = Graph->GetSchema())
+			{
+				FJointSchemaAction_AddComment CommentAction;
+				CommentAction.PerformAction(Graph, nullptr, GraphEditor->GetPasteLocation());
+			}
+		}
+	}
+}
+
+void FJointEditorToolkit::OnCreateFoundation()
+{
+	TSharedPtr<SJointGraphEditor> GraphEditor = GetFocusedGraphEditor();
+
+	if (GraphEditor.IsValid())
+	{
+		if (UEdGraph* Graph = GraphEditor->GetCurrentGraph())
+		{
+			if (const UEdGraphSchema* Schema = Graph->GetSchema())
+			{
+				FJointSchemaAction_NewNode Action;
+
+				Action.PerformAction_FromShortcut(Graph, UJointEdGraphNode_Foundation::StaticClass(),
+				                             UJN_Foundation::StaticClass(), GraphEditor->GetPasteLocation());
+			}
+		}
+	}
+}
+
+bool FJointEditorToolkit::CanJumpToSelection()
+{
+	const FGraphPanelSelectionSet& Selection = GetSelectedNodes();
+
+	return !Selection.IsEmpty();
+}
+
+void FJointEditorToolkit::OnJumpToSelection()
+{
+	const FGraphPanelSelectionSet& Selection = GetSelectedNodes();
+
+	for (UObject* Object : Selection)
+	{
+		if (!Object) continue;
+
+		JumpToHyperlink(Object, false);
+
+		return;
+	}
+}
+
+void FJointEditorToolkit::OnCollapseSelectionToSubGraph()
+{
+	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
+	if (!FocusedGraphEd.IsValid())
+	{
+		return;
+	}
+
+	const FGraphPanelSelectionSet SelectedNodes = FocusedGraphEd->GetSelectedNodes();
+
+	TSet<UEdGraphNode*> CollapsableNodes;
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (!(*NodeIt)) continue;
+
+		if (UJointEdGraphNode* JointEdGraphNode = Cast<UJointEdGraphNode>(*NodeIt))
+		{
+			if (!JointEdGraphNode->IsSubNode())
+			{
+				if (JointEdGraphNode->CanUserDeleteNode())
+				{
+					CollapsableNodes.Add(JointEdGraphNode);
+				}
+			}
+		}
+		else if (UEdGraphNode* EdGraphNode = Cast<UEdGraphNode>(*NodeIt))
+		{
+			if (EdGraphNode->CanUserDeleteNode())
+			{
+				CollapsableNodes.Add(EdGraphNode);
+			}
+		}
+	}
+
+	if (CollapsableNodes.Num() > 0)
+	{
+		const FScopedTransaction Transaction(LOCTEXT("CollapseNodes", "Collapse Nodes to Sub-Graph"));
+		CollapseNodes(CollapsableNodes);
+	}
+}
+
+bool FJointEditorToolkit::CanCollapseSelectionToSubGraph() const
+{
+	TSharedPtr<SJointGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
+	if (!FocusedGraphEd.IsValid())
+	{
+		return false;
+	}
+
+	const FGraphPanelSelectionSet SelectedNodes = FocusedGraphEd->GetSelectedNodes();
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (!(*NodeIt)) continue;
+
+		if (UJointEdGraphNode* JointEdGraphNode = Cast<UJointEdGraphNode>(*NodeIt))
+		{
+			if (!JointEdGraphNode->IsSubNode())
+			{
+				if (JointEdGraphNode->CanUserDeleteNode())
+				{
+					return true;
+				}
+			}
+		}
+		else if (UEdGraphNode* EdGraphNode = Cast<UEdGraphNode>(*NodeIt))
+		{
+			if (EdGraphNode->CanUserDeleteNode())
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+
+void FJointEditorToolkit::CollapseNodes(TSet<class UEdGraphNode*>& InCollapsableNodes)
+{
+	const UEdGraphSchema_K2* K2Schema = GetDefault<UEdGraphSchema_K2>();
+
+	TSharedPtr<SGraphEditor> FocusedGraphEd = GetFocusedGraphEditor();
+	if (!FocusedGraphEd.IsValid())
+	{
+		return;
+	}
+
+	UEdGraph* SourceGraph = FocusedGraphEd->GetCurrentGraph();
+	SourceGraph->Modify();
+
+	//UK2Node_Composite
+	// Create the composite node that will serve as the gateway into the subgraph
+	UJointEdGraphNode_Composite* GatewayNode = nullptr;
+	{
+		GatewayNode = FJointSchemaAction_NewNode::SpawnNode<UJointEdGraphNode_Composite>(SourceGraph, nullptr, FVector2D(0, 0), true);
+		check(GatewayNode);
+	}
+
+	FName GraphName;
+	GraphName = MakeUniqueObjectName(GetJointManager(), UJointEdGraph::StaticClass(), TEXT("CollapseGraph"));
+
+	// Rename the graph to the correct name
+	UEdGraph* DestinationGraph = GatewayNode->BoundGraph;
+
+	TSharedPtr<INameValidatorInterface> NameValidator = MakeShareable(new FJointEditorNameValidator(GetJointManager(), GraphName));
+
+	FString NewName = GraphName.ToString();
+	NameValidator->FindValidString(NewName);
+	DestinationGraph->Rename(*DestinationGraph->GetName(), DestinationGraph->GetOuter(), REN_DontCreateRedirectors);
+
+	CollapseNodesIntoGraph(GatewayNode, GatewayNode->GetInputSink(), GatewayNode->GetOutputSource(), SourceGraph, DestinationGraph, InCollapsableNodes, false, true);
+
+	RefreshJointEditorOutliner();
+	CleanInvalidDocumentTabs();
+}
+
+void FJointEditorToolkit::CollapseNodesIntoGraph(UJointEdGraphNode_Composite* InGatewayNode, UJointEdGraphNode_Tunnel* InEntryNode, UJointEdGraphNode_Tunnel* InResultNode, UEdGraph* InSourceGraph, UEdGraph* InDestinationGraph,
+                                                 TSet<UEdGraphNode*>& InCollapsableNodes, bool bCanDiscardEmptyReturnNode, bool bCanHaveWeakObjPtrParam)
+{
+	// Keep track of the statistics of the node positions so the new nodes can be located reasonably well
+	int32 SumNodeX = 0;
+	int32 SumNodeY = 0;
+	int32 MinNodeX = std::numeric_limits<int32>::max();
+	int32 MinNodeY = std::numeric_limits<int32>::max();
+	int32 MaxNodeX = std::numeric_limits<int32>::min();
+	int32 MaxNodeY = std::numeric_limits<int32>::min();
+
+	UEdGraphNode* InterfaceTemplateNode = nullptr;
+
+	TArray<UEdGraphPin*> GatewayPins;
+
+	// Move the nodes over, which may create cross-graph references that we need fix up ASAP
+	for (TSet<UEdGraphNode*>::TConstIterator NodeIt(InCollapsableNodes); NodeIt; ++NodeIt)
+	{
+		UEdGraphNode* Node = *NodeIt;
+		Node->Modify();
+
+		// Update stats
+		SumNodeX += Node->NodePosX;
+		SumNodeY += Node->NodePosY;
+		MinNodeX = FMath::Min<int32>(MinNodeX, Node->NodePosX);
+		MinNodeY = FMath::Min<int32>(MinNodeY, Node->NodePosY);
+		MaxNodeX = FMath::Max<int32>(MaxNodeX, Node->NodePosX);
+		MaxNodeY = FMath::Max<int32>(MaxNodeY, Node->NodePosY);
+
+		// Move the node over
+		InSourceGraph->Nodes.Remove(Node);
+		InDestinationGraph->Nodes.Add(Node);
+		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ InDestinationGraph);
+
+		// Move the sub-graph to the new sub graph - 
+		if (UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
+		{
+			InSourceGraph->SubGraphs.Remove(Composite->BoundGraph);
+			InDestinationGraph->SubGraphs.Add(Composite->BoundGraph);
+		}
+
+		// Find cross-graph links
+		for (int32 PinIndex = 0; PinIndex < Node->Pins.Num(); ++PinIndex)
+		{
+			UEdGraphPin* LocalPin = Node->Pins[PinIndex];
+
+			bool bIsGatewayPin = false;
+			if (LocalPin->LinkedTo.Num())
+			{
+				for (int32 LinkIndex = 0; LinkIndex < LocalPin->LinkedTo.Num(); ++LinkIndex)
+				{
+					UEdGraphPin* TrialPin = LocalPin->LinkedTo[LinkIndex];
+					if (!InCollapsableNodes.Contains(TrialPin->GetOwningNode()))
+					{
+						bIsGatewayPin = true;
+						break;
+					}
+				}
+			}
+
+			// Thunk cross-graph links thru the gateway
+			if (bIsGatewayPin)
+			{
+				// Local port is either the entry or the result node in the collapsed graph
+				// Remote port is the node placed in the source graph
+				UJointEdGraphNode_Tunnel* LocalPort = (LocalPin->Direction == EGPD_Input) ? InEntryNode : InResultNode;
+
+				// Add a new pin to the entry/exit node and to the composite node
+				UEdGraphPin* LocalPortPin = nullptr;
+				UEdGraphPin* RemotePortPin = nullptr;
+
+
+				// If there is a custom event being used as a template, we must check to see if any connected pins have already been built
+				if (InterfaceTemplateNode && LocalPin->Direction == EGPD_Input)
+				{
+					// Find the pin on the entry node, we will use that pin's name to find the pin on the remote port
+					UEdGraphPin* EntryNodePin = InEntryNode->FindPin(LocalPin->LinkedTo[0]->PinName);
+					if (EntryNodePin)
+					{
+						LocalPin->BreakAllPinLinks();
+						FJointEdUtils::TryMakeConnectionBetweenPins(LocalPin,EntryNodePin);
+						continue;
+					}
+				}
+
+				if (LocalPin->LinkedTo[0]->GetOwningNode() != InEntryNode)
+				{
+					const FName UniquePortName = InGatewayNode->CreateUniquePinName(LocalPin->PinName);
+
+					if (!RemotePortPin && !LocalPortPin)
+					{
+						FEdGraphPinType PinType = LocalPin->PinType;
+						if (PinType.bIsWeakPointer && !PinType.IsContainer() && !bCanHaveWeakObjPtrParam)
+						{
+							PinType.bIsWeakPointer = false;
+						}
+						//add pin to the entry/result node
+
+						FJointEdPinDataSetting Setting;
+						Setting.bAlwaysDisplayNameText = true;
+						
+						FJointEdPinData& PinData1 = InGatewayNode->PinData.Add_GetRef(FJointEdPinData(UniquePortName, LocalPin->Direction, Setting));
+
+						InGatewayNode->LockSynchronizing();
+						InGatewayNode->UpdatePins();
+						RemotePortPin = InGatewayNode->GetPinForPinDataFromThis(PinData1);
+
+						FJointEdPinData& PinData2 = LocalPort->PinData.Add_GetRef(FJointEdPinData(UniquePortName, (LocalPin->Direction == EGPD_Input) ? EGPD_Output : EGPD_Input, Setting));
+						LocalPort->LockSynchronizing();
+						LocalPort->UpdatePins();
+						LocalPortPin = LocalPort->GetPinForPinDataFromThis(PinData2);
+
+						InGatewayNode->UnlockSynchronizing();
+						LocalPort->UnlockSynchronizing();
+					}
+				}
+
+
+				check(LocalPortPin);
+				check(RemotePortPin);
+
+				LocalPin->Modify();
+
+				// Route the links
+				for (int32 LinkIndex = 0; LinkIndex < LocalPin->LinkedTo.Num(); ++LinkIndex)
+				{
+					UEdGraphPin* RemotePin = LocalPin->LinkedTo[LinkIndex];
+					RemotePin->Modify();
+
+					if (!InCollapsableNodes.Contains(RemotePin->GetOwningNode()) && RemotePin->GetOwningNode() != InEntryNode && RemotePin->GetOwningNode() != InResultNode)
+					{
+						// Fix up the remote pin
+						RemotePin->LinkedTo.Remove(LocalPin);
+						// When given a composite node, we could possibly be given a pin with a different outer
+						// which is bad! Then there would be a pin connecting to itself and cause an ensure
+						if (RemotePin->GetOwningNode()->GetOuter() == RemotePortPin->GetOwningNode()->GetOuter())
+						{
+							FJointEdUtils::TryMakeConnectionBetweenPins(RemotePin,RemotePortPin);
+						}
+
+						// The Entry Node only supports a single link, so if we made links above
+						// we need to break them now, to make room for the new link.
+						if (LocalPort == InEntryNode)
+						{
+							LocalPortPin->BreakAllPinLinks();
+						}
+
+						// Fix up the local pin
+						LocalPin->LinkedTo.Remove(RemotePin);
+						--LinkIndex;
+						FJointEdUtils::TryMakeConnectionBetweenPins(LocalPin,LocalPortPin);
+					}
+				}
+			}
+		}
+	}
+
+	// Reposition the newly created nodes
+	const int32 NumNodes = InCollapsableNodes.Num();
+
+
+	/*
+	// Using the result pin, we will ensure that there is a path through the function by checking if it is connected. If it is not, link it to the entry node.
+	if (UEdGraphPin* ResultExecFunc = JointGraphSchema->FindExecutionPin(*InResultNode, EGPD_Input))
+	{
+		if (ResultExecFunc->LinkedTo.Num() == 0)
+		{
+			JointGraphSchema->FindExecutionPin(*InEntryNode, EGPD_Output)->MakeLinkTo(JointGraphSchema->FindExecutionPin(*InResultNode, EGPD_Input));
+		}
+	}
+	*/
+
+	const int32 CenterX = (NumNodes == 0) ? SumNodeX : SumNodeX / NumNodes;
+	const int32 CenterY = (NumNodes == 0) ? SumNodeY : SumNodeY / NumNodes;
+	const int32 MinusOffsetX = 560; //@TODO: Random magic numbers
+	const int32 PlusOffsetX = 600;
+
+	// Put the gateway node at the center of the empty space in the old graph
+	InGatewayNode->NodePosX = CenterX;
+	InGatewayNode->NodePosY = CenterY;
+	InGatewayNode->SnapToGrid(SNodePanel::GetSnapGridSize());
+
+	// Put the entry and exit nodes on either side of the nodes in the new graph
+	//@TODO: Should we recenter the whole ensemble?
+	if (NumNodes != 0)
+	{
+		InEntryNode->NodePosX = MinNodeX - MinusOffsetX;
+		InEntryNode->NodePosY = CenterY;
+		InEntryNode->SnapToGrid(SNodePanel::GetSnapGridSize());
+
+		InResultNode->NodePosX = MaxNodeX + PlusOffsetX;
+		InResultNode->NodePosY = CenterY;
+		InResultNode->SnapToGrid(SNodePanel::GetSnapGridSize());
+	}
+
+	//Update the collapsed node's outers to the new graph
+	for (UEdGraphNode* InCollapsableNode : InCollapsableNodes)
+	{
+		if (!InCollapsableNode) continue;
+
+		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(InCollapsableNode))
+		{
+			JointNode->SetOuterAs(InDestinationGraph);
+
+			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
+			{
+				if (!Subnode) continue;
+
+				Subnode->SetOuterAs(InDestinationGraph);
+			}
+
+			JointNode->Update();
+		}
+		else
+		{
+			InCollapsableNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ InDestinationGraph);
+		}
+	}
+}
+
+void FJointEditorToolkit::MoveNodesToGraph(TArray<TObjectPtr<class UEdGraphNode>>& SourceNodes, UEdGraph* DestinationGraph, TSet<UEdGraphNode*>& OutExpandedNodes, UEdGraphNode** OutEntry, UEdGraphNode** OutResult, const bool bIsCollapsedGraph)
+{
+	// Move the nodes over, remembering any that are boundary nodes
+	while (SourceNodes.Num())
+	{
+		UEdGraphNode* Node = SourceNodes.Pop();
+		UEdGraph* OriginalGraph = Node->GetGraph();
+
+		Node->Modify();
+		OriginalGraph->Modify();
+		Node->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph, REN_DontCreateRedirectors);
+
+		// Remove the node from the original graph
+		OriginalGraph->RemoveNode(Node, false);
+		
+		// We do not check CanPasteHere when determining CanCollapseNodes, unlike CanCollapseSelectionToFunction/Macro,
+		// so when expanding a collapsed graph we don't want to check the CanPasteHere function:
+		if (!bIsCollapsedGraph && !Node->CanPasteHere(DestinationGraph))
+		{
+			Node->BreakAllNodeLinks();
+			continue;
+		}
+
+		// Successfully added the node to the graph, we may need to remove flags
+		if (Node->HasAllFlags(RF_Transient) && !DestinationGraph->HasAllFlags(RF_Transient))
+		{
+			Node->SetFlags(RF_Transactional);
+			Node->ClearFlags(RF_Transient);
+			TArray<UObject*> Subobjects;
+			GetObjectsWithOuter(Node, Subobjects);
+			for (UObject* Subobject : Subobjects)
+			{
+				Subobject->ClearFlags(RF_Transient);
+				Subobject->SetFlags(RF_Transactional);
+			}
+		}
+		
+		DestinationGraph->AddNode(Node, /* bFromUI */ false, /* bSelectNewNode */ false);
+		
+		if(UJointEdGraphNode_Composite* Composite = Cast<UJointEdGraphNode_Composite>(Node))
+		{
+			OriginalGraph->SubGraphs.Remove(Composite->BoundGraph);
+			DestinationGraph->SubGraphs.Add(Composite->BoundGraph);
+		}
+
+		// Want to test exactly against tunnel, we shouldn't collapse embedded collapsed
+		// nodes or macros, only the tunnels in/out of the collapsed graph
+		if (Node->GetClass() == UJointEdGraphNode_Tunnel::StaticClass())
+		{
+			UJointEdGraphNode_Tunnel* TunnelNode = Cast<UJointEdGraphNode_Tunnel>(Node);
+			if (TunnelNode->bCanHaveOutputs)
+			{
+				*OutEntry = Node;
+			}
+			else if (TunnelNode->bCanHaveInputs)
+			{
+				*OutResult = Node;
+			}
+		}
+		else
+		{
+			OutExpandedNodes.Add(Node);
+		}
+	}
+}
+
+
+void FJointEditorToolkit::OnExpandNodes()
+{
+	const FScopedTransaction Transaction( FGraphEditorCommands::Get().ExpandNodes->GetLabel() );
+	GetJointManager()->Modify();
+
+	TSet<UEdGraphNode*> ExpandedNodes;
+	TSharedPtr<SJointGraphEditor> FocusedGraphEd = FocusedGraphEditorPtr.Pin();
+
+	// Expand selected nodes into the focused graph context.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if(FocusedGraphEd)
+	{
+		FocusedGraphEd->ClearSelectionSet();
+	}
+
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		ExpandedNodes.Empty();
+		bool bExpandedNodesNeedUniqueGuid = true;
+
+		DocumentManager->CleanInvalidTabs();
+
+		if (UJointEdGraphNode_Composite* SelectedCompositeNode = Cast<UJointEdGraphNode_Composite>(*NodeIt))
+		{
+			// No need to assign unique GUIDs since the source graph will be removed.
+			bExpandedNodesNeedUniqueGuid = false;
+
+			// Expand the composite node back into the world
+			UEdGraph* SourceGraph = SelectedCompositeNode->BoundGraph;
+			ExpandNode(SelectedCompositeNode, SourceGraph, /*inout*/ ExpandedNodes);
+
+			FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
+		}
+		
+		UEdGraphNode* SourceNode = CastChecked<UEdGraphNode>(*NodeIt);
+		check(SourceNode);
+		MoveNodesToAveragePos(ExpandedNodes, FVector2D(SourceNode->NodePosX, SourceNode->NodePosY), bExpandedNodesNeedUniqueGuid);
+	}
+
+	//update editor UI
+	RequestManagerViewerRefresh();
+	RefreshJointEditorOutliner();
+	CleanInvalidDocumentTabs();
+}
+
+bool FJointEditorToolkit::CanExpandNodes() const
+{
+	// Does the selection set contain any composite nodes that are legal to expand?
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
+	{
+		if (Cast<UJointEdGraphNode_Composite>(*NodeIt))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::ExpandNode(UEdGraphNode* InNodeToExpand, UEdGraph* InSourceGraph, TSet<UEdGraphNode*>& OutExpandedNodes)
+{
+	UEdGraph* DestinationGraph = InNodeToExpand->GetGraph(); // Graph that the composite node is in (parent graph)
+	UEdGraph* SourceGraph = InSourceGraph; // Bound graph of the composite node
+	check(SourceGraph);
+
+	// Mark all edited objects so they will appear in the transaction record if needed.
+	DestinationGraph->Modify();
+	SourceGraph->Modify();
+	InNodeToExpand->Modify();
+
+	UEdGraphNode* Entry = nullptr;
+	UEdGraphNode* Result = nullptr;
+
+	const bool bIsCollapsedGraph = InNodeToExpand->IsA<UJointEdGraphNode_Composite>();
+
+	// Move all of the nodes from the source graph to the destination graph
+
+	MoveNodesToGraph(SourceGraph->Nodes, DestinationGraph, OutExpandedNodes, &Entry, &Result, bIsCollapsedGraph);
+	
+	// Handle the destruction of the component nodes
+	const UJointEdGraphSchema* GraphSchema = GetDefault<UJointEdGraphSchema>();
+	GraphSchema->PruneGatewayNode(Cast<UJointEdGraphNode_Composite>(InNodeToExpand), Entry, Result, nullptr, &OutExpandedNodes);
+
+	if(Entry) Entry->DestroyNode();
+	if(Result) Result->DestroyNode();
+
+	// Make sure any subgraphs get propagated appropriately
+	if (SourceGraph->SubGraphs.Num() > 0)
+	{
+		DestinationGraph->SubGraphs.Append(SourceGraph->SubGraphs);
+		SourceGraph->SubGraphs.Empty();
+	}
+
+	// Fix up the outer for all of the nodes that were moved
+	for (UEdGraphNode* OutExpandedNode : OutExpandedNodes)
+	{
+		if (!OutExpandedNode) continue;
+
+		if (UJointEdGraphNode* JointNode = Cast<UJointEdGraphNode>(OutExpandedNode))
+		{
+			JointNode->SetOuterAs(DestinationGraph);
+
+			for (UJointEdGraphNode* Subnode : JointNode->GetAllSubNodesInHierarchy())
+			{
+				if (!Subnode) continue;
+
+				Subnode->SetOuterAs(DestinationGraph);
+			}
+			
+			JointNode->Update();
+		}
+		else
+		{
+			OutExpandedNode->Rename(/*NewName=*/ nullptr, /*NewOuter=*/ DestinationGraph);
+		}
+	}
+	
+	// Remove the gateway node and source graph
+	InNodeToExpand->DestroyNode();
+	
+}
+
+void FJointEditorToolkit::ToggleShowNormalConnection()
+{
+	UJointEditorSettings::Get()->bDrawNormalConnection = !UJointEditorSettings::Get()->bDrawNormalConnection;
+}
+
+bool FJointEditorToolkit::IsShowNormalConnectionChecked() const
+{
+	return UJointEditorSettings::Get()->bDrawNormalConnection;
+}
+
+void FJointEditorToolkit::ToggleShowRecursiveConnection()
+{
+	UJointEditorSettings::Get()->bDrawRecursiveConnection = !UJointEditorSettings::Get()->
+		bDrawRecursiveConnection;
+}
+
+bool FJointEditorToolkit::IsShowRecursiveConnectionChecked() const
+{
+	return UJointEditorSettings::Get()->bDrawRecursiveConnection;
+}
+
+void FJointEditorToolkit::StartQuickPicking()
+{
+	TSharedPtr<FJointEditorNodePickingManager> PickingManager = GetOrCreateNodePickingManager();
+	if (!PickingManager.IsValid())
+	{
+		return;
+	}
+
+	if (PickingManager->IsInNodePicking())
+	{
+		const TWeakPtr<FJointEditorNodePickingManagerRequest> ActiveRequest = PickingManager->GetActiveRequest();
+		const TSharedPtr<FJointEditorNodePickingManagerRequest> PinnedRequest = ActiveRequest.Pin();
+
+		if (!PinnedRequest.IsValid() ||
+			PinnedRequest->NodePickingType != EJointNodePickingType::QuickPickSelection)
+		{
+			PickingManager->EndNodePicking();
+		}
+		else
+		{
+			PickingManager->EndNodePicking();
+			return;
+		}
+	}
+
+	PickingManager->StartQuickPicking();
+}
 
 void FJointEditorToolkit::OnEnableBreakpoint()
 {
@@ -3309,7 +2589,6 @@ void FJointEditorToolkit::OnEnableBreakpoint()
 
 	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
-
 
 bool FJointEditorToolkit::CanEnableBreakpoint() const
 {
@@ -3394,7 +2673,6 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 	
 }
 
-
 bool FJointEditorToolkit::CanToggleBreakpoint() const
 {
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
@@ -3436,7 +2714,6 @@ void FJointEditorToolkit::OnDisableBreakpoint()
 
 	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
-
 
 bool FJointEditorToolkit::CanDisableBreakpoint() const
 {
@@ -3620,6 +2897,7 @@ void FJointEditorToolkit::OnRemoveAllBreakpoints()
 	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
 }
 
+
 bool FJointEditorToolkit::CanRemoveAllBreakpoints() const
 {
 	TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
@@ -3633,6 +2911,7 @@ bool FJointEditorToolkit::CanRemoveAllBreakpoints() const
 
 	return false;
 }
+
 
 void FJointEditorToolkit::OnEnableAllBreakpoints()
 {
@@ -3830,6 +3109,7 @@ void FJointEditorToolkit::OnDissolveSubNodes()
 	
 }
 
+
 bool FJointEditorToolkit::CheckCanDissolveSubNodes() const
 {
 	// if the selected nodes contain at least one fragment node that is not yet dissolved, then we can dissolve sub nodes.
@@ -3862,6 +3142,7 @@ bool FJointEditorToolkit::CheckCanDissolveSubNodes() const
 	
 	return false;
 }
+
 
 void FJointEditorToolkit::OnDissolveExactSubNode()
 {
@@ -3989,6 +3270,7 @@ bool FJointEditorToolkit::CheckCanDissolveExactSubNode() const
 	
 	return false;
 }
+
 
 void FJointEditorToolkit::OnDissolveOnlySubNodes()
 {
@@ -4120,6 +3402,7 @@ bool FJointEditorToolkit::CheckCanDissolveOnlySubNodes() const
 	
 	return false;
 }
+
 
 void FJointEditorToolkit::OnSolidifySubNodes()
 {
@@ -4273,17 +3556,339 @@ void FJointEditorToolkit::OnToggleVisibilityChangeModeForSimpleDisplayProperty()
 
 	if (bIsOnVisibilityChangeModeForSimpleDisplayProperty)
 	{
-		PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		JointEditorToolkitToastMessages::PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage(SharedThis(this));
+		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted();
 	}
 	else
 	{
-		ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
+		JointEditorToolkitToastMessages::ClearToastMessage(SharedThis(this), EJointEditorToastMessage::VisibilityChangeModeForSimpleDisplayProperty);
+		NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded();
 	}
 }
 
 bool FJointEditorToolkit::GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const
 {
 	return bIsOnVisibilityChangeModeForSimpleDisplayProperty;
+}
+
+void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted()
+{
+	if (UJointEdGraph* Graph = GetFocusedJointGraph())
+	{
+		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
+		{
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->OnVisibilityChangeModeForSimpleDisplayPropertyEnter();	
+			}
+		}
+	}
+}
+
+void FJointEditorToolkit::NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded()
+{
+	if (UJointEdGraph* Graph = GetFocusedJointGraph())
+	{
+		for (TWeakObjectPtr<UJointEdGraphNode>& CachedJointGraphNode : Graph->GetCachedJointGraphNodes())
+		{
+			FOREACH_GRAPHNODESLATE_BASE_WITH(CachedJointGraphNode.Get(), NodeSlate)
+			{
+				NodeSlate->OnVisibilityChangeModeForSimpleDisplayPropertyExit();	
+			}
+		}
+	}
+}
+
+void FJointEditorToolkit::OnUnlinkScriptFromSelectedNodes()
+{
+	// Break script link of all selected nodes.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	FScopedTransaction Transaction(
+		NSLOCTEXT("JointEdTransaction", "TransactionTitle_UnlinkScriptFromSelectedNodes", "Unlink Script From Selected Nodes")
+	);
+	
+	UJointScriptSettings::Get()->Modify();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+		
+		SelectedNode->Modify();
+
+		UJointEditorFunctionLibrary::UnlinkNodeFromScript(SelectedNode);
+	}
+	
+	UJointScriptSettings::Save();
+}
+
+bool FJointEditorToolkit::CanUnlinkScriptFromSelectedNodes()
+{
+	// Check if at least one selected node has script link to break.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (SelectedNode->IsLinkedWithExternalSource()) return true;
+	}
+	
+	return false;
+}
+
+void FJointEditorToolkit::OnCreateNodePresetFromSelectedBaseNode()
+{
+	// Create a node preset from the first selected node that can be used as a preset base.
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		{
+			// We currently do not support creating node preset from fragment nodes, so skip it.
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_CannotCreateNodePresetFromFragmentNode", "Cannot create node preset from fragment node."),
+				LOCTEXT("Notification_CannotCreateNodePresetFromFragmentNode_Desc", "Please select a base node to create a node preset."),
+				EJointMDAdmonitionType::Error
+			);
+			
+			return;
+		}
+		
+		UJointNodePreset* NodePreset = FJointEdUtils::CreateNewAssetForClass<UJointNodePreset>(
+			UJointNodePreset::StaticClass(),
+			FPaths::GetPath(GetJointManager()->GetPathName()),
+			false
+		);
+		
+		if (NodePreset)
+		{
+			// TODO: initialize the node preset with the selected node's data.
+			
+			UJointManagerFactory::CreateDefaultRootGraphForJointManager(NodePreset->InternalJointManager);
+			
+			// copy - paste the selected node to the node preset's graph to create the preset data.
+			SelectedNode->PrepareForCopying();
+			UJointEdGraphNode* PastedNode = DuplicateObject<UJointEdGraphNode>(SelectedNode, NodePreset->InternalJointManager->JointGraph);
+			SelectedNode->PostCopyNode();
+			
+			PastedNode->BreakAllNodeLinks();
+			NodePreset->InternalJointManager->JointGraph->AddNode(PastedNode);
+			PastedNode->PostPasteNode();
+			PastedNode->Update();
+			
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_NodePresetCreated", "Node preset created"),
+				FText::Format(LOCTEXT("Notification_NodePresetCreated_Desc", "A node preset has been created from the selected node on '{0}'"), FText::FromString(NodePreset->GetPathName())),
+				EJointMDAdmonitionType::Mention
+			);
+		}else
+		{
+			FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_FailedToCreateNodePreset", "Failed to create node preset"),
+				LOCTEXT("Notification_FailedToCreateNodePreset_Desc", "An error occurred while creating node preset. Please check the log for more details."),
+				EJointMDAdmonitionType::Error
+			);
+		}
+		return;
+	}
+}
+
+bool FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode() const
+{
+	// check if we selected one base node that can be used to create a node preset.
+	
+	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	for (UObject* Obj : SelectedNodes)
+	{
+		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
+		if (!SelectedNode) continue;
+
+		if (UJointEdGraphNode_Foundation* Foundation = Cast<UJointEdGraphNode_Foundation>(SelectedNode))
+		{
+			return true;
+		}
+		
+		return false;
+	}
+
+	return false;
+}
+
+void FJointEditorToolkit::OpenSearchTab() const
+{
+	if (!ManagerViewerPtr.IsValid()) return;
+
+	if (TSharedPtr<SDockTab> FoundTab = TabManager->FindExistingLiveTab(EJointEditorTapIDs::SearchReplaceID))
+	{
+		if (ManagerViewerPtr->GetMode() != EJointManagerViewerMode::Search)
+		{
+			//If the tab is already opened and not showing the search mode, change it to search mode.
+			ManagerViewerPtr->SetMode(EJointManagerViewerMode::Search);
+		}
+		else
+		{
+			//If the tab is already opened and showing the search mode, close it.
+			FoundTab->RequestCloseTab();
+		}
+	}
+	else
+	{
+		//If the tab is not live, then open it.
+		TSharedPtr<SDockTab> Tab = TabManager->TryInvokeTab(EJointEditorTapIDs::SearchReplaceID);
+
+		ManagerViewerPtr->SetMode(EJointManagerViewerMode::Search);
+	}
+}
+
+void FJointEditorToolkit::OpenReplaceTab() const
+{
+	if (!ManagerViewerPtr.IsValid()) return;
+
+	if (TSharedPtr<SDockTab> FoundTab = TabManager->FindExistingLiveTab(EJointEditorTapIDs::SearchReplaceID))
+	{
+		if (ManagerViewerPtr->GetMode() != EJointManagerViewerMode::Replace)
+		{
+			//If the tab is already opened and not showing the search mode, change it to search mode.
+			ManagerViewerPtr->SetMode(EJointManagerViewerMode::Replace);
+		}
+		else
+		{
+			//If the tab is already opened and showing the search mode, close it.
+			FoundTab->RequestCloseTab();
+		}
+	}
+	else
+	{
+		//If the tab is not live, then open it.
+		TSharedPtr<SDockTab> Tab = TabManager->TryInvokeTab(EJointEditorTapIDs::SearchReplaceID);
+
+		ManagerViewerPtr->SetMode(EJointManagerViewerMode::Replace);
+	}
+}
+
+void FJointEditorToolkit::OnContentBrowserAssetDoubleClicked(const FAssetData& AssetData)
+{
+	if (AssetData.GetAsset()) AssetViewUtils::OpenEditorForAsset(AssetData.GetAsset());
+}
+
+void FJointEditorToolkit::StartHighlightingNode(UJointEdGraphNode* NodeToHighlight, bool bBlinkForOnce)
+{
+	if (NodeToHighlight == nullptr) return;
+	
+	FOREACH_GRAPHNODESLATE_BASE_WITH(NodeToHighlight, NodeSlate)
+	{
+		NodeSlate->PlayHighlightAnimation(bBlinkForOnce);
+	}
+}
+
+void FJointEditorToolkit::StopHighlightingNode(UJointEdGraphNode* NodeToHighlight)
+{
+	if (NodeToHighlight == nullptr) return;
+	
+	FOREACH_GRAPHNODESLATE_BASE_WITH(NodeToHighlight, NodeSlate)
+	{
+		NodeSlate->StopHighlightAnimation();
+	}
+}
+
+void FJointEditorToolkit::JumpToNode(UEdGraphNode* Node, const bool bRequestRename)
+{
+	if (!GetFocusedGraphEditor().IsValid()) return;
+
+	const UEdGraphNode* FinalCenterTo = Node;
+
+	//if the node was UJointEdGraphNode type, then make it sure to be centered to its parentmost node.
+	if (Cast<UJointEdGraphNode>(Node))
+	{
+		StartHighlightingNode(Cast<UJointEdGraphNode>(Node), true);
+
+		FinalCenterTo = Cast<UJointEdGraphNode>(Node)->GetParentmostNode();
+	}
+
+	GetFocusedGraphEditor()->JumpToNode(FinalCenterTo, false, false);
+}
+
+void FJointEditorToolkit::JumpToNodeGuid(const FGuid& NodeGuid)
+{
+	if (UJointManager* Manager = GetJointManager())
+	{
+		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(Manager);
+
+		for (UJointEdGraph* Graph : Graphs)
+		{
+			if (!Graph) continue;
+
+			//GetCachedJointNodeInstances
+			for (TWeakObjectPtr<UObject>& CachedJointNodeInstance : Graph->GetCachedJointNodeInstances(true))
+			{
+				if (!CachedJointNodeInstance.IsValid()) continue;
+
+				if (UJointNodeBase* NodeInstance = Cast<UJointNodeBase>(CachedJointNodeInstance.Get()))
+				{
+					if (NodeInstance->GetNodeGuid() == NodeGuid)
+					{
+						OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
+
+						JumpToNode(Graph->FindGraphNodeForNodeInstance(NodeInstance), false);
+						
+						return;
+					}
+				}
+			}
+		}
+	}
+	
+}
+
+void FJointEditorToolkit::JumpToHyperlink(UObject* ObjectReference, bool bRequestRename)
+{
+	if (UEdGraphNode* GraphNodeNode = Cast<UEdGraphNode>(ObjectReference))
+	{
+		OpenDocument(GraphNodeNode->GetGraph(), FDocumentTracker::OpenNewDocument);
+
+		JumpToNode(GraphNodeNode, false);
+	}
+	else if (UJointNodeBase* Node = Cast<UJointNodeBase>(ObjectReference))
+	{
+		TArray<UJointEdGraph*> Graphs = UJointEdGraph::GetAllGraphsFrom(GetJointManager());
+
+		for (UJointEdGraph* Graph : Graphs)
+		{
+			if (!Graph) continue;
+
+			if (!Graph->GetCachedJointNodeInstances().Contains(Node)) continue;
+
+			OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
+
+			JumpToNode(Graph->FindGraphNodeForNodeInstance(Node), false);
+		}
+	}
+	else if (const UBlueprintGeneratedClass* Class = Cast<const UBlueprintGeneratedClass>(ObjectReference))
+	{
+		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Class->ClassGeneratedBy);
+	}
+	else if ((ObjectReference != nullptr) && ObjectReference->IsAsset())
+	{
+		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(const_cast<UObject*>(ObjectReference));
+	}
+	else if (UJointEdGraph* Graph = Cast<UJointEdGraph>(ObjectReference))
+	{
+		// open or create or activate the editor for this graph
+		OpenDocument(Graph, FDocumentTracker::OpenNewDocument);
+	}
+	else
+	{
+		UE_LOG(LogBlueprint, Warning, TEXT("Unknown type of hyperlinked object (%s), cannot focus it"),
+		       *GetNameSafe(ObjectReference));
+	}
 }
 
 void FJointEditorToolkit::SelectProvidedObjectOnGraph(TSet<UObject*> NewSelection)
@@ -4517,6 +4122,27 @@ bool FJointEditorToolkit::IsInEditingMode() const
 	}
 
 	return false;
+}
+
+bool FJointEditorToolkit::IsInNodePresetEditingMode() const
+{
+	return IsInNodePresetEditingModeFlag;
+}
+
+void FJointEditorToolkit::SetIsInNodePresetEditingMode(const bool bInIsInNodePresetEditingMode)
+{
+	IsInNodePresetEditingModeFlag = bInIsInNodePresetEditingMode;
+	
+	if (IsInNodePresetEditingModeFlag)
+	{
+		// If we are exiting node preset editing mode, we need to refresh the graph and fragment palette to make sure everything is up to date.
+		JointEditorToolkitToastMessages::PopulateNodePresetEditingToastMessage(SharedThis(this));
+		// kill NonStandaloneAssetEditingWarning toast message.
+		JointEditorToolkitToastMessages::ClearToastMessage(SharedThis(this), EJointEditorToastMessage::NonStandaloneAssetEditingWarning);
+	}
+	
+	RefreshJointEditorOutliner();
+	RebuildFragmentPalette();
 }
 
 #undef LOCTEXT_NAMESPACE

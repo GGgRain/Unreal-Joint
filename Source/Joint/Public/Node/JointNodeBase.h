@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 
 #include "SharedType/JointSharedTypes.h"
-#include "SharedType/JointBuildPreset.h"
 #include "SharedType/JointEdSharedTypes.h"
 
 #include "BlueprintUtilities.h"
 #include "GameplayTagAssetInterface.h"
 #include "GameplayTagContainer.h"
+#include "SharedType/JointBuildPreset.h"
 
 #include "JointNodeBase.generated.h"
 
@@ -52,12 +52,15 @@ public:
 	
 	UJointNodeBase();
 
-public:
+private:
+	
 	/**
 	 * The Guid of the node. Use this value to find specific node on the graph.
 	 */
-	UPROPERTY(AdvancedDisplay, BlueprintReadOnly, VisibleAnywhere, Category = "Node Base Data")
+	UPROPERTY(AdvancedDisplay, VisibleAnywhere, Category = "Node Base Data")
 	FGuid NodeGuid;
+	
+	friend class UJointEdGraphNode; // to allow the graph node to reset the guid when duplicating nodes.
 
 public:
 	/**
@@ -646,7 +649,22 @@ private:
 	 * When the top-level sub-node is marked as PendingEndPlay, the Joint node enters the EndPlay state.
 	 * In essence, PendingEndPlay is a flag added for internal playback control, unlike EndPlay and BeginPlay, which are for external control.
 	 */
+	
+public:
+ 
+#if WITH_EDITOR
 
+	/**
+	 * This function will be executed when the node is placed on the graph for the first time. You can put some initialization logic for the node here.
+	 * Please notice that this function will not be executed when the node is duplicated. If you want to execute some logic when the node is duplicated, please check out PostEditImport() function.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Node")
+	void PostPlacedNewNode();
+	
+	virtual void PostPlacedNewNode_Implementation();
+	
+#endif
+	
 private:
 	
 	UPROPERTY(transient)
@@ -890,6 +908,7 @@ public:
 	                                                   TArray<UJointFragment*>& Fragments,
 	                                                   TSubclassOf<UJointFragment> SpecificClassToFind);
 
+	
 public:
 
 #if WITH_EDITORONLY_DATA

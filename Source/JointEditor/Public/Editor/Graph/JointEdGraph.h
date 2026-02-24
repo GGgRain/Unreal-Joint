@@ -14,7 +14,7 @@ class UJointEdGraphSchema;
 class FJointEditorToolkit;
 DECLARE_MULTICAST_DELEGATE(FOnGraphRequestUpdate);
 
-UCLASS()
+UCLASS(Blueprintable)
 class JOINTEDITOR_API UJointEdGraph : public UEdGraph
 {
 	GENERATED_BODY()
@@ -82,6 +82,15 @@ public:
 	static TArray<UJointEdGraph*> GetAllGraphsFrom(UEdGraph* InGraph);
 	
 	static TArray<UJointEdGraph*> GetAllGraphsFrom(const UJointManager* InJointManager);
+	
+public:
+
+	/**
+	 * Find the entry node of this graph. This can refer UJointEdGraphNode_Manager or UJointEdGraphNode_Tunnel (output direction) nodes.
+	 * @return Entry node of this graph
+	 */
+	UFUNCTION(BlueprintPure, Category="Joint Editor|Graph")
+	UJointEdGraphNode* FindEntryNode() const;
 
 public:
 
@@ -201,27 +210,15 @@ public:
 	
 	//Grab Unknown class data from the graph
 	void GrabUnknownClassDataFromGraph();
-	
-public:
-
-	void ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel);
 
 private:
 	
 	void RecacheNodes();
 
 public:
-
-	//Update class data of the graph nodes.
-	void CleanUpNodes();
 	
 	//Reconstruct the nodes on this graph.
 	void ReconstructAllNodes(bool bPropagateUnder = false);
-
-public:
-
-	//Patch node pickers with invalid data.
-	void PatchNodePickers();
 
 public:
 
@@ -392,8 +389,9 @@ public:
 
 public:
 	
-#if WITH_EDITOR
-
+#if WITH_EDITOR 
+	// With Editor doesn't do anything, but just for the indication that these properties are only for the devs and internal use.
+	
 	UPROPERTY(Category="Developer", VisibleAnywhere, Transient, DuplicateTransient, SkipSerialization)
 	TArray<TObjectPtr<class UEdGraphNode>> Nodes_Captured;
 	
@@ -404,7 +402,7 @@ public:
 	TArray<FJointNodeDebugData> Schema_Captured;
 
 #endif
-	
+
 public:
 	
 	static UJointEdGraph* CreateNewJointGraph(UObject* InOuter, UJointManager* InJointManager, const FName& GraphName);

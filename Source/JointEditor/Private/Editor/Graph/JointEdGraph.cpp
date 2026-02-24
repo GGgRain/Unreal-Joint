@@ -6,6 +6,8 @@
 #include "JointManager.h"
 #include "GraphEditAction.h"
 #include "IMessageLogListing.h"
+#include "JointEdGraphNode_Manager.h"
+#include "JointEdGraphNode_Tunnel.h"
 #include "JointEdGraphSchema.h"
 #include "JointEditorNameValidator.h"
 #include "JointEditorStyle.h"
@@ -16,6 +18,7 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "GraphNode/SJointGraphNodeBase.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Node/JointEdGraphNode.h"
 #include "Node/JointNodeBase.h"
 
@@ -134,7 +137,7 @@ void UJointEdGraph::ResetGraphNodeSlates()
 {
 	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
 	{
-		if (GraphNode.IsValid()) GraphNode->SetGraphNodeSlate(nullptr);
+		if (GraphNode.IsValid()) GraphNode->ClearGraphNodeSlates();
 	}
 }
 
@@ -159,23 +162,6 @@ void UJointEdGraph::NotifyNodeConnectionChanged()
 	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes())
 	{
 		if (GraphNode.IsValid()) GraphNode->NodeConnectionListChanged();
-	}
-}
-
-void UJointEdGraph::ReallocateGraphPanelToGraphNodeSlates(TSharedPtr<SGraphPanel> GraphPanel)
-{
-	if (!GraphPanel.IsValid()) return;
-
-	for (const TWeakObjectPtr<UJointEdGraphNode> GraphNode : GetCachedJointGraphNodes(true))
-	{
-		if (!GraphNode.IsValid()) continue;
-
-		TWeakPtr<SJointGraphNodeBase> Slate = GraphNode->GetGraphNodeSlate();
-
-		if (Slate.IsValid())
-		{
-			Slate.Pin()->SetOwner(GraphPanel.ToSharedRef());
-		}
 	}
 }
 
@@ -285,6 +271,36 @@ TArray<UJointEdGraph*> UJointEdGraph::GetAllGraphsFrom(const UJointManager* InJo
 	return OutGraphs;
 }
 
+UJointEdGraphNode* UJointEdGraph::FindEntryNode() const
+{
+	const bool& bIsRootGraph = IsRootGraph();
+
+	for (const TObjectPtr<UEdGraphNode> Node : Nodes)
+	{
+		if (Node == nullptr) continue;
+
+		if (bIsRootGraph)
+		{
+			if (UJointEdGraphNode_Manager* CastedNode = Cast<UJointEdGraphNode_Manager>(Node))
+			{
+				return CastedNode;
+			}
+		}
+		else
+		{
+			if (UJointEdGraphNode_Tunnel* CastedNode = Cast<UJointEdGraphNode_Tunnel>(Node))
+			{
+				if (CastedNode->bCanHaveOutputs) // Entry node for sub graph
+				{
+					return CastedNode;
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 void UJointEdGraph::SetToolkit(const TSharedPtr<FJointEditorToolkit>& InToolkit)
 {
 	if (!InToolkit.IsValid()) return;
@@ -321,7 +337,7 @@ void UJointEdGraph::OnSave()
 
 void UJointEdGraph::OnClosed()
 {
-	CleanUpNodes();
+	
 }
 
 void UJointEdGraph::BindEdNodeEvents()
@@ -532,19 +548,6 @@ void UJointEdGraph::GrabUnknownClassDataFromGraph()
 }
 
 
-void UJointEdGraph::CleanUpNodes()
-{
-	TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = GetCachedJointGraphNodes();
-
-	for (TWeakObjectPtr<UJointEdGraphNode> JointEdGraphNode : GraphNodes)
-	{
-		if (JointEdGraphNode.IsValid())
-		{
-			JointEdGraphNode->ClearGraphNodeSlate();
-		}
-	}
-}
-
 void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
 {
 	for (UEdGraphNode* Node : Nodes)
@@ -564,14 +567,6 @@ void UJointEdGraph::ReconstructAllNodes(bool bPropagateUnder)
 	}
 
 	NotifyGraphRequestUpdate();
-}
-
-void UJointEdGraph::PatchNodePickers()
-{
-	for (UEdGraphNode* Node : Nodes)
-	{
-		if (!Node) continue;
-	}
 }
 
 void UJointEdGraph::ExecuteForAllNodesInHierarchy(const TFunction<void(UEdGraphNode*)>& Func)
@@ -862,36 +857,29 @@ void UJointEdGraph::RemoveOrphanedNodes()
 	//Notify and mark the asset dirty.
 	if (count > 0)
 	{
-		FNotificationInfo NotificationInfo(
+		FJointEdUtils::FireNotification(
+			LOCTEXT("DiscardOrphanedObjectsTitle", "Orphaned Objects Removed"),
 			FText::Format(
-				LOCTEXT("DiscardOrphanedObjects", "{0}: Detected and discarded {1} orphaned object(s) from the graph."),
+				LOCTEXT("DiscardOrphanedObjectsText", "{0}: Detected and discarded {1} orphaned object(s) from the graph."),
 				GetJointManager() ? FText::FromString(GetJointManager()->GetName()) : FText::FromString(FString("NULL")),
-				count)
+				count),
+			EJointMDAdmonitionType::Mention,
+			4.5f
 		);
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
-
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
-
+		
 		if (GetJointManager() != nullptr) GetJointManager()->MarkPackageDirty();
 	}
 	else
 	{
-		FNotificationInfo NotificationInfo(
+		FJointEdUtils::FireNotification(
+			LOCTEXT("NoOrphanedObjectsTitle", "No Orphaned Objects Found"),
 			FText::Format(
-				LOCTEXT("NoOrphanedObjects", "{0}: Has zero orphened nodes"),
-				GetJointManager() ? FText::FromString(GetJointManager()->GetName()) : FText::FromString(FString("NULL")))
+				LOCTEXT("NoOrphanedObjectsText", "{0}: Has zero orphened nodes"),
+				GetJointManager() ? FText::FromString(GetJointManager()->GetName()) : FText::FromString(FString("NULL"))
+			),
+			EJointMDAdmonitionType::Mention,
+			4.5f
 		);
-		NotificationInfo.Image = FJointEditorStyle::Get().GetBrush("JointUI.Image.JointManager");
-		NotificationInfo.bFireAndForget = true;
-		NotificationInfo.FadeInDuration = 0.3f;
-		NotificationInfo.FadeOutDuration = 1.3f;
-		NotificationInfo.ExpireDuration = 4.5f;
-
-		FSlateNotificationManager::Get().AddNotification(NotificationInfo);
 	}
 }
 

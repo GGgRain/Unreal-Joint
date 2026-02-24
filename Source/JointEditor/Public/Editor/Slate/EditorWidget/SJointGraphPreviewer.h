@@ -22,9 +22,21 @@ public:
 
 public:
 
+	/** 
+	 * Get the graph panel of this previewer. This is the underlying graph panel that is used to display the graph.
+	 * @return The graph panel of this previewer. nullptr if the graph panel is not valid.
+	 */
 	TWeakPtr<SJointGraphPanel> GetGraphPanel() const;
 
+	/**
+	 * Set the graph to be previewed. This will refresh the previewer and zoom out to fit the whole graph.
+	 * @param InGraphObj Graph to be previewed
+	 */
+	void SetGraph(UEdGraph* InGraphObj);
+
 private:
+	
+	void BuildGraphWidget();
 	
 	/** Helper function used to refresh the graph */
 	EActiveTimerReturnType RefreshGraphTimer(const double InCurrentTime, const float InDeltaTime);

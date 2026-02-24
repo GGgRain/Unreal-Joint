@@ -36,6 +36,9 @@ public:
 	
 	virtual FReply BeginGraphDragAction(TSharedPtr<FEdGraphSchemaAction> InAction, const FPointerEvent& MouseEvent) const override;
 
+	virtual void DroppedAssetsOnGraph(const TArray<struct FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const override;
+
+	
 public:
 
 	//Spawn default graph node for the new graph.
@@ -46,9 +49,6 @@ public:
 
 	//Implement the Graph Context Actions for the Joint graph when you get if you right click on the graph.
 	virtual void GetGraphContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const override;
-
-	//Implement the Graph Context Actions for the Joint graph node when you get if you right click on the graph node.
-	virtual void GetGraphNodeContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const;
 
 	//Implement actions for the add comment action on the provided ContextMenuBuilder.
 	static void ImplementAddCommentAction(FGraphContextMenuBuilder& ContextMenuBuilder);
@@ -62,12 +62,9 @@ public:
 	//Implement actions for the add fragment action on the provided ContextMenuBuilder. Each fragment types will be implemented as each actions.
 	static void ImplementAddFragmentActions(FGraphContextMenuBuilder& ContextMenuBuilder);
 
-public:
+	//Implement actions for the add fragment action on the provided ContextMenuBuilder. Each fragment types will be implemented as each actions.
+	static void ImplementAddNodePresetActions(FGraphContextMenuBuilder& ContextMenuBuilder);
 	
-	static TSharedPtr<FJointSchemaAction_NewNode> CreateNewNodeAction(const FText& Category, const FText& MenuDesc, const FText& Tooltip);
-
-	static TSharedPtr<FJointSchemaAction_NewSubNode> CreateNewSubNodeAction(const FText& Category, const FText& MenuDesc, const FText& Tooltip);
-
 public:
 
 	bool PruneGatewayNode(UJointEdGraphNode_Composite* InNode, UEdGraphNode* InEntryNode, UEdGraphNode* InResultNode, FKismetCompilerContext* CompilerContext, TSet<UEdGraphNode*>* OutExpandedNodes) const;

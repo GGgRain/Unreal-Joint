@@ -21,6 +21,7 @@
 #include "JointEdGraphNodesCustomization.h"
 #include "JointEditorNodePickingManager.h"
 #include "JointEditorSettings.h"
+#include "JointEditorToolkitToastMessages.h"
 
 #include "JointEdUtils.h"
 #include "SGraphPanel.h"
@@ -394,14 +395,12 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 				RemoveFrom->RemoveSubNode(GettingDroppedNode, true);
 
 				//Update Sub node slates list of the RemoveFrom node.
-
-				if (RemoveFrom->GetGraphNodeSlate().IsValid())
-				{
-					const TSharedPtr<SJointGraphNodeBase> RemoveFromCastedWidget = RemoveFrom->GetGraphNodeSlate().Pin();
 				
-					RemoveFromCastedWidget->PopulateSubNodeSlates();
+				FOREACH_GRAPHNODESLATE_BASE_WITH(RemoveFrom, NodeSlate)
+				{
+					NodeSlate->PopulateSubNodeSlates();
 				}
-
+				
 				//Add Sub node to the AddedTo node.
 
 				AddedTo->AddSubNode(GettingDroppedNode);
@@ -421,9 +420,10 @@ FReply SJointGraphNodeInsertPoint::OnDrop(const FGeometry& MyGeometry, const FDr
 
 			for (UJointEdGraphNode* SubSubNode : SubSubNodes)
 			{
-				const TSharedPtr<SJointGraphNodeBase> Widget = SubSubNode->GetGraphNodeSlate().Pin();
-
-				if (Widget) Widget->PlayNodeBackgroundColorResetAnimationIfPossible();
+				FOREACH_GRAPHNODESLATE_BASE_WITH(SubSubNode, NodeSlate)
+				{
+					NodeSlate->PlayNodeBackgroundColorResetAnimationIfPossible();
+				}
 			}
 		}
 
@@ -688,7 +688,10 @@ const FText SJointNodePointerSlate::GetRawName()
 
 void SJointNodePointerSlate::StartHighlightingNodeOnGraph()
 {
-	if (!PointerToTargetStructure || !PointerToTargetStructure->Node) return;
+	// check if this widget itself is valid
+	if (!this->IsParentValid()) return;
+
+	if (!PointerToTargetStructure || !PointerToTargetStructure->Node.IsNull() || !PointerToTargetStructure->Node) return;
 
 	const TSoftObjectPtr<UJointNodeBase> NodeInstance = PointerToTargetStructure->Node;
 
@@ -938,7 +941,7 @@ FReply SJointNodePointerSlate::OnCopyButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
 	{
-		Toolkit->PopulateNodePickerCopyToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerCopyToastMessage(SharedThis(Toolkit));
 	}
 	
 	BlinkSelf();
@@ -988,7 +991,7 @@ FReply SJointNodePointerSlate::OnPasteButtonPressed()
 
 	if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(TargetJointManager))
 	{
-		Toolkit->PopulateNodePickerPastedToastMessage();
+		JointEditorToolkitToastMessages::PopulateNodePickerPastedToastMessage(SharedThis(Toolkit));
 	}
 	
 	if (StructureOwnerEdNode) StructureOwnerEdNode->ReconstructNode();
@@ -1471,9 +1474,7 @@ void SJointNodeDescription::PopulateSlate()
 				[
 					SNew(STextBlock)
 					.Visibility(EVisibility::SelfHitTestInvisible)
-					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h4")
-					.ColorAndOpacity(FLinearColor(1, 1, 1, 0.7))
-					.Justification(ETextJustify::Center)
+					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
 					.Text(FText::FromString(ClassToDescribe->GetDesc()))
 				]
 				+ SHorizontalBox::Slot()
@@ -1540,10 +1541,9 @@ void SJointNodeDescription::PopulateSlate()
 			.VAlign(VAlign_Center)
 			.Padding(FJointEditorStyle::Margin_Normal)
 			[
-				SNew(STextBlock)
-				.Visibility(EVisibility::SelfHitTestInvisible)
-				.Text(ClassToDescribe->GetToolTipText())
-				.AutoWrapText(true)
+				FJointEdUtils::DescribeMarkdownTextAsWidget(
+					ClassToDescribe->GetToolTipText().ToString()
+				)
 			]
 		]
 	];

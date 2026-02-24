@@ -9,4 +9,6 @@
 struct JOINTEDITOR_API FJointGraphNodeSlateFactory : public FGraphPanelNodeFactory
 {
 	virtual TSharedPtr<class SGraphNode> CreateNode(class UEdGraphNode* InNode) const override;
+	
+	static TSharedPtr<class SGraphNode> CreateNodeForGraphPanel(class UEdGraphNode* InNode, const TSharedPtr<SGraphPanel>& InGraphPanel);
 };

@@ -5,6 +5,8 @@
 void SJointNotificationWidget::Construct(const FArguments& InArgs)
 {
 	ChildSlot
+	.VAlign(VAlign_Fill)
+	.HAlign(HAlign_Fill)
 	[
 		InArgs._Content.Widget
 	];

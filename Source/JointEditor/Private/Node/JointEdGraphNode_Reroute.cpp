@@ -10,9 +10,9 @@
 
 UJointEdGraphNode_Reroute::UJointEdGraphNode_Reroute()
 {
-	bIsNodeResizeable = false;
-
 	bCanRenameNode = false;
+	bIsNodeResizable = false;
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
 }
 
 

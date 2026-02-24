@@ -33,7 +33,7 @@ public:
 
 	TSharedRef<SWidget> GenerateVisibilityMenu() const;
 
-	TSharedRef<SWidget> GenerateJointToolsMenu() const;
+	TSharedRef<SWidget> GenerateJointUtilitiesMenu() const;
 
 
 protected:
@@ -43,8 +43,8 @@ protected:
 public:
 	
 	TSharedRef<SWidget> Task_HandleCreateNewJointAsset() const;
-	bool Task_CanCreateNewJointAsset();
 	
+	bool Task_CanCreateNewJointAsset();
 	void Task_HandleOpenSearchReplaceTab();
 	
 };

@@ -22,13 +22,15 @@
 
 UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 {
-	bIsNodeResizeable = false;
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
 
 	bCanRenameNode = false;
 
 	Direction = EEdGraphPinDirection::EGPD_Output;
 
 	ConnectorName = LOCTEXT("ConnectorDefaultName", "New Connector");
+	
+	bIsNodeResizable = false;
 	
 }
 
@@ -145,6 +147,8 @@ void UJointEdGraphNode_Connector::ReconstructNode()
 
 void UJointEdGraphNode_Connector::PostPlacedNewNode()
 {
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
+
 	if (Direction == EEdGraphPinDirection::EGPD_Output) ConnectorGuid = FGuid::NewGuid();
 
 	UpdatePins();
@@ -267,6 +271,7 @@ void UJointEdGraphNode_Connector::PostPasteNode()
 	Super::PostPasteNode();
 }
 
+
 void UJointEdGraphNode_Connector::OnAddInputNodeButtonPressed()
 {
 	const FText Category = LOCTEXT("ConnectorCategory", "Connector");
@@ -346,13 +351,13 @@ TArray<UJointEdGraphNode_Connector*> UJointEdGraphNode_Connector::GetPairInputCo
 	return Connectors;
 }
 
-void UJointEdGraphNode_Connector::ModifyGraphNodeSlate()
+void UJointEdGraphNode_Connector::ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
-	if (!GetGraphNodeSlate().IsValid()) return;
+	if (!InGraphNodeSlate.IsValid()) return;
 
 	CachedPairOutputConnector = GetPairOutputConnector();
 
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
+	const TSharedPtr<SJointGraphNodeBase> NodeSlate = InGraphNodeSlate;
 
 	const TAttribute<FText> NodeText_Attr = TAttribute<FText>::CreateLambda([this]
 		{

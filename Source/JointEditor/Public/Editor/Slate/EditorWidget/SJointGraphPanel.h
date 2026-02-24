@@ -64,6 +64,7 @@ public:
 		SLATE_ARGUMENT( bool, InitialZoomToFit )
 		SLATE_ATTRIBUTE( bool, IsEditable )
 		SLATE_ATTRIBUTE( bool, DisplayAsReadOnly )
+		SLATE_ATTRIBUTE( bool, IsInPreviewMode )
 		/** Show overlay elements for the graph state such as the PIE and read-only borders and text */
 		SLATE_ATTRIBUTE(bool, ShowGraphStateOverlay)
 		SLATE_EVENT( FOnNodeVerifyTextCommit, OnVerifyTextCommit )
@@ -117,5 +118,14 @@ private:
 	void SetNodeFactory(const TSharedRef<class FGraphNodeFactory>& NewNodeFactory);
 	
 	void Joint_OnSplineHoverStateChanged(const FGraphSplineOverlapResult& NewSplineHoverState);
+
+public:
+	
+	bool IsInPreviewMode() const;
+	
+private:
+	
+	TAttribute<bool> IsInPreviewModeAttr;
+	
 };
 

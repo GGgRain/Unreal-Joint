@@ -75,7 +75,7 @@ public:
 
 	virtual void PostPasteNode() override;
 
-	virtual void ModifyGraphNodeSlate() override;
+	virtual void ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate) override;
 
 	virtual void OnCompileNode() override;
 

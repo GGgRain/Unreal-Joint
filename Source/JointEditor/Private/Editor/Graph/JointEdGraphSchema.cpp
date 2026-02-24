@@ -27,6 +27,7 @@
 
 #include "ToolMenu.h"
 #include "ToolMenuSection.h"
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
 
 #include "Framework/Commands/GenericCommands.h"
@@ -207,16 +208,18 @@ FReply UJointEdGraphSchema::BeginGraphDragAction(TSharedPtr<FEdGraphSchemaAction
 	return FReply::Unhandled();
 }
 
+void UJointEdGraphSchema::DroppedAssetsOnGraph(const TArray<struct FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
+{
+	//TODO: Handle Dropped Assets on the Joint Graph Editor.
+	Super::DroppedAssetsOnGraph(Assets, GraphPosition, Graph);
+}
+
 void UJointEdGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const
 {
 	ImplementAddCommentAction(ContextMenuBuilder);
 	ImplementAddConnectorAction(ContextMenuBuilder);
 	ImplementAddNodeActions(ContextMenuBuilder);
-}
-
-void UJointEdGraphSchema::GetGraphNodeContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const
-{
-	ImplementAddFragmentActions(ContextMenuBuilder);
+	ImplementAddNodePresetActions(ContextMenuBuilder);
 }
 
 
@@ -260,11 +263,12 @@ void UJointEdGraphSchema::ImplementAddNodeActions(FGraphContextMenuBuilder& Cont
 		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, EdGraphNodeClass);
 		OpNode->NodeClassData = NodeClass;
 
-		const TSharedPtr<FJointSchemaAction_NewNode> AddNodeAction = CreateNewNodeAction(
-			NodeCategory, NodeTypeName, NodeTooltip);
-		AddNodeAction->NodeTemplate = OpNode;
+		TSharedPtr<FJointSchemaAction_NewNode> NewAction = MakeShared<FJointSchemaAction_NewNode>(
+			NodeCategory, NodeTypeName, NodeTooltip, 0);
+		
+		NewAction->NodeTemplate = OpNode;
 
-		ContextMenuBuilder.AddAction(AddNodeAction);
+		ContextMenuBuilder.AddAction(NewAction);
 	}
 }
 
@@ -304,12 +308,40 @@ void UJointEdGraphSchema::ImplementAddFragmentActions(FGraphContextMenuBuilder& 
 		UJointEdGraphNode* OpNode = NewObject<UJointEdGraphNode>(Graph, TargetFragmentEdClass);
 		OpNode->NodeClassData = NodeClass;
 
-		const TSharedPtr<FJointSchemaAction_NewSubNode> AddSubnodeAction = CreateNewSubNodeAction(
-			NodeCategory, NodeTypeName, NodeTooltip);
-		AddSubnodeAction->NodesToAttachTo = ContextMenuBuilder.SelectedObjects;
-		AddSubnodeAction->NodeTemplate = OpNode;
+		TSharedPtr<FJointSchemaAction_NewSubNode> NewAction = MakeShared<FJointSchemaAction_NewSubNode>(
+			NodeCategory, NodeTypeName, NodeTooltip, 0);
+		NewAction->NodesToAttachTo = ContextMenuBuilder.SelectedObjects;
+		NewAction->NodeTemplate = OpNode;
 
-		ContextMenuBuilder.AddAction(AddSubnodeAction);
+		ContextMenuBuilder.AddAction(NewAction);
+	}
+}
+
+void UJointEdGraphSchema::ImplementAddNodePresetActions(FGraphContextMenuBuilder& ContextMenuBuilder)
+{
+	if (ContextMenuBuilder.CurrentGraph == nullptr) return;
+
+	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
+
+	TArray<FAssetData> NodePresetAssets;
+	FJointEdUtils::GetNodePresetAssets(NodePresetAssets);
+	
+	for (FAssetData& NodePresetAsset : NodePresetAssets)
+	{
+		if (NodePresetAsset.GetClass() != UJointNodePreset::StaticClass()) continue;
+
+		UJointNodePreset* NodePreset = Cast<UJointNodePreset>(NodePresetAsset.GetAsset());
+		if (!NodePreset) continue;
+
+		const TSharedPtr<FJointSchemaAction_NewNodePreset> AddNodePresetAction = MakeShared<FJointSchemaAction_NewNodePreset>(
+			NodePreset->PresetCategory,
+			NodePreset->PresetDisplayName, 
+			NodePreset->PresetDescription, 
+			0
+		);
+		
+		AddNodePresetAction->NodePreset = NodePreset;
+		ContextMenuBuilder.AddAction(AddNodePresetAction);
 	}
 }
 
@@ -337,24 +369,6 @@ void UJointEdGraphSchema::ImplementAddConnectorAction(FGraphContextMenuBuilder& 
 		FJointSchemaAction_AddConnector>(Category, MenuDesc, ToolTip);
 
 	ContextMenuBuilder.AddAction(AddConnectorAction);
-}
-
-TSharedPtr<FJointSchemaAction_NewNode> UJointEdGraphSchema::CreateNewNodeAction(
-	const FText& Category, const FText& MenuDesc, const FText& Tooltip)
-{
-	TSharedPtr<FJointSchemaAction_NewNode> NewAction = MakeShared<FJointSchemaAction_NewNode>(
-		Category, MenuDesc, Tooltip, 0);
-
-	return NewAction;
-}
-
-TSharedPtr<FJointSchemaAction_NewSubNode> UJointEdGraphSchema::CreateNewSubNodeAction(
-	const FText& Category, const FText& MenuDesc, const FText& Tooltip)
-{
-	TSharedPtr<FJointSchemaAction_NewSubNode> NewAction = MakeShared<FJointSchemaAction_NewSubNode>(
-		Category, MenuDesc, Tooltip, 0);
-
-	return NewAction;
 }
 
 bool UJointEdGraphSchema::PruneGatewayNode(UJointEdGraphNode_Composite* InNode, UEdGraphNode* InEntryNode, UEdGraphNode* InResultNode, FKismetCompilerContext* CompilerContext, TSet<UEdGraphNode*>* OutExpandedNodes) const
@@ -644,11 +658,17 @@ void UJointEdGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeConte
 
 	if (!Context->bIsDebugging)
 	{
-		FToolMenuSection& DissolveSolidifyActionsSession = Menu->AddSection("DissolveSolidifyActionsMenu",LOCTEXT("DebugActionsMenuDissolveSolidifyHeader", "Dissolve & Solidify Actions"));
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveSubNodesIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveExactSubNodeIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().DissolveOnlySubNodesIntoParentNode);
-		DissolveSolidifyActionsSession.AddMenuEntry(FJointEditorCommands::Get().SolidifySubNodesFromParentNode);
+		FToolMenuSection& DissolveSolidifyActionsSection = Menu->AddSection("DissolveSolidifyActionsMenu",LOCTEXT("DebugActionsMenuDissolveSolidifyHeader", "Dissolve & Solidify Actions"));
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveSubNodesIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveExactSubNodeIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().DissolveOnlySubNodesIntoParentNode);
+		DissolveSolidifyActionsSection.AddMenuEntry(FJointEditorCommands::Get().SolidifySubNodesFromParentNode);
+		
+		FToolMenuSection& ScriptActionsSection = Menu->AddSection("ScriptActionsMenu",LOCTEXT("ScriptActionsMenuHeader", "Script Actions"));
+		ScriptActionsSection.AddMenuEntry(FJointEditorCommands::Get().UnlinkScriptFromSelectedNodes);
+		
+		FToolMenuSection& PresetActionsSection = Menu->AddSection("PresetActionsMenu",LOCTEXT("PresetActionsMenuHeader", "Preset Actions"));
+		PresetActionsSection.AddMenuEntry(FJointEditorCommands::Get().CreateNodePresetFromSelectedBaseNode);
 	}
 
 	Super::GetContextMenuActions(Menu, Context);

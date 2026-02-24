@@ -8,6 +8,8 @@
 #include "JointGraphConnectionDrawingPolicy.h"
 #include "JointEditorSettings.generated.h"
 
+class UJointScriptParser;
+class UJointScriptLinker;
 class UJointManager;
 class UJointNodeBase;
 
@@ -16,6 +18,7 @@ namespace JointEditorDefaultSettings
 	static const bool bUseLODRenderingForSimplePropertyDisplay(true);
 	static const int LODRenderingForSimplePropertyDisplayRetainerPeriod(32);
 	static const int SimplePropertyDisplayInitializationRate(150);
+	static const FVector2D SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode(FVector2D(50.0f, 50.0f));
 
 	//Composite Node
 	static const FVector2D CompositeNodeTooltipSize(FVector2D(900.0f, 500.0f));
@@ -25,7 +28,7 @@ namespace JointEditorDefaultSettings
 	
 	//Graph Editor
 	static const bool bUseGrid(false);
-	static const FLinearColor BackgroundColor(FLinearColor(0.093963, 0.092709, 0.104167, 1));
+	static const FLinearColor BackgroundColor(FLinearColor(0.0093963, 0.0092709, 0.0104167, 1));//(FLinearColor(0.093963, 0.092709, 0.104167, 1));
 	static const FLinearColor RegularGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor RuleGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor CenterGridColor(FColor(5, 5, 9, 255));
@@ -137,8 +140,13 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "Simple Property Display Initialization Delay Standard (BETA)"))
 	int SimplePropertyDisplayInitializationRate = JointEditorDefaultSettings::SimplePropertyDisplayInitializationRate;
-
-
+	
+	/** 
+	 * The minimal display size of the Simple Property Display section when the node is in visibility change mode.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = "Experimental", meta = (DisplayName = "Simple Property Display Minimal Display Size On Visibility Change Mode"))
+	FVector2D SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode = JointEditorDefaultSettings::SimplePropertyDisplayMinimalDisplaySizeOnVisibilityChangeMode;
+	
 public:
 
 	/**
@@ -393,7 +401,7 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Joint Redirects", meta = (DisplayName = "Joint Class Name Redirects"))
 	TArray<FJointCoreRedirect> JointCoreRedirects;
-
+	
 public:
 	void AddCoreRedirect(const FJointCoreRedirect& Redirect);
 

@@ -52,6 +52,7 @@ public class JointEditor : ModuleRules
 			"ToolMenus",
 			"ContentBrowser",
 			"DesktopWidgets",
+			"DesktopPlatform",
 
 			"InputCore",
 			"Projects",
@@ -81,6 +82,8 @@ public class JointEditor : ModuleRules
 
 			"DeveloperSettings",
 			"AppFramework",
+			
+			"AssetTools",
 
 			//For restarting the editor
 			"SettingsEditor",

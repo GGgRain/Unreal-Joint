@@ -20,6 +20,7 @@
 #include "EditorWidget/SJointGraphPanel.h"
 #include "EditorWidget/SJointGraphPreviewer.h"
 #include "GraphNode/JointGraphNodeSharedSlates.h"
+#include "GraphNode/SJointGraphNodeSubNodeBase.h"
 #include "GraphNode/SJointRetainerWidget.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -36,9 +37,9 @@
 
 UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 {
-	bIsNodeResizeable = true;
 	bCanRenameNode = true; // use custom rename logic for the bound graph - and it utilizes the rename interface from the base node.
-
+	bIsNodeResizable = true;
+	
 	NodeColor = UJointEditorSettings::Get()->DefaultNodeColor;
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInstanceConstant> NodeBodyBrush(
@@ -65,7 +66,9 @@ UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 	DefaultEdNodeSetting.NodeBodyColor = FLinearColor(0.5, 0.5, 0.5, 0.5);
 	DefaultEdNodeSetting.NodeIconicColor = FColor(29, 130, 126, 125);
 	DefaultEdNodeSetting.DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
+	
 }
+
 
 FText UJointEdGraphNode_Composite::GetNodeTitle(ENodeTitleType::Type TitleType) const
 {
@@ -257,7 +260,7 @@ void UJointEdGraphNode_Composite::PostPasteNode()
 		}
 	}
 
-	ModifyGraphNodeSlate();
+	RequestModifyOfGraphNodeSlate();
 }
 
 bool UJointEdGraphNode_Composite::CanDuplicateNode() const
@@ -276,6 +279,8 @@ void UJointEdGraphNode_Composite::ReconstructNode()
 
 void UJointEdGraphNode_Composite::PostPlacedNewNode()
 {
+	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
+	
 	UpdatePins();
 
 	// Create a new graph
@@ -439,17 +444,15 @@ void UJointEdGraphNode_Composite::DestroyNode()
 	Super::DestroyNode();
 }
 
-void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
+void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGraphNodeBase>& InGraphNodeSlate)
 {
-	
 	if (!BoundGraph) return;
 	
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-	if (!NodeSlate) return;
+	if (!InGraphNodeSlate) return;
 
-	if (!NodeSlate->CenterWholeBox.IsValid()) return;
-	if (!NodeSlate->CenterContentBox.IsValid()) return;
-
+	if (!InGraphNodeSlate->CenterWholeBox.IsValid()) return;
+	if (!InGraphNodeSlate->CenterContentBox.IsValid()) return;
+		
 	//make an attribute for const FSlateBrush* , lock icon.
 
 	TAttribute<const FSlateBrush*> LockIconBrush = TAttribute<const FSlateBrush*>::Create(
@@ -490,17 +493,17 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
 
 	if (bShowPreviewer)
 	{
-		auto& Slot = NodeSlate->CenterWholeBox->GetSlot(1);
+		auto& Slot = InGraphNodeSlate->CenterWholeBox->GetSlot(1);
 		Slot.SetAutoHeight();
 		Slot.SetVerticalAlignment(VAlign_Top);
 		Slot.SetHorizontalAlignment(HAlign_Fill);
 
-		NodeSlate->SetToolTip(nullptr);
+		InGraphNodeSlate->SetToolTip(nullptr);
 
-		NodeSlate->CenterContentBox->AddSlot()
-		         .HAlign(HAlign_Center)
-		         .VAlign(VAlign_Center)
-		         .AutoHeight()
+		InGraphNodeSlate->CenterContentBox->AddSlot()
+				 .HAlign(HAlign_Center)
+				 .VAlign(VAlign_Center)
+				 .AutoHeight()
 		[
 			SNew(SOverlay)
 			+ SOverlay::Slot()
@@ -673,17 +676,17 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate()
 			]
 		];
 
-		NodeSlate->SetToolTip(FinalToolTip);
+		InGraphNodeSlate->SetToolTip(FinalToolTip);
 
-		auto& Slot = NodeSlate->CenterWholeBox->GetSlot(1);
+		auto& Slot = InGraphNodeSlate->CenterWholeBox->GetSlot(1);
 		Slot.SetFillHeight(1);
 		Slot.SetVerticalAlignment(VAlign_Fill);
 		Slot.SetHorizontalAlignment(HAlign_Fill);
 
-		NodeSlate->CenterContentBox->AddSlot()
-		         .HAlign(HAlign_Center)
-		         .VAlign(VAlign_Center)
-		         .FillHeight(1)
+		InGraphNodeSlate->CenterContentBox->AddSlot()
+				 .HAlign(HAlign_Center)
+				 .VAlign(VAlign_Center)
+				 .FillHeight(1)
 		[
 			SNew(SButton)
 			.OnHovered_UObject(this, &UJointEdGraphNode_Composite::OnPreviewerHovered)
@@ -785,46 +788,9 @@ bool UJointEdGraphNode_Composite::CanHaveBreakpoint() const
 	return false;
 }
 
-void UJointEdGraphNode_Composite::GetNodeContextMenuActions(UToolMenu* Menu,
-                                                            UGraphNodeContextMenuContext* Context) const
+void UJointEdGraphNode_Composite::GetNodeContextMenuActions(UToolMenu* Menu, UGraphNodeContextMenuContext* Context) const
 {
 	return;
-}
-
-bool UJointEdGraphNode_Composite::UseLowDetailedRendering() const
-{
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate)
-	{
-		if (const TSharedPtr<SGraphPanel>& MyOwnerPanel = NodeSlate->GetOwnerPanel())
-		{
-			if (MyOwnerPanel.IsValid())
-			{
-				return MyOwnerPanel->GetCurrentLOD() < EGraphRenderingLOD::DefaultDetail;
-			}
-		}
-	}
-
-	return false;
-}
-
-bool UJointEdGraphNode_Composite::UseCaptureDetailedRendering() const
-{
-	const TSharedPtr<SJointGraphNodeBase> NodeSlate = GetGraphNodeSlate().Pin();
-
-	if (NodeSlate)
-	{
-		if (const TSharedPtr<SGraphPanel>& MyOwnerPanel = NodeSlate->GetOwnerPanel())
-		{
-			if (MyOwnerPanel.IsValid())
-			{
-				return MyOwnerPanel->GetCurrentLOD() >= EGraphRenderingLOD::DefaultDetail;
-			}
-		}
-	}
-
-	return false;
 }
 
 void UJointEdGraphNode_Composite::OnPreviewerHovered()
@@ -858,7 +824,7 @@ FReply UJointEdGraphNode_Composite::OnPreviewerOpenCloseClicked()
 {
 	bShowPreviewer = !bShowPreviewer;
 
-	RequestUpdateSlate();
+	RequestRefreshingGraphNodeSlate();
 
 	return FReply::Handled();
 }
@@ -867,7 +833,7 @@ FReply UJointEdGraphNode_Composite::OnLockPreviewerClicked()
 {
 	bLockPreviewer = !bLockPreviewer;
 
-	RequestUpdateSlate();
+	RequestRefreshingGraphNodeSlate();
 
 	return FReply::Handled();
 }

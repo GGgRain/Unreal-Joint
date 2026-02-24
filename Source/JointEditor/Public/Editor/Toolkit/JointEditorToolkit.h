@@ -8,6 +8,7 @@
 #include "JointEditorGraphDocument.h"
 #include "WorkflowOrientedApp/WorkflowCentricApplication.h"
 #include "Misc/NotifyHook.h"
+#include "Slate/WidgetRenderer.h"
 
 class UJointEdGraphNode_Composite;
 class UJointEdGraphNode_Tunnel;
@@ -62,8 +63,11 @@ public:
 public:
 
 	//Initialize Joint manager editor and open up the Joint manager for the provided asset.
-	void InitJointEditor(const EToolkitMode::Type Mode, const TSharedPtr<class IToolkitHost>& InitToolkitHost,
-							UJointManager* InJointManager);
+	void InitJointEditor(
+		const EToolkitMode::Type Mode, 
+		const TSharedPtr<class IToolkitHost>& InitToolkitHost,
+		UJointManager* InJointManager);
+	
 	void CleanUp();
 
 	virtual void OnClose() override;
@@ -161,14 +165,6 @@ public:
 	
 	bool IsGraphInCurrentJointManager(UEdGraph* Graph);
 
-private:
-
-	/**
-	 * Create a new root graph for the current Joint manager if it doesn't have one.
-	 * We need to create a new graph for editing on the toolkit side - the asset may not have any graph in some unfortunate cases.
-	 */
-	void CreateNewRootGraphForJointManagerIfNeeded() const;
-
 public:
 
 	// Document management
@@ -194,7 +190,8 @@ public:
 public:
 
 	TSharedPtr<FDocumentTracker> GetDocumentManager() const;
-	
+	void RebuildFragmentPalette();
+
 private:
 
 	// Document tracker for managing editor tabs.
@@ -245,10 +242,10 @@ public:
 	TSharedPtr<class SJointList> ContentBrowserPtr;
 	TSharedPtr<class IDetailsView> DetailsViewPtr;
 	TSharedPtr<class SJointManagerViewer> ManagerViewerPtr;
-	TSharedPtr<class SJointFragmentPalette> JointFragmentPalettePtr;
+	TSharedPtr<class SJointNodePalette> JointNodePalettePtr;
 	TSharedPtr<class SJointEditorOutliner> JointEditorOutlinerPtr;
 
-	TSharedPtr<class FJointEditorToolbar> Toolbar;
+	TSharedPtr<class FJointEditorToolbar> JointEditorToolbar;
 
 public:
 	
@@ -432,52 +429,28 @@ public:
 	void OnToggleVisibilityChangeModeForSimpleDisplayProperty();
 	bool GetCheckedToggleVisibilityChangeModeForSimpleDisplayProperty() const;
 
+	void NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyStarted();
+	void NotifyGraphOnVisibilityChangeModeForSimpleDisplayPropertyEnded();
+	
+	void OnUnlinkScriptFromSelectedNodes();
+	bool CanUnlinkScriptFromSelectedNodes();
+
+	void OnCreateNodePresetFromSelectedBaseNode();
+	bool CanCreateNodePresetFromSelectedBaseNode() const;
+	
 public:
 	
 	void OpenSearchTab() const;
-
 	void OpenReplaceTab() const;
 
 public:
 	
-	void PopulateNodePickingToastMessage();
+	//Toast message related
 	
-	void PopulateQuickNodePickingToastMessage();
-	
-	void PopulateTransientEditingWarningToastMessage();
-
-	void PopulateVisibilityChangeModeForSimpleDisplayPropertyToastMessage();
-
-	void PopulateNodePickerCopyToastMessage();
-	
-	void PopulateNodePickerPastedToastMessage();
-
-	void PopulateNeedReopeningToastMessage();
-	
-	
-	void ClearNodePickingToastMessage() const;
-
-	void ClearTransientEditingWarningToastMessage() const;
-
-	void ClearVisibilityChangeModeForSimpleDisplayPropertyToastMessage() const;
-
-	void ClearNodePickerCopyToastMessage() const;
-
-	void ClearNodePickerPastedToastMessage() const;
-
-public:
-
-	FGuid NodePickingToastMessageGuid;
-	
-	FGuid TransientEditingToastMessageGuid;
-	
-	FGuid VisibilityChangeModeForSimpleDisplayPropertyToastMessageGuid;
-
-	FGuid NodePickerCopyToastMessageGuid;
-
-	FGuid NodePickerPasteToastMessageGuid;
-	
-	FGuid RequestReopenToastMessageGuid;
+	/**
+	 * String key and Guid for the message.
+	 */
+	TMap<FString, FGuid> MessageGuids;
 
 public:
 
@@ -515,6 +488,8 @@ private:
 	void JumpToNode(UEdGraphNode* Node, bool bRequestRename = false);
 
 public:
+	
+	void JumpToNodeGuid(const FGuid& NodeGuid);
 
 	void JumpToHyperlink(UObject* ObjectReference, bool bRequestRename = false);
 
@@ -545,5 +520,19 @@ public:
 	
 	// Check if the current editor is in editing mode.
 	bool IsInEditingMode() const;
+
+	/**
+	 * Check if the current editor is in node preset editing mode.
+	 * Node preset editing mode is a special editing mode for editing node presets.
+	 * This is used to provide a more focused editing experience for node presets.
+	 * @return true if the current editor is in node preset editing mode, false otherwise.
+	 */
+	bool IsInNodePresetEditingMode() const;
+	
+	void SetIsInNodePresetEditingMode(bool bInIsInNodePresetEditingMode);
+	
+private:
+	
+	bool IsInNodePresetEditingModeFlag = false;
 	
 };

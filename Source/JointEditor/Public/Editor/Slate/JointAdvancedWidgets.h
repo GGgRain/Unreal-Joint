@@ -90,12 +90,15 @@ public:
 	FWidgetTransform NormalTransform;
 	FWidgetTransform HoverTransform;
 
-public:
+private:
+	
 	TSharedPtr<SWidget> Content;
 
-	TSharedPtr<SWidget> OuterBorder;
+public:
+	
+	TSharedPtr<SBorder> OuterBorder;
 
-	TSharedPtr<SWidget> InnerBorder;
+	TSharedPtr<SBorder> InnerBorder;
 
 public:
 	/** The delegate to execute when the button is hovered */
@@ -126,6 +129,10 @@ public:
 
 public:
 	EActiveTimerReturnType CheckUnhovered(double InCurrentTime, float InDeltaTime);
+	
+public:
+	
+	void SetContent(TSharedRef<SWidget> InContent);
 };
 
 

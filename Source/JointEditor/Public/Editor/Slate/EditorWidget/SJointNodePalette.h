@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "JointEdGraphSchemaActions.h"
+#include "SGraphActionMenu.h"
 #include "Widgets/SCompoundWidget.h"
 
+class SJointGraphEditorActionMenu;
 class SScrollBox;
 class UJointEdGraphNode;
 class FJointEditorToolkit;
@@ -13,11 +15,11 @@ class FJointEditorToolkit;
 //////////////////////////////////////////////////////////////////////////
 // SJointFragmentPalette
 
-class JOINTEDITOR_API SJointFragmentPalette : public SCompoundWidget
+class JOINTEDITOR_API SJointNodePalette : public SCompoundWidget
 {
 
 public:
-	SLATE_BEGIN_ARGS(SJointFragmentPalette){}
+	SLATE_BEGIN_ARGS(SJointNodePalette){}
 		SLATE_ARGUMENT(TWeakPtr<FJointEditorToolkit>, ToolKitPtr)
 	SLATE_END_ARGS()
 public:
@@ -25,7 +27,6 @@ public:
 	void Construct(const FArguments& InArgs);
 
 public:
-
 	void RebuildWidget();
 
 private:
@@ -34,10 +35,14 @@ private:
 
 public:
 	
-	void OnFragmentActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& Shareds, ESelectInfo::Type Arg);
-
+	void OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& Shareds, ESelectInfo::Type Arg);
+	
 public:
 
 	TArray< TSharedPtr<struct FJointFragmentPaletteAction> > ActionEntries;
+	
+public:
+	
+	TSharedPtr<SJointGraphEditorActionMenu> ActionMenu;
 
 };

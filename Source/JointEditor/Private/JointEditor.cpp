@@ -9,28 +9,33 @@
 #include "JointEditorStyle.h"
 
 #include "JointFragmentActions.h"
-#include "JointGraphPinSlateFactory.h"
 #include "JointManagerActions.h"
+#include "JointBuildPresetActions.h"
+#include "JointNodePresetActions.h"
+#include "JointScriptParserActions.h"
+
+#include "JointGraphPinSlateFactory.h"
 #include "JointGraphNodeSlateFactory.h"
 
 #include "EdGraphUtilities.h"
 #include "ISequencerModule.h"
-#include "JointBuildPresetActions.h"
 #include "JointEditorSettings.h"
 #include "JointManagement.h"
 #include "JointManagementTabs.h"
 #include "JointManager.h"
-
-#include "Debug/JointDebugger.h"
-#include "EditorTools/SJointBulkSearchReplace.h"
-#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "JointNodePreset.h"
+#include "Node/JointNodeBase.h"
 #include "Node/JointFragment.h"
 #include "SharedType/JointSharedTypes.h"
+#include "Debug/JointDebugger.h"
+#include "EditorTools/SJointBulkSearchReplace.h"
+
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Docking/SDockTab.h"
-#include "Node/JointNodeBase.h"
 
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
+#include "Asset/Thumbnail/JointManagerThumbnailRenderer.h"
 #include "Sequencer/JointMovieTrackEditor.h"
 #include "UObject/CoreRedirects.h"
 
@@ -65,10 +70,10 @@ void FJointEditorModule::StartupModule()
 	//Joint 2.9: JointCoreRedirects
 	AppendActiveJointRedirects();
 
-
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();
 
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorUtilityTab::MakeInstance());
+	JointManagementTabHandler->AddSubTab(FJointManagementTab_JointEditorScriptLinkerTab::MakeInstance());
 	JointManagementTabHandler->AddSubTab(FJointManagementTab_NodeClassManagementTab::MakeInstance());
 
 	JointNodeStyleFactory = MakeShareable(new FJointGraphNodeSlateFactory);
@@ -142,6 +147,8 @@ void FJointEditorModule::RegisterAssetTools()
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointManagerActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointFragmentActions(AssetCategory)));
 	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointBuildPresetActions(AssetCategory)));
+	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointScriptParserActions(AssetCategory)));
+	RegisterAssetTypeAction(AssetTools, MakeShareable(new FJointNodePresetActions(AssetCategory)));
 }
 
 void FJointEditorModule::RegisterSequencerTrack()
@@ -349,11 +356,37 @@ void FJointEditorModule::RegisterClassLayout()
 	PropertyModule.RegisterCustomClassLayout(FName(*UJointBuildPreset::StaticClass()->GetName())
 	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
 		                                         &FJointBuildPresetCustomization::MakeInstance));
-
+	
+	PropertyModule.RegisterCustomClassLayout(FName(*UJointNodePreset::StaticClass()->GetName())
+	                                         , FOnGetDetailCustomizationInstance::CreateStatic(
+		                                         &FJointNodePresetCustomization::MakeInstance));
+	
 
 	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointNodePointer::StaticStruct()->GetName()),
 	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
 		                                                &FJointNodePointerStructCustomization::MakeInstance));
+	
+	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerFileEntry::StaticStruct()->GetName()),
+	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+		                                                &FJointScriptLinkerFileEntryCustomization::MakeInstance));
+	
+	
+	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerDataElement::StaticStruct()->GetName()),
+	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+		                                                &FJointScriptLinkerDataElementCustomization::MakeInstance));
+		                                                
+	
+	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerMapping::StaticStruct()->GetName()),
+	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+		                                                &FJointScriptLinkerMappingCustomization::MakeInstance));
+	
+	
+	PropertyModule.RegisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerData::StaticStruct()->GetName()),
+	                                                FOnGetPropertyTypeCustomizationInstance::CreateStatic(
+		                                                &FJointScriptLinkerDataCustomization::MakeInstance));
+	
+	PropertyModule.NotifyCustomizationModuleChanged();
+		                                                
 }
 
 void FJointEditorModule::UnregisterClassLayout()
@@ -372,7 +405,16 @@ void FJointEditorModule::UnregisterClassLayout()
 	PropertyModule.UnregisterCustomClassLayout(FName(*UJointBuildPreset::StaticClass()->GetName()));
 
 	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointNodePointer::StaticStruct()->GetName()));
+	
+	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerFileEntry::StaticStruct()->GetName()));
+	
+	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerDataElement::StaticStruct()->GetName()));
+	
+	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerMapping::StaticStruct()->GetName()));
+	
+	PropertyModule.UnregisterCustomPropertyTypeLayout(FName(*FJointScriptLinkerData::StaticStruct()->GetName()));
 }
+
 
 
 void FJointEditorModule::StoreClassCaches()

@@ -12,6 +12,11 @@
 class JOINTEDITOR_API SJointGraphNodeSubNodeBase : public SJointGraphNodeBase
 {
 public:
+	
+	//For RTTI and type checking. You must override this if you want to make your own sub node slate class.
+	JOINT_GRAPH_NODE_CLASS_ITEM_TYPE(SJointGraphNodeSubNodeBase, SJointGraphNodeBase)
+	
+public:
 	SLATE_BEGIN_ARGS(SJointGraphNodeSubNodeBase) {}
 	SLATE_END_ARGS()
 		void Construct(const FArguments& InArgs, UEdGraphNode* InNode);

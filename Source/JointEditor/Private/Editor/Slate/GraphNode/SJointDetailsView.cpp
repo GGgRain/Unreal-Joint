@@ -21,11 +21,17 @@ SJointDetailsView::SJointDetailsView()
 
 SJointDetailsView::~SJointDetailsView()
 {
+	OwnerGraphNode.Reset();
+	
+	if (JointRetainerWidget.IsValid())
+	{
+		// we have to detach the detail view from the retainer widget before we reset it, otherwise it can cause issues with garbage collection and memory leaks.
+		JointRetainerWidget.Pin()->GetChildSlot().DetachWidget();
+	}
+	
+	DetailViewWidget.Reset();
 	JointRetainerWidget.Reset();
 
-	OwnerGraphNode.Reset();
-	DetailViewWidget.Reset();
-	
 	Object = nullptr;
 	EdNode = nullptr;
 
@@ -70,13 +76,11 @@ void SJointDetailsView::Construct(const FArguments& InArgs)
 void SJointDetailsView::PopulateSlate()
 {
 	this->ChildSlot.DetachWidget();
-
 	
 	this->ChildSlot.AttachWidget(
 		SAssignNew(JointRetainerWidget, SJointRetainerWidget )
 		.DisplayRetainerRendering(this, &SJointDetailsView::UseLowDetailedRendering)
 		);
-	
 	
 	bInitialized = false;
 	bInitializing = false;
@@ -105,10 +109,10 @@ EActiveTimerReturnType SJointDetailsView::InitializationTimer(double InCurrentTi
 	DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::ENameAreaSettings::HideNameArea;
 	DetailsViewArgs.bHideSelectionTip = true;
 	DetailsViewArgs.bAllowSearch = false;
+	DetailsViewArgs.bShowScrollBar = true;
 	//DetailsViewArgs.ViewIdentifier = FName(FGuid::NewGuid().ToString());
 
 	ThisPtr->DetailViewWidget = nullptr;
-			
 	ThisPtr->DetailViewWidget = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [ThisPtr]()
@@ -146,7 +150,7 @@ EActiveTimerReturnType SJointDetailsView::InitializationTimer(double InCurrentTi
 				View->SetObject(ThisPtr->Object.Get(), false);
 				
 				ThisPtr->JointRetainerWidget.Pin()->GetChildSlot().AttachWidget(View);
-
+				
 				ThisPtr->bInitializing = false;
 				ThisPtr->bInitialized = true;
 			}

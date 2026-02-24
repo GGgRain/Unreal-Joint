@@ -111,7 +111,7 @@ void SJointGraphPinBase::OnHovered()
 			.InterpolationMode(EVoltInterpMode::RateBased)
 			.RateBasedInterpSpeed(10)
 			.bUseStartOpacity(true)
-			.StartOpacity(TextBlock->GetRenderOpacity())
+			.StartOpacity(TextBlock.Pin()->GetRenderOpacity())
 			.TargetOpacity(1)
 		);
 	
@@ -129,7 +129,7 @@ void SJointGraphPinBase::OnUnHovered()
 			.InterpolationMode(EVoltInterpMode::RateBased)
 			.RateBasedInterpSpeed(10)
 			.bUseStartOpacity(true)
-			.StartOpacity(TextBlock->GetRenderOpacity())
+			.StartOpacity(TextBlock.Pin()->GetRenderOpacity())
 			.TargetOpacity(ShouldAlwaysDisplayNameText() ? 0.6 : 0)
 		);
 	

@@ -31,7 +31,8 @@ class SVerticalBox;
 class SWrapBox;
 class SCheckBox;
 class SGraphNode;
-
+class SBox;
+class SScrollBox;
 
 namespace JointGraphNodeResizableDefs
 {
@@ -91,6 +92,66 @@ protected:
 
 
 /**
+ * Macro for the graph node slate class to provide the type information for the runtime type checking and casting.
+ * It will provide the implementation for the virtual functions declared in SJointGraphNodeBase for the type checking and casting.
+ * @param TYPE The class name of the graph node slate class. It will be used as the type name for the type checking and casting.
+ * @param BASE_TYPE The base class of the graph node slate class. It will be used to call the base class's IsA function for the type checking and casting.
+ */
+#define JOINT_GRAPH_NODE_CLASS_ITEM_TYPE(TYPE, BASE_TYPE) \
+public: \
+static const FName& StaticType() \
+{ \
+static FName Type(TEXT(#TYPE)); \
+return Type; \
+} \
+virtual const FName& GetType() const override \
+{ \
+return TYPE::StaticType(); \
+} \
+virtual bool IsExactly(const FName& InType) const override \
+{ \
+return TYPE::StaticType() == InType; \
+} \
+virtual bool IsA(const FName& InType) const override \
+{ \
+if (IsExactly(InType)) \
+{ \
+return true; \
+} \
+if (BASE_TYPE::StaticType() == InType) \
+{ \
+return true; \
+} \
+return BASE_TYPE::IsA(InType); \
+}
+
+/**
+ * Macro for the graph node slate class to provide the type information for the runtime type checking and casting when it is the base class of the graph node slate class hierarchy.
+ * It will provide the implementation for the virtual functions declared in SJointGraphNodeBase for the type checking and casting.
+ * !!DON'T USE THIS MACRO!!
+ * @param TYPE The class name of the graph node slate class. It will be used as the type name for the type checking and casting.
+ */
+#define JOINT_GRAPH_NODE_CLASS_BASE_ITEM_TYPE(TYPE) \
+public: \
+static const FName& StaticType() \
+{ \
+static FName TypeName(TEXT(#TYPE)); \
+return TypeName; \
+} \
+virtual const FName& GetType() const \
+{ \
+return TYPE::StaticType(); \
+} \
+virtual bool IsExactly(const FName& InType) const \
+{ \
+return TYPE::StaticType() == InType; \
+} \
+virtual bool IsA(const FName& InType) const \
+{ \
+return IsExactly(InType); \
+}
+
+/**
  * SDS2: 
  * New layout for the whole slate:
  *
@@ -128,6 +189,11 @@ protected:
 class JOINTEDITOR_API SJointGraphNodeBase : public SGraphNodeResizable
 {
 public:
+	
+	//For RTTI and type checking. If you want to make your own graph node slate class, JOINT_GRAPH_NODE_CLASS_ITEM_TYPE(SYourSlateClass, SJointGraphNodeBase) on the class definition. (See SJointGraphNodeSubNodeBase for example)
+	JOINT_GRAPH_NODE_CLASS_BASE_ITEM_TYPE(SJointGraphNodeBase)
+	
+public:
 	SLATE_BEGIN_ARGS(SJointGraphNodeBase) {}
 	SLATE_END_ARGS()
 
@@ -162,6 +228,8 @@ public:
 	virtual TSharedRef<SWidget> CreateNameBox();
 
 	virtual TSharedRef<SWidget> CreateDissolvedSubNodeIndication();
+	
+	virtual TSharedRef<SWidget> CreateImportedNodeIndication();
 
 public:
 
@@ -173,6 +241,13 @@ public:
 	 * Populates the simple display for the properties according to the node instance's PropertyDataForSimpleDisplayOnGraphNode.
 	 */
 	virtual TSharedRef<SWidget> PopulateSimpleDisplayForProperties();
+	
+	virtual TSharedRef<SWidget> PopulateSimpleDisplaySection();
+	
+public:
+	
+	virtual void OnVisibilityChangeModeForSimpleDisplayPropertyEnter();
+	virtual void OnVisibilityChangeModeForSimpleDisplayPropertyExit();
 
 public:
 	
@@ -334,6 +409,8 @@ public:
 	TSharedPtr<SHorizontalBox> NameBox = nullptr;
 	
 	TSharedPtr<SHorizontalBox> DissolveIndicator = nullptr;
+	
+	TSharedPtr<SHorizontalBox> ImportedIndicator = nullptr;
 
 	TSharedPtr<SVerticalBox> CenterWholeBox = nullptr;
 
@@ -345,6 +422,8 @@ public:
 	
 	TSharedPtr<SVerticalBox> NodeTagContentBox = nullptr;
 	
+	TSharedPtr<SBox> JointDetailsViewBox;
+
 public:
 
 	TArray<TSharedPtr<SJointGraphNodeInsertPoint>> InsertPoints;
@@ -370,7 +449,7 @@ public:
 	/**
 	 * Modify slate from the editor graph node instance.
 	 */
-	void ModifySlateFromGraphNode() const;
+	void ModifySlateFromGraphNode();
 
 public:
 
@@ -600,6 +679,16 @@ public:
 	FVoltAnimationTrack NodeBodyColorTrack;
 	
 	FVoltAnimationTrack HighlightInnerBorderBackgroundColorTrack;
+	
+public:
+	
+	bool CheckHasExternalLink() const;
+	
+	/** Returns if widget is editable, additionally considers if the owning graph is read only */
+	virtual bool IsNodeEditable() const override;
+	
+	// !IsNodeEditable for the bindings
+	virtual bool IsNodeNotEditable() const;
 
 
 public:
@@ -609,6 +698,7 @@ public:
 public:
 
 	const EJointEdSlateDetailLevel::Type GetSlateDetailLevel() const;
+	
 };
 
 template <typename SlateClass>
@@ -622,3 +712,5 @@ TSharedPtr<SlateClass> SJointGraphNodeBase::INLINE_GetCastedSubNodePanel()
 	return nullptr;
 }
 
+// we don't want to use this macro outside of the root base class, so we undefine it here to avoid potential misuse. Please use JOINT_GRAPH_NODE_CLASS_ITEM_TYPE for the derived class.
+#undef JOINT_GRAPH_NODE_CLASS_BASE_ITEM_TYPE

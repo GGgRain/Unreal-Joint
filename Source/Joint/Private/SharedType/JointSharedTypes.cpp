@@ -3,10 +3,13 @@
 
 #include "SharedType/JointSharedTypes.h"
 
+#include "JointLogChannels.h"
 #include "JointManager.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Node/JointNodeBase.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/UObjectToken.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "FJointNodePointer"
 
@@ -29,9 +32,9 @@ FJointGraphNodePropertyData::FJointGraphNodePropertyData(const FName& InProperty
 
 FJointNodePointer::FJointNodePointer()
 #if WITH_EDITORONLY_DATA
-	:
-	Node(nullptr),
-	EditorNode(nullptr)
+:
+Node (nullptr),
+EditorNode (nullptr)
 #endif
 {
 }
@@ -50,34 +53,38 @@ bool FJointNodePointer::HasSameRestrictionsAs(const FJointNodePointer& Other) co
 {
 	//check if the allowed types and disallowed types are the same.
 	return AllowedType.Num() == Other.AllowedType.Num() && DisallowedType.Num() == Other.DisallowedType.Num() &&
-		[&]() {
+		[&]()
+		{
 			for (const TSubclassOf<UJointNodeBase>& Type : AllowedType)
 			{
 				if (!Other.AllowedType.Contains(Type)) return false;
 			}
 			return true;
-	}() &&
-	[&]() {
-		for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
+		}() &&
+		[&]()
 		{
-			if (!Other.DisallowedType.Contains(Type)) return false;
-		}
-		return true;
-	}();
+			for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
+			{
+				if (!Other.DisallowedType.Contains(Type)) return false;
+			}
+			return true;
+		}();
 }
 
 bool FJointNodePointer::CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const
 {
 	//check if the allowed types and disallowed types are the same.
 	return AllowedType.Num() == AllowedClass.Num() && DisallowedType.Num() == DisallowedClasses.Num() &&
-		[&]() {
+		[&]()
+		{
 			for (const TSubclassOf<UJointNodeBase>& Type : AllowedType)
 			{
 				if (!AllowedClass.Contains(Type)) return false;
 			}
 			return true;
 		}() &&
-		[&]() {
+		[&]()
+		{
 			for (const TSubclassOf<UJointNodeBase>& Type : DisallowedType)
 			{
 				if (!DisallowedClasses.Contains(Type)) return false;
@@ -92,45 +99,15 @@ bool FJointNodePointer::IsValid() const
 	return Node.IsValid();
 }
 
-FJointNodes::FJointNodes()
+void FJointNodePointer::Reset()
 {
+	Node = nullptr;
+#if WITH_EDITORONLY_DATA
+	EditorNode = nullptr;
+#endif
+	AllowedType.Empty();
+	DisallowedType.Empty();
 }
-
-FJointNodes::FJointNodes(const TArray<UJointNodeBase*>& InNodes): Nodes(InNodes)
-{
-}
-
-bool FJointEdPinData::HasSameSignature(const FJointEdPinData& Other) const
-{
-	return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type;
-}
-
-void FJointEdPinData::CopyPropertiesFrom(const FJointEdPinData& Other)
-{
-	PinName = Other.PinName;
-	Direction = Other.Direction;
-	Type = Other.Type;
-	Settings = Other.Settings;
-}
-
-bool FJointEdPinData::operator==(const FJointEdPinData& Other) const
-{
-	return HasSameSignature(Other)
-		&& ImplementedPinId == Other.ImplementedPinId;
-}
-
-bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B)
-{
-	return !(A == B);
-}
-
-
-IJointEdNodeInterface::IJointEdNodeInterface()
-{
-}
-
-#if WITH_EDITOR
-
 
 bool FJointNodePointer::CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure,
                                                              UJointNodeBase* Node)
@@ -141,6 +118,8 @@ bool FJointNodePointer::CanSetNodeOnProvidedJointNodePointer(FJointNodePointer S
 
 	return true;
 }
+
+#if WITH_EDITOR
 
 TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 	FJointNodePointer& Structure, UJointNodeBase* Node, const FString& OptionalStructurePropertyName = "")
@@ -167,8 +146,9 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 				TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 				TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 				TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-				if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+				if (!OptionalStructurePropertyName.IsEmpty())
+					TokenizedMessage->AddToken(
+						FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 				TokenizedMessage->AddToken(FTextToken::Create(Message));
 				TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
@@ -186,8 +166,9 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 				TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 				TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 				TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-				if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+				if (!OptionalStructurePropertyName.IsEmpty())
+					TokenizedMessage->AddToken(
+						FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 				TokenizedMessage->AddToken(FTextToken::Create(Message1));
 				TokenizedMessage->AddToken(
 					FAssetNameToken::Create(NodeInstanceJointManager ? NodeInstanceJointManager->GetName() : "NONE"));
@@ -208,44 +189,44 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 				TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 				TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 				TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-				if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+				if (!OptionalStructurePropertyName.IsEmpty())
+					TokenizedMessage->AddToken(
+						FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 				TokenizedMessage->AddToken(FTextToken::Create(Message));
 				TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
 				Messages.Add(TokenizedMessage);
-			}else
+			}
+			else
 			{
-
 				//If target node's build target is provided, check if
-				if(!Structure.Node->GetBuildPreset().IsNull())
+				if (!Structure.Node->GetBuildPreset().IsNull())
 				{
 					UJointBuildPreset* TargetNodeBuildTargetPreset = Structure.Node->GetBuildPreset().LoadSynchronous();
-					
-					if(!Node->GetBuildPreset().IsNull())
+
+					if (!Node->GetBuildPreset().IsNull())
 					{
 						UJointBuildPreset* ParentBuildTargetPreset = Node->GetBuildPreset().LoadSynchronous();
 
-						if(TargetNodeBuildTargetPreset == ParentBuildTargetPreset) return Messages;
-	
+						if (TargetNodeBuildTargetPreset == ParentBuildTargetPreset) return Messages;
 					}
 
 					FText Message = LOCTEXT("DifferentBuildTarget",
-											"This node pointer refers to a node that has different build preset. Be especially careful with the usage.");
+					                        "This node pointer refers to a node that has different build preset. Be especially careful with the usage.");
 
 					TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(EMessageSeverity::Warning);
 					TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 					TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 					TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-					if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-						FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+					if (!OptionalStructurePropertyName.IsEmpty())
+						TokenizedMessage->AddToken(
+							FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 					TokenizedMessage->AddToken(FTextToken::Create(Message));
 					TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
 					Messages.Add(TokenizedMessage);
-					
 				}
-		
+
 				return Messages;
 			}
 		}
@@ -257,8 +238,9 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 			TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 			TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 			TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-			if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-				FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+			if (!OptionalStructurePropertyName.IsEmpty())
+				TokenizedMessage->AddToken(
+					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 			TokenizedMessage->AddToken(FTextToken::Create(Message));
 			TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
@@ -267,24 +249,26 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 	}
 	else if (Structure.EditorNode.Get())
 	{
-
 		IJointEdNodeInterface* Interface = Cast<IJointEdNodeInterface>(Structure.EditorNode.Get());
 
-		if(!Interface)
+		if (!Interface)
 		{
-			FText Message = LOCTEXT("NotValid_HasEditorNode_NoJointEdNodeInterface", "The object this node pointer is pointing isn't a valid object, and It seems like the graph node isn't inherited from UJointEdGraphNode either. This is not allowed.");
+			FText Message = LOCTEXT("NotValid_HasEditorNode_NoJointEdNodeInterface",
+			                        "The object this node pointer is pointing isn't a valid object, and It seems like the graph node isn't inherited from UJointEdGraphNode either. This is not allowed.");
 
 			TSharedRef<FTokenizedMessage> TokenizedMessage = FTokenizedMessage::Create(EMessageSeverity::Error);
 			TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 			TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 			TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-			if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-				FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+			if (!OptionalStructurePropertyName.IsEmpty())
+				TokenizedMessage->AddToken(
+					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 			TokenizedMessage->AddToken(FTextToken::Create(Message));
 			TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
 			Messages.Add(TokenizedMessage);
-		}else
+		}
+		else
 		{
 			FText Message = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface", "The object this node pointer is pointing isn't a valid object, But has an editor node reference for the target node. Please read and check out the popup.");
 
@@ -292,8 +276,9 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 			TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 			TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 			TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-			if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-				FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+			if (!OptionalStructurePropertyName.IsEmpty())
+				TokenizedMessage->AddToken(
+					FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 			TokenizedMessage->AddToken(FTextToken::Create(Message));
 			TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
@@ -301,29 +286,30 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 
 
 			//open a dialog warning message.
-			
+
 			FText DialogMessage = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface_Dialog",
-				"The object that this node pointer is pointing isn't a valid object, But has an editor node reference for the target node."
-				"\nWould you try to retrieve the node instance reference from the editor node?");
-			
-			FText DialogMessageNo = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface_Dialog_No", "Please update the property manually (either clear out, or feed a valid one instead of the corrupted data) \nCheck out the log for the further details.");
+			                              "The object that this node pointer is pointing isn't a valid object, But has an editor node reference for the target node."
+			                              "\nWould you try to retrieve the node instance reference from the editor node?");
+
+			FText DialogMessageNo = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface_Dialog_No",
+			                                "Please update the property manually (either clear out, or feed a valid one instead of the corrupted data) \nCheck out the log for the further details.");
 
 			FText DialogMessageYes_Succeeded = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface_Dialog_Yes_Succeed", "Retrieval Succeeded. Please save the asset, and if you were packaging or cooking the project, please try it again.");
 			FText DialogMessageYes_Failed = LOCTEXT("NotValid_HasEditorNode_JointEdNodeInterface_Dialog_Yes_Fail", "Retrieval Failed. Please update the property manually.");
 
-			
-			switch (FMessageDialog::Open(EAppMsgType::YesNo,DialogMessage))
+
+			switch (FMessageDialog::Open(EAppMsgType::YesNo, DialogMessage))
 			{
 			case EAppReturnType::No:
-				
+
 				FMessageDialog::Open(EAppMsgType::Ok, DialogMessageNo);
-				
+
 				break;
 			case EAppReturnType::Yes:
 
-				if(UObject* InNode = Interface->JointEdNodeInterface_GetNodeInstance())
+				if (UObject* InNode = Interface->JointEdNodeInterface_GetNodeInstance())
 				{
-					if(UJointNodeBase* CastedNode = Cast<UJointNodeBase>(InNode))
+					if (UJointNodeBase* CastedNode = Cast<UJointNodeBase>(InNode))
 					{
 						Structure.Node = CastedNode;
 
@@ -334,7 +320,7 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 				}
 
 				FMessageDialog::Open(EAppMsgType::Ok, DialogMessageYes_Failed);
-				
+
 				break;
 			default: break;
 			}
@@ -348,8 +334,9 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 		TokenizedMessage->AddToken(FAssetNameToken::Create(JointManager ? JointManager->GetName() : "NONE"));
 		TokenizedMessage->AddToken(FTextToken::Create(FText::FromString(":")));
 		TokenizedMessage->AddToken(FUObjectToken::Create(Node));
-		if (!OptionalStructurePropertyName.IsEmpty()) TokenizedMessage->AddToken(
-			FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
+		if (!OptionalStructurePropertyName.IsEmpty())
+			TokenizedMessage->AddToken(
+				FTextToken::Create(FText::FromString(", " + OptionalStructurePropertyName + " :")));
 		TokenizedMessage->AddToken(FTextToken::Create(Message));
 		TokenizedMessage.Get().SetMessageLink(FUObjectToken::Create(Node));
 
@@ -359,28 +346,130 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 	return Messages;
 }
 
+
+void FJointNodePointer::PostSerialize(const FArchive& Ar)
+{
+	if (Ar.IsLoading())
+	{
+		FArchive& NonConstAr = const_cast<FArchive&>(Ar);
+		const FLinker* Linker = NonConstAr.GetLinker();
+
+		if (Linker && Linker->LinkerRoot)
+		{
+			UPackage* CurrentPackage = Linker->LinkerRoot;
+			FString PackageName = CurrentPackage->GetName();
+
+			if (!Node.IsNull())
+			{
+				FSoftObjectPath NodePath = Node.ToSoftObjectPath();
+
+				if (!NodePath.GetAssetPathString().StartsWith(PackageName))
+				{
+					Node.Reset();
+
+					FText Message = LOCTEXT("ExternalReferenceTitle", "External Reference Detected and Reset in FJointNodePointer");
+					FText MessageDetailed = FText::Format(
+						LOCTEXT("ExternalReferenceReset_Detailed", "The node pointer that had an external reference is in asset : {0}, and the invalid reference was : {1}"),
+						FText::FromString(PackageName),
+						FText::FromString(NodePath.GetAssetPathString()));
+
+					FNotificationInfo NotificationInfo(Message);
+					NotificationInfo.SubText = MessageDetailed;
+					NotificationInfo.bFireAndForget = true;
+					NotificationInfo.FadeInDuration = 0.3f;
+					NotificationInfo.FadeOutDuration = 1.3f;
+					NotificationInfo.ExpireDuration = 10;
+					NotificationInfo.WidthOverride = FOptionalSize();
+					FSlateNotificationManager::Get().AddNotification(NotificationInfo)->SetCompletionState(SNotificationItem::CS_Fail);
+
+					UE_LOG(LogJoint, Warning, TEXT("%s"), *MessageDetailed.ToString());
+
+					// Mark the package dirty to prompt the user to save the asset after fixing the invalid reference.
+					CurrentPackage->MarkPackageDirty();
+				}
+			}
+		}
+	}
+}
+
+
 #endif
+
+bool FJointNodePointer::CheckHasObjectFromSameOuter(FJointNodePointer& Structure, UObject* Outer)
+{
+	if (Structure.Node.IsValid())
+	{
+		if (UJointNodeBase* NodeInstance = Structure.Node.Get())
+		{
+			return NodeInstance->GetOuter() == Outer;
+		}
+	}
+
+	return false;
+}
+
+FJointNodes::FJointNodes()
+{
+}
+
+FJointNodes::FJointNodes(const TArray<UJointNodeBase*>& InNodes) : Nodes(InNodes)
+{
+}
+
+bool FJointEdPinData::HasSameSignature(const FJointEdPinData& Other) const
+{
+	return PinName == Other.PinName && Direction == Other.Direction && Type == Other.Type;
+}
+
+void FJointEdPinData::CopyPropertiesFrom(const FJointEdPinData& Other)
+{
+	PinName = Other.PinName;
+	Direction = Other.Direction;
+	Type = Other.Type;
+	Settings = Other.Settings;
+}
+
+
+bool FJointEdPinData::IsNull() const
+{
+	return *this != PinData_Null;
+}
+
+
+bool FJointEdPinData::operator==(const FJointEdPinData& Other) const
+{
+	return HasSameSignature(Other)
+		&& ImplementedPinId == Other.ImplementedPinId;
+}
+
+bool operator!=(const FJointEdPinData& A, const FJointEdPinData& B)
+{
+	return !(A == B);
+}
+
+IJointEdNodeInterface::IJointEdNodeInterface()
+{
+}
+
+//NullNodeSetting
 
 FJointEdNodeSetting::FJointEdNodeSetting()
 {
-	
 #if WITH_EDITORONLY_DATA
 
 	IconicNodeImageBrush = FSlateBrush();
 	IconicNodeImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
-	IconicNodeImageBrush.ImageSize = FVector2D(2,2);
+	IconicNodeImageBrush.ImageSize = FVector2D(2, 2);
 
 #endif
-
 }
-
 
 void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
 {
-	if(!Node) return;
+	if (!Node) return;
 
 #if WITH_EDITORONLY_DATA
-	
+
 	IconicNodeImageBrush = Node->IconicNodeImageBrush;
 	bUseSpecifiedGraphNodeBodyColor = Node->bUseSpecifiedGraphNodeBodyColor;
 	NodeBodyColor = Node->NodeBodyColor;
@@ -390,13 +479,12 @@ void FJointEdNodeSetting::UpdateFromNode(const UJointNodeBase* Node)
 	DefaultEdSlateDetailLevel = Node->DefaultEdSlateDetailLevel;
 	PropertyDataForSimpleDisplayOnGraphNode = Node->PropertyDataForSimpleDisplayOnGraphNode;
 	bAllowEditingOfPinDataOnDetailsPanel = Node->bAllowNodeInstancePinControl;
-	
+
 #endif
 }
 
 FJointEdPinDataSetting::FJointEdPinDataSetting()
 {
-
 }
 
 UObject* IJointEdNodeInterface::JointEdNodeInterface_GetNodeInstance()
@@ -433,6 +521,82 @@ const FEdGraphPinType FJointEdPinData::PinType_Joint_Normal(
 
 //Keep this "Dialogue", otherwise it will mess up the system.
 
+FJointEdPinData::FJointEdPinData() :
+	PinName(NAME_None),
+	Direction(EEdGraphPinDirection::EGPD_Input),
+	Type(PinType_Joint_Normal)
+{
+}
+
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection) :
+	PinName(InPinName),
+	Direction(InDirection),
+	Type(PinType_Joint_Normal)
+{
+}
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection,
+	const FJointEdPinDataSetting& InSettings) :
+	PinName(InPinName),
+	Direction(InDirection),
+	Type(PinType_Joint_Normal),
+	Settings(InSettings)
+{
+}
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection,
+	const FEdGraphPinType& InType) :
+	PinName(InPinName),
+	Direction(InDirection),
+	Type(InType)
+{
+}
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection,
+	const FEdGraphPinType& InType,
+	const FJointEdPinDataSetting& InSettings) :
+	PinName(InPinName),
+	Direction(InDirection),
+	Type(InType),
+	Settings(InSettings)
+{
+}
+
+FJointEdPinData::FJointEdPinData(
+	const FName& InPinName,
+	const EEdGraphPinDirection& InDirection,
+	const FEdGraphPinType& InType,
+	const FJointEdPinDataSetting& InSettings,
+	const FGuid& InImplementedPinGuid) :
+	PinName(InPinName),
+	Direction(InDirection),
+	Type(InType),
+	Settings(InSettings),
+	ImplementedPinId(InImplementedPinGuid)
+{
+}
+
+FJointEdPinData::FJointEdPinData(const FJointEdPinData& Other) :
+	PinName(Other.PinName),
+	Direction(Other.Direction),
+	Type(Other.Type),
+	Settings(Other.Settings),
+	ImplementedPinId(Other.ImplementedPinId)
+{
+}
+
+const FJointEdPinData FJointEdPinData::PinData_Null = FJointEdPinData();
+
+
 const FEdGraphPinType FJointEdPinData::PinType_Joint_SubNodeParent(
 	FEdGraphPinType(
 		FName("PC_Joint_SubNodeParent"),
@@ -445,87 +609,11 @@ const FEdGraphPinType FJointEdPinData::PinType_Joint_SubNodeParent(
 );
 
 
-const FJointEdPinData FJointEdPinData::PinData_Null = FJointEdPinData();
-
-FJointEdPinData::FJointEdPinData():
-	PinName(NAME_None),
-	Direction(EEdGraphPinDirection::EGPD_Input),
-	Type(PinType_Joint_Normal)
+FJointEdLogMessage::FJointEdLogMessage() : Severity(EJointEdMessageSeverity::Type::Info)
 {
 }
 
-FJointEdPinData::FJointEdPinData(
-	const FName& InPinName,
-	const EEdGraphPinDirection& InDirection):
-		PinName(InPinName),
-		Direction(InDirection),
-		Type(PinType_Joint_Normal)
-{
-}
-
-FJointEdPinData::FJointEdPinData(
-	const FName& InPinName,
-	const EEdGraphPinDirection& InDirection,
-	const FJointEdPinDataSetting& InSettings) :
-		PinName(InPinName),
-		Direction(InDirection),
-		Type(PinType_Joint_Normal),
-		Settings(InSettings)
-{
-}
-
-FJointEdPinData::FJointEdPinData(
-	const FName& InPinName,
-	const EEdGraphPinDirection& InDirection,
-	const FEdGraphPinType& InType):
-		PinName(InPinName),
-		Direction(InDirection),
-		Type(InType)
-{
-}
-
-FJointEdPinData::FJointEdPinData(
-	const FName& InPinName,
-	const EEdGraphPinDirection& InDirection,
-	const FEdGraphPinType& InType,
-	const FJointEdPinDataSetting& InSettings):
-		PinName(InPinName),
-		Direction(InDirection),
-		Type(InType),
-		Settings(InSettings)
-{
-}
-
-FJointEdPinData::FJointEdPinData(
-	const FName& InPinName,
-	const EEdGraphPinDirection& InDirection,
-	const FEdGraphPinType& InType,
-	const FJointEdPinDataSetting& InSettings,
-	const FGuid& InImplementedPinGuid):
-		PinName(InPinName),
-		Direction(InDirection),
-		Type(InType),
-		Settings(InSettings),
-		ImplementedPinId(InImplementedPinGuid)
-{
-}
-
-
-FJointEdPinData::FJointEdPinData(const FJointEdPinData& Other) :
-	PinName(Other.PinName),
-	Direction(Other.Direction),
-	Type(Other.Type),
-	Settings(Other.Settings),
-	ImplementedPinId(Other.ImplementedPinId)
-{
-}
-
-
-FJointEdLogMessage::FJointEdLogMessage(): Severity(EJointEdMessageSeverity::Type::Info)
-{
-}
-
-FJointEdLogMessage::FJointEdLogMessage(const EJointEdMessageSeverity::Type& InVerbosity, const FText& InMessage):
+FJointEdLogMessage::FJointEdLogMessage(const EJointEdMessageSeverity::Type& InVerbosity, const FText& InMessage) :
 	Severity(InVerbosity), Message(InMessage)
 {
 }

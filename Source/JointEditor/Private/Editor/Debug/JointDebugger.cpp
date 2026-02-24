@@ -385,9 +385,9 @@ void UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(UJointEdGraphNode* 
 	// change the original asset node's widget first.
 	if (UJointEdGraphNode* FoundEdGraphNode = FJointEdUtils::GetCorrespondingJointGraphNodeForJointManager(Changed, OriginalJointManager))
 	{
-		if (TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = FoundEdGraphNode->GetGraphNodeSlate().Pin())
+		FOREACH_GRAPHNODESLATE_BASE_WITH(FoundEdGraphNode, NodeSlate)
 		{
-			GraphNodeSlate->OnDebugDataChanged(Data);
+			NodeSlate->OnDebugDataChanged(Data);
 		}
 	}
 	
@@ -400,14 +400,13 @@ void UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(UJointEdGraphNode* 
 	{
 		UJointEdGraphNode* FoundEdGraphNode = FJointEdUtils::GetCorrespondingJointGraphNodeForJointManager(Changed, Instance->GetJointManager());
 		
-		if (!FoundEdGraphNode) continue;
-		
-		if (TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = FoundEdGraphNode->GetGraphNodeSlate().Pin())
+		FOREACH_GRAPHNODESLATE_BASE_WITH(FoundEdGraphNode, NodeSlate)
 		{
-			GraphNodeSlate->OnDebugDataChanged(Data);
+			NodeSlate->OnDebugDataChanged(Data);
 		}
 	}
 }
+
 
 TArray<FJointNodeDebugData>* UJointDebugger::GetCorrespondingDebugDataForGraph(UJointEdGraph* Graph)
 {
@@ -469,14 +468,9 @@ void UJointDebugger::OnJointNodeBeginPlayed(AJointActor* JointActor, UJointNodeB
 
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(OriginalNode, NodeSlate)
 			{
-				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
-				{
-					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
-					
-					GraphNodeSlate->PlayDebuggerAnimation(false,true, false, false);
-				}
+				NodeSlate->PlayDebuggerAnimation(false,true, false, false);
 			}
 		}
 	}
@@ -490,14 +484,9 @@ void UJointDebugger::OnJointNodeEndPlayed(AJointActor* JointActor, UJointNodeBas
 
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(OriginalNode, NodeSlate)
 			{
-				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
-				{
-					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
-					
-					GraphNodeSlate->PlayDebuggerAnimation(false,false, false, true);
-				}
+				NodeSlate->PlayDebuggerAnimation(false,false, false, true);
 			}
 		}
 	}
@@ -511,33 +500,30 @@ void UJointDebugger::OnJointNodePending(AJointActor* JointActor, UJointNodeBase*
 		
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), JointNodeBase->GetNodeGuid()))
 		{
-			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(OriginalNode, NodeSlate)
 			{
-				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
+				NodeSlate->PlayDebuggerAnimation(false,false, false, true);
+
+				if (UJointNodeBase* Node = OriginalNode->GetCastedNodeInstance())
 				{
-					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
-					
-					if (UJointNodeBase* Node = OriginalNode->GetCastedNodeInstance())
-					{
-						/**
-						 * WE ONLY show pending animation if the node is not ended yet.
-						 * 
-						 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-						 * !!!!!!!Don't delete this comment block - it is here to remind why this check is needed.!!!!!!!!!!
-						 * I spend 3 hours debugging why the nodes are not showing the ended play animation again....
-						 * It happened like, 3th time. for every refactoring I do (shh)
-						 * 
-						 * 
-						 * Nodes can be marked as pending after the endplay event. Because the pending state is a state that represent that the node is done doing its job, so basically it still make sense to mark it as pending after ended play.
-						 * But for the debugger animation, we don't want to show pending state after ended play, because it looks like as if the node is still running, while it is ended already. (which is confusing).
-						 * (This happens because pending state is more like a, flag, rather than a state - and here we are representing it as a state for the better visualization in the debugger)
-						 */
+					/**
+					 * WE ONLY show pending animation if the node is not ended yet.
+					 * 
+					 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+					 * !!!!!!!Don't delete this comment block - it is here to remind why this check is needed.!!!!!!!!!!
+					 * I spend 3 hours debugging why the nodes are not showing the ended play animation again....
+					 * It happened like, 3th time. for every refactoring I do (shh)
+					 * 
+					 * 
+					 * Nodes can be marked as pending after the endplay event. Because the pending state is a state that represent that the node is done doing its job, so basically it still make sense to mark it as pending after ended play.
+					 * But for the debugger animation, we don't want to show pending state after ended play, because it looks like as if the node is still running, while it is ended already. (which is confusing).
+					 * (This happens because pending state is more like a, flag, rather than a state - and here we are representing it as a state for the better visualization in the debugger)
+					 */
 						
-						// dumbass, check this always. nodes can be marked as pending after the endplay event.
-						if (!Node->IsNodeEndedPlay()) 
-						{
-							GraphNodeSlate->PlayDebuggerAnimation(false,false, true, false);
-						}
+					// dumbass, check this always. nodes can be marked as pending after the endplay event.
+					if (!Node->IsNodeEndedPlay()) 
+					{
+						NodeSlate->PlayDebuggerAnimation(false,false, true, false);
 					}
 				}
 			}
@@ -646,14 +632,9 @@ void UJointDebugger::PlayPauseNodeAnimation(const UJointNodeBase* Node)
 
 		if (UJointEdGraphNode* OriginalNode = FJointEdUtils::FindGraphNodeWithProvidedNodeInstanceGuid(JointActor->GetJointManager(), Node->GetNodeGuid()))
 		{
-			if (const UJointEditorSettings* EditorSettings = UJointEditorSettings::Get())
+			FOREACH_GRAPHNODESLATE_BASE_WITH(OriginalNode, NodeSlate)
 			{
-				if (OriginalNode && OriginalNode->GetGraphNodeSlate().IsValid())
-				{
-					TSharedPtr<SJointGraphNodeBase> GraphNodeSlate = OriginalNode->GetGraphNodeSlate().Pin();
-					
-					GraphNodeSlate->PlayDebuggerAnimation(true,false, false, false);
-				}
+				NodeSlate->PlayDebuggerAnimation(true,false, false, false);
 			}
 		}
 	}

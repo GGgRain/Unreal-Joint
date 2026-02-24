@@ -13,6 +13,10 @@
 #include "Styling/SlateBrush.h" // For FSlateBrush
 #include "Logging/TokenizedMessage.h" // For FTokenizedMessage
 
+#include "UObject/Class.h"
+#include "UObject/ObjectMacros.h"
+
+
 #include "JointSharedTypes.generated.h"
 
 class UJointNodeBase;
@@ -21,6 +25,7 @@ class UTexture2D;
 
 class UActorComponent;
 class UDataTable;
+class UEdGraphNode;
 
 class IPropertyHandle;
 
@@ -87,7 +92,7 @@ public:
 /**
  * A data structure that contains the setting data for a property that will be used to display on the graph node by automatically generated slates.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct JOINT_API FJointGraphNodePropertyData
 {
 	GENERATED_BODY()
@@ -124,7 +129,6 @@ struct JOINT_API FJointNodePointer
 
 public:
 	FJointNodePointer();
-
 	~FJointNodePointer();
 
 public:
@@ -165,13 +169,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Node")
 	TSet<TSubclassOf<UJointNodeBase>> DisallowedType;
 
+public:
+
 	bool operator==(const FJointNodePointer& Other) const;
 
-	
-	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
-
-	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node,
-	                                                                const FString& OptionalStructurePropertyName);
+public:
 	
 	/**
 	 * Check whether the node pointer has the same restrictions as the provided node pointer.
@@ -183,20 +185,47 @@ public:
 	 */
 	bool CheckMatchRestrictions(const TSet<TSubclassOf<UJointNodeBase>>& AllowedClass, const TSet<TSubclassOf<UJointNodeBase>>& DisallowedClasses) const;
 	
-	
 	/**
 	 * Check whether the node pointer is valid.
 	 * @return true if the node pointer is valid.
 	 */
 	bool IsValid() const;
 	
+	void Reset();
+	
+public:
+	
+	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
+	static bool CheckHasObjectFromSameOuter(FJointNodePointer& Structure, UObject* Outer);
+	
+public:
+	
+#if WITH_EDITOR
+	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node, const FString& OptionalStructurePropertyName);
+
+	void PostSerialize(const FArchive& Ar); 
+#endif
+	
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointNodePointer& Struct)
 {
-	return FCrc::MemCrc32(&Struct, sizeof(FGuid));
+	return FCrc::MemCrc32(&Struct, sizeof(FJointNodePointer));
 }
 
+#if WITH_EDITOR
+template<>
+struct TStructOpsTypeTraits<FJointNodePointer> : public TStructOpsTypeTraitsBase2<FJointNodePointer>
+{
+	enum
+	{
+		//WithSerializer = true;
+		WithPostSerialize = true
+	};
+};
+#endif
+
+//A helper macro to resolve the node pointer to the actual node instance of the type you want. It will return nullptr if the pointer is not valid or the type is not correct.
 #define RESOLVE_JOINT_POINTER(Pointer, T) \
 ((Pointer.Node && Cast<T>(Pointer.Node.Get())) ? Cast<T>(Pointer.Node.Get()) : nullptr)
 
@@ -252,14 +281,14 @@ public:
 	/**
 	 * Node's iconic color. This color will be used for the color scheme of the node for the identification on search tab and other purposes.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FLinearColor NodeIconicColor = FLinearColor(0.026715, 0.025900, 0.035, 1);
 
 public:
 	/**
 	 * The brush image to display inside the Iconic Node (a little colored block next to the node name) of the graph node slate.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Iconic Node")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Iconic Node")
 	FSlateBrush IconicNodeImageBrush;
 
 public:
@@ -268,7 +297,7 @@ public:
 	 * Whether to use specified graph node body color.
 	 * If it is false, the node body will use the common color scheme of the node body on the graph
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseSpecifiedGraphNodeBodyColor = false;
 
 	/**
@@ -276,13 +305,13 @@ public:
 	 * by default, when the node is stowed, the body will use NodeIconicColor instead of NodeBodyColor - for the better identification of the node.
 	 * But if you want to use NodeBodyColor instead of NodeIconicColor, set this to false.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseIconicColorForNodeBodyOnStow = true;
 
 	/**
 	 * Node body's color. Change this to customize the color of the node.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FLinearColor NodeBodyColor = FLinearColor::White;
 
 public:
@@ -291,81 +320,91 @@ public:
 	 * Whether to use NodeShadowImageBrush instead of the default brush.
 	 * Tip: if you want to hide the node's shadow, you can set this to true and set NodeShadowImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseCustomNodeShadowImageBrush = false;
 
 	/**
 	 * Whether to use InnerNodeBodyImageBrush instead of the default brush.
 	 * Tip: if you want to hide the node's InnerNodeBody, you can set this to true and set InnerNodeBodyImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseCustomInnerNodeBodyImageBrush = false;
 
 	/**
 	 * Whether to use bUseCustomOuterNodeBodyImageBrush instead of the default brush.
 	 * Tip: if you want to hide the node's OuterNodeBody, you can set this to true and set OuterNodeBodyImageBrush's DrawAs to ESlateBrushDrawType::NoDrawType.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseCustomOuterNodeBodyImageBrush = false;
 
 
 	/**
 	 * The brush for the node shadow.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FSlateBrush NodeShadowImageBrush;
 
 	/**
 	 * The brush for Inner Node Body Image.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FSlateBrush InnerNodeBodyImageBrush;
 
 	/**
 	 * The brush for Outer Node Body Image.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FSlateBrush OuterNodeBodyImageBrush;
 
 public:
 	
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseCustomShadowNodePadding = false;
 	
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	bool bUseCustomContentNodePadding = false;
 	
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FMargin ShadowNodePadding = FMargin(4);
 	
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Node Body")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
 	FMargin ContentNodePadding = FMargin(4);
+	
+public:
+	
+	/**
+	 * Whether this node can use fixed custom size.
+	 * If false, it will wrapped down to its minimum size.
+	 * @note We don't recommend to set this to true for fragments. (we don't provide proper handling for it yet.)
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
+	bool bDefaultIsNodeResizeable = true;
 	
 public:
 	/**
 	 * Whether to display a ClassFriendlyName hint text next to the Iconic node that will be displayed only when SlateDetailLevel is not SlateDetailLevel_Maximum.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Name")
 	bool bAllowDisplayClassFriendlyNameText = true;
 
 
 	/**
 	 * Whether to use the simplified display of the class friendly name text instead of original class friendly name text on the graph node.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Name")
 	bool bUseSimplifiedDisplayClassFriendlyNameText = false;
 
 	/**
 	 * The simplified class friendly name text that will be displayed on the graph node.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual|Name")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Name")
 	FText SimplifiedClassFriendlyNameText;
 
 public:
 	/**
 	 * The SlateDetailLevel that the graph node of this node instance will use by default.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual")
 	TEnumAsByte<EJointEdSlateDetailLevel::Type> DefaultEdSlateDetailLevel =
 		EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
 
@@ -375,7 +414,7 @@ public:
 	 * Useful when you want to show some properties on the graph, but don't afford to implement a custom editor node class for the node.
 	 * Also, you can still use this value to implement a simple display for a property on custom editor node class.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Editing")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Editing")
 	TArray<FJointGraphNodePropertyData> PropertyDataForSimpleDisplayOnGraphNode;
 
 public:
@@ -384,11 +423,13 @@ public:
 	 * If true, The detail tab of the node will show off the editor node's pin data property.
 	 * Note: Joint 2.12: It no longer prohibits the execution of OnPinDataChanged, OnPinConnectionChanged delegates. It only controls whether to show the pin data property on the detail tab.
 	 */
-	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor|Pin")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Pin")
 	bool bAllowEditingOfPinDataOnDetailsPanel = false;
 
 public:
+	
 	void UpdateFromNode(const UJointNodeBase* Node);
+	
 };
 
 
@@ -418,6 +459,7 @@ struct JOINT_API FJointEdPinData
 	GENERATED_BODY()
 
 public:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Editor Node")
 	FName PinName;
 
@@ -428,6 +470,7 @@ public:
 	FEdGraphPinType Type;
 
 public:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Editor Node - Visual")
 	FJointEdPinDataSetting Settings;
 
@@ -462,6 +505,8 @@ public:
 	bool HasSameSignature(const FJointEdPinData& Other) const;
 
 	void CopyPropertiesFrom(const FJointEdPinData& Other);
+	
+	bool IsNull() const;
 	
 	bool operator==(const FJointEdPinData& Other) const;
 

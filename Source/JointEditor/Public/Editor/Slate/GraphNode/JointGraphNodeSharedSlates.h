@@ -282,6 +282,7 @@ private:
 
 private:
 	
+	//TODO: Make it work with a path reference instead of direct pointer - it's very, very unsafe.
 	FJointNodePointer* PointerToTargetStructure = nullptr;
 	UJointEdGraphNode* StructureOwnerEdNode = nullptr;
 	

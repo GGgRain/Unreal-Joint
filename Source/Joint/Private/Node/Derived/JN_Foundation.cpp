@@ -4,6 +4,9 @@
 
 UJN_Foundation::UJN_Foundation()
 {
+#if WITH_EDITORONLY_DATA
+	EdNodeSetting.bDefaultIsNodeResizeable = true;
+#endif
 }
 
 TArray<UJointNodeBase*> UJN_Foundation::SelectNextNodes_Implementation(AJointActor* InHostingJointInstance)
@@ -19,3 +22,10 @@ bool UJN_Foundation::IsSupportedForNetworking() const
 {
 	return true; //For function call spaces, but it should not be used with other functionalities.
 }
+
+#if WITH_EDITOR
+void UJN_Foundation::PostPlacedNewNode_Implementation()
+{
+	EdNodeSetting.bDefaultIsNodeResizeable = true;
+}
+#endif
