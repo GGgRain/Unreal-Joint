@@ -1319,3 +1319,5 @@ void UJointEditorFunctionLibrary::FireNotification(
 {
 	FJointEdUtils::FireNotification(NotificationTitleText, NotificationText, AdmonitionType, DurationSeconds, bReportOnLog);
 }
+
+#undef LOCTEXT_NAMESPACE

@@ -21,7 +21,7 @@
 UJointEdGraphNode_Tunnel::UJointEdGraphNode_Tunnel()
 {
 	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
-
+	bIsNodeResizable = false;
 	bCanRenameNode = false;
 }
 

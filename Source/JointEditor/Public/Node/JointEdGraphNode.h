@@ -697,7 +697,6 @@ public:
 	virtual void PostPlacedNewNode() override;
 	virtual void PrepareForCopying() override;
 	virtual void PostCopyNode();
-	void ClearPinLinkedTo();
 	virtual void PostPasteNode() override;
 
 	virtual void PostEditImport() override;
@@ -848,6 +847,8 @@ public:
 	const FJointEdNodeSetting& GetEdNodeSetting() const;
 
 #endif
+
+	void ClearPinLinkedTo();
 
 public:
 	//Declare the actions the users will get when they right-click on the graph node. By default, it implements add fragment action.

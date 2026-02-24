@@ -30,6 +30,8 @@ UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 
 	ConnectorName = LOCTEXT("ConnectorDefaultName", "New Connector");
 	
+	bIsNodeResizable = false;
+	
 }
 
 

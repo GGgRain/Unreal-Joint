@@ -38,7 +38,8 @@
 UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 {
 	bCanRenameNode = true; // use custom rename logic for the bound graph - and it utilizes the rename interface from the base node.
-
+	bIsNodeResizable = true;
+	
 	NodeColor = UJointEditorSettings::Get()->DefaultNodeColor;
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInstanceConstant> NodeBodyBrush(
@@ -65,6 +66,7 @@ UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 	DefaultEdNodeSetting.NodeBodyColor = FLinearColor(0.5, 0.5, 0.5, 0.5);
 	DefaultEdNodeSetting.NodeIconicColor = FColor(29, 130, 126, 125);
 	DefaultEdNodeSetting.DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
+	
 }
 
 

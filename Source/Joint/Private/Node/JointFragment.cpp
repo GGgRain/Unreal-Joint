@@ -6,8 +6,10 @@
 UJointFragment::UJointFragment() 
 	: UJointNodeBase()
 {
+#if WITH_EDITORONLY_DATA
 	//Fragments are not resizeable, as they will automatically adjust their size to fit their content.
 	EdNodeSetting.bDefaultIsNodeResizeable = false;
+#endif
 }
 
 bool UJointFragment::IsManagerFragment(UJointNodeBase* InFragment)

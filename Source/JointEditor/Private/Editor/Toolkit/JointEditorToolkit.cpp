@@ -3711,12 +3711,12 @@ bool FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode() const
 		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
 		if (!SelectedNode) continue;
 
-		if (UJointEdGraphNode_Fragment* FragmentNode = Cast<UJointEdGraphNode_Fragment>(SelectedNode))
+		if (UJointEdGraphNode_Foundation* Foundation = Cast<UJointEdGraphNode_Foundation>(SelectedNode))
 		{
-			return false;
+			return true;
 		}
 		
-		return true;
+		return false;
 	}
 
 	return false;

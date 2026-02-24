@@ -13,6 +13,10 @@
 #include "Styling/SlateBrush.h" // For FSlateBrush
 #include "Logging/TokenizedMessage.h" // For FTokenizedMessage
 
+#include "UObject/Class.h"
+#include "UObject/ObjectMacros.h"
+
+
 #include "JointSharedTypes.generated.h"
 
 class UJointNodeBase;
@@ -125,7 +129,6 @@ struct JOINT_API FJointNodePointer
 
 public:
 	FJointNodePointer();
-
 	~FJointNodePointer();
 
 public:
@@ -166,13 +169,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, AdvancedDisplay, Category = "Node")
 	TSet<TSubclassOf<UJointNodeBase>> DisallowedType;
 
+public:
+
 	bool operator==(const FJointNodePointer& Other) const;
 
-	
-	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
-
-	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node,
-	                                                                const FString& OptionalStructurePropertyName);
+public:
 	
 	/**
 	 * Check whether the node pointer has the same restrictions as the provided node pointer.
@@ -192,13 +193,39 @@ public:
 	
 	void Reset();
 	
+public:
+	
+	static bool CanSetNodeOnProvidedJointNodePointer(FJointNodePointer Structure, UJointNodeBase* Node);
+	static bool CheckHasObjectFromSameOuter(FJointNodePointer& Structure, UObject* Outer);
+	
+public:
+	
+#if WITH_EDITOR
+	static TArray<TSharedPtr<FTokenizedMessage>> GetCompilerMessage(FJointNodePointer& Structure, UJointNodeBase* Node, const FString& OptionalStructurePropertyName);
+
+	void PostSerialize(const FArchive& Ar); 
+#endif
+	
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointNodePointer& Struct)
 {
-	return FCrc::MemCrc32(&Struct, sizeof(FGuid));
+	return FCrc::MemCrc32(&Struct, sizeof(FJointNodePointer));
 }
 
+#if WITH_EDITOR
+template<>
+struct TStructOpsTypeTraits<FJointNodePointer> : public TStructOpsTypeTraitsBase2<FJointNodePointer>
+{
+	enum
+	{
+		//WithSerializer = true;
+		WithPostSerialize = true
+	};
+};
+#endif
+
+//A helper macro to resolve the node pointer to the actual node instance of the type you want. It will return nullptr if the pointer is not valid or the type is not correct.
 #define RESOLVE_JOINT_POINTER(Pointer, T) \
 ((Pointer.Node && Cast<T>(Pointer.Node.Get())) ? Cast<T>(Pointer.Node.Get()) : nullptr)
 
