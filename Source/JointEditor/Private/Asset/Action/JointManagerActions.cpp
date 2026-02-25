@@ -139,11 +139,11 @@ void FJointManagerActions::StartRenderChain(
 	int32 TotalCount,
 	TArray<TWeakObjectPtr<UJointManager>> AllAssets)
 {
-	Async(EAsyncExecution::ThreadPool, [=, this]()
+	Async(EAsyncExecution::ThreadPool, [this, JointManager, Elem, SizeX, SizeY, SleepPerPass, CompletedCount, TotalCount, AllAssets]()
 	{
 		FPlatformProcess::Sleep(SleepPerPass);
 
-		AsyncTask(ENamedThreads::GameThread, [=, this]()
+		AsyncTask(ENamedThreads::GameThread, [this, JointManager, Elem, SizeX, SizeY, SleepPerPass, CompletedCount, TotalCount, AllAssets]()
 		{
 			Elem->CreateRenderTargetIfNeeded();
 
@@ -201,7 +201,7 @@ void FJointManagerActions::FinalizeCapture(
 	int32 TotalCount,
 	TArray<TWeakObjectPtr<UJointManager>> AllAssets)
 {
-	AsyncTask(ENamedThreads::GameThread, [=, this]()
+	AsyncTask(ENamedThreads::GameThread, [this, JointManager, Elem, SizeX, SizeY, CompletedCount, TotalCount, AllAssets]()
 	{
 		TArray<FColor> Pixels;
 
