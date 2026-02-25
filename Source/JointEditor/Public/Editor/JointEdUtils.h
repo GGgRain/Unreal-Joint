@@ -4,16 +4,20 @@
 
 #include "ClassViewerFilter.h"
 #include "EdGraphSchema_K2_Actions.h"
-#include "Editor/Graph/JointEdGraph.h"
 #include "JointManager.h"
 #include "STextPropertyEditableTextBox.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor/SharedType/JointEditorSharedTypes.h"
+#include "Editor/Graph/JointEdGraph.h"
+
 #include "SharedType/JointSharedTypes.h"
+
 
 class UJointNodePreset;
 enum class EJointMDAdmonitionType : uint8;
-
 class UJointEdGraphNode;
+class UJointScriptParser;
+class UJointEdGraph;
 
 class JOINTEDITOR_API FJointEdUtils
 {
@@ -74,7 +78,20 @@ public:
 	
 public:
 	
-	static void GetNodePresetAssets(TArray<FAssetData>& OutAssets);
+	template <typename Type>
+	static void GetAssetOfType(TArray<FAssetData>& OutAssets)
+	{
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+		IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+#if (UE_VERSION_OLDER_THAN(5, 1, 0))
+		AssetRegistryModule.Get().GetAssetsByClass(Type::StaticClass()->GetFName(), OutAssets);
+#else
+		AssetRegistryModule.Get().GetAssetsByClass(Type::StaticClass()->GetClassPathName(), OutAssets);
+#endif
+	
+	}
+
 
 public:
 
@@ -281,7 +298,7 @@ public:
 	
 public:
 
-	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode);
+	static void MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UEdGraphNode* ConnectedNode);
 
 	/**
 	 * Try to make a connection between the provided pins. It's a safe version of MakeLinkTo function with validation.
@@ -296,8 +313,8 @@ public:
 
 	//Templates
 
-	template< class T > 
-		static inline void GetAllNodesOfClass( const UJointManager* Manager, TArray<T*>& OutNodes )
+	template <class T>
+	static void GetAllNodesOfClass(const UJointManager* Manager, TArray<T*>& OutNodes)
 	{
 		TArray<UJointEdGraph*> AllGraphs;
 		
@@ -317,8 +334,7 @@ public:
 				}
 			}
 		}
-		
 	}
-	
+
 };
 

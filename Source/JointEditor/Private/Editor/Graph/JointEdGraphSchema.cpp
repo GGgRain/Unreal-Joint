@@ -208,7 +208,7 @@ FReply UJointEdGraphSchema::BeginGraphDragAction(TSharedPtr<FEdGraphSchemaAction
 	return FReply::Unhandled();
 }
 
-void UJointEdGraphSchema::DroppedAssetsOnGraph(const TArray<struct FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
+void UJointEdGraphSchema::DroppedAssetsOnGraph(const TArray<struct FAssetData>& Assets, const FJointSlateVector2D& GraphPosition, UEdGraph* Graph) const
 {
 	//TODO: Handle Dropped Assets on the Joint Graph Editor.
 	Super::DroppedAssetsOnGraph(Assets, GraphPosition, Graph);
@@ -324,7 +324,7 @@ void UJointEdGraphSchema::ImplementAddNodePresetActions(FGraphContextMenuBuilder
 	UEdGraph* Graph = const_cast<UEdGraph*>(ContextMenuBuilder.CurrentGraph);
 
 	TArray<FAssetData> NodePresetAssets;
-	FJointEdUtils::GetNodePresetAssets(NodePresetAssets);
+	FJointEdUtils::GetAssetOfType<UJointNodePreset>(NodePresetAssets);
 	
 	for (FAssetData& NodePresetAsset : NodePresetAssets)
 	{

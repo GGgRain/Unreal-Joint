@@ -35,8 +35,12 @@ FJointSchemaAction_NewSubNode::FJointSchemaAction_NewSubNode(FText InNodeCategor
 
 UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
 	class UEdGraph* ParentGraph,
-	UEdGraphPin* FromPin,
-	const FVector2D Location, 
+	UEdGraphPin* FromPin, 
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
 	bool bSelectNewNode)
 {
 	if (!NodeTemplate || !ParentGraph) return nullptr;
@@ -105,9 +109,15 @@ UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
 	return LastCreatedNode;
 }
 
-UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(class UEdGraph* ParentGraph,
-                                                           TArray<UEdGraphPin*>& FromPins, const FVector2D Location,
-                                                           bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewSubNode::PerformAction(
+	class UEdGraph* ParentGraph,
+	TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
 	return PerformAction(ParentGraph, NULL, Location, bSelectNewNode);
 }
@@ -134,9 +144,13 @@ FJointSchemaAction_NewNode::FJointSchemaAction_NewNode(FText InNodeCategory, FTe
 }
 
 UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
-	UEdGraph* ParentGraph,
-	UEdGraphPin* FromPin,
-	const FVector2D Location,
+	class UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin, 
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
 	bool bSelectNewNode)
 {
 	if (!NodeTemplate || !ParentGraph) return nullptr;
@@ -156,6 +170,13 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
 			FText::FromString(NodeClass->GetName())
 		)
 	);
+	
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FVector2D FinalLoc = Location;
+#else 
+	//convert to double precision (Compatibility issue)
+	const FVector2d FinalLoc = FVector2d(Location);
+#endif
 
 	ParentGraph->Modify();
 	Manager->Modify();
@@ -164,7 +185,7 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
 		Manager,
 		ParentGraph,
 		NodeClass,
-		Location
+		FinalLoc
 	);
 
 	if (ResultNode)
@@ -179,12 +200,27 @@ UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
 	return ResultNode;
 }
 
-UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins,
-                                                        const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewNode::PerformAction(
+	class UEdGraph* ParentGraph,
+	TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
-	if (FromPins.Num() > 0) return PerformAction(ParentGraph, FromPins[0], Location, bSelectNewNode);
+	UEdGraphNode* Node = PerformAction(ParentGraph, nullptr, Location, bSelectNewNode);
 
-	return PerformAction(ParentGraph, nullptr, Location, bSelectNewNode);
+	if (Node && FromPins.Num() > 0)
+	{
+		for (UEdGraphPin* FromPin : FromPins)
+		{
+			FJointEdUtils::MakeConnectionFromTheDraggedPin(FromPin, Node);
+		}
+	}
+	
+	return Node;
 }
 
 void FJointSchemaAction_NewNode::AddReferencedObjects(FReferenceCollector& Collector)
@@ -193,8 +229,12 @@ void FJointSchemaAction_NewNode::AddReferencedObjects(FReferenceCollector& Colle
 	Collector.AddReferencedObject(NodeTemplate);
 }
 
-UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_FromShortcut(UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location,
-                                                                     bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewNode::PerformAction_FromShortcut(
+	UEdGraph* ParentGraph, 
+	TSubclassOf<UJointEdGraphNode> EdClass, 
+	TSubclassOf<UJointNodeBase> NodeClass, 
+	const FVector2D Location,
+	bool bSelectNewNode)
 {
 	if (!NodeClass || !ParentGraph || !EdClass) return nullptr;
 
@@ -248,7 +288,15 @@ FJointSchemaAction_NewNodePreset::FJointSchemaAction_NewNodePreset(FText InNodeC
 {
 }
 
-UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(
+	class UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin, 
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
 	if (!NodePreset || !ParentGraph) return nullptr;
 	
@@ -262,12 +310,19 @@ UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* Pa
 
 	ParentGraph->Modify();
 	Manager->Modify();
+	
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FVector2D FinalLoc = Location;
+#else 
+	//convert to double precision (Compatibility issue)
+	const FVector2d FinalLoc = FVector2d(Location);
+#endif
 
 	TArray<UJointEdGraphNode*> Nodes = UJointEditorFunctionLibrary::AddNodePreset(
 		Manager,
 		ParentGraph,
 		NodePreset,
-		Location
+		FinalLoc
 	);
 
 	for (UJointEdGraphNode*& Node : Nodes)
@@ -283,7 +338,15 @@ UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* Pa
 }
 
 
-UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_NewNodePreset::PerformAction(
+	class UEdGraph* ParentGraph, 
+	TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else 
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
 	return FEdGraphSchemaAction::PerformAction(ParentGraph, FromPins, Location, bSelectNewNode);
 }
@@ -295,13 +358,20 @@ void FJointSchemaAction_NewNodePreset::AddReferencedObjects(FReferenceCollector&
 }
 
 
-UEdGraphNode* FJointSchemaAction_AddComment::PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-                                                           const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_AddComment::PerformAction(
+	class UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
 	UEdGraphNode_Comment* const CommentTemplate = NewObject<UEdGraphNode_Comment>();
 	CommentTemplate->bCanRenameNode = true; // make it able to rename.
 
-	FVector2D SpawnLocation = Location;
+	FJointSlateVector2D SpawnLocation = Location;
 	FSlateRect Bounds;
 
 	TSharedPtr<SGraphEditor> GraphEditorPtr = SGraphEditor::FindGraphEditorForGraph(ParentGraph);
@@ -318,12 +388,19 @@ UEdGraphNode* FJointSchemaAction_AddComment::PerformAction(class UEdGraph* Paren
 	return NewNode;
 }
 
-UEdGraphNode* FJointSchemaAction_AddConnector::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin,
-                                                             const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FJointSchemaAction_AddConnector::PerformAction(
+	UEdGraph* ParentGraph,
+	UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+	const FJointSlateVector2D Location,
+#else
+	const FJointSlateVector2D& Location,
+#endif
+	bool bSelectNewNode)
 {
 	UJointEdGraphNode_Connector* const ConnectorTemplate = NewObject<UJointEdGraphNode_Connector>();
 
-	FVector2D SpawnLocation = Location;
+	FJointSlateVector2D SpawnLocation = Location;
 
 	UEdGraphNode* const NewNode = FEdGraphSchemaAction_NewNode::SpawnNodeFromTemplate<UJointEdGraphNode_Connector>(
 		ParentGraph, ConnectorTemplate, SpawnLocation, bSelectNewNode);

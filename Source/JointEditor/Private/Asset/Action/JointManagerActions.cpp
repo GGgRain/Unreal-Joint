@@ -4,13 +4,14 @@
 
 #include "ContentBrowserModule.h"
 #include "FileHelpers.h"
+
 #include "IContentBrowserSingleton.h"
 #include "JointEditorStyle.h"
 #include "JointManager.h"
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
 #include "ObjectTools.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+
 #include "Async/Async.h"
 #include "EditorWidget/SJointGraphPreviewer.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -138,11 +139,11 @@ void FJointManagerActions::StartRenderChain(
 	int32 TotalCount,
 	TArray<TWeakObjectPtr<UJointManager>> AllAssets)
 {
-	Async(EAsyncExecution::ThreadPool, [=]()
+	Async(EAsyncExecution::ThreadPool, [=, this]()
 	{
 		FPlatformProcess::Sleep(SleepPerPass);
 
-		AsyncTask(ENamedThreads::GameThread, [=]()
+		AsyncTask(ENamedThreads::GameThread, [=, this]()
 		{
 			Elem->CreateRenderTargetIfNeeded();
 
@@ -200,7 +201,7 @@ void FJointManagerActions::FinalizeCapture(
 	int32 TotalCount,
 	TArray<TWeakObjectPtr<UJointManager>> AllAssets)
 {
-	AsyncTask(ENamedThreads::GameThread, [=]()
+	AsyncTask(ENamedThreads::GameThread, [=, this]()
 	{
 		TArray<FColor> Pixels;
 

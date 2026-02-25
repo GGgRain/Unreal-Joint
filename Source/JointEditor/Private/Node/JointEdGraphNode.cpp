@@ -1022,33 +1022,6 @@ void UJointEdGraphNode::PostPasteNode()
 
 	//Since it has been allocated in different location, refresh the connection.
 	NodeConnectionListChanged();
-	
-	
-	//iterate all FJointNodePointer properties and find any references that are not in the same outer scope. If found, remove the reference to prevent issues.
-	
-	/*
-	UObject* CurrentOuter = GetOutermost();
-
-	for (TFieldIterator<FProperty> PropertyIt(GetClass()); PropertyIt; ++PropertyIt)
-	{
-		FProperty* Property = *PropertyIt;
-
-		// Check if the property is of type FJointNodePointer
-		if (FStructProperty* StructProp = CastField<FStructProperty>(Property))
-		{
-			if (StructProp->Struct->GetFName() == TEXT("JointNodePointer"))
-			{
-				FJointNodePointer* PointerData = StructProp->ContainerPtrToValuePtr<FJointNodePointer>(this);
-				
-				if (PointerData && FJointNodePointer::CheckHasObjectFromSameOuter(*PointerData, CurrentOuter))  continue;
-				
-				// Reset the pointer data if it has reference to objects that are not in the same outer scope.
-				PointerData->Reset();
-			}
-		}
-	}
-	*/
-	
 }
 
 void UJointEdGraphNode::PostEditImport()

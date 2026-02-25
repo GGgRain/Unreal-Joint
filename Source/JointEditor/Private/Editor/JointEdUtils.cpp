@@ -183,14 +183,6 @@ inline bool FJointEdUtils::FJointNodeFilter::IsUnloadedClassAllowed(
 	return InUnloadedClassData->IsChildOf(UJointNodeBase::StaticClass()) && !InUnloadedClassData->HasAnyClassFlags(CLASS_Abstract);
 }
 
-void FJointEdUtils::GetNodePresetAssets(TArray<FAssetData>& OutAssets)
-{
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
-
-	AssetRegistry.GetAssetsByClass(UJointNodePreset::StaticClass()->GetFName(), OutAssets);
-}
-
 void FJointEdUtils::JointText_StaticStableTextId(UPackage* InPackage,
                                                  const IEditableTextProperty::ETextPropertyEditAction InEditAction, const FString& InTextSource,
                                                  const FString& InProposedNamespace, const FString& InProposedKey, FString& OutStableNamespace,
@@ -853,7 +845,6 @@ PropertyType* FJointEdUtils::GetCastedPropertyFromClass(const UClass* Class, con
 	return nullptr;
 }
 
-
 FText FJointEdUtils::GetFriendlyNameOfNode(const UJointEdGraphNode* Node)
 {
 	if (Node)
@@ -1380,7 +1371,7 @@ void FJointEdUtils::ImportFileToJointManager(
 	}
 }
 
-void FJointEdUtils::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UJointEdGraphNode* ConnectedNode)
+void FJointEdUtils::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UEdGraphNode* ConnectedNode)
 {
 	if (FromPin == nullptr || ConnectedNode == nullptr) return;
 

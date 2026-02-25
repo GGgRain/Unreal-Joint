@@ -83,7 +83,7 @@
 #include "Node/Derived/JN_Foundation.h"
 #include "Script/JointScriptSettings.h"
 #include "Thumbnail/JointManagerThumbnailRenderer.h"
-#include "UnrealEd/Private/Toolkits/SStandaloneAssetEditorToolkitHost.h"
+
 #include "Widgets/Images/SImage.h"
 #include "WorkflowOrientedApp/WorkflowTabManager.h"
 
@@ -1945,7 +1945,10 @@ void FJointEditorToolkit::OnCreateComment()
 			if (const UEdGraphSchema* Schema = Graph->GetSchema())
 			{
 				FJointSchemaAction_AddComment CommentAction;
-				CommentAction.PerformAction(Graph, nullptr, GraphEditor->GetPasteLocation());
+				CommentAction.PerformAction(
+					Graph, 
+					nullptr,
+					FJointSlateVector2D(GraphEditor->GetPasteLocation()));
 			}
 		}
 	}
@@ -1963,8 +1966,12 @@ void FJointEditorToolkit::OnCreateFoundation()
 			{
 				FJointSchemaAction_NewNode Action;
 
-				Action.PerformAction_FromShortcut(Graph, UJointEdGraphNode_Foundation::StaticClass(),
-				                             UJN_Foundation::StaticClass(), GraphEditor->GetPasteLocation());
+				Action.PerformAction_FromShortcut(
+					Graph,
+					UJointEdGraphNode_Foundation::StaticClass(),
+					UJN_Foundation::StaticClass(), 
+					GraphEditor->GetPasteLocation()
+				);
 			}
 		}
 	}
@@ -3711,7 +3718,7 @@ bool FJointEditorToolkit::CanCreateNodePresetFromSelectedBaseNode() const
 		UJointEdGraphNode* SelectedNode = Cast<UJointEdGraphNode>(Obj);
 		if (!SelectedNode) continue;
 
-		if (UJointEdGraphNode_Foundation* Foundation = Cast<UJointEdGraphNode_Foundation>(SelectedNode))
+		if (UJointEdGraphNode_Foundation* FoundationNode = Cast<UJointEdGraphNode_Foundation>(SelectedNode))
 		{
 			return true;
 		}

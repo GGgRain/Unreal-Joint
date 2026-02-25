@@ -383,6 +383,10 @@ public:
 	//Remove pins if we don't need.
 	void RemoveUnnecessaryPins();
 	
+public:
+	
+	void ClearPinLinkedTo();
+	
 private:
 	/**
 	 * Whether the graph notification is locked or not.
@@ -847,8 +851,6 @@ public:
 	const FJointEdNodeSetting& GetEdNodeSetting() const;
 
 #endif
-
-	void ClearPinLinkedTo();
 
 public:
 	//Declare the actions the users will get when they right-click on the graph node. By default, it implements add fragment action.

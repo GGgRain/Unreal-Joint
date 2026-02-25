@@ -17,7 +17,8 @@ UJointEdGraphNode_Manager::UJointEdGraphNode_Manager()
 	NodeHeight = 200;
 	
 	bCanRenameNode = false;
-	
+	bIsNodeResizable = true;
+
 }
 
 

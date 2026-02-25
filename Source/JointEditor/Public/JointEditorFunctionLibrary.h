@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Editor/Script/JointScriptLinker.h"
