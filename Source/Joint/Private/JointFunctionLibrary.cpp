@@ -366,7 +366,7 @@ TArray<UMovieSceneJointTrack*> UJointFunctionLibrary::FindJointMovieTracks(UMovi
 	{
 		bool bExactMatch = false;
 
-#if UE_VERSION_OLDER_THAN(5, 3, 0)
+#if UE_VERSION_OLDER_THAN(5, 2, 0)
 		TArray<UMovieSceneJointTrack*> MatchedTracks = FilterTracks(MovieScene->GetMasterTracks(), DesiredClass, bExactMatch);
 #else
 		TArray<UMovieSceneJointTrack*> MatchedTracks = FilterTracks(MovieScene->GetTracks(), DesiredClass, bExactMatch);

@@ -349,44 +349,41 @@ TArray<TSharedPtr<FTokenizedMessage>> FJointNodePointer::GetCompilerMessage(
 
 void FJointNodePointer::PostSerialize(const FArchive& Ar)
 {
-	if (Ar.IsLoading())
+	FArchive& NonConstAr = const_cast<FArchive&>(Ar);
+	const FLinker* Linker = NonConstAr.GetLinker();
+
+	if (Linker && Linker->LinkerRoot)
 	{
-		FArchive& NonConstAr = const_cast<FArchive&>(Ar);
-		const FLinker* Linker = NonConstAr.GetLinker();
+		UPackage* CurrentPackage = Linker->LinkerRoot;
+		FString PackageName = CurrentPackage->GetName();
 
-		if (Linker && Linker->LinkerRoot)
+		if (!Node.IsNull())
 		{
-			UPackage* CurrentPackage = Linker->LinkerRoot;
-			FString PackageName = CurrentPackage->GetName();
+			FSoftObjectPath NodePath = Node.ToSoftObjectPath();
 
-			if (!Node.IsNull())
+			if (!NodePath.GetAssetPathString().StartsWith(PackageName))
 			{
-				FSoftObjectPath NodePath = Node.ToSoftObjectPath();
+				Node.Reset();
 
-				if (!NodePath.GetAssetPathString().StartsWith(PackageName))
-				{
-					Node.Reset();
+				FText Message = LOCTEXT("ExternalReferenceTitle", "External Reference Detected and Reset in FJointNodePointer");
+				FText MessageDetailed = FText::Format(
+					LOCTEXT("ExternalReferenceReset_Detailed", "The node pointer that had an external reference is in asset : {0}, and the invalid reference was : {1}"),
+					FText::FromString(PackageName),
+					FText::FromString(NodePath.GetAssetPathString()));
 
-					FText Message = LOCTEXT("ExternalReferenceTitle", "External Reference Detected and Reset in FJointNodePointer");
-					FText MessageDetailed = FText::Format(
-						LOCTEXT("ExternalReferenceReset_Detailed", "The node pointer that had an external reference is in asset : {0}, and the invalid reference was : {1}"),
-						FText::FromString(PackageName),
-						FText::FromString(NodePath.GetAssetPathString()));
+				FNotificationInfo NotificationInfo(Message);
+				NotificationInfo.SubText = MessageDetailed;
+				NotificationInfo.bFireAndForget = true;
+				NotificationInfo.FadeInDuration = 0.3f;
+				NotificationInfo.FadeOutDuration = 1.3f;
+				NotificationInfo.ExpireDuration = 10;
+				NotificationInfo.WidthOverride = FOptionalSize();
+				FSlateNotificationManager::Get().AddNotification(NotificationInfo)->SetCompletionState(SNotificationItem::CS_Fail);
 
-					FNotificationInfo NotificationInfo(Message);
-					NotificationInfo.SubText = MessageDetailed;
-					NotificationInfo.bFireAndForget = true;
-					NotificationInfo.FadeInDuration = 0.3f;
-					NotificationInfo.FadeOutDuration = 1.3f;
-					NotificationInfo.ExpireDuration = 10;
-					NotificationInfo.WidthOverride = FOptionalSize();
-					FSlateNotificationManager::Get().AddNotification(NotificationInfo)->SetCompletionState(SNotificationItem::CS_Fail);
+				UE_LOG(LogJoint, Warning, TEXT("%s"), *MessageDetailed.ToString());
 
-					UE_LOG(LogJoint, Warning, TEXT("%s"), *MessageDetailed.ToString());
-
-					// Mark the package dirty to prompt the user to save the asset after fixing the invalid reference.
-					CurrentPackage->MarkPackageDirty();
-				}
+				// Mark the package dirty to prompt the user to save the asset after fixing the invalid reference.
+				CurrentPackage->MarkPackageDirty();
 			}
 		}
 	}

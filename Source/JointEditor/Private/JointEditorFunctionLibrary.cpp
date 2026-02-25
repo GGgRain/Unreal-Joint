@@ -8,13 +8,15 @@
 #include "JointEdGraphSchema.h"
 #include "JointEditorLogChannels.h"
 #include "JointEdUtils.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+
 #include "GraphNode/SJointGraphNodeBase.h"
 #include "Markdown/SJointMDSlate_Admonitions.h"
-#include "Misc/EngineVersionComparison.h"
+
 #include "Node/JointFragment.h"
 #include "Node/JointNodeBase.h"
 #include "Script/JointScriptSettings.h"
+
+#include "Misc/EngineVersionComparison.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorFunctionLibrary"
 
@@ -113,7 +115,6 @@ TArray<UJointEdGraphNode*> UJointEditorFunctionLibrary::AddNodePreset(UJointMana
 
 		if (DuplicatedNode)
 		{
-			// 핀 연결 데이터 무결성 강제 초기화 (이전 질문의 어설션 방지)
 			for (UEdGraphPin* Pin : DuplicatedNode->Pins)
 			{
 				Pin->LinkedTo.Empty();
@@ -122,10 +123,9 @@ TArray<UJointEdGraphNode*> UJointEditorFunctionLibrary::AddNodePreset(UJointMana
 			DuplicatedNode->BreakAllNodeLinks();
 			DuplicatedNode->PostPasteNode();
 
-			UJointNodeBase* NodeInstance = DuplicatedNode->GetCastedNodeInstance();
-			bool bIsRootManagerFragment = NodeInstance && NodeInstance->IsA(UJointFragment::StaticClass());
+			const UJointNodeBase* NodeInstance = DuplicatedNode->GetCastedNodeInstance();
 
-			if (bIsRootManagerFragment)
+			if (NodeInstance && NodeInstance->IsA(UJointFragment::StaticClass()))
 			{
 				RootGraph->FindEntryNode()->AddSubNode(DuplicatedNode);
 			}
@@ -169,7 +169,7 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::AddBaseNode(
 		);
 	}
 
-	UJointEdGraph* FinalTargetGraph = nullptr;
+	UJointEdGraph* FinalTargetGraph;
 	UJointEdGraph* RootGraph = TargetJointManager->GetJointGraphAs<UJointEdGraph>();
 
 	if (OptionalTargetGraph)
@@ -264,7 +264,7 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::AddFragment(
 		return nullptr;
 	}
 
-	UJointNodeBase* ParentNodeInstance = ParentEdNode->GetCastedNodeInstance();
+	//UJointNodeBase* ParentNodeInstance = ParentEdNode->GetCastedNodeInstance();
 
 	//create the node
 	UJointNodeBase* NewNodeInstance = NewObject<UJointNodeBase>(TargetJointManager, NodeClass, NAME_None, RF_Transactional);
@@ -910,7 +910,6 @@ void UJointEditorFunctionLibrary::AlignNodes(
 	FScopedTransaction Transaction(FText::FromString("Align Nodes Centered"));
 	TargetJointManager->Modify();
 
-	// 1. BFS로 레벨 분류 (이전과 동일)
 	TMap<int32, TArray<UJointEdGraphNode*>> LevelMap;
 	TMap<UJointEdGraphNode*, int32> NodeToLevel;
 	TArray<UJointEdGraphNode*> Queue;
@@ -937,23 +936,18 @@ void UJointEditorFunctionLibrary::AlignNodes(
 		}
 	}
 
-	// 2. 레벨별 배치 (Level 0은 원래 위치 유지 또는 0,0 시작)
 	for (int32 Level = 0; Level <= MaxLevel; ++Level)
 	{
 		TArray<UJointEdGraphNode*>& NodesInLevel = LevelMap[Level];
 
-		// [수정] 정렬(Sort)을 제거합니다. 
-		// BFS로 수집된 NodesInLevel의 순서(추가된 순서)를 그대로 유지하여 위에서 아래로 배치합니다.
-
-		// [중심점 계산]
 		float TargetCenterY = 0.f;
+		
 		if (Level == 0)
 		{
 			TargetCenterY = StartNode->NodePosY;
 		}
 		else
 		{
-			// 현재 레벨에 있는 노드들의 '부모'들의 Y 위치 평균을 구하여 기준축을 잡습니다.
 			float ParentSumY = 0.f;
 			int32 ParentCount = 0;
 			for (auto N : NodesInLevel)
@@ -965,13 +959,9 @@ void UJointEditorFunctionLibrary::AlignNodes(
 					ParentCount++;
 				}
 			}
-			// 부모가 있다면 부모들의 중앙에, 없다면 이전 레벨의 시작점 근처 등을 고려할 수 있습니다.
 			TargetCenterY = (ParentCount > 0) ? (ParentSumY / ParentCount) : 0.f;
 		}
-
-		// [배치] 
-		// NodesInLevel[0]이 가장 위에 오고, 마지막 노드가 가장 아래에 옵니다.
-		// 전체 뭉치의 중앙을 TargetCenterY에 맞춥니다.
+		
 		float LevelTotalHeight = (NodesInLevel.Num() - 1) * NodeSpacingY;
 		float StartY = TargetCenterY - (LevelTotalHeight / 2.f);
 
@@ -982,8 +972,6 @@ void UJointEditorFunctionLibrary::AlignNodes(
 
 			Node->Modify();
 			Node->NodePosX = Level * LevelSpacingX;
-
-			// i가 커질수록(배열 뒤쪽일수록) Y값이 커지므로 아래로 배치됩니다.
 			Node->NodePosY = StartY + (i * NodeSpacingY);
 		}
 	}

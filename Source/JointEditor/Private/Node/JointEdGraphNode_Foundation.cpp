@@ -11,7 +11,7 @@
 
 UJointEdGraphNode_Foundation::UJointEdGraphNode_Foundation()
 {
-	
+	bIsNodeResizable = true;
 }
 
 void UJointEdGraphNode_Foundation::PostPlacedNewNode()

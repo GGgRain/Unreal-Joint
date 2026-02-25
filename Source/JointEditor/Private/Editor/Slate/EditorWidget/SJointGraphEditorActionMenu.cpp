@@ -16,6 +16,7 @@
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
+#include "GraphNode/JointGraphNodeSharedSlates.h"
 
 #include "Misc/EngineVersionComparison.h"
 #include "Node/JointFragment.h"
@@ -280,11 +281,22 @@ void SJointGraphActionWidget_Fragment::CreateActionWidgetWithNodeSettings(const 
 
 	if (NodeSetting->bUseCustomInnerNodeBodyImageBrush) InnerBorderImage = &NodeSetting->InnerNodeBodyImageBrush;
 	if (NodeSetting->bUseCustomOuterNodeBodyImageBrush) OuterBorderImage = &NodeSetting->OuterNodeBodyImageBrush;
-		
+	
+	TWeakPtr<FJointSchemaAction_NewSubNode> WeakAction = StaticCastSharedPtr<FJointSchemaAction_NewSubNode>(InCreateData->Action);
+	
+	UClass* NodeClass = WeakAction.Pin()->NodeTemplate->NodeClassData.GetClass();
+	
 	this->ChildSlot
 	[
 		SNew(SHorizontalBox)
-		.ToolTipText(InCreateData->Action->GetTooltipDescription())
+		.ToolTip(
+			SNew(SToolTip)
+			[
+				SNew(SJointNodeDescription)
+				.Visibility(EVisibility::SelfHitTestInvisible)
+				.ClassToDescribe(NodeClass)	
+			]
+		)
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		.VAlign(VAlign_Center)

@@ -97,7 +97,11 @@ void SJointManagerImportingPopup::ConstructParserCandidateItems()
 			TSharedPtr<FParserCandidateItem> NewItem = MakeShared<FParserCandidateItem>();
 			NewItem->Parser = Parser;
 			NewItem->Name = AD.AssetName.ToString();
+#if UE_VERSION_OLDER_THAN(5, 1, 0)
 			NewItem->Path = AD.ObjectPath.ToString();
+#else
+			NewItem->Path = AD.GetSoftObjectPath().ToString();
+#endif
 				
 			ParserCandidateItems.Add(NewItem);
 		}

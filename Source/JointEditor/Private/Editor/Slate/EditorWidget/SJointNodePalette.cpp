@@ -29,7 +29,7 @@ void SJointNodePalette::Construct(const FArguments& InArgs)
 
 	RebuildWidget();
 }
-PRAGMA_DISABLE_OPTIMIZATION
+
 void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaAction>>& SelectedAction,
                                                         ESelectInfo::Type InSelectionType)
 {
@@ -61,12 +61,7 @@ void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaA
 			}
 			
 			SubNodeAction->NodesToAttachTo = Selections.Array();
-
-#if UE_VERSION_OLDER_THAN(5, 6, 0)
-			SubNodeAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FVector2D::ZeroVector);
-#else
-			SubNodeAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FVector2f::ZeroVector);
-#endif
+			SubNodeAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FJointSlateVector2D::ZeroVector);
 		}
 		else if (EdGraphSchemaAction->GetTypeId() == FJointSchemaAction_NewNodePreset::StaticGetTypeId())
 		{
@@ -76,17 +71,12 @@ void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaA
 			
 			// get current center location of the graph view to spawn the node preset at
 			
-#if UE_VERSION_OLDER_THAN(5, 6, 0)
-			FVector2D ViewLocation;
+			FJointSlateVector2D ViewLocation;
 			float ZoomAmount;
-			FVector2D ViewSize = ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetDesiredSize();
-#else
-			FVector2f ViewLocation;
-			float ZoomAmount;
-			FVector2f ViewSize = ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetDesiredSize();
-#endif
+			FJointSlateVector2D ViewSize = ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetDesiredSize();
 			
 			ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetViewLocation(ViewLocation, ZoomAmount);
+			
 			float ZoomOffsetMul = 1 / ZoomAmount;
 			ViewLocation = ViewLocation + ViewSize * ZoomOffsetMul * 2.5;
 			NodePresetAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, ViewLocation);
@@ -97,7 +87,6 @@ void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaA
 		}
 	}
 }
-PRAGMA_ENABLE_OPTIMIZATION
 
 void SJointNodePalette::RebuildWidget()
 {

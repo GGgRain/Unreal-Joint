@@ -4,8 +4,16 @@
 #include "UObject/ObjectMacros.h"
 #include "UObject/WeakObjectPtr.h"
 #include "UObject/CoreRedirects.h"
+#include "Misc/EngineVersionComparison.h"
 #include "JointEditorSharedTypes.generated.h"
 
+// FSlateVector2D for the compatibility of different engine versions. 
+// PLEASE make sure that FVector2f is not supported in BPs, so you must use FVector2D for the BP-exposed properties and functions.
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+typedef FVector2D FJointSlateVector2D;
+#else
+typedef FVector2f FJointSlateVector2D;
+#endif
 
 /**
  * Data structure for the redirect system of Joint. 

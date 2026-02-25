@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "JointEdUtils.h"
 #include "JointNodePreset.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "JointEdGraphSchemaActions.generated.h"
@@ -37,8 +38,27 @@ public:
 	
 public:
 	
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph, 
+		UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
+	
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph,
+		TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
 	
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 
@@ -71,14 +91,39 @@ public:
 
 public:
 	
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph, 
+		UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
+	
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph,
+		TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
 	
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 
 public:
 
-	UEdGraphNode* PerformAction_FromShortcut(class UEdGraph* ParentGraph, TSubclassOf<UJointEdGraphNode> EdClass, TSubclassOf<UJointNodeBase> NodeClass, const FVector2D Location, bool bSelectNewNode = true);
+	UEdGraphNode* PerformAction_FromShortcut(
+		class UEdGraph* ParentGraph, 
+		TSubclassOf<UJointEdGraphNode> EdClass,
+		TSubclassOf<UJointNodeBase> NodeClass,
+		const FVector2D Location,
+		bool bSelectNewNode = true
+	);
 
 	template<typename T=UJointEdGraphNode>
 	static T* SpawnNode(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true)
@@ -115,8 +160,27 @@ public:
 	
 public:
 	
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, TArray<UEdGraphPin*>& FromPins, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph, 
+		UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
+	
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph,
+		TArray<UEdGraphPin*>& FromPins,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true
+	) override;
 	
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 	
@@ -143,7 +207,15 @@ struct JOINTEDITOR_API FJointSchemaAction_AddComment : public FEdGraphSchemaActi
 	}
 
 	// FEdGraphSchemaAction interface
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override final;
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph,
+		UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true) override final;
 	// End of FEdGraphSchemaAction interface
 	
 public:
@@ -168,7 +240,15 @@ struct JOINTEDITOR_API FJointSchemaAction_AddConnector : public FEdGraphSchemaAc
 	}
 
 	// FEdGraphSchemaAction interface
-	virtual UEdGraphNode* PerformAction(class UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override final;
+	virtual UEdGraphNode* PerformAction(
+		class UEdGraph* ParentGraph, 
+		UEdGraphPin* FromPin,
+#if UE_VERSION_OLDER_THAN(5, 6, 0)
+		const FJointSlateVector2D Location,
+#else
+		const FJointSlateVector2D& Location,
+#endif
+		bool bSelectNewNode = true) override final;
 	// End of FEdGraphSchemaAction interface
 	
 public:

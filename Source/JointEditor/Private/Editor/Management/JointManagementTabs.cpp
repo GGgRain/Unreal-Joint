@@ -701,20 +701,9 @@ FReply SJointEditorUtilityTab::ReconstructEveryNodeInOpenedJointManagerEditor()
 
 FReply SJointEditorUtilityTab::CleanUpUnnecessaryNodes()
 {
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<
-		FAssetRegistryModule>("AssetRegistry");
-
 	TArray<FAssetData> AssetData;
-
-#if UE_VERSION_OLDER_THAN(5, 1, 0)
-
-	AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetData);
-
-#else
-
-	AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetClassPathName(), AssetData);
-
-#endif
+	
+	FJointEdUtils::GetAssetOfType<UJointManager>(AssetData);
 
 	for (const FAssetData& Data : AssetData)
 	{
@@ -737,21 +726,10 @@ FReply SJointEditorUtilityTab::CleanUpUnnecessaryNodes()
 
 FReply SJointEditorUtilityTab::UpdateBPNodeEdSettings()
 {
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<
-		FAssetRegistryModule>("AssetRegistry");
-
 	TArray<FAssetData> AssetData;
 
-#if UE_VERSION_OLDER_THAN(5, 1, 0)
-
-	AssetRegistryModule.Get().GetAssetsByClass(UBlueprint::StaticClass()->GetFName(), AssetData);
-
-#else
-
-	AssetRegistryModule.Get().GetAssetsByClass(UBlueprint::StaticClass()->GetClassPathName(), AssetData);
-
-#endif
-
+	FJointEdUtils::GetAssetOfType<UBlueprint>(AssetData);
+	
 	int Count = 0;
 
 	for (const FAssetData& Data : AssetData)
@@ -1608,21 +1586,10 @@ FReply SJointEditorTap_MissingClassesMap::AllocatedRedirectionRefresh()
 FReply SJointEditorTap_MissingClassesMap::MissingClassRefresh()
 {
 	if (MissingClassScrollBox.IsValid()) MissingClassScrollBox->ClearChildren();
-
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<
-		FAssetRegistryModule>("AssetRegistry");
-
+	
 	TArray<FAssetData> AssetData;
 
-#if UE_VERSION_OLDER_THAN(5, 1, 0)
-
-	AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetData);
-
-#else
-
-	AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetClassPathName(), AssetData);
-
-#endif
+	FJointEdUtils::GetAssetOfType<UJointManager>(AssetData);
 
 	for (const FAssetData& Data : AssetData)
 	{
@@ -1771,22 +1738,10 @@ FReply SJointEditorTap_MissingClassesMap::OnNodeClassChangeButtonClicked()
 	case EAppReturnType::Ok:
 		{
 			//Cache again.
-
-			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
-				"AssetRegistry");
-
+			
 			TArray<FAssetData> AssetData;
-
-#if UE_VERSION_OLDER_THAN(5, 1, 0)
-
-			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetData);
-
-#else
-
-			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetClassPathName(), AssetData);
-
-#endif
-
+			FJointEdUtils::GetAssetOfType<UJointManager>(AssetData);
+			
 			for (const FAssetData& Data : AssetData)
 			{
 				UObject* Asset = Data.GetAsset();
@@ -1868,21 +1823,8 @@ FReply SJointEditorTap_MissingClassesMap::OnEditorNodeClassChangeButtonClicked()
 	case EAppReturnType::Ok:
 		{
 			//Cache again.
-
-			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
-				"AssetRegistry");
-
 			TArray<FAssetData> AssetData;
-
-#if UE_VERSION_OLDER_THAN(5, 1, 0)
-
-			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetData);
-
-#else
-
-			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetClassPathName(), AssetData);
-
-#endif
+			FJointEdUtils::GetAssetOfType<UJointManager>(AssetData);
 
 			for (const FAssetData& Data : AssetData)
 			{

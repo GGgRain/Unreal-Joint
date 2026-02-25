@@ -15,6 +15,7 @@
 #include "Framework/Commands/UICommandList.h"
 #include "Engine/LevelStreaming.h"
 #include "GraphEditor.h"
+#include "JointEdUtils.h"
 
 #include "Misc/EngineVersionComparison.h"
 
@@ -107,13 +108,14 @@ public:
 	 * @param OutLocation		Will have the current view location
 	 * @param OutZoomAmount		Will have the current zoom amount
 	 */
-	virtual void GetViewLocation(FVector2D& OutLocation, float& OutZoomAmount) override
+	virtual void GetViewLocation(FJointSlateVector2D& OutLocation, float& OutZoomAmount) override
 	{
 		if (Implementation.IsValid())
 		{
 			Implementation->GetViewLocation(OutLocation, OutZoomAmount);
 		}
 	}
+	
 
 	/**
 	 * Gets the current graph view bookmark

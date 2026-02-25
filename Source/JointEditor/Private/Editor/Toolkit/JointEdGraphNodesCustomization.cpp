@@ -34,7 +34,7 @@
 #include "PropertyCustomizationHelpers.h"
 #include "ScopedTransaction.h"
 #include "VoltDecl.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+
 #include "EditorTools/SJointNotificationWidget.h"
 #include "EditorWidget/JointGraphEditor.h"
 #include "EditorWidget/SJointGraphPanel.h"
@@ -56,7 +56,16 @@
 #include "Module/Volt_ASM_InterpColor.h"
 #include "Module/Volt_ASM_Sequence.h"
 #include "Module/Volt_ASM_InterpBackgroundColor.h"
+
+#include "Misc/EngineVersionComparison.h"
+
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
 #include "PropertyEditor/Private/PropertyNode.h"
+#else
+
+#endif
+
+
 #include "Script/JointScriptSettings.h"
 #include "Widgets/Layout/SExpandableArea.h"
 
@@ -1271,7 +1280,12 @@ void FJointNodePresetCustomization::PendingDelete()
 	{
 		if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(InternalJointManager, false))
 		{
+			//	UE_DEPRECATED(5.3, "Use CloseWindow that takes in an EAssetEditorCloseReason instead")
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
 			Toolkit->CloseWindow();
+#else
+			Toolkit->CloseWindow(EAssetEditorCloseReason::AssetForceDeleted);
+#endif
 		}
 	}
 
@@ -3740,22 +3754,19 @@ FReply FJointScriptLinkerMappingCustomization::OnReallocateButtonPressed()
 	{
 		// Try Asset Registry first (falls back gracefully if module not available)
 		bool bFoundAny = false;
-		if (FModuleManager::Get().IsModuleLoaded("AssetRegistry"))
-		{
-			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-			TArray<FAssetData> AssetDataList;
-			AssetRegistryModule.Get().GetAssetsByClass(UJointManager::StaticClass()->GetFName(), AssetDataList);
 
-			for (const FAssetData& AD : AssetDataList)
+		TArray<FAssetData> AssetDataList;
+		FJointEdUtils::GetAssetOfType<UJointManager>(AssetDataList);
+			
+		for (const FAssetData& AD : AssetDataList)
+		{
+			UObject* Obj = AD.GetAsset();
+			if (UJointManager* JM = Cast<UJointManager>(Obj))
 			{
-				UObject* Obj = AD.GetAsset();
-				if (UJointManager* JM = Cast<UJointManager>(Obj))
-				{
-					CandidateManagers.Add(JM);
-				}
+				CandidateManagers.Add(JM);
 			}
-			bFoundAny = AssetDataList.Num() > 0;
 		}
+		bFoundAny = AssetDataList.Num() > 0;
 	}
 
 	// collect node id from the mapping to compare with candidate Joint Managers' mappings for display purposes
@@ -4209,8 +4220,8 @@ void FJointScriptLinkerMappingCustomization::BuildNodeStatusItems()
 		JointScriptLinkerCustomizationHelpers::GetAllNodeGuidsFromJointManager(JM, ExistingNodeIDs);
 
 		TSharedPtr<IPropertyHandleMap> MapHandle;
-		FMapProperty* MapProperty;
-		void* MapContainer;
+		FMapProperty* MapProperty = nullptr;
+		void* MapContainer = nullptr;
 		FScriptMapHelper MapHelper = GetMapHelpers(NodeMappingsHandle, MapProperty, MapContainer);
 
 

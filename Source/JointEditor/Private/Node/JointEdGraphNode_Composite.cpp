@@ -66,7 +66,6 @@ UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 	DefaultEdNodeSetting.NodeBodyColor = FLinearColor(0.5, 0.5, 0.5, 0.5);
 	DefaultEdNodeSetting.NodeIconicColor = FColor(29, 130, 126, 125);
 	DefaultEdNodeSetting.DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
-	
 }
 
 

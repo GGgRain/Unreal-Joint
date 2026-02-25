@@ -9,9 +9,10 @@
 #include "EdGraph/EdGraph.h"
 #include "JointEdGraph.generated.h"
 
-
+class UJointManager;
 class UJointEdGraphSchema;
 class FJointEditorToolkit;
+
 DECLARE_MULTICAST_DELEGATE(FOnGraphRequestUpdate);
 
 UCLASS(Blueprintable)

@@ -25,12 +25,11 @@ UJointEdGraphNode_Connector::UJointEdGraphNode_Connector()
 	DefaultEdNodeSetting.bDefaultIsNodeResizeable = false;
 
 	bCanRenameNode = false;
+	bIsNodeResizable = false;
 
 	Direction = EEdGraphPinDirection::EGPD_Output;
 
 	ConnectorName = LOCTEXT("ConnectorDefaultName", "New Connector");
-	
-	bIsNodeResizable = false;
 	
 }
 
@@ -282,10 +281,13 @@ void UJointEdGraphNode_Connector::OnAddInputNodeButtonPressed()
 	const TSharedPtr<FJointSchemaAction_AddConnector> AddConnectorAction = MakeShared<
 		FJointSchemaAction_AddConnector>(Category, MenuDesc, ToolTip);
 
-	UEdGraphNode* OutNode = AddConnectorAction->PerformAction(GetGraph(), nullptr,
-	                                                          FVector2D(NodePosX - 200 + FMath::RandRange(-30, 30),
-	                                                                    NodePosY + FMath::RandRange(-30, 30)),
-	                                                          true);
+	UEdGraphNode* OutNode = AddConnectorAction->PerformAction(
+		GetGraph(), 
+		nullptr,
+		FJointSlateVector2D(
+			NodePosX - 200 + FMath::RandRange(-30, 30),
+			NodePosY + FMath::RandRange(-30, 30)),
+			true);
 
 	if (OutNode)
 	{
