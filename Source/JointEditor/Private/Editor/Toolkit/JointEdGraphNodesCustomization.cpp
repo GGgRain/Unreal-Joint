@@ -59,7 +59,7 @@
 
 #include "Misc/EngineVersionComparison.h"
 
-#if UE_VERSION_OLDER_THAN(5, 4, 0)
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
 #include "PropertyEditor/Private/PropertyNode.h"
 #else
 

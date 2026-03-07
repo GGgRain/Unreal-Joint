@@ -108,7 +108,7 @@ public:
 	 * @param OutLocation		Will have the current view location
 	 * @param OutZoomAmount		Will have the current zoom amount
 	 */
-	virtual void GetViewLocation(FJointSlateVector2D& OutLocation, float& OutZoomAmount) override
+	virtual void GetViewLocation(FVector2D& OutLocation, float& OutZoomAmount) override
 	{
 		if (Implementation.IsValid())
 		{
