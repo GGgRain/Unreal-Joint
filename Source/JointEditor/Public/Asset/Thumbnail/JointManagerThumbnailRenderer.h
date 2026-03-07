@@ -48,7 +48,7 @@ public:
 private:
 	
 	TSharedPtr<SJointGraphPreviewer> GraphPreviewer;
-	UTextureRenderTarget2D* ThumbnailRenderTarget = nullptr;
+	TObjectPtr<UTextureRenderTarget2D> ThumbnailRenderTarget = nullptr;
 	
 private:
 	

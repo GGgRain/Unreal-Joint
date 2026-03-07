@@ -71,15 +71,19 @@ void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaA
 			
 			// get current center location of the graph view to spawn the node preset at
 			
-			FJointSlateVector2D ViewLocation;
+			FVector2D ViewLocation;
 			float ZoomAmount;
-			FJointSlateVector2D ViewSize = ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetDesiredSize();
+			FVector2D ViewSize = ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetDesiredSize();
 			
 			ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetViewLocation(ViewLocation, ZoomAmount);
 			
 			float ZoomOffsetMul = 1 / ZoomAmount;
 			ViewLocation = ViewLocation + ViewSize * ZoomOffsetMul * 2.5;
+#if UE_VERSION_OLDER_THAN(5,6,0)
 			NodePresetAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, ViewLocation);
+#else
+			NodePresetAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, FVector2f(ViewLocation));
+#endif
 		}
 		else
 		{
