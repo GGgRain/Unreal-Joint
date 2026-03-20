@@ -833,30 +833,38 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	// Debug actions
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().AddBreakpoint,
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnAddBreakpoint),
-	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanAddBreakpoint),
+	                           FCanExecuteAction::CreateLambda([]() { return true; }),
 	                           FIsActionChecked(),
 	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanAddBreakpoint)
 	);
 
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().RemoveBreakpoint,
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnRemoveBreakpoint),
-	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanRemoveBreakpoint),
+	                           FCanExecuteAction::CreateLambda([]() { return true; }),
 	                           FIsActionChecked(),
 	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanRemoveBreakpoint)
 	);
 
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().EnableBreakpoint,
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnEnableBreakpoint),
-	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanEnableBreakpoint),
+	                           FCanExecuteAction::CreateLambda([]() { return true; }),
 	                           FIsActionChecked(),
 	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanEnableBreakpoint)
 	);
 
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().DisableBreakpoint,
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnDisableBreakpoint),
-	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanDisableBreakpoint),
+	                           //allow execution all times - we'll filter some false actions on actual OnDisableBreakpoint logic.
+	                           FCanExecuteAction::CreateLambda([]() { return true; }),
 	                           FIsActionChecked(),
 	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanDisableBreakpoint)
+	);
+	
+	ToolkitCommands->MapAction(FGraphEditorCommands::Get().ToggleBreakpoint,
+						   FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnToggleBreakpoint),
+						   FCanExecuteAction::CreateLambda([]() { return true; }),
+						   FIsActionChecked(),
+						   FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanToggleBreakpoint)
 	);
 
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().CollapseNodes,
@@ -873,14 +881,7 @@ void FJointEditorToolkit::BindGraphEditorCommands()
 	                           FIsActionChecked(),
 	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanExpandNodes)
 	);
-
-
-	ToolkitCommands->MapAction(FGraphEditorCommands::Get().ToggleBreakpoint,
-	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnToggleBreakpoint),
-	                           FCanExecuteAction::CreateSP(this, &FJointEditorToolkit::CanToggleBreakpoint),
-	                           FIsActionChecked(),
-	                           FIsActionButtonVisible::CreateSP(this, &FJointEditorToolkit::CanToggleBreakpoint)
-	);
+	
 
 	ToolkitCommands->MapAction(FGraphEditorCommands::Get().CreateComment,
 	                           FExecuteAction::CreateSP(this, &FJointEditorToolkit::OnCreateComment),
@@ -2578,6 +2579,17 @@ void FJointEditorToolkit::StartQuickPicking()
 void FJointEditorToolkit::OnEnableBreakpoint()
 {
 	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if (SelectedNodes.IsEmpty())
+	{
+		FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Title", "Select a node"),
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Desc", "Please select at least one node to use breakpoint actions."),
+				EJointMDAdmonitionType::Info
+			);
+		
+		return;
+	}
 
 	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
 	{
@@ -2600,7 +2612,7 @@ void FJointEditorToolkit::OnEnableBreakpoint()
 bool FJointEditorToolkit::CanEnableBreakpoint() const
 {
 	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-
+	
 	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
 	{
 		if (!*NodeIt) continue;
@@ -2616,7 +2628,6 @@ bool FJointEditorToolkit::CanEnableBreakpoint() const
 		}
 	}
 	
-
 	return false;
 }
 
@@ -2625,6 +2636,17 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 
 	TSet<UJointEdGraph*> ModifiedGraphs;
+	
+	if (SelectedNodes.IsEmpty())
+	{
+		FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Title", "Select a node"),
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Desc", "Please select at least one node to use breakpoint actions."),
+				EJointMDAdmonitionType::Info
+			);
+		
+		return;
+	}
 
 	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
 	{
@@ -2643,14 +2665,14 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 				{
 					Data->bHasBreakpoint = false;
 					Data->bIsBreakpointEnabled = false;
-					
+
 					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
 				}
 				else //add breakpoint - but with the existing debug data instance.
 				{
 					Data->bHasBreakpoint = true;
 					Data->bIsBreakpointEnabled = true;
-					
+
 					UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(SelectedNode, Data);
 				}
 			}
@@ -2675,9 +2697,9 @@ void FJointEditorToolkit::OnToggleBreakpoint()
 			}
 		}
 	}
-	
+
 	UJointDebugger::NotifyDebugDataChanged(GetJointManager());
-	
+
 }
 
 bool FJointEditorToolkit::CanToggleBreakpoint() const
@@ -2701,10 +2723,21 @@ void FJointEditorToolkit::OnDisableBreakpoint()
 {
 
 	FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if (SelectedNodes.IsEmpty())
+	{
+		FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Title", "Select a node"),
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Desc", "Please select at least one node to use breakpoint actions."),
+				EJointMDAdmonitionType::Info
+			);
+		
+		return;
+	}
 
 	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
 	{
-		if (*NodeIt) continue;
+		if (!*NodeIt) continue;
 		
 		UJointEdGraphNode* Node = Cast<UJointEdGraphNode>(*NodeIt);
 		if (Node == nullptr) continue;
@@ -2755,11 +2788,16 @@ bool FJointEditorToolkit::CanDisableBreakpoint() const
 		if (TArray<FJointNodeDebugData>* DebugDataArr = GraphToDebugDataMap.FindRef(Node->GetCastedGraph()))
 		{
 			FJointNodeDebugData* Data = UJointDebugger::GetDebugDataForInstanceFrom(DebugDataArr, Node);
+			
+			if (Data == nullptr || !Data->bHasBreakpoint || !Data->bIsBreakpointEnabled)
+			{
+				return false;
+			}
 
 			if (Data != nullptr && Data->Node != nullptr && Data->bHasBreakpoint && !Data->bIsBreakpointEnabled) return false;
 		}
 	}
-
+	
 	return true;
 }
 
@@ -2769,6 +2807,17 @@ void FJointEditorToolkit::OnAddBreakpoint()
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 
 	TMap<UJointEdGraph*, TArray<FJointNodeDebugData>*> GraphToDebugDataMap;
+	
+	if (SelectedNodes.IsEmpty())
+	{
+		FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Title", "Select a node"),
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Desc", "Please select at least one node to use breakpoint actions."),
+				EJointMDAdmonitionType::Info
+			);
+		
+		return;
+	}
 
 	// Collect all the graphs that are related to the selected nodes.
 	for (UObject* SelectedNode : SelectedNodes)
@@ -2810,8 +2859,10 @@ void FJointEditorToolkit::OnAddBreakpoint()
 				NewDebugData.Node = Node;
 				NewDebugData.bHasBreakpoint = true;
 				NewDebugData.bIsBreakpointEnabled = true;
-
-				DebugDataArr->Add(NewDebugData);
+				
+				//previously did this...
+				//DebugDataArr->Add(NewDebugData);
+				Data = &DebugDataArr->Add_GetRef(NewDebugData);
 				UJointDebugger::NotifyDebugDataChangedToGraphNodeWidget(Node, Data);
 			}
 		}
@@ -2844,6 +2895,17 @@ bool FJointEditorToolkit::CanAddBreakpoint() const
 void FJointEditorToolkit::OnRemoveBreakpoint()
 {
 	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	
+	if (SelectedNodes.IsEmpty())
+	{
+		FJointEdUtils::FireNotification(
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Title", "Select a node"),
+				LOCTEXT("Notification_SelectNodeForBreakpoint_Desc", "Please select at least one node to use breakpoint actions."),
+				EJointMDAdmonitionType::Info
+			);
+		
+		return;
+	}
 	
 	for (FGraphPanelSelectionSet::TConstIterator NodeIt(SelectedNodes); NodeIt; ++NodeIt)
 	{
@@ -2882,7 +2944,7 @@ bool FJointEditorToolkit::CanRemoveBreakpoint() const
 			}
 		}
 	}
-
+	
 	return false;
 }
 

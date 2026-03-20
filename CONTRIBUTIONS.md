@@ -7,12 +7,17 @@ If you've ever contributed the system via Official Discord, please let me know a
 
 ## System Implementation
 
-@hero2xyz (https://github.com/hero2xyz): **Implemented a complete physics-based wire connection visual simulation system with wiggle behavior for Joint.** Thanks a lot, it looks really cool :D
+@hero2xyz (https://github.com/hero2xyz): 
++ **Implemented a complete physics-based wire connection visual simulation system with wiggle behavior for Joint.** Thanks a lot, it looks really cool :D
 
 ## Bug Reporting
-@PetrMaxa (https://github.com/PetrMaxa): pointed out several MSVC version compatibility issues over several times. Thanks a lot :D
+@PetrMaxa (https://github.com/PetrMaxa): 
++ Pointed out several MSVC version compatibility issues over several times.
++ Helped us to point out editor's breakpoint interaction related bugs several times.
++ Thanks a lot :D
 
-@KunoSayo (https://github.com/KunoSayo): Pointed out an issue in Joint Native where certain assets were inappropriately referencing editor-only assets, causing the packaging process to halt.
+@KunoSayo (https://github.com/KunoSayo): 
++ Pointed out an issue in Joint Native where certain assets were inappropriately referencing editor-only assets, causing the packaging process to halt.
 
-
-
+Mike | TKFY (Discord):
++ Pointed out an issue and provided a fix for ``FJointSlateVector2D`` related compatibility issue between different versions of Unreal Engine.
