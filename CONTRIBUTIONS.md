@@ -19,5 +19,8 @@ If you've ever contributed the system via Official Discord, please let me know a
 @KunoSayo (https://github.com/KunoSayo): 
 + Pointed out an issue in Joint Native where certain assets were inappropriately referencing editor-only assets, causing the packaging process to halt.
 
+@AhomiGoi (https://github.com/AhomiGoi):
++ Provided a detailed bug report for an issue where the vote fragment could not handle select fragments executed after a vote turn began. This issue has been fixed in Joint Native 1.18.1.
+
 Mike | TKFY (Discord):
 + Pointed out an issue and provided a fix for ``FJointSlateVector2D`` related compatibility issue between different versions of Unreal Engine.
