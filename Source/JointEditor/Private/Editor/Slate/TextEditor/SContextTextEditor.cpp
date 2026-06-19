@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "TextEditor/SContextTextEditor.h"
@@ -77,7 +77,7 @@ void SContextTextEditor::RebuildWidget()
 	{
 		const FLinearColor& Color = bUseCustomBorderColor ? CustomBorderColor : (UJointEditorSettings::Get())? UJointEditorSettings::Get()->ContextTextEditorBackgroundColor : FLinearColor::Black;
 
-		return (IsReadOnly() ? Color + FLinearColor(0.03,0.03,0.03,0.03) : Color); 
+		return (IsReadOnly() ? Color + FLinearColor(0.03f,0.03f,0.03f,0.03f) : Color); 
 	});
 	
 	const TAttribute<EVisibility> VisibilityAttr = TAttribute<EVisibility>::CreateLambda([this]
@@ -242,7 +242,7 @@ void SContextTextEditor::AssignContextTextBox()
 	.Margin(TextblockMargin)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
-	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.ForegroundColor(FLinearColor(0.5f, 0.5f, 0.5f, 1))
 	.Padding(TextblockPadding)
 	.Style(TextBoxStyle)
 	.ToolTipText(LOCTEXT("TextEditor_ToolTip", "It displays the final visual result of this node's context text."));
@@ -266,7 +266,7 @@ void SContextTextEditor::AssignRawContextTextBox()
 	.Margin(TextblockMargin)
 	.LineHeightPercentage(1.1f)
 	.BackgroundColor(FLinearColor(0, 0, 0, 0))
-	.ForegroundColor(FLinearColor(0.5, 0.5, 0.5, 1))
+	.ForegroundColor(FLinearColor(0.5f, 0.5f, 0.5f, 1))
 	.Style(TextBoxStyle)
 	.Padding(TextblockPadding)
 	.ToolTipText(LOCTEXT("RawEditor_ToolTip", "It displays the raw text without the styles and decoration. You can hide this editor on the visibility section on the toolbar."));
@@ -320,7 +320,7 @@ FReply SContextTextEditor::OnSwapButtonDown()
 
 			VOLT_STOP_ANIM(SwapButton->OutlineColorTrack);
 
-			SwapButton->OutlineNormalColor = FLinearColor(0.5,0.5,0.6);
+			SwapButton->OutlineNormalColor = FLinearColor(0.5f,0.5f,0.6f);
 		
 			SwapButton->PlayUnhoveredAnimation();
 			

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Slate/EditorWidget/JointToolkitToastMessages.h"
 
@@ -150,7 +150,7 @@ void SJointToolkitToastMessageHub::OnAnimationEnded(UVoltAnimationManager* VoltA
 void SJointToolkitToastMessage::Construct(const FArguments& InArgs)
 {
 	SetRenderOpacity(0);
-	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 	SetCanTick(true);
 
 	MessageGuid = FGuid::NewGuid();

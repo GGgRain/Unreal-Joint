@@ -1,4 +1,4 @@
-#include "GraphNode/SJointRetainerWidget.h"
+﻿#include "GraphNode/SJointRetainerWidget.h"
 
 #include "JointEditorStyle.h"
 #include "SGraphPanel.h"
@@ -112,7 +112,7 @@ bool SJointRetainerWidget::CustomPrepass(float LayoutScaleMultiplier)
 				RenderTarget->bAutoGenerateMips = false;
 				RenderTarget->bCanCreateUAV = true;
 
-				RenderTarget->TargetGamma = !bWriteContentInGammaSpace ? 0.0f : 1.0;
+				RenderTarget->TargetGamma = !bWriteContentInGammaSpace ? 0.0f : 1.0f;
 				RenderTarget->SRGB = !bWriteContentInGammaSpace;
 
 				RenderTarget->UpdateResource();

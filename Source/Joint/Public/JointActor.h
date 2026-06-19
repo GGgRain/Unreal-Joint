@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -119,7 +119,7 @@ public:
 
 	/**
 	 * The execution queue for the Joint playback. It holds the list of nodes with corresponding execution data (begin play, end play, pending, etc).
-	 * Joint 2.12.0 : now it uses queues for the playback. 
+	 * Joint 2.12.0f : now it uses queues for the playback. 
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Joint", Transient)
 	TArray<FJointActorExecutionElement> ExecutionQueue;

@@ -16,7 +16,7 @@ void FJointTreeFilterItem::MakeFilterWidget()
 {
 	TAttribute<FSlateColor> EnabledColor_Attr = TAttribute<FSlateColor>::CreateLambda([this]
 	{
-		if (this) return GetIsEnabled() ? FLinearColor(0.2, 0.2, 0.3) : FLinearColor(0.05, 0.05, 0.08);
+		if (this) return GetIsEnabled() ? FLinearColor(0.2f, 0.2f, 0.3f) : FLinearColor(0.05f, 0.05f, 0.08f);
 
 		return FJointEditorStyle::Color_Hover;
 	});

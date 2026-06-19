@@ -12,6 +12,7 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Markdown/SJointMDSlate_Admonitions.h"
 #include "Widgets/Input/SSegmentedControl.h"
+#include "UObject/UObjectIterator.h"
 
 #define LOCTEXT_NAMESPACE "SJointManagerImportingPopup"
 
@@ -58,6 +59,25 @@ void SJointManagerImportingPopup::ConstructParserCandidateItems()
 	ParserCandidateItems.Empty();
 	
 	// Gather all the parsers in the project, and find out which one can import the file.
+
+	for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
+	{
+		UClass* ParserClass = *ClassIt;
+		if (!ParserClass || ParserClass == UJointScriptParser::StaticClass()) continue;
+		if (!ParserClass->IsChildOf(UJointScriptParser::StaticClass())) continue;
+		if (ParserClass->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists)) continue;
+		if (ParserClass->ClassGeneratedBy != nullptr) continue;
+
+		UJointScriptParser* Parser = NewObject<UJointScriptParser>(GetTransientPackage(), ParserClass);
+		if (!Parser) continue;
+
+		TSharedPtr<FParserCandidateItem> NewItem = MakeShared<FParserCandidateItem>();
+		NewItem->Parser = Parser;
+		NewItem->Name = ParserClass->GetName();
+		NewItem->Path = ParserClass->GetPathName();
+
+		ParserCandidateItems.Add(NewItem);
+	}
 	
 	if (FModuleManager::Get().IsModuleLoaded("AssetRegistry"))
 	{
@@ -148,7 +168,7 @@ void SJointManagerImportingPopup::ConstructLayout()
 			SNew(SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+			.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
 			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
 			.ContentPadding(FJointEditorStyle::Margin_Large)
 			.HAlign(HAlign_Fill)
@@ -171,7 +191,7 @@ void SJointManagerImportingPopup::ConstructLayout()
 				[
 					SNew(STextBlock)
 					.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Regular.h3")
-					.ColorAndOpacity(FLinearColor(0.6, 0.6, 0.6))
+					.ColorAndOpacity(FLinearColor(0.6f, 0.6f, 0.6f))
 					.Text_Lambda([this]()
 					{
 						return ExternalFilePaths.Num() > 0
@@ -186,7 +206,7 @@ void SJointManagerImportingPopup::ConstructLayout()
 				[
 					SNew(SJointOutlineButton)
 					.IsEnabled(!bIsReimporting)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -372,7 +392,7 @@ void SJointManagerImportingPopup::ConstructLayout()
 			[
 				SNew(SButton)
 				.Text(LOCTEXT("Proceed", "Proceed"))
-				.ButtonColorAndOpacity(FLinearColor(0.5, 0.7, 1.0))
+				.ButtonColorAndOpacity(FLinearColor(0.5f, 0.7f, 1.0f))
 				.IsEnabled_Lambda([this]() -> bool
 				{
 					return CurrentImportMode == EJointImportMode::ToSpecifiedJointManager

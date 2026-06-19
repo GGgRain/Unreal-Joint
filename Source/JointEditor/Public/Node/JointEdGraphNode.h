@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -78,7 +78,7 @@ public:
 #if WITH_EDITOR
 
 	//The class data of the instance of the runtime Joint node. It is used to restore the node instance if the instance becomes invalid.
-	//Joint 2.9 : deprecated. Use NodeClassData instead.
+	//Joint 2.9f : deprecated. Use NodeClassData instead.
 	UPROPERTY(VisibleAnywhere, Category="Developer Mode")
 	struct FGraphNodeClassData ClassData;
 
@@ -352,7 +352,7 @@ public:
 	 * Allocates the node instances that this graph node refers to. By default, it allocates the owning node instance.
 	 * This function is used to get the actual node instance of the connected graph node refers to in the children graph node classes' NodeConnectionListChanged().
 	 * Override this function to implement nodes that must be work as connector or proxy in the Joint. See how UJointEdGraphNode_Connector override this function.
-	 * Joint 2.10: Now it has SourcePin parameter to provide the pin that triggered this allocation action - useful when you want to allocate different node instances depending on the pin that triggered this action.
+	 * Joint 2.10f: Now it has SourcePin parameter to provide the pin that triggered this allocation action - useful when you want to allocate different node instances depending on the pin that triggered this action.
 	 */
 	virtual void AllocateReferringNodeInstancesOnConnection(TArray<TObjectPtr<UJointNodeBase>>& Nodes, UEdGraphPin* SourcePin = nullptr);
 
@@ -537,9 +537,9 @@ public:
 	/**
 	 * Returns the response when this node is being tested for attachment to a target parent node.
 	 *
-	 * Prior to Joint 2.12, this function was evaluated only for the node being attached and its direct parent, validating the attachment rules strictly at that boundary.
+	 * Prior to Joint 2.12f, this function was evaluated only for the node being attached and its direct parent, validating the attachment rules strictly at that boundary.
 	 *
-	 * Starting from Joint 2.12, this function may also be triggered for sub-nodes of the node being attached. In this case, each sub-node receives the attachment target node reference and is allowed to participate in the validation logic.
+	 * Starting from Joint 2.12f, this function may also be triggered for sub-nodes of the node being attached. In this case, each sub-node receives the attachment target node reference and is allowed to participate in the validation logic.
 	 * As a result, InParentNode may not represent the direct parent of this node, but rather the actual attachment target node.
 	 */
 	virtual FPinConnectionResponse CanAttachThisAtParentNode(const UJointEdGraphNode* InParentNode) const;
@@ -547,9 +547,9 @@ public:
 	/**
 	 * Returns the response when a sub-node is being tested for attachment to this node.
 	 *
-	 * Prior to Joint 2.12, this function was evaluated only for direct sub-node attachments.
+	 * Prior to Joint 2.12f, this function was evaluated only for direct sub-node attachments.
 	 *
-	 * Starting from Joint 2.12, this function may also be invoked for the parent nodes that belong to a node that we want to attach a sub node, allowing indirect parent nodes to participate in the attachment validation process.
+	 * Starting from Joint 2.12f, this function may also be invoked for the parent nodes that belong to a node that we want to attach a sub node, allowing indirect parent nodes to participate in the attachment validation process.
 	 */
 	virtual FPinConnectionResponse CanAttachSubNodeOnThis(const UJointEdGraphNode* InSubNode) const;
 
@@ -806,7 +806,7 @@ public:
 	virtual void Serialize(FArchive& Ar) override;
 
 public:
-	//In Joint 2.2, Update Error and UEdGraphNode related error message functions and properties are no longer used, since those are not that useful to display some advanced data for the system.
+	//In Joint 2.2f, Update Error and UEdGraphNode related error message functions and properties are no longer used, since those are not that useful to display some advanced data for the system.
 	//Please Update your API to use 'OnCompileNode' instead.
 
 	/**
@@ -818,7 +818,7 @@ public:
 	 * You can override this function and attach any additional logic to update the errors for the node.
 	 * You can update the CompileMessage property on here to display the error message for the node on the compilation.
 	 *
-	 * IMPORTANT NOTE : DO NOT USE CriticalError verbosity! because it will raise an assertion and abort the whole engine on the callsite, and that's not ideal in every perspective (Epic Games deprecated CriticalError verbosity on the ue 5.1 eventually)
+	 * IMPORTANT NOTE : DO NOT USE CriticalError verbosity! because it will raise an assertion and abort the whole engine on the callsite, and that's not ideal in every perspective (Epic Games deprecated CriticalError verbosity on the ue 5.1f eventually)
 	 *
 	 * Every log and msg that has been generated on this function will be displayed on the compile and cooking & packaging process, and might halt those actions.
 	 */
@@ -842,7 +842,7 @@ public:
 #if WITH_EDITORONLY_DATA
 
 	/**
-	 * Joint 2.10 : Now Editor nodes also have their own settings. This will be used only when the editor node doesn't have a valid node instance.
+	 * Joint 2.10f : Now Editor nodes also have their own settings. This will be used only when the editor node doesn't have a valid node instance.
 	 * This is only accessible on the code side only - because we don't support BP derived editor node classes.
 	 */
 	UPROPERTY(Transient)

@@ -1,4 +1,4 @@
-#include "JointEditorModes.h"
+﻿#include "JointEditorModes.h"
 
 #include "JointEditorToolbar.h"
 #include "EditorWidget/JointGraphEditor.h"
@@ -34,7 +34,7 @@ FJointEditorApplicationMode::FJointEditorApplicationMode(TSharedPtr<class FJoint
 				->Split(
 					FTabManager::NewSplitter()
 					->SetOrientation(Orient_Vertical)
-					->SetSizeCoefficient(0.4)
+					->SetSizeCoefficient(0.4f)
 					->Split(
 						FTabManager::NewStack()
 						->SetSizeCoefficient(0.75f)
@@ -49,7 +49,7 @@ FJointEditorApplicationMode::FJointEditorApplicationMode(TSharedPtr<class FJoint
 				->Split(
 					FTabManager::NewSplitter()
 					->SetOrientation(Orient_Vertical)
-					->SetSizeCoefficient(0.25)
+					->SetSizeCoefficient(0.25f)
 					->Split(
 						FTabManager::NewStack()
 						->SetSizeCoefficient(0.75f)
@@ -105,7 +105,17 @@ void FJointEditorApplicationMode::RegisterTabFactories(TSharedPtr<FTabManager> I
 	
 	JointEditorToolkitPtr->PushTabFactories(EditorTabFactories);
 
+#if UE_VERSION_OLDER_THAN(5, 8, 0)
 	FApplicationMode::RegisterTabFactories(InTabManager);
+	
+#else
+	
+	// decided to move the body of the function here instead of calling it because the func was hid as private on UE 5.8
+	// can be changed on the next API update as well TODO
+	check(InTabManager.IsValid());
+	RegisterTabFactoriesWithAppAndManager(GetHost().Get(), InTabManager.ToSharedRef());
+	
+#endif
 }
 
 void FJointEditorApplicationMode::PreDeactivateMode()

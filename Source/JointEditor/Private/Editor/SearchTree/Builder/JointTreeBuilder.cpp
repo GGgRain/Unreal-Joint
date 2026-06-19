@@ -160,7 +160,7 @@ void FJointTreeBuilder::Initialize(const TSharedRef<class SJointTree>& InTree,
 	bUseMultithreading = UJointEditorSettings::Get()->bUseLODRenderingForSimplePropertyDisplay;
 
 #if UE_VERSION_OLDER_THAN(5,3,0)
-	// This delegate is deprecated in 5.3 - Direct access to this delegate is not thread safe while it can be used concurrently
+	// This delegate is deprecated in 5.3f - Direct access to this delegate is not thread safe while it can be used concurrently
 	FCoreDelegates::ApplicationWillTerminateDelegate.AddSP(this, &FJointTreeBuilder::OnCleanUpBlocking);
 #else
 	FCoreDelegates::GetApplicationWillTerminateDelegate().AddSP(this, &FJointTreeBuilder::OnCleanUpBlocking);

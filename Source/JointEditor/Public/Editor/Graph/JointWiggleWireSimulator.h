@@ -79,11 +79,11 @@ struct JOINTEDITOR_API FWiggleWireConfig
     UPROPERTY(EditAnywhere, config, Category = "WiggleWires", meta = (ClampMin = "1.0", UIMin = "1.0", UIMax = "500.0"))
     float Stiffness = 100.0f;
 
-    /** Damping ratio (ζ). Values < 1.0 produce oscillation, 1.0 is critically damped, > 1.0 is overdamped. */
+    /** Damping ratio (ζ). Values < 1.0f produce oscillation, 1.0f is critically damped, > 1.0f is overdamped. */
     UPROPERTY(EditAnywhere, config, Category = "WiggleWires", meta = (ClampMin = "0.1", UIMin = "0.1", UIMax = "5.0"))
     float DampingRatio = 0.8f;
 
-    /** Extra length factor. 1.0 = straight line, values > 1.0 add Slack (e.g., 1.15 = 15% longer). */
+    /** Extra length factor. 1.0f = straight line, values > 1.0f add Slack (e.g., 1.15f = 15% longer). */
     UPROPERTY(EditAnywhere, config, Category = "WiggleWires", meta = (ClampMin = "1.0", UIMin = "1.0", UIMax = "2.0"))
     float SlackFactor = 1.15f;
 
@@ -339,3 +339,4 @@ namespace JointGraphDrawPolicyEditorUtils
         }
     }
 }
+

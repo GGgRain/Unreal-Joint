@@ -194,7 +194,7 @@ FORCEINLINE void VOLTCORE_API VOLT_STOP_ALL_ANIM(
 
 /**
  * Implement a new animation manager.
- * Volt 1.1: Now you must provide one of those : a valid outer other than UVoltSubsystem or a valid VoltInterface or any owner slate ptr. (shared pointer, use "Slate"->AsShared)
+ * Volt 1.1f: Now you must provide one of those : a valid outer other than UVoltSubsystem or a valid VoltInterface or any owner slate ptr. (shared pointer, use "Slate"->AsShared)
  * @param ManagerPtr A pointer to the property that will store new animation manager object.
  * @param Outer An outer of the new animation manager. If it was nullptr, then the Volt subsystem will be used as its outer.
  * @param OwnerVoltInterface An owner volt interface of the newly implemented animation manager.
@@ -223,7 +223,7 @@ FORCEINLINE void VOLTCORE_API VOLT_IMPLEMENT_MANAGER(
 
 /**
  * Implement a new animation manager.
- * Volt 1.1: Now you must provide one of those : a valid outer other than UVoltSubsystem or a valid VoltInterface or any owner slate ptr. (shared pointer, use "Slate"->AsShared)
+ * Volt 1.1f: Now you must provide one of those : a valid outer other than UVoltSubsystem or a valid VoltInterface or any owner slate ptr. (shared pointer, use "Slate"->AsShared)
  * @param ManagerPtr A pointer to the property that will store new animation manager object.
  * @param Outer An outer of the new animation manager. If it was nullptr, then the Volt subsystem will be used as its outer.
  * @param OwnerVoltInterface An owner volt interface of the newly implemented animation manager.
@@ -419,7 +419,7 @@ struct TVoltAnimationDecl
 /**
  * Declare a new animation.
  * 
- * Volt 1.2: if you want to start to make animation with specific UVoltAnimation class, Use VOLT_MAKE_ANIMATION_WITH_TYPE instead.
+ * Volt 1.2f: if you want to start to make animation with specific UVoltAnimation class, Use VOLT_MAKE_ANIMATION_WITH_TYPE instead.
  */
 #define VOLT_MAKE_ANIMATION( ... ) \
 	TVoltAnimationDecl<UVoltAnimation>()

@@ -6,6 +6,7 @@
 #include "GraphEditorActions.h"
 #include "JointEdGraphNode_Composite.h"
 #include "JointEditorCommands.h"
+#include "JointEditorFunctionLibrary.h"
 #include "JointEditorLogChannels.h"
 #include "JointEditorToolkit.h"
 #include "JointEdUtils.h"
@@ -126,12 +127,12 @@ void SJointEditorOutliner::OnDeleteGraph(UEdGraph* InGraph, EEdGraphSchemaAction
 			{
 				if (CompNode->BoundGraph == InGraph)
 				{
-					FJointEdUtils::RemoveNode(CompNode);
+					UJointEditorFunctionLibrary::RemoveNode(CompNode);
 				}
 			}
 		}
 
-		FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(InGraph));
+		UJointEditorFunctionLibrary::RemoveGraph(Cast<UJointEdGraph>(InGraph));
 		
 		ToolKitPtr.Pin()->CloseDocumentTab(InGraph);
 

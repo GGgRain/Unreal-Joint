@@ -78,7 +78,7 @@ void SJointNodePalette::OnActionSelected(const TArray<TSharedPtr<FEdGraphSchemaA
 			ToolKitPtr.Pin()->GetFocusedGraphEditor()->GetViewLocation(ViewLocation, ZoomAmount);
 			
 			float ZoomOffsetMul = 1 / ZoomAmount;
-			ViewLocation = ViewLocation + ViewSize * ZoomOffsetMul * 2.5;
+			ViewLocation = ViewLocation + ViewSize * ZoomOffsetMul * 2.5f;
 #if UE_VERSION_OLDER_THAN(5,6,0)
 			NodePresetAction->PerformAction(ToolKitPtr.Pin()->GetFocusedJointGraph(), nullptr, ViewLocation);
 #else

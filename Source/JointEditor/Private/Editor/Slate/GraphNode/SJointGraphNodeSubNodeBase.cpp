@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "GraphNode/SJointGraphNodeSubNodeBase.h"
@@ -244,7 +244,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					[
 						/*SAssignNew(NodeBackground, SImage)
 						.Visibility(EVisibility::SelfHitTestInvisible)
-						.RenderTransformPivot(FVector2D(0.5))
+						.RenderTransformPivot(FVector2D(0.5f))
 						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Sphere"))
 						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
 						CreateNodeBackground(true)
@@ -300,7 +300,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					[
 						/*SAssignNew(NodeBackground, SImage)
 						.Visibility(EVisibility::SelfHitTestInvisible)
-						.RenderTransformPivot(FVector2D(0.5))
+						.RenderTransformPivot(FVector2D(0.5f))
 						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
 						CreateNodeBackground()
@@ -376,7 +376,7 @@ void SJointGraphNodeSubNodeBase::PopulateNodeSlates()
 					[
 						/*SAssignNew(NodeBackground, SImage)
 						.Visibility(EVisibility::SelfHitTestInvisible)
-						.RenderTransformPivot(FVector2D(0.5))
+						.RenderTransformPivot(FVector2D(0.5f))
 						.Image(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ColorAndOpacity(GetNodeBodyBackgroundColor())*/
 						CreateNodeBackground()

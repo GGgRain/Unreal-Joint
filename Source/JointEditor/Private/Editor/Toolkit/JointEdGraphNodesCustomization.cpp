@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Toolkit/JointEdGraphNodesCustomization.h"
 
@@ -66,6 +66,7 @@
 #endif
 
 
+#include "JointEditorFunctionLibrary.h"
 #include "Script/JointScriptSettings.h"
 #include "Widgets/Layout/SExpandableArea.h"
 
@@ -409,7 +410,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 			SNew(SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+			.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
 			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
 			.ContentPadding(FJointEditorStyle::Margin_Large)
 			.HAlign(HAlign_Fill)
@@ -464,7 +465,7 @@ void FJointEdGraphNodesCustomizationBase::CustomizeDetails(IDetailLayoutBuilder&
 			SNew(SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+			.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
 			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
 			.ContentPadding(FJointEditorStyle::Margin_Large)
 			.HAlign(HAlign_Fill)
@@ -733,8 +734,8 @@ void SJointNodeInstanceSimpleDisplayPropertyName::Construct(const FArguments& In
 			&& PropertyHandle->GetProperty()
 			&& EdNode
 			&& EdNode->SimpleDisplayHiddenProperties.Contains(PropertyHandle->GetProperty()->GetFName())
-				? FLinearColor(0.2, 0.2, 0.2)
-				: FLinearColor(1, 0.5, 0.2);
+				? FLinearColor(0.2f, 0.2f, 0.2f)
+				: FLinearColor(1, 0.5f, 0.2f);
 	});
 
 	TAttribute<EVisibility> CheckBoxVisibility = TAttribute<EVisibility>::CreateLambda([this]
@@ -1034,7 +1035,7 @@ void FJointEdGraphCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 			[
 				SNew(SJointOutlineButton)
 				.NormalColor(FLinearColor::Transparent)
-				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OutlineNormalColor(FLinearColor::Transparent)
 				.ContentPadding(FJointEditorStyle::Margin_Normal)
@@ -1088,7 +1089,7 @@ void FJointManagerCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBu
 {
 	if (UJointEditorSettings::Get()->bEnableDeveloperMode)
 	{
-		//Removed in 2.10
+		//Removed in 2.10f
 	}
 }
 
@@ -1199,7 +1200,7 @@ void FJointNodePresetCustomization::CustomizeDetails(IDetailLayoutBuilder& Detai
 		SNew(SJointOutlineBorder)
 		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+		.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
 		.OutlineHoverColor(FJointEditorStyle::Color_Selected)
 		.ContentPadding(FJointEditorStyle::Margin_Large)
 		.HAlign(HAlign_Fill)
@@ -1229,7 +1230,7 @@ void FJointNodePresetCustomization::CustomizeDetails(IDetailLayoutBuilder& Detai
 				.Padding(FJointEditorStyle::Margin_Normal)
 				[
 					SNew(SJointOutlineButton)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -1280,7 +1281,7 @@ void FJointNodePresetCustomization::PendingDelete()
 	{
 		if (FJointEditorToolkit* Toolkit = FJointEdUtils::FindOrOpenJointEditorInstanceFor(InternalJointManager, false))
 		{
-			//	UE_DEPRECATED(5.3, "Use CloseWindow that takes in an EAssetEditorCloseReason instead")
+			//	UE_DEPRECATED(5.3f, "Use CloseWindow that takes in an EAssetEditorCloseReason instead")
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
 			Toolkit->CloseWindow();
 #else
@@ -1386,8 +1387,8 @@ void FJointNodePointerStructCustomization::CustomizeStructChildren(TSharedRef<IP
 		SAssignNew(BorderWidget, SJointOutlineBorder)
 		.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-		.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+		.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
+		.OutlineHoverColor(FLinearColor(0.4f, 0.4f, 0.5f))
 		.ContentPadding(FJointEditorStyle::Margin_Tiny)
 		.OnHovered(this, &FJointNodePointerStructCustomization::OnMouseHovered)
 		.OnUnhovered(this, &FJointNodePointerStructCustomization::OnMouseUnhovered)
@@ -1823,7 +1824,7 @@ void FJointNodePointerStructCustomization::OnMouseHovered()
 {
 	FeatureButtonsSlate->UpdateVisualOnHovered();
 
-	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5);
+	if (BackgroundBox.IsValid()) BackgroundBox->SetRenderOpacity(0.5f);
 	if (ButtonBox.IsValid()) ButtonBox->SetVisibility(EVisibility::SelfHitTestInvisible);
 
 	UObject* CurrentNode = nullptr;
@@ -1976,19 +1977,19 @@ void FJointNodePointerStructCustomization::BlinkSelf()
 		                                    (
 			                                    VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.16)
+			.AlphaBasedDuration(0.16f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.bUseStartColor(true)
 			.StartColor(BorderWidget->NormalColor)
-			.TargetColor(FLinearColor(1, 1, 1, 0.5)),
+			.TargetColor(FLinearColor(1, 1, 1, 0.5f)),
 			                                    VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.16)
+			.AlphaBasedDuration(0.16f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.bUseStartColor(true)
-			.StartColor(FLinearColor(1, 1, 1, 0.5))
+			.StartColor(FLinearColor(1, 1, 1, 0.5f))
 			.TargetColor(BorderWidget->NormalColor)
 		                                    )
 	);
@@ -2347,7 +2348,7 @@ TSharedPtr<SWidget> FJointScriptLinkerDataElementCustomization::CreateReimportBu
 	//Reimport button
 	return SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -2502,7 +2503,7 @@ TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateImportButtonWidge
 	//Reimport button
 	return SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -2563,7 +2564,7 @@ TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateQuickReimportAllB
 	//Reimport button
 	return SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -2640,7 +2641,7 @@ TSharedPtr<SWidget> FJointScriptLinkerDataCustomization::CreateRefreshWidgetButt
 	//Refresh button
 	return SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -2760,7 +2761,7 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateValidityIcon
 	return SNew(SImage)
 		.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
 		{
-			return ValidityCheck() ? FLinearColor::Green + FLinearColor(0.15, 0.15, 0.15) : FLinearColor::Red + FLinearColor(0.15, 0.15, 0.15);
+			return ValidityCheck() ? FLinearColor::Green + FLinearColor(0.15f, 0.15f, 0.15f) : FLinearColor::Red + FLinearColor(0.15f, 0.15f, 0.15f);
 		})
 		.Image_Lambda([ValidityCheck]() -> const FSlateBrush*
 		{
@@ -2820,7 +2821,7 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreatePathTextWidg
 	// show name of the file first and then the path in ()
 	return SNew(STextBlock)
 		.TextStyle(&FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Regular.h5"))
-		.ColorAndOpacity(FLinearColor(0.66, 0.66, 0.66))
+		.ColorAndOpacity(FLinearColor(0.66f, 0.66f, 0.66f))
 		.HighlightText_Lambda([WeakThisPtr]() -> const FText
 		{
 			if (!WeakThisPtr.IsValid()) return FText::GetEmpty();
@@ -2871,7 +2872,7 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileEx
 
 	TSharedPtr<SWidget> Widget = SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -2924,7 +2925,7 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateOpenOnFileEx
 				.DesiredSizeOverride(FVector2D(16, 16))
 				.ColorAndOpacity_Lambda([ValidityCheck]() -> const FSlateColor
 				{
-					return ValidityCheck() ? FLinearColor(1, 1, 1) : FLinearColor(0.5, 0.5, 0.5);
+					return ValidityCheck() ? FLinearColor(1, 1, 1) : FLinearColor(0.5f, 0.5f, 0.5f);
 				})
 			]
 		];
@@ -2936,7 +2937,7 @@ TSharedPtr<SWidget> FJointScriptLinkerFileEntryCustomization::CreateReassignFile
 {
 	TSharedPtr<SWidget> Widget = SNew(SJointOutlineButton)
 		.NormalColor(FLinearColor::Transparent)
-		.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+		.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 		.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 		.OutlineNormalColor(FLinearColor::Transparent)
 		.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3106,7 +3107,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::SCandidateRow::Gener
 			[
 				SNew(SJointOutlineButton)
 				.NormalColor(FLinearColor::Transparent)
-				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OutlineNormalColor(FLinearColor::Transparent)
 				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3127,7 +3128,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::SCandidateRow::Gener
 			[
 				SNew(SJointOutlineButton)
 				.NormalColor(FLinearColor::Transparent)
-				.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+				.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 				.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 				.OutlineNormalColor(FLinearColor::Transparent)
 				.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3297,7 +3298,7 @@ void FJointScriptLinkerMappingCustomization::SReallocationPopup::Construct(const
 			[
 				SNew(SButton)
 				.Text(LOCTEXT("Proceed", "Proceed"))
-				.ButtonColorAndOpacity(FLinearColor(0.5, 0.7, 1.0))
+				.ButtonColorAndOpacity(FLinearColor(0.5f, 0.7f, 1.0f))
 				.IsEnabled_Lambda([this]() -> bool
 				{
 					return SelectedItem.IsValid() && SelectedItem.Pin()->Manager.IsValid();
@@ -3397,7 +3398,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3414,7 +3415,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3431,7 +3432,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3545,7 +3546,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3567,7 +3568,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3631,7 +3632,7 @@ TSharedRef<SWidget> FJointScriptLinkerMappingCustomization::CreateContentWidget(
 								[
 									SNew(SJointOutlineButton)
 									.NormalColor(FLinearColor::Transparent)
-									.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+									.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 									.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 									.OutlineNormalColor(FLinearColor::Transparent)
 									.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -3709,7 +3710,7 @@ void FJointScriptLinkerMappingCustomization::CustomizeStructHeader(TSharedRef<IP
 			SAssignNew(BodyBorder, SJointOutlineBorder)
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
+			.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
 			.OutlineHoverColor(FJointEditorStyle::Color_Selected)
 			.ContentPadding(FJointEditorStyle::Margin_Large)
 			.HAlign(HAlign_Fill)
@@ -4085,7 +4086,7 @@ FReply FJointScriptLinkerMappingCustomization::OnCleanAllButtonClicked()
 		{
 			for (TPair<FString, FJointScriptLinkerNodeSet>& NodeMapping : Mapping->NodeMappings)
 			{
-				FJointEdUtils::RemoveNodesWithGuid(JointManager, NodeMapping.Value.NodeGuids);
+				UJointEditorFunctionLibrary::RemoveNodesByGuids(JointManager, NodeMapping.Value.NodeGuids);
 			}
 		}
 

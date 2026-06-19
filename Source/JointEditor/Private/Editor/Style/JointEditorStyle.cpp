@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "JointEditorStyle.h"
 
@@ -65,21 +65,21 @@ const FMargin FJointEditorStyle::Margin_Normal(FMargin(4));
 const FMargin FJointEditorStyle::Margin_Small(FMargin(2));
 const FMargin FJointEditorStyle::Margin_Tiny(FMargin(1));
 
-const FMargin FJointEditorStyle::Margin_Shadow(FMargin(4.5));
-const FMargin FJointEditorStyle::Margin_SubNode(FMargin(1.5));
+const FMargin FJointEditorStyle::Margin_Shadow(FMargin(4.5f));
+const FMargin FJointEditorStyle::Margin_SubNode(FMargin(1.5f));
 
 
-const FLinearColor FJointEditorStyle::Color_Normal(0.006, 0.006, 0.006);
-const FLinearColor FJointEditorStyle::Color_Hover(0.1, 0.1, 0.15);
-const FLinearColor FJointEditorStyle::Color_Selected(0.2, 0.2, 0.25);
+const FLinearColor FJointEditorStyle::Color_Normal(0.006f, 0.006f, 0.006f);
+const FLinearColor FJointEditorStyle::Color_Hover(0.1f, 0.1f, 0.15f);
+const FLinearColor FJointEditorStyle::Color_Selected(0.2f, 0.2f, 0.25f);
 const FLinearColor FJointEditorStyle::Color_Disabled(0, 0, 0, 0);
 
 const FLinearColor FJointEditorStyle::Color_SolidNormal(1, 1, 1);
-const FLinearColor FJointEditorStyle::Color_SolidHover(1, 1, 1, 0.7);
-const FLinearColor FJointEditorStyle::Color_SolidSelected(1, 1, 1, 0.8);
+const FLinearColor FJointEditorStyle::Color_SolidHover(1, 1, 1, 0.7f);
+const FLinearColor FJointEditorStyle::Color_SolidSelected(1, 1, 1, 0.8f);
 
 
-const FLinearColor FJointEditorStyle::Color_Node_TabBackground(0.009, 0.009, 0.012);
+const FLinearColor FJointEditorStyle::Color_Node_TabBackground(0.009f, 0.009f, 0.012f);
 const FLinearColor FJointEditorStyle::Color_Node_Inactive(0.08f, 0.08f, 0.08f);
 const FLinearColor FJointEditorStyle::Color_Node_Selected(0.75f, 0.75f, 1.00f);
 const FLinearColor FJointEditorStyle::Color_Node_Invalid(1.f, 0.f, 0.f);
@@ -154,30 +154,30 @@ TSharedRef<ISlateStyle> FJointEditorStyle::Create()
 	}
 
 	//TextBlock In editor
-	Joint_AssignTextBlockStyle(Regular_h1, "JointUI.TextBlock.Regular.h1", "Regular", 13, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Regular_h2, "JointUI.TextBlock.Regular.h2", "Regular", 11, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Regular_h3, "JointUI.TextBlock.Regular.h3", "Regular", 9, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Regular_h4, "JointUI.TextBlock.Regular.h4", "Regular", 8, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Regular_h5, "JointUI.TextBlock.Regular.h5", "Regular", 7, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Regular_h6, "JointUI.TextBlock.Regular.h6", "Regular", 5, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Regular_h1, "JointUI.TextBlock.Regular.h1", "Regular", 13, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Regular_h2, "JointUI.TextBlock.Regular.h2", "Regular", 11, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Regular_h3, "JointUI.TextBlock.Regular.h3", "Regular", 9, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Regular_h4, "JointUI.TextBlock.Regular.h4", "Regular", 8, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Regular_h5, "JointUI.TextBlock.Regular.h5", "Regular", 7, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Regular_h6, "JointUI.TextBlock.Regular.h6", "Regular", 5, FLinearColor(0.9f,0.9f,0.9f,1))
 
-	Joint_AssignTextBlockStyle(Black_h1, "JointUI.TextBlock.Black.h1", "Black", 13, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Black_h2, "JointUI.TextBlock.Black.h2", "Black", 11, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Black_h3, "JointUI.TextBlock.Black.h3", "Black", 9, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Black_h4, "JointUI.TextBlock.Black.h4", "Black", 8, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Black_h5, "JointUI.TextBlock.Black.h5", "Black", 7, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Black_h6, "JointUI.TextBlock.Black.h6", "Black", 5, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Black_h1, "JointUI.TextBlock.Black.h1", "Black", 13, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Black_h2, "JointUI.TextBlock.Black.h2", "Black", 11, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Black_h3, "JointUI.TextBlock.Black.h3", "Black", 9, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Black_h4, "JointUI.TextBlock.Black.h4", "Black", 8, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Black_h5, "JointUI.TextBlock.Black.h5", "Black", 7, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Black_h6, "JointUI.TextBlock.Black.h6", "Black", 5, FLinearColor(0.9f,0.9f,0.9f,1))
 
-	Joint_AssignTextBlockStyle(Italic_h1, "JointUI.TextBlock.Italic.h1", "Italic", 13, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Italic_h2, "JointUI.TextBlock.Italic.h2", "Italic", 11, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Italic_h3, "JointUI.TextBlock.Italic.h3", "Italic", 9, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Italic_h4, "JointUI.TextBlock.Italic.h4", "Italic", 8, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Italic_h5, "JointUI.TextBlock.Italic.h5", "Italic", 7, FLinearColor(0.9,0.9,0.9,1))
-	Joint_AssignTextBlockStyle(Italic_h6, "JointUI.TextBlock.Italic.h6", "Italic", 5, FLinearColor(0.9,0.9,0.9,1))
+	Joint_AssignTextBlockStyle(Italic_h1, "JointUI.TextBlock.Italic.h1", "Italic", 13, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Italic_h2, "JointUI.TextBlock.Italic.h2", "Italic", 11, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Italic_h3, "JointUI.TextBlock.Italic.h3", "Italic", 9, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Italic_h4, "JointUI.TextBlock.Italic.h4", "Italic", 8, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Italic_h5, "JointUI.TextBlock.Italic.h5", "Italic", 7, FLinearColor(0.9f,0.9f,0.9f,1))
+	Joint_AssignTextBlockStyle(Italic_h6, "JointUI.TextBlock.Italic.h6", "Italic", 5, FLinearColor(0.9f,0.9f,0.9f,1))
 
 
 	FTextBlockStyle NodeRenameTextBlockStyle = Regular_h4;
-	NodeRenameTextBlockStyle.ColorAndOpacity = FLinearColor(0.9, 0.9, 0.9, 0.7);
+	NodeRenameTextBlockStyle.ColorAndOpacity = FLinearColor(0.9f, 0.9f, 0.9f, 0.7f);
 	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_NodeTitleInlineEditableText, "JointUI.InlineEditableTextBlock.NodeTitleInlineEditableText", NodeRenameTextBlockStyle)
 
 	Joint_AssignInlineEditableTextBlockStyle(InlineEditableTextBlock_Regular_h1, "JointUI.InlineEditableTextBlock.Regular.h1", Regular_h1)

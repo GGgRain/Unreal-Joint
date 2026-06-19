@@ -354,8 +354,8 @@ void JointEditorToolkitToastMessages::PopulateNodePickerCopyToastMessage(TWeakPt
 
 		SNew(SJointToolkitToastMessage)
 		.SizeDecreaseInterpolationSpeed(2)
-		.RemoveAnimationDuration(0.5)
-		.Duration(1.5)
+		.RemoveAnimationDuration(0.5f)
+		.Duration(1.5f)
 		[
 			SNew(SBorder)
 			.Padding(FJointEditorStyle::Margin_Normal)
@@ -434,8 +434,8 @@ void JointEditorToolkitToastMessages::PopulateNodePickerPastedToastMessage(TWeak
 		EJointEditorToastMessage::NodePickerPasted,
 		SNew(SJointToolkitToastMessage)
 		.SizeDecreaseInterpolationSpeed(2)
-		.RemoveAnimationDuration(0.5)
-		.Duration(1.5)
+		.RemoveAnimationDuration(0.5f)
+		.Duration(1.5f)
 		[
 			SNew(SBorder)
 			.Padding(FJointEditorStyle::Margin_Normal)

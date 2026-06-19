@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Editor/Sequencer/FJointMovieSection.h"
 
@@ -322,35 +322,35 @@ void FJointMovieSection::GetColorScheme(EJointMovieSectionType SectionType, FLin
 	{
 		if (SectionType == EJointMovieSectionType::BeginPlay || SectionType == EJointMovieSectionType::ActiveForRange)
 		{
-			OutNormalColor = FLinearColor(0.10, 0.40, 0.30);
-			OutHoverColor = FLinearColor(0.20, 0.80, 0.70);
-			OutOutlineNormalColor = FLinearColor(0.10, 0.60, 0.50);
-			OutOutlineHoverColor = FLinearColor(0.80, 0.90, 0.90);
+			OutNormalColor = FLinearColor(0.10f, 0.40f, 0.30f);
+			OutHoverColor = FLinearColor(0.20f, 0.80f, 0.70f);
+			OutOutlineNormalColor = FLinearColor(0.10f, 0.60f, 0.50f);
+			OutOutlineHoverColor = FLinearColor(0.80f, 0.90f, 0.90f);
 			return;
 		}
 		else if (SectionType == EJointMovieSectionType::EndPlay)
 		{
-			OutNormalColor = FLinearColor(0.35, 0.35, 0.35);
-			OutHoverColor = FLinearColor(0.50, 0.50, 0.50);    
-			OutOutlineNormalColor = FLinearColor(0.65, 0.65, 0.65);
-			OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
+			OutNormalColor = FLinearColor(0.35f, 0.35f, 0.35f);
+			OutHoverColor = FLinearColor(0.50f, 0.50f, 0.50f);    
+			OutOutlineNormalColor = FLinearColor(0.65f, 0.65f, 0.65f);
+			OutOutlineHoverColor = FLinearColor(0.90f, 0.90f, 0.90f);
 			return;
 		}
 		else if (SectionType == EJointMovieSectionType::MarkAsPending)
 		{
-			OutNormalColor = FLinearColor(0.60, 0.60, 0.30);
-			OutHoverColor = FLinearColor(0.80, 0.80, 0.40);
-			OutOutlineNormalColor = FLinearColor(0.80, 0.80, 0.20);
-			OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
+			OutNormalColor = FLinearColor(0.60f, 0.60f, 0.30f);
+			OutHoverColor = FLinearColor(0.80f, 0.80f, 0.40f);
+			OutOutlineNormalColor = FLinearColor(0.80f, 0.80f, 0.20f);
+			OutOutlineHoverColor = FLinearColor(0.90f, 0.90f, 0.90f);
 			return;
 		}
 	}
 	else
 	{
-		OutNormalColor = FLinearColor(0.80, 0.10, 0.10);
-		OutHoverColor = FLinearColor(0.80, 0.20, 0.20);
-		OutOutlineNormalColor = FLinearColor(0.90, 0.10, 0.10);
-		OutOutlineHoverColor = FLinearColor(0.90, 0.90, 0.90);
+		OutNormalColor = FLinearColor(0.80f, 0.10f, 0.10f);
+		OutHoverColor = FLinearColor(0.80f, 0.20f, 0.20f);
+		OutOutlineNormalColor = FLinearColor(0.90f, 0.10f, 0.10f);
+		OutOutlineHoverColor = FLinearColor(0.90f, 0.90f, 0.90f);
 	}
 }
 
