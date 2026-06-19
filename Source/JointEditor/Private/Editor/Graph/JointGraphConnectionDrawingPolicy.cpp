@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "JointGraphConnectionDrawingPolicy.h"
 #include "Rendering/DrawElements.h"
@@ -98,7 +98,7 @@ void FJointGraphConnectionDrawingPolicy::DetermineWiringStyle(UEdGraphPin* Outpu
 		case EJointGraphConnectionDrawingConnectionType::Normal:
 			Params.WireColor = InSettings->NormalConnectionColor;
 			Params.WireColor.A = !InSettings->bDrawNormalConnection
-				                     ? 0.1
+				                     ? 0.1f
 				                     : !CheckIsInActiveRoute(FromNode)
 				                     ? InSettings->NotReachableRouteConnectionOpacity
 				                     : Params.WireColor.A;
@@ -106,7 +106,7 @@ void FJointGraphConnectionDrawingPolicy::DetermineWiringStyle(UEdGraphPin* Outpu
 		case EJointGraphConnectionDrawingConnectionType::Recursive:
 			Params.WireColor = InSettings->RecursiveConnectionColor;
 			Params.WireColor.A = !InSettings->bDrawRecursiveConnection
-				                     ? 0.1
+				                     ? 0.1f
 				                     : !CheckIsInActiveRoute(FromNode)
 				                     ? InSettings->NotReachableRouteConnectionOpacity
 				                     : Params.WireColor.A;

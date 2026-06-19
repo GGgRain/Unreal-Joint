@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -17,7 +17,7 @@ class UVoltAnimation;
 class UVoltAnimationManager;
 
 /**
- * IMPORTANT : VOLT 1.1 now supports tick action on every situation. Just use it as you want!
+ * IMPORTANT : VOLT 1.1f now supports tick action on every situation. Just use it as you want!
  *
  * Any animation that works on Volt will not be played on the debug mode of the editor & slate application by default.
  * This class is not belong to the slate application architecture, and this is the limitation of the engine, because they hard-coded the refresh action of the slates in while-loop while not triggering any other engine tick events.
@@ -182,7 +182,7 @@ private:
 private:
 
 	/**
-	 * Volt 1.1 : Now track addition & deletion actions are asynchronous. We queue all the requests in the queues for each action, and handle them when the volt update thread is ready to go. (sync with it.)
+	 * Volt 1.1f : Now track addition & deletion actions are asynchronous. We queue all the requests in the queues for each action, and handle them when the volt update thread is ready to go. (sync with it.)
 	 * Don't touch it if you don't fully understand the code.
 	 */
 	

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -68,7 +68,7 @@ class VOLTCORE_API UVoltSubModuleInterface : public UInterface
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpColor)
 				.InterpSpeed(42)
-				.TargetColor(FLinearColor(1, 1, 1, 0.5)),
+				.TargetColor(FLinearColor(1, 1, 1, 0.5f)),
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpColor)
 				.InterpSpeed(24)
 				.TargetColor(FLinearColor(1, 1, 1, 0))

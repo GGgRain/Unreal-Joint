@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Node/JointEdGraphNode.h"
 
@@ -1537,7 +1537,7 @@ bool UJointEdGraphNode::CheckCanAddSubNode(const UJointEdGraphNode* SubNode, FPi
 	
 	TArray<UJointEdGraphNode*> SubNodesOfSubNodes = SubNode->GetAllSubNodesInHierarchy();
 
-	//Joint 2.12: Now check with the sub nodes 
+	//Joint 2.12f: Now check with the sub nodes 
 	//not the parent nodes - can't figure out how to make it work without breaking the existing logic.
 	
 	// upward check

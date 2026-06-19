@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include <TextEditor/SContextTextStyler.h>
 
@@ -266,7 +266,7 @@ void SContextTextStyler::OnStylePipettePressed()
 	
 	if(GetIsStylePipetteActivating())
 	{
-		PipetteButton->OutlineNormalColor = FLinearColor(0.5,0.5,0.6);
+		PipetteButton->OutlineNormalColor = FLinearColor(0.5f,0.5f,0.6f);
 
 		PipetteButton->PlayUnhoveredAnimation();
 		

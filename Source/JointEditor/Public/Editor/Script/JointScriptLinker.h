@@ -47,6 +47,7 @@ public:
 	{
 		return FilePath.IsEmpty();
 	}
+	
 };
 
 FORCEINLINE uint32 GetTypeHash(const FJointScriptLinkerFileEntry& Entry)
@@ -123,10 +124,7 @@ public:
 		{
 			FoundSet->NodeGuids.Remove(InNodeGuid);
 			
-			if (FoundSet->NodeGuids.Num() == 0)
-			{
-				NodeMappings.Remove(InId);
-			}
+			if (FoundSet->NodeGuids.Num() == 0) NodeMappings.Remove(InId);
 			
 			return true;
 		}
@@ -144,20 +142,15 @@ public:
 		{
 			NodeMapping.Value.NodeGuids.Remove(InNodeGuid);
 			
-			if (NodeMapping.Value.NodeGuids.Num() == 0)
-			{
-				KeysToRemove.Add(NodeMapping.Key);
-			}
-			else
-			{
-				bRemoved = true;
-			}
+			//If this mapping doesn't contain any node, pop it out.
+			if (NodeMapping.Value.NodeGuids.Num() == 0) KeysToRemove.Add(NodeMapping.Key);
+
+			bRemoved = true;
 		}
 		
 		for (const FString& Key : KeysToRemove)
 		{
 			NodeMappings.Remove(Key);
-			bRemoved = true;
 		}
 		
 		return bRemoved;

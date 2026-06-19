@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "GraphNode/SJointGraphNodeBase.h"
 #include "JointEdGraphNode.h"
@@ -382,7 +382,7 @@ void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColo
 
 	if (bIsSelected)
 	{
-		const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.005;
+		const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.005f;
 
 		NormalColor = Color * 3 + OffsetColor;
 		HoverColor = Color * 3 + OffsetColor;
@@ -391,12 +391,12 @@ void SJointGraphNodeBase::GetNodeColorScheme(const bool bIsSelected, FLinearColo
 	}
 	else
 	{
-		const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001;
+		const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001f;
 
 		NormalColor = Color;
 		HoverColor = Color;
-		OutlineNormalColor = Color * 1.25 + OffsetColor;
-		OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
+		OutlineNormalColor = Color * 1.25f + OffsetColor;
+		OutlineHoverColor = Color * 2.5f + OffsetColor * 15;
 	}
 }
 
@@ -523,7 +523,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		const FVector2D& RightBoxSize = RightNodeBox->GetDesiredSize();
 		const FVector2D& Size = GetDesiredSize();
 
-		return FVector2D(Size.X, (Size.Y * 0.5) - (RightBoxSize.Y * 0.5));
+		return FVector2D(Size.X, (Size.Y * 0.5f) - (RightBoxSize.Y * 0.5f));
 	});
 
 	TAttribute<FVector2D> RightBoxSize_Attr = TAttribute<FVector2D>::CreateLambda([this]
@@ -537,7 +537,7 @@ void SJointGraphNodeBase::PopulateNodeSlates()
 		const FVector2f& RightBoxSize = RightNodeBox->GetDesiredSize();
 		const FVector2f& Size = GetDesiredSize();
 
-		return FVector2f(Size.X, (Size.Y * 0.5) - (RightBoxSize.Y * 0.5));
+		return FVector2f(Size.X, (Size.Y * 0.5f) - (RightBoxSize.Y * 0.5f));
 	});
 
 	TAttribute<FVector2f> RightBoxSize_Attr = TAttribute<FVector2f>::CreateLambda([this]
@@ -658,7 +658,7 @@ TSharedRef<SBorder> SJointGraphNodeBase::CreateNodeBody(const bool bSphere)
 		.VAlign(VAlign_Fill)
 		.OnMouseButtonUp(this, &SJointGraphNodeBase::OnMouseButtonUp)
 		.OnMouseButtonDown(this, &SJointGraphNodeBase::OnMouseButtonDown)
-		.RenderTransformPivot(FVector2D(0.5))
+		.RenderTransformPivot(FVector2D(0.5f))
 		.Cursor(this, &SJointGraphNodeBase::GetCursor)
 		.BorderImage(InBorderImage)
 		.BorderBackgroundColor(FJointEditorStyle::Color_Node_Shadow)
@@ -695,7 +695,7 @@ TSharedRef<SJointOutlineBorder> SJointGraphNodeBase::CreateNodeBackground(const 
 
 	return SAssignNew(NodeBackground, SJointOutlineBorder)
 		.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
-		.RenderTransformPivot(FVector2D(0.5))
+		.RenderTransformPivot(FVector2D(0.5f))
 			//.Visibility(EVisibility::SelfHitTestInvisible)
 		.NormalColor(NormalColor)
 		.HoverColor(HoverColor)
@@ -1068,7 +1068,7 @@ FReply SJointGraphNodeBase::OnDrop(const FGeometry& MyGeometry, const FDragDropE
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 			.StartWidgetTransform(FWidgetTransform(
 				                                                 FVector2D::ZeroVector,
-				                                                 FVector2D(0.9, 0.9),
+				                                                 FVector2D(0.9f, 0.9f),
 				                                                 FVector2D::ZeroVector,
 				                                                 0))
 			.RateBasedInterpSpeed(10)
@@ -1274,10 +1274,10 @@ void SJointGraphNodeBase::OnDragEnter(const FGeometry& MyGeometry, const FDragDr
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.5)
+				.AlphaBasedDuration(0.5f)
 				.AlphaBasedBlendExp(6)
 				.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
-				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.002, 1.002),
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.002f, 1.002f),
 				                                        FVector2D::ZeroVector, 0))
 			);
 
@@ -1320,7 +1320,7 @@ void SJointGraphNodeBase::OnDragLeave(const FDragDropEvent& DragDropEvent)
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.5)
+				.AlphaBasedDuration(0.5f)
 				.AlphaBasedBlendExp(6)
 				.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
 				.TargetWidgetTransform(FWidgetTransform(
@@ -1370,7 +1370,7 @@ void SJointGraphNodeBase::OnDragStarted()
 	UVoltAnimation* Animation = VOLT_MAKE_ANIMATION()
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.95, 0.95), FVector2D::ZeroVector, 0))
+		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.95f, 0.95f), FVector2D::ZeroVector, 0))
 	);
 
 	VOLT_PLAY_ANIM(SharedThis(this), Animation);
@@ -1707,11 +1707,11 @@ void SJointGraphNodeBase::PlayHighlightAnimation(bool bBlinkForOnce, float Speed
 			.bUseStartColor(true)
 			.StartColor(GetNodeBodyBackgroundColor())
 			.AlphaBasedDuration(0.05f / SpeedMultiplier)
-			.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3)),
+			.TargetColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3f, 0.3f, 0.3f, 0.3f)),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
 			.bUseStartColor(true)
-			.StartColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3, 0.3, 0.3, 0.3))
+			.StartColor(GetNodeBodyBackgroundColor() + FLinearColor(0.3f, 0.3f, 0.3f, 0.3f))
 			.AlphaBasedDuration(0.25f / SpeedMultiplier)
 			.TargetColor(GetNodeBodyBackgroundColor())
 		)
@@ -1745,7 +1745,7 @@ void SJointGraphNodeBase::PlayNodeBackgroundColorResetAnimationIfPossible(bool b
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpColor)
 		.InterpolationMode(EVoltInterpMode::AlphaBased)
-		.AlphaBasedDuration(bInstant ? 0.05 : 0.4)
+		.AlphaBasedDuration(bInstant ? 0.05f : 0.4f)
 		.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 		.AlphaBasedBlendExp(6)
 		.TargetColor(GetNodeBodyBackgroundColor())
@@ -1897,12 +1897,12 @@ void SJointGraphNodeBase::PlayNodeBodyScaleAnimation(float Scale, float Duration
 					(
 						VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 						.InterpolationMode(EVoltInterpMode::AlphaBased)
-						.AlphaBasedDuration(Duration * 0.5)
+						.AlphaBasedDuration(Duration * 0.5f)
 						.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
 						.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(Scale, Scale), FVector2D::ZeroVector, 0)),
 						VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 						.InterpolationMode(EVoltInterpMode::AlphaBased)
-						.AlphaBasedDuration(Duration * 0.5)
+						.AlphaBasedDuration(Duration * 0.5f)
 						.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
 						.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
 					)
@@ -1932,12 +1932,12 @@ void SJointGraphNodeBase::PlayNodeBodyColorAnimation(const FLinearColor Color, c
 				(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(Duration * 0.5)
+					.AlphaBasedDuration(Duration * 0.5f)
 					.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
 					.TargetColor(Color),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(Duration * 0.5)
+					.AlphaBasedDuration(Duration * 0.5f)
 					.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
 					.TargetColor(BlinkTargetColor)
 				)
@@ -1971,7 +1971,7 @@ void SJointGraphNodeBase::ResetNodeBodyColorAnimation()
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.3)
+			.AlphaBasedDuration(0.3f)
 			.AlphaBasedEasingFunction(EEasingFunc::SinusoidalOut)
 			.TargetColor(FJointEditorStyle::Color_Node_Shadow)
 		);
@@ -1995,7 +1995,7 @@ void SJointGraphNodeBase::PlayDropAnimation()
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 			.bUseStartWidgetTransform(true)
 			.RateBasedInterpSpeed(8)
-			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector, 0))
+			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1f, 0.4f), FVector2D::ZeroVector, 0))
 			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
 		);
 
@@ -2018,7 +2018,7 @@ void SJointGraphNodeBase::PlayInsertAnimation()
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 			.bUseStartWidgetTransform(true)
 			.RateBasedInterpSpeed(8)
-			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 0.4), FVector2D::ZeroVector,
+			.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1f, 0.4f), FVector2D::ZeroVector,
 												   (FMath::FRand() - 0.5f) * 20))
 			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1, 1), FVector2D::ZeroVector, 0))
 		);
@@ -2030,7 +2030,7 @@ void SJointGraphNodeBase::PlayInsertAnimation()
 
 void SJointGraphNodeBase::PlayInsertPointHighlightAnimation()
 {
-	const float DelayTotalTime = 0.5;
+	const float DelayTotalTime = 0.5f;
 
 	const int InsertPointsNum = InsertPoints.Num();
 
@@ -2493,7 +2493,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 			.IsEnabled(this, &SJointGraphNodeBase::IsNodeEditable)
 			.Visibility(NodeHintTextVisibility)
 			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
-			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
+			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5f))
 			.Text(GetIconicNodeText())
 		]
 		+ SHorizontalBox::Slot()
@@ -2530,7 +2530,7 @@ TSharedRef<SWidget> SJointGraphNodeBase::CreateNameBox()
 			SNew(STextBlock)
 			.Visibility(NodeHintTextVisibility)
 			.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h4")
-			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5))
+			.ColorAndOpacity(FLinearColor(1, 1, 1, 0.5f))
 			.Text(GetIconicNodeText())
 		]
 		+ SHorizontalBox::Slot()

@@ -87,13 +87,13 @@ class JOINTEDITOR_API SJointToolkitToastMessage : public SCompoundWidget
 public:
 
 	SLATE_BEGIN_ARGS(SJointToolkitToastMessage) :
-		_Duration(-1),
+		_Duration(-1.f),
 		_SizeIncreaseInterpolationSpeed(8.5f),
 		_SizeDecreaseInterpolationSpeed(5.5f),
-		_AppearAnimationDuration(0.5),
-		_RemoveAnimationDuration(0.25),
-		_AppearAnimationExp(5),
-		_RemoveAnimationExp(5)
+		_AppearAnimationDuration(0.5f),
+		_RemoveAnimationDuration(0.25f),
+		_AppearAnimationExp(5.f),
+		_RemoveAnimationExp(5.f)
 		{}
 		SLATE_DEFAULT_SLOT(FArguments, Content)
 		SLATE_ARGUMENT(float, Duration)
@@ -150,15 +150,15 @@ public:
 
 	//Animations
 
-	float AppearAnimationDuration = 0.3;
-	float RemoveAnimationDuration = 0.3;
+	float AppearAnimationDuration = 0.3f;
+	float RemoveAnimationDuration = 0.3f;
 	
-	float AppearAnimationExp = 6;
-	float RemoveAnimationExp = 6;
+	float AppearAnimationExp = 6.f;
+	float RemoveAnimationExp = 6.f;
 
 private:
 
-	float Duration = -1;
+	float Duration = -1.f;
 	
 public:
 

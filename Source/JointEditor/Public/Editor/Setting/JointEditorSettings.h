@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -28,46 +28,46 @@ namespace JointEditorDefaultSettings
 	
 	//Graph Editor
 	static const bool bUseGrid(false);
-	static const FLinearColor BackgroundColor(FLinearColor(0.0093963, 0.0092709, 0.0104167, 1));//(FLinearColor(0.093963, 0.092709, 0.104167, 1));
+	static const FLinearColor BackgroundColor(FLinearColor(0.0093963f, 0.0092709f, 0.0104167f, 1.f));//(FLinearColor(0.093963f, 0.092709f, 0.104167f, 1));
 	static const FLinearColor RegularGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor RuleGridColor(FColor(5, 5, 9, 255));
 	static const FLinearColor CenterGridColor(FColor(5, 5, 9, 255));
-	static const float SmallestGridSize(100);
-	static const float GridSnapSize(5);
+	static const float SmallestGridSize(100.f);
+	static const float GridSnapSize(5.f);
 
 	//Graph Editor - Pin / Connection
-	static const FLinearColor NormalConnectionColor(FLinearColor(0.15, 0.15, 0.20, 1));
-	static const FLinearColor RecursiveConnectionColor(FLinearColor(0.4, 0.25, 0.09, 1));
-	static const FLinearColor HighlightedConnectionColor(FLinearColor(0.65, 0.1, 0.25, 1));
+	static const FLinearColor NormalConnectionColor(FLinearColor(0.15f, 0.15f, 0.20f, 1.f));
+	static const FLinearColor RecursiveConnectionColor(FLinearColor(0.4f, 0.25f, 0.09f, 1.f));
+	static const FLinearColor HighlightedConnectionColor(FLinearColor(0.65f, 0.1f, 0.25f, 1.f));
 	static const FLinearColor SelfConnectionColor(HighlightedConnectionColor);
 	static const FLinearColor PreviewConnectionColor(HighlightedConnectionColor);
 
 
-	static const float NotHighlightedConnectionOpacity(0.2);
-	static const float NotReachableRouteConnectionOpacity(0.2);
+	static const float NotHighlightedConnectionOpacity(0.2f);
+	static const float NotReachableRouteConnectionOpacity(0.2f);
 
 
-	static const float PinConnectionThickness(5.0);
+	static const float PinConnectionThickness(5.0f);
 	static const float HighlightedPinConnectionThickness(7.f);
-	static const float ConnectionHighlightFadeBias(0.35);
-	static const float ConnectionHighlightedFadeInPeriod(0.75);
+	static const float ConnectionHighlightFadeBias(0.35f);
+	static const float ConnectionHighlightedFadeInPeriod(0.75f);
 	static const bool bDrawNormalConnection(true);
 	static const bool bDrawRecursiveConnection(true);
 
 	//Graph Editor - Debugger
-	static const FLinearColor DebuggerPausedNodeColor(FLinearColor(1, 1, 1));
-	static const FLinearColor DebuggerPlayingNodeColor(FLinearColor(0.2, 0.8, 0.2));
-	static const FLinearColor DebuggerPendingNodeColor(FLinearColor(0.8, 0.5, 0.2));
-	static const FLinearColor DebuggerEndedNodeColor(FLinearColor(0.2, 0.2, 0.2));
+	static const FLinearColor DebuggerPausedNodeColor(FLinearColor(1.f, 1.f, 1.f));
+	static const FLinearColor DebuggerPlayingNodeColor(FLinearColor(0.2f, 0.8f, 0.2f));
+	static const FLinearColor DebuggerPendingNodeColor(FLinearColor(0.8f, 0.5f, 0.2f));
+	static const FLinearColor DebuggerEndedNodeColor(FLinearColor(0.2f, 0.2f, 0.2f));
 
 	//Graph Editor - Node
-	static const FLinearColor DefaultNodeColor(FLinearColor(0.026715, 0.025900, 0.035, 1));
-	static const FLinearColor NodeDepthAdditiveColor(DefaultNodeColor * 0.25);
+	static const FLinearColor DefaultNodeColor(FLinearColor(0.026715f, 0.025900f, 0.035f, 1.f));
+	static const FLinearColor NodeDepthAdditiveColor(DefaultNodeColor * 0.25f);
 
 	//Context Text Editor
 	static const float ContextTextEditorFontSizeMultiplier(0.35f);
 	static const float ContextTextAutoTextWrapAt(500);
-	static const FLinearColor ContextTextEditorBackgroundColor(FLinearColor(0.007, 0.007, 0.012, 1));
+	static const FLinearColor ContextTextEditorBackgroundColor(FLinearColor(0.007f, 0.007f, 0.012f, 1.f));
 	static const bool bOverrideDefaultStyleFromDataTable(true);
 
 	static const float ForwardSplineHorizontalDeltaRange(1000.0f);
@@ -92,16 +92,16 @@ namespace JointEditorDefaultSettings
 	static const bool bUseWiggleWireForPreviewConnection(true);
 
 	static const FWiggleWireConfig WiggleWireConfig(
-		100,
-		0.1,
-		1.5,
-		1.5,
-		1000,
-		1.4,
-		0.75,
-		50,
-		1500,
-		3
+		100.f,
+		0.1f,
+		1.5f,
+		1.5f,
+		1000.f,
+		1.4f,
+		0.75f,
+		50.f,
+		1500.f,
+		3.f
 	);
 
 	//Detail Panel

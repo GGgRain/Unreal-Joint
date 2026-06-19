@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Slate/SJointManagement.h"
 
@@ -110,7 +110,7 @@ void SJointManagement::Construct(const FArguments& InArgs)
 			MakeToolbar()
 		]
 		+ SVerticalBox::Slot()
-		.Padding(2.0)
+		.Padding(2.0f)
 		[
 			TabContents
 		]

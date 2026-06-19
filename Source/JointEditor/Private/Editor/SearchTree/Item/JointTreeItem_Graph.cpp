@@ -56,7 +56,7 @@ void FJointTreeItem_Graph::GenerateWidgetForNameColumn(TSharedPtr<SHorizontalBox
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.NormalColor(FJointEditorStyle::Color_Hover)
-			.HoverColor(FJointEditorStyle::Color_Hover + FLinearColor(0.1, 0.1, 0.1, 0.0))
+			.HoverColor(FJointEditorStyle::Color_Hover + FLinearColor(0.1f, 0.1f, 0.1f, 0.0f))
 			.ContentPadding(FJointEditorStyle::Margin_Large)
 			.OnMouseDoubleClick(this, &FJointTreeItem_Graph::OnMouseDoubleClick)
 			[

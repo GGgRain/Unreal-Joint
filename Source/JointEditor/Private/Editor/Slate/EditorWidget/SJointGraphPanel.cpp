@@ -163,6 +163,7 @@ FReply SJointGraphPanel::OnMouseMove(const FGeometry& MyGeometry, const FPointer
 		{
 			FReply ReplyState = FReply::Handled();
 
+			UE_LOG(LogGraphPanel, Log, TEXT("ViewOffset: (%f,%f), (CursorDelta / GetZoomAmount(): (%f,%f))"), GetViewOffset().X, GetViewOffset().Y, (CursorDelta / GetZoomAmount()).X, (CursorDelta / GetZoomAmount()).Y );
 			if (!CursorDelta.IsZero())
 			{
 				bShowSoftwareCursor = true;
@@ -172,8 +173,13 @@ FReply SJointGraphPanel::OnMouseMove(const FGeometry& MyGeometry, const FPointer
 			PastePosition = PanelCoordToGraphCoord(0.5f * MyGeometry.GetLocalSize());
 
 			this->bIsPanning = true;
+			
+#if UE_VERSION_OLDER_THAN(5, 8, 0)
 			ViewOffset -= CursorDelta / GetZoomAmount();
-
+#else
+			SetViewOffset( GetViewOffset() - CursorDelta / GetZoomAmount());
+#endif
+			
 			// Stop the zoom-to-fit in favor of user control
 			CancelZoomToFit();
 
@@ -192,7 +198,11 @@ FReply SJointGraphPanel::OnMouseMove(const FGeometry& MyGeometry, const FPointer
 			PastePosition = PanelCoordToGraphCoord(0.5f * MyGeometry.Size);
 
 			this->bIsPanning = true;
+#if UE_VERSION_OLDER_THAN(5, 8, 0)
 			ViewOffset -= CursorDelta / GetZoomAmount();
+#else
+			SetViewOffset( GetViewOffset() - CursorDelta / GetZoomAmount());
+#endif
 
 			return ReplyState;
 		}
@@ -200,7 +210,11 @@ FReply SJointGraphPanel::OnMouseMove(const FGeometry& MyGeometry, const FPointer
 		{
 			TSharedPtr<SNode> NodeBeingDragged = NodeUnderMousePtr.Pin();
 
+#if UE_VERSION_OLDER_THAN(5, 8, 0)
 			if (IsEditable.Get())
+#else
+			if (GetIsEditable())
+#endif
 			{
 				// Update the amount to pan panel
 				UpdateViewOffset(MyGeometry, MouseEvent.GetScreenSpacePosition());
@@ -344,8 +358,8 @@ void SJointGraphPanel::PaintBackground(const FSlateBrush* BackgroundImage, const
 
 	const float GridCellSize = NominalGridSize * ZoomFactor * Inflation;
 
-	const float GraphSpaceGridX0 = Joint_FancyMod(ViewOffset.X, Inflation * NominalGridSize * RulePeriod);
-	const float GraphSpaceGridY0 = Joint_FancyMod(ViewOffset.Y, Inflation * NominalGridSize * RulePeriod);
+	const float GraphSpaceGridX0 = Joint_FancyMod(GetViewOffset().X, Inflation * NominalGridSize * RulePeriod);
+	const float GraphSpaceGridY0 = Joint_FancyMod(GetViewOffset().Y, Inflation * NominalGridSize * RulePeriod);
 
 	float ImageOffsetX = GraphSpaceGridX0 * -ZoomFactor;
 	float ImageOffsetY = GraphSpaceGridY0 * -ZoomFactor;
@@ -1186,14 +1200,16 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 	// Draw connections between pins 
 	if (Children.Num() > 0 )
 	{
-		FConnectionDrawingPolicy* ConnectionDrawingPolicy = nullptr;
+		// TODO: Epic Games decided to cache and reuse the last ConnectionDrawingPolicy -> this led it to "ConnectionDrawingPolicy" local variable to conflict with the class variable.
+		// TODO: Reconsider upgrading the codebase upward along with the changed API.
+		FConnectionDrawingPolicy* TargetConnectionDrawingPolicy = nullptr;
 		if (Joint_NodeFactory.IsValid())
 		{
-			ConnectionDrawingPolicy = Joint_NodeFactory->CreateConnectionPolicy(Schema, WireLayerId, MaxLayerId, ZoomFactor, MyCullingRect, OutDrawElements, GraphObj);
+			TargetConnectionDrawingPolicy = Joint_NodeFactory->CreateConnectionPolicy(Schema, WireLayerId, MaxLayerId, ZoomFactor, MyCullingRect, OutDrawElements, GraphObj);
 		}
 		else
 		{
-			ConnectionDrawingPolicy = FNodeFactory::CreateConnectionPolicy(Schema, WireLayerId, MaxLayerId, ZoomFactor, MyCullingRect, OutDrawElements, GraphObj);
+			TargetConnectionDrawingPolicy = FNodeFactory::CreateConnectionPolicy(Schema, WireLayerId, MaxLayerId, ZoomFactor, MyCullingRect, OutDrawElements, GraphObj);
 		}
 
 		//Don't allow caching.
@@ -1209,9 +1225,9 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 				OverridePins.Add(Pin);
 			}
 		}
-		ConnectionDrawingPolicy->SetHoveredPins(CurrentHoveredPins, OverridePins, TimeWhenMouseEnteredPin);
-		ConnectionDrawingPolicy->SetMarkedPin(MarkedPin);
-		ConnectionDrawingPolicy->SetMousePosition(AllottedGeometry.LocalToAbsolute(SavedMousePosForOnPaintEventLocalSpace));
+		TargetConnectionDrawingPolicy->SetHoveredPins(CurrentHoveredPins, OverridePins, TimeWhenMouseEnteredPin);
+		TargetConnectionDrawingPolicy->SetMarkedPin(MarkedPin);
+		TargetConnectionDrawingPolicy->SetMousePosition(AllottedGeometry.LocalToAbsolute(SavedMousePosForOnPaintEventLocalSpace));
 
 		// Get the set of pins for all children and synthesize geometry for culled out pins so lines can be drawn to them.
 		TMap<TSharedRef<SWidget>, FArrangedWidget> PinGeometries;
@@ -1277,7 +1293,7 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 					if (CurrentStartPin->GetDirection() == EGPD_Input)
 					{
 						StartPoint = AllottedGeometry.LocalToAbsolute(PreviewConnectorEndpoint);
-						EndPoint = FGeometryHelper::VerticalMiddleLeftOf( PinGeometry->Geometry ) - FVector2D(ConnectionDrawingPolicy->ArrowRadius.X, 0);
+						EndPoint = FGeometryHelper::VerticalMiddleLeftOf( PinGeometry->Geometry ) - FVector2D(TargetConnectionDrawingPolicy->ArrowRadius.X, 0);
 					}
 					else
 					{
@@ -1285,28 +1301,28 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 						EndPoint = AllottedGeometry.LocalToAbsolute(PreviewConnectorEndpoint);
 					}
 
-					ConnectionDrawingPolicy->DrawPreviewConnector(PinGeometry->Geometry, StartPoint, EndPoint, CurrentStartPin.Get()->GetPinObj());
+					TargetConnectionDrawingPolicy->DrawPreviewConnector(PinGeometry->Geometry, StartPoint, EndPoint, CurrentStartPin.Get()->GetPinObj());
 				}
 
 				if (bUseDrawStateCaching)
 				{
 					//@TODO: Re-evaluate this incompatible mojo; it's mutating every pin state every frame to accomplish a visual effect
-					ConnectionDrawingPolicy->SetIncompatiblePinDrawState(CurrentStartPin, VisiblePins);
+					TargetConnectionDrawingPolicy->SetIncompatiblePinDrawState(CurrentStartPin, VisiblePins);
 				}
 			}
 		}
 		else
 		{
 			//@TODO: Re-evaluate this incompatible mojo; it's mutating every pin state every frame to accomplish a visual effect
-			ConnectionDrawingPolicy->ResetIncompatiblePinDrawState(VisiblePins);
+			TargetConnectionDrawingPolicy->ResetIncompatiblePinDrawState(VisiblePins);
 		}
 
 		// Draw all regular connections
-		ConnectionDrawingPolicy->Draw(PinGeometries, ArrangedChildren);
+		TargetConnectionDrawingPolicy->Draw(PinGeometries, ArrangedChildren);
 
 		// Pull back data from the drawing policy
 		{
-			FGraphSplineOverlapResult OverlapData = ConnectionDrawingPolicy->SplineOverlapResult;
+			FGraphSplineOverlapResult OverlapData = TargetConnectionDrawingPolicy->SplineOverlapResult;
 
 			if (OverlapData.IsValid())
 			{
@@ -1331,7 +1347,7 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 			
 		}
 
-		delete ConnectionDrawingPolicy;
+		delete TargetConnectionDrawingPolicy;
 	}
 
 	// Draw a shadow overlay around the edges of the graph
@@ -1346,7 +1362,11 @@ int32 SJointGraphPanel::OnPaint(const FPaintArgs& Args, const FGeometry& Allotte
 			// Draw a surrounding indicator when PIE is active, to make it clear that the graph is read-only, etc...
 			BorderBrush = FAppStyle::GetBrush(TEXT("Graph.PlayInEditor"));
 		}
-		else if (!IsEditable.Get())
+#if UE_VERSION_OLDER_THAN(5, 8, 0)  
+		else if (IsEditable.Get())
+#else 
+		else if (GetIsEditable())
+#endif
 		{
 			// Draw a different border when we're not simulating but the graph is read-only
 			BorderBrush = FAppStyle::GetBrush(TEXT("Graph.ReadOnlyBorder"));

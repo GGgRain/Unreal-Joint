@@ -127,7 +127,7 @@ bool UVolt_ASM_InterpBackgroundColor::IsActive()
 
 		if(bRateBasedNeverFinish) return true;
 
-		if(CastedVar) return FLinearColor::Dist(CastedVar->Value, TargetColor) > 0.001 ;
+		if(CastedVar) return FLinearColor::Dist(CastedVar->Value, TargetColor) > 0.001f ;
 
 		break;
 		

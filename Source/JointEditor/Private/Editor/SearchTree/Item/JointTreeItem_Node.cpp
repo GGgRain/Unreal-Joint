@@ -42,7 +42,7 @@ void FJointTreeItem_Node::GenerateWidgetForNameColumn(TSharedPtr<SHorizontalBox>
 {
 	TAttribute<FSlateColor> NodeBorderColor = TAttribute<FSlateColor>::CreateLambda([this]
 	{
-		constexpr FLinearColor DefaultColor = FLinearColor(0.1, 0.1, 0.1, 1);
+		constexpr FLinearColor DefaultColor = FLinearColor(0.1f, 0.1f, 0.1f, 1.f);
 		
 		if (EditorNodePtr.IsValid())
 		{

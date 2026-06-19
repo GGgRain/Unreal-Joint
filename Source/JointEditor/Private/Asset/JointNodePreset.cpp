@@ -1,4 +1,4 @@
-
+﻿
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
@@ -22,7 +22,7 @@ UJointNodePreset::UJointNodePreset()
 	PresetCategory = LOCTEXT("DefaultPresetCategory", "Joint Node Presets|Default");
 	PresetDisplayName = LOCTEXT("DefaultPresetDisplayName", "Default Preset Name");
 	PresetDescription = LOCTEXT("DefaultPresetDescription", "This is the default preset for Joint nodes.");
-	PresetColor = FLinearColor(0.1,0.25,0.1);
+	PresetColor = FLinearColor(0.1f,0.25f,0.1f);
 	bUseCustomIcon = false;
 	
 }

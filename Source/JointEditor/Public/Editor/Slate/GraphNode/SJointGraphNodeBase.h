@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #pragma once
@@ -184,7 +184,7 @@ return IsExactly(InType); \
  */
 
 /**
- * Joint 2.8 : It has been seriously overhauled; now the most of the attributes are gone, and rely on the manual update for better performance 
+ * Joint 2.8f : It has been seriously overhauled; now the most of the attributes are gone, and rely on the manual update for better performance 
  */
 class JOINTEDITOR_API SJointGraphNodeBase : public SGraphNodeResizable
 {

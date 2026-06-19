@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -48,7 +48,7 @@ enum class EJointActorExecutionType : uint8
 
 /**
  * Struct for the execution context of the Joint actor.
- * Joint 2.12.0 : introduced it to support multiple queue based execution (as a replacement of the previous version's direct node playing system).
+ * Joint 2.12.0f : introduced it to support multiple queue based execution (as a replacement of the previous version's direct node playing system).
  */
 USTRUCT(BlueprintType)
 struct FJointActorExecutionElement
@@ -282,7 +282,7 @@ public:
 	 * Node's iconic color. This color will be used for the color scheme of the node for the identification on search tab and other purposes.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Visual|Node Body")
-	FLinearColor NodeIconicColor = FLinearColor(0.026715, 0.025900, 0.035, 1);
+	FLinearColor NodeIconicColor = FLinearColor(0.026715f, 0.025900f, 0.035f, 1.f);
 
 public:
 	/**
@@ -421,7 +421,7 @@ public:
 	
 	/**
 	 * If true, The detail tab of the node will show off the editor node's pin data property.
-	 * Note: Joint 2.12: It no longer prohibits the execution of OnPinDataChanged, OnPinConnectionChanged delegates. It only controls whether to show the pin data property on the detail tab.
+	 * Note: Joint 2.12f: It no longer prohibits the execution of OnPinDataChanged, OnPinConnectionChanged delegates. It only controls whether to show the pin data property on the detail tab.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Editor|Pin")
 	bool bAllowEditingOfPinDataOnDetailsPanel = false;

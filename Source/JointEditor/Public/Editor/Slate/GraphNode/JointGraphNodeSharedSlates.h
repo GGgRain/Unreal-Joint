@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -208,7 +208,7 @@ public:
 
 /**
  * A slate that help editing the FJointNodePointer property in the graph.
- * JOINT 2.8 : not maintained anymore.
+ * JOINT 2.8f : not maintained anymore.
  */
 
 class JOINTEDITOR_API SJointNodePointerSlate : public SCompoundWidget
@@ -224,8 +224,8 @@ public:
 		_BorderArgs(SJointOutlineBorder::FArguments()
 			.OuterBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-			.OutlineNormalColor(FLinearColor(0.04, 0.04, 0.04))
-			.OutlineHoverColor(FLinearColor(0.4, 0.4, 0.5))
+			.OutlineNormalColor(FLinearColor(0.04f, 0.04f, 0.04f))
+			.OutlineHoverColor(FLinearColor(0.4f, 0.4f, 0.5f))
 			.ContentPadding(FJointEditorStyle::Margin_Normal)
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Center)

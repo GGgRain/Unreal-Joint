@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "JointEditor.h"
 
@@ -67,7 +67,7 @@ void FJointEditorModule::StartupModule()
 	UnregisterClassLayout(); // Remove Default Layout;
 	RegisterClassLayout();
 	
-	//Joint 2.9: JointCoreRedirects
+	//Joint 2.9f: JointCoreRedirects
 	AppendActiveJointRedirects();
 
 	JointManagementTabHandler = FJointManagementTabHandler::MakeInstance();

@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -275,7 +275,7 @@ private:
 	FText GetInstructionText() const;
 	/** Function to check whether we should show instruction text to the user */
 	EVisibility InstructionTextVisibility() const;
-	/** Returns a 0.0 to 1.0 value, denoting the instruction text's fade percent */
+	/** Returns a 0.0f to 1.0f value, denoting the instruction text's fade percent */
 	float GetInstructionTextFade() const;
 	/** A dynamic tint for the instruction text (allows us to nicely fade it in/out) */
 	FLinearColor InstructionTextTint() const;

@@ -60,7 +60,7 @@ void SJointOutlineBorder::Construct(const FArguments& InArgs)
 	{
 		ChildSlot[
 			SAssignNew(OuterBorder, SBorder)
-			.RenderTransformPivot(FVector2D(0.5, 0.5))
+			.RenderTransformPivot(FVector2D(0.5f, 0.5f))
 			.BorderBackgroundColor(OutlineNormalColor)
 			.BorderImage(InArgs._OuterBorderImage)
 			.Padding(InArgs._OutlinePadding)
@@ -290,12 +290,12 @@ void SJointOutlineButton::PlayPressedAnim()
 	UVoltAnimation* Anim = VOLT_MAKE_ANIMATION()
 	(
 		VOLT_MAKE_MODULE(UVolt_ASM_SetWidgetTransformPivot)
-		.TargetWidgetTransformPivot(FVector2D(0.5, 0.5)),
+		.TargetWidgetTransformPivot(FVector2D(0.5f, 0.5f)),
 		VOLT_MAKE_MODULE(UVolt_ASM_Sequence)
 		.bShouldLoop(false)
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
-			.TargetWidgetTransform(FWidgetTransform(FVector2D(0, 0), FVector2D(0.95, 0.95), FVector2D(0, 0), 0))
+			.TargetWidgetTransform(FWidgetTransform(FVector2D(0, 0), FVector2D(0.95f, 0.95f), FVector2D(0, 0), 0))
 			.RateBasedInterpSpeed(45),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 			.TargetWidgetTransform(FWidgetTransform(FVector2D(0, 0), FVector2D(1, 1), FVector2D(0, 0), 0))

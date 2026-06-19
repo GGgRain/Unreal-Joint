@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "EditorWidget/SJointGraphEditorActionMenu.h"
@@ -245,7 +245,7 @@ void SJointActionMenuExpander::Construct(const FArguments& InArgs, const FCustom
 
 FMargin SJointActionMenuExpander::GetCustomIndentPadding() const
 {
-	FMargin CustomPadding = SExpanderArrow::GetExpanderPadding() * 1.5;
+	FMargin CustomPadding = SExpanderArrow::GetExpanderPadding() * 1.5f;
 	return CustomPadding;
 }
 
@@ -266,12 +266,12 @@ void SJointGraphActionWidget_Fragment::CreateActionWidgetWithNodeSettings(const 
 	FLinearColor Color = NodeSetting->NodeBodyColor;
 	const FLinearColor HSV = Color.LinearRGBToHSV();
 	const float Value = HSV.B;
-	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001;
+	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001f;
 
 	NormalColor = Color;
 	HoverColor = Color;
-	OutlineNormalColor = Color * 1.25 + OffsetColor;
-	OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
+	OutlineNormalColor = Color * 1.25f + OffsetColor;
+	OutlineHoverColor = Color * 2.5f + OffsetColor * 15;
 
 	const FSlateBrush* InnerBorderImage = nullptr;
 	const FSlateBrush* OuterBorderImage = nullptr;
@@ -303,7 +303,7 @@ void SJointGraphActionWidget_Fragment::CreateActionWidgetWithNodeSettings(const 
 		.Padding(FJointEditorStyle::Margin_Small)
 		[
 			SNew(SJointOutlineBorder)
-			.RenderTransformPivot(FVector2D(0.5))
+			.RenderTransformPivot(FVector2D(0.5f))
 			.NormalColor(NormalColor)
 			.HoverColor(HoverColor)
 			.OutlineNormalColor(OutlineNormalColor)
@@ -394,19 +394,19 @@ void SJointGraphActionWidget_NodePreset::CreateActionWidget(const FArguments& In
 
 	const FLinearColor HSV = Color.LinearRGBToHSV();
 	const float Value = HSV.B;
-	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001;
+	const FLinearColor OffsetColor = FLinearColor::White * (1 - Value) * 0.001f;
 
 	NormalColor = Color;
 	HoverColor = Color;
-	OutlineNormalColor = Color * 1.25 + OffsetColor;
-	OutlineHoverColor = Color * 2.5 + OffsetColor * 15;
+	OutlineNormalColor = Color * 1.25f + OffsetColor;
+	OutlineHoverColor = Color * 2.5f + OffsetColor * 15;
 	
 	this->ChildSlot
 	.HAlign(HAlign_Left)
 	.VAlign(VAlign_Center)
 	[
 		SNew(SJointOutlineBorder)
-		.RenderTransformPivot(FVector2D(0.5))
+		.RenderTransformPivot(FVector2D(0.5f))
 		.NormalColor(NormalColor)
 		.HoverColor(HoverColor)
 		.OutlineNormalColor(OutlineNormalColor)

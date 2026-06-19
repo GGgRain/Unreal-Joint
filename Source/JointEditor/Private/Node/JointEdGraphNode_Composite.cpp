@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "Node/JointEdGraphNode_Composite.h"
@@ -6,6 +6,7 @@
 #include "EdGraphUtilities.h"
 #include "JointAdvancedWidgets.h"
 #include "JointEdGraph.h"
+#include "JointEditorFunctionLibrary.h"
 #include "JointEditorSettings.h"
 #include "JointEditorStyle.h"
 #include "JointEditorToolkit.h"
@@ -49,21 +50,21 @@ UJointEdGraphNode_Composite::UJointEdGraphNode_Composite()
 	{
 		DefaultEdNodeSetting.bUseCustomOuterNodeBodyImageBrush = true;
 		DefaultEdNodeSetting.OuterNodeBodyImageBrush.SetResourceObject(NodeBodyBrush.Object);
-		DefaultEdNodeSetting.OuterNodeBodyImageBrush.ImageSize = FVector2D(12.0, 12.0);
+		DefaultEdNodeSetting.OuterNodeBodyImageBrush.ImageSize = FVector2D(12.0f, 12.0f);
 		DefaultEdNodeSetting.OuterNodeBodyImageBrush.DrawAs = ESlateBrushDrawType::Box;
-		DefaultEdNodeSetting.OuterNodeBodyImageBrush.Margin = FMargin(0.5);
+		DefaultEdNodeSetting.OuterNodeBodyImageBrush.Margin = FMargin(0.5f);
 	}
 
 	DefaultEdNodeSetting.bUseCustomInnerNodeBodyImageBrush = true;
 	DefaultEdNodeSetting.InnerNodeBodyImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType; // NoDrawType to hide the outline.
-	DefaultEdNodeSetting.InnerNodeBodyImageBrush.Margin = FMargin(0.5);
+	DefaultEdNodeSetting.InnerNodeBodyImageBrush.Margin = FMargin(0.5f);
 
 	DefaultEdNodeSetting.bUseCustomNodeShadowImageBrush = true;
 	DefaultEdNodeSetting.NodeShadowImageBrush.DrawAs = ESlateBrushDrawType::NoDrawType; // NoDrawType to hide the outline.
 
 	DefaultEdNodeSetting.bUseSpecifiedGraphNodeBodyColor = true;
 	DefaultEdNodeSetting.bUseIconicColorForNodeBodyOnStow = false;
-	DefaultEdNodeSetting.NodeBodyColor = FLinearColor(0.5, 0.5, 0.5, 0.5);
+	DefaultEdNodeSetting.NodeBodyColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.5f);
 	DefaultEdNodeSetting.NodeIconicColor = FColor(29, 130, 126, 125);
 	DefaultEdNodeSetting.DefaultEdSlateDetailLevel = EJointEdSlateDetailLevel::SlateDetailLevel_Maximum;
 }
@@ -435,7 +436,7 @@ void UJointEdGraphNode_Composite::DestroyNode()
 	// This is where the toolkit actually starts to destroy and invalidate the graph. 
 	if (BoundGraph)
 	{
-		FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(BoundGraph));
+		UJointEditorFunctionLibrary::RemoveGraph(Cast<UJointEdGraph>(BoundGraph));
 
 		BoundGraph = nullptr;
 	}
@@ -574,7 +575,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnGraphClicked)
@@ -596,7 +597,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnPreviewerOpenCloseClicked)
@@ -618,7 +619,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnLockPreviewerClicked)
@@ -640,7 +641,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnFitPreviewerClicked)
@@ -738,7 +739,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnGraphClicked)
@@ -760,7 +761,7 @@ void UJointEdGraphNode_Composite::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 						.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 						.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 						.ContentPadding(FJointEditorStyle::Margin_Normal)
-						.OutlinePadding(1.5)
+						.OutlinePadding(1.5f)
 						.NormalColor(FLinearColor::Transparent)
 						.OutlineNormalColor(FLinearColor::Transparent)
 						.OnClicked_UObject(this, &UJointEdGraphNode_Composite::OnPreviewerOpenCloseClicked)

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -44,7 +44,7 @@ private:
 
 	/**
 	 * Whether this sub node is merged form.
-	 * Joint 2.10.0: Now subnodes can be merged into a single node.
+	 * Joint 2.10.0f: Now subnodes can be merged into a single node.
 	 * Merge subnodes doesn't need to render everything - only few things - so we can optimize the rendering and interaction.
 	 */
 	UPROPERTY()

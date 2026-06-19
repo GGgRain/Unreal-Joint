@@ -3,20 +3,26 @@
 
 #include "JointEditorFunctionLibrary.h"
 
+#include "DesktopPlatformModule.h"
 #include "JointEdGraphNode_Foundation.h"
 #include "JointEdGraphNode_Fragment.h"
 #include "JointEdGraphSchema.h"
 #include "JointEditorLogChannels.h"
 #include "JointEdUtils.h"
+#include "IDesktopPlatform.h"
 
 #include "GraphNode/SJointGraphNodeBase.h"
+#include "JointEdGraph.h"
+#include "JointScriptParser.h"
 #include "Markdown/SJointMDSlate_Admonitions.h"
 
+#include "Framework/Application/SlateApplication.h"
 #include "Node/JointFragment.h"
 #include "Node/JointNodeBase.h"
 #include "Script/JointScriptSettings.h"
 
 #include "Misc/EngineVersionComparison.h"
+#include "Misc/FileHelper.h"
 
 #define LOCTEXT_NAMESPACE "JointEditorFunctionLibrary"
 
@@ -32,7 +38,7 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::GetBaseNodeGraphNodeForNodeGuid(
 
 	if (!Node) return nullptr;
 
-	UEdGraphNode* GraphNode = FJointEdUtils::FindGraphNodeForNodeInstance(Node);
+	UEdGraphNode* GraphNode = FindGraphNodeForNodeInstance(Node);
 
 	return GraphNode ? Cast<UJointEdGraphNode>(GraphNode) : nullptr;
 }
@@ -45,7 +51,7 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::GetFragmentGraphNodeForNodeGuid(
 
 	if (!Fragment) return nullptr;
 
-	UEdGraphNode* GraphNode = FJointEdUtils::FindGraphNodeForNodeInstance(Fragment);
+	UEdGraphNode* GraphNode = FindGraphNodeForNodeInstance(Fragment);
 
 	return GraphNode ? Cast<UJointEdGraphNode>(GraphNode) : nullptr;
 }
@@ -58,9 +64,70 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::GetManagerFragmentGraphNodeForNo
 
 	if (!Fragment) return nullptr;
 
-	UEdGraphNode* GraphNode = FJointEdUtils::FindGraphNodeForNodeInstance(Fragment);
+	UEdGraphNode* GraphNode = FindGraphNodeForNodeInstance(Fragment);
 
 	return GraphNode ? Cast<UJointEdGraphNode>(GraphNode) : nullptr;
+}
+
+UEdGraphNode* UJointEditorFunctionLibrary::FindGraphNodeForNodeInstance(const UJointNodeBase* NodeInstance)
+{
+	UEdGraphNode* OutNode = nullptr;
+
+	if (NodeInstance == nullptr) return nullptr;
+
+	if (UJointManager* Manager = NodeInstance->GetJointManager())
+	{
+		if (Manager->JointGraph == nullptr) return nullptr;
+
+		if (UJointEdGraph* CastedGraph = Cast<UJointEdGraph>(Manager->JointGraph))
+		{
+			OutNode = CastedGraph->FindGraphNodeForNodeInstance(NodeInstance);
+
+			if (OutNode)
+			{
+				return OutNode;
+			}
+
+			TArray<UJointEdGraph*> Graphs = CastedGraph->GetAllSubGraphsRecursively();
+
+			for (UJointEdGraph* Graph : Graphs)
+			{
+				if (Graph == nullptr) continue;
+
+				if (UEdGraphNode* FoundNode = Graph->FindGraphNodeForNodeInstance(NodeInstance))
+				{
+					return FoundNode;
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UJointEdGraphNode* UJointEditorFunctionLibrary::FindGraphNodeWithProvidedNodeInstanceGuid(UJointManager* JointManager, const FGuid& NodeGuid)
+{
+	if (JointManager == nullptr) return nullptr;
+
+	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(JointManager);
+
+	for (UJointEdGraph* Graph : AllGraphs)
+	{
+		if (Graph == nullptr) continue;
+
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = Graph->GetCachedJointGraphNodes();
+
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
+		{
+			if (GraphNode == nullptr) continue;
+
+			UJointNodeBase* NodeInstance = GraphNode->GetCastedNodeInstance();
+
+			if (NodeInstance && NodeInstance->GetNodeGuid() == NodeGuid) return GraphNode.Get();
+		}
+	}
+
+	return nullptr;
 }
 
 TArray<UJointEdGraphNode*> UJointEditorFunctionLibrary::AddNodePreset(UJointManager* TargetJointManager, UEdGraph* OptionalTargetGraph, UJointNodePreset* NodePreset, const FVector2D Position)
@@ -317,43 +384,120 @@ UJointEdGraphNode* UJointEditorFunctionLibrary::AddManagerFragment(
 	);
 }
 
-bool UJointEditorFunctionLibrary::RemoveNodeFromJointManager(UJointEdGraphNode* TargetEdNode, const FJointScriptLinkerFileEntry& FileEntry)
+bool UJointEditorFunctionLibrary::RemoveNode(
+	UEdGraphNode* TargetEdNode, 
+	const FJointScriptLinkerFileEntry& OptionalFileEntry
+)
 {
 	if (!TargetEdNode) return false;
+	
+	if (!TargetEdNode->CanUserDeleteNode()) return false;
 
-	FJointEdUtils::RemoveNode(TargetEdNode);
+	TargetEdNode->Modify();
 
-	ClearNodeGuidFromScriptLinkage(FileEntry, TargetEdNode->GetCastedNodeInstance()->GetNodeGuid());
+	if (UJointEdGraphNode* CastedNode = Cast<UJointEdGraphNode>(TargetEdNode))
+	{
+		if (CastedNode->GetCastedNodeInstance()) CastedNode->GetCastedNodeInstance()->Modify();
 
+		UJointEdGraphNode* SavedParentNode = CastedNode->GetParentmostNode();
+
+		if (SavedParentNode)
+		{
+			SavedParentNode->Modify();
+
+			if (SavedParentNode->GetCastedNodeInstance())
+			{
+				SavedParentNode->GetCastedNodeInstance()->Modify();
+			}
+
+			for (UJointEdGraphNode* SubNode : SavedParentNode->GetAllSubNodesInHierarchy())
+			{
+				if (SubNode)
+				{
+					SubNode->Modify();
+
+					if (SubNode->GetCastedNodeInstance())
+					{
+						SubNode->GetCastedNodeInstance()->Modify();
+					}
+				}
+			}
+		}
+		
+		//clear script linkage here.
+		ClearNodeGuidFromScriptLinkage(OptionalFileEntry, CastedNode->GetCastedNodeInstance()->GetNodeGuid());
+
+		const bool bShouldRefreshParent = SavedParentNode && SavedParentNode != CastedNode;
+		
+		CastedNode->DestroyNode();
+
+		if (bShouldRefreshParent)
+		{
+			SavedParentNode->RequestRefreshingGraphNodeSlate();
+		}
+	}
+	else
+	{
+		TargetEdNode->DestroyNode();
+	}
+	
 	return true;
 }
 
-bool UJointEditorFunctionLibrary::RemoveNodesByIds(
+bool UJointEditorFunctionLibrary::RemoveNodesByGuids(
 	UJointManager* TargetJointManager,
-	const FJointScriptLinkerFileEntry& FileEntry,
-	const TArray<FString>& KnownIds)
+	const TArray<FGuid>& NodeGuidsToRemove,
+	const FJointScriptLinkerFileEntry& OptionalFileEntry
+	)
 {
-	if (!TargetJointManager) return false;
+	if (TargetJointManager == nullptr) return false;
 
-	for (const FString& KnownId : KnownIds)
+	TArray<UJointEdGraph*> AllGraphs = UJointEdGraph::GetAllGraphsFrom(TargetJointManager);
+
+	for (UJointEdGraph* Graph : AllGraphs)
 	{
-		TArray<UJointEdGraphNode*> NodesToRemove = GetBaseNodesById(TargetJointManager, FileEntry, KnownId);
-		NodesToRemove.Append(GetFragmentNodesById(TargetJointManager, FileEntry, KnownId));
-		NodesToRemove.Append(GetManagerFragmentNodesById(TargetJointManager, FileEntry, KnownId));
+		if (Graph == nullptr) continue;
 
-		for (UJointEdGraphNode* NodeToRemove : NodesToRemove)
-		{
-			FJointEdUtils::RemoveNode(NodeToRemove);
-		}
+		TSet<TWeakObjectPtr<UJointEdGraphNode>> GraphNodes = Graph->GetCachedJointGraphNodes();
 
-		//Clear the node mappings for this Joint manager in the script linker data element, since all the linked nodes have been removed.
-		if (FJointScriptLinkerDataElement* LinkElem = UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks.FindByKey(FJointScriptLinkerDataElement(FileEntry)))
+		for (TWeakObjectPtr<UJointEdGraphNode> GraphNode : GraphNodes)
 		{
-			for (FJointScriptLinkerMapping& Mapping : LinkElem->Mappings)
+			if (GraphNode == nullptr) continue;
+
+			UJointNodeBase* NodeInstance = GraphNode->GetCastedNodeInstance();
+
+			if (NodeInstance && NodeGuidsToRemove.Contains(NodeInstance->GetNodeGuid()))
 			{
-				if (Mapping.JointManager != TargetJointManager) continue;
+				RemoveNode(GraphNode.Get(), OptionalFileEntry);
+			}
+		}
+	}
+	
+	return true;
+}
 
-				Mapping.NodeMappings.Remove(KnownId);
+bool UJointEditorFunctionLibrary::RemoveNodesByMappingKey(
+	UJointManager* TargetJointManager, 
+	const TArray<FString>& NodeKeysToRemove, 
+	const FJointScriptLinkerFileEntry& FileEntry)
+{
+	FJointScriptLinkerDataElement* LinkElem = UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks.FindByKey(FJointScriptLinkerDataElement(FileEntry));
+
+	if (!LinkElem) return false;
+
+	for (FJointScriptLinkerMapping& Mapping : LinkElem->Mappings)
+	{
+		if (Mapping.JointManager != TargetJointManager) continue;
+
+		for (const FString& NodeMappingKey : NodeKeysToRemove)
+		{
+			if (FJointScriptLinkerNodeSet* FoundGuidSet = Mapping.NodeMappings.Find(NodeMappingKey))
+			{
+				RemoveNodesByGuids(TargetJointManager, FoundGuidSet->NodeGuids, FileEntry);
+
+				//Clear the node mappings for this key in the script linker data element, since all the linked nodes have been removed.
+				//TODO: Do we need this line? because RemoveNode already handles empty mappings..
+				Mapping.NodeMappings.Remove(NodeMappingKey);
 			}
 		}
 	}
@@ -361,7 +505,9 @@ bool UJointEditorFunctionLibrary::RemoveNodesByIds(
 	return true;
 }
 
-void UJointEditorFunctionLibrary::RemoveAllNodesLinkedWithScript(UJointManager* TargetJointManager, const FJointScriptLinkerFileEntry& FileEntry)
+void UJointEditorFunctionLibrary::RemoveAllNodesLinkedWithScript(
+	UJointManager* TargetJointManager,
+	const FJointScriptLinkerFileEntry& FileEntry)
 {
 	FJointScriptLinkerDataElement* LinkElem = UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks.FindByKey(FJointScriptLinkerDataElement(FileEntry));
 
@@ -371,12 +517,53 @@ void UJointEditorFunctionLibrary::RemoveAllNodesLinkedWithScript(UJointManager* 
 	{
 		if (Mapping.JointManager != TargetJointManager) continue;
 
-		TArray<FString> KnownIds;
-		Mapping.NodeMappings.GetKeys(KnownIds);
-		RemoveNodesByIds(TargetJointManager, FileEntry, KnownIds);
+		TArray<FString> KnownMappingKey;
+		Mapping.NodeMappings.GetKeys(KnownMappingKey);
+		RemoveNodesByMappingKey(TargetJointManager, KnownMappingKey, FileEntry);
 
 		//Clear the node mappings for this Joint manager in the script linker data element, since all the linked nodes have been removed.
 		Mapping.NodeMappings.Empty();
+	}
+}
+
+void UJointEditorFunctionLibrary::RemoveGraph(UJointEdGraph* GraphToRemove)
+{
+	if (GraphToRemove == nullptr) return;
+
+	if (UJointManager* Manager = GraphToRemove->GetJointManager())
+	{
+		if (Manager->GetJointGraphAs() == GraphToRemove)
+		{
+			return;
+		}
+
+		Manager->Modify();
+
+		GraphToRemove->Modify();
+
+		for (int EditedDocIdx = 0; EditedDocIdx < Manager->LastEditedDocuments.Num(); ++EditedDocIdx)
+		{
+			if (Manager->LastEditedDocuments[EditedDocIdx].EditedObjectPath.ResolveObject() == GraphToRemove)
+			{
+				Manager->LastEditedDocuments.RemoveAt(EditedDocIdx);
+				break;
+			}
+		}
+
+		if (UEdGraph* ParentGraph = UEdGraph::GetOuterGraph(GraphToRemove))
+		{
+			if (UJointEdGraph* ParentJointGraph = Cast<UJointEdGraph>(ParentGraph))
+			{
+				ParentJointGraph->Modify();
+				ParentJointGraph->SubGraphs.Remove(GraphToRemove);
+			}
+		}
+
+		GraphToRemove->GetSchema()->HandleGraphBeingDeleted(*GraphToRemove);
+
+		GraphToRemove->Rename(nullptr, GetTransientPackage(), REN_DoNotDirty | REN_DontCreateRedirectors);
+		GraphToRemove->ClearFlags(RF_Standalone | RF_Public);
+		GraphToRemove->RemoveFromRoot();
 	}
 }
 
@@ -725,6 +912,115 @@ void UJointEditorFunctionLibrary::LinkParserWithScript(UJointScriptParser* Parse
 	Parser->Serialize(MemoryWriter);
 }
 
+void UJointEditorFunctionLibrary::OpenJointScriptFileSelectionWindow(TArray<FString>& OutFilePaths, bool bAllowMultipleSelection)
+{
+	OutFilePaths.Empty();
+
+	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+
+	if (!DesktopPlatform)
+	{
+		UE_LOG(LogJointEditor, Error, TEXT("Desktop Platform module is not available. Cannot open file dialog."));
+
+		return;
+	}
+
+	const void* ParentWindowHandle = FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr);
+
+	FString DefaultPath = FPaths::ProjectDir();
+
+	DesktopPlatform->OpenFileDialog(
+		ParentWindowHandle,
+		NSLOCTEXT("JointEdUtils", "ImportJointManagerTitle", "Import Joint Manager").ToString(),
+		DefaultPath,
+		TEXT(""),
+		TEXT("All Files (*.*)|*.*"),
+		bAllowMultipleSelection ? EFileDialogFlags::Multiple : EFileDialogFlags::None,
+		OutFilePaths
+	);
+
+	for (FString& OutFile : OutFilePaths)
+	{
+		FPaths::NormalizeFilename(OutFile);
+
+		if (FPaths::IsRelative(OutFile))
+		{
+			OutFile = FPaths::ConvertRelativePathToFull(OutFile);
+		}
+	}
+}
+
+void UJointEditorFunctionLibrary::ImportFileToJointManager(
+	UJointManager* TargetManager,
+	const FString& FilePath,
+	UJointScriptParser* Parser,
+	const bool& bFireNotifications
+)
+{
+	FJointEdUtils::StoreEditorModuleClassCache();
+
+	if (TargetManager == nullptr || FilePath.IsEmpty() || !Parser)
+	{
+		FireNotification(
+			NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Title", "Joint Script Import Failed"),
+			NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Message_InvalidInputs", "Invalid inputs provided for importing Joint Script."),
+			EJointMDAdmonitionType::Error);
+
+		return;
+	}
+
+	FString FileContents;
+	if (!FFileHelper::LoadFileToString(FileContents, *FilePath))
+	{
+		FireNotification(
+			NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Title", "Joint Script Import Failed"),
+			FText::Format(
+				NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Message_CouldNotReadFile", "Could not read the file: {0}"),
+				FText::FromString(FPaths::GetCleanFilename(FilePath))
+			),
+			EJointMDAdmonitionType::Error);
+
+		return;
+	}
+
+	FJointScriptLinkerFileEntry FileEntry;
+	FileEntry.FilePath = FilePath;
+
+	const bool& Result = Parser->HandleImporting(
+		TargetManager,
+		FileContents,
+		FileEntry
+	);
+
+	if (bFireNotifications)
+	{
+		if (Result)
+		{
+			FireNotification(
+				NSLOCTEXT("JointEdUtils", "JointScriptImport_Success_Title", "Joint Script Import Successful"),
+				FText::Format(
+					NSLOCTEXT("JointEdUtils", "JointScriptImport_Success_Message", "Successfully imported the file '{0}' with {1} parser."),
+					FText::FromString(FPaths::GetCleanFilename(FilePath)),
+					FText::FromString(Parser->GetName())
+				),
+				EJointMDAdmonitionType::Info);
+
+			TargetManager->MarkPackageDirty();
+		}
+		else
+		{
+			FireNotification(
+				NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Title", "Joint Script Import Failed"),
+				FText::Format(
+					NSLOCTEXT("JointEdUtils", "JointScriptImport_Failure_Message_ParserFailed", "The parser '{0}' failed to import the file '{1}'."),
+					FText::FromString(Parser->GetName()),
+					FText::FromString(FPaths::GetCleanFilename(FilePath))
+				),
+				EJointMDAdmonitionType::Error);
+		}
+	}
+}
+
 void UJointEditorFunctionLibrary::UnlinkNodeFromScript(
 	UJointEdGraphNode* TargetEdNode
 )
@@ -779,12 +1075,15 @@ void UJointEditorFunctionLibrary::ClearIdKeyFromScriptLinkage(const FJointScript
 
 void UJointEditorFunctionLibrary::ClearNodeGuidFromScriptLinkage(const FJointScriptLinkerFileEntry& FileEntry, const FGuid& NodeGuid)
 {
+	if (!FileEntry.IsValid()) return; 
+	
 	FJointScriptLinkerDataElement* LinkElem = UJointScriptSettings::Get()->ScriptLinkData.ScriptLinks.FindByKey(FJointScriptLinkerDataElement(FileEntry));
 
 	if (!LinkElem) return;
 
 	for (FJointScriptLinkerMapping& Mapping : LinkElem->Mappings)
 	{
+		// Clear the nodes from the mappings.
 		Mapping.RemoveNodeGuidFromAllMappings(NodeGuid);
 	}
 }
@@ -897,7 +1196,7 @@ void UJointEditorFunctionLibrary::SetNodePosition(UJointEdGraphNode* TargetEdNod
 	TargetEdNode->NodePosY = NewPosition.Y;
 }
 
-void UJointEditorFunctionLibrary::AlignNodes(
+void UJointEditorFunctionLibrary::AutomaticallyAlignNodesFromEntry(
 	UJointManager* TargetJointManager,
 	float LevelSpacingX,
 	float NodeSpacingY)
@@ -1020,7 +1319,7 @@ void UJointEditorFunctionLibrary::ConnectPins(UJointEdGraphNode* ANode, FJointEd
 
 	if (APinPtr && BPinPtr)
 	{
-		FJointEdUtils::TryMakeConnectionBetweenPins(APinPtr, BPinPtr);
+		TryMakeConnectionBetweenPins(APinPtr, BPinPtr);
 	}
 }
 
@@ -1059,10 +1358,60 @@ void UJointEditorFunctionLibrary::ConnectToRootNode(UJointEdGraphNode* Node, FJo
 					EntryPin = Entry->GetPinForPinDataFromHierarchy(GetInputPin(Entry, 0, true));
 				}
 
-				if (EntryPin) FJointEdUtils::TryMakeConnectionBetweenPins(TargetPin, EntryPin);
+				if (EntryPin) TryMakeConnectionBetweenPins(TargetPin, EntryPin);
 			}
 		}
 	}
+}
+
+void UJointEditorFunctionLibrary::MakeConnectionFromTheDraggedPin(UEdGraphPin* FromPin, UEdGraphNode* ConnectedNode)
+{
+	if (FromPin == nullptr || ConnectedNode == nullptr) return;
+
+	switch (FromPin->Direction)
+	{
+	case EGPD_Input:
+
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
+		{
+			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Output) continue;
+			AllPin->Modify();
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
+		}
+
+		break;
+
+	case EGPD_Output:
+
+		for (UEdGraphPin* AllPin : ConnectedNode->GetAllPins())
+		{
+			if (AllPin->Direction != EEdGraphPinDirection::EGPD_Input) continue;
+			AllPin->Modify();
+			AllPin->GetSchema()->TryCreateConnection(AllPin, FromPin);
+		}
+
+		break;
+
+	case EGPD_MAX: break;
+
+	default: break;
+	}
+
+	if (UEdGraphNode* GraphNode = FromPin->GetOwningNode())
+	{
+		GraphNode->NodeConnectionListChanged();
+	}
+
+	ConnectedNode->NodeConnectionListChanged();
+}
+
+bool UJointEditorFunctionLibrary::TryMakeConnectionBetweenPins(UEdGraphPin* FromPin, UEdGraphPin* ToPin)
+{
+	if (!FromPin || !ToPin) return false;
+
+	const UJointEdGraphSchema* JointGraphSchema = GetDefault<UJointEdGraphSchema>();
+
+	return JointGraphSchema->TryCreateConnection(FromPin, ToPin);
 }
 
 FJointEdPinData UJointEditorFunctionLibrary::GetInputPin(

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "Toolkit/JointEditorToolkit.h"
 #include "Toolkits/IToolkitHost.h"
@@ -197,7 +197,7 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
 				->Split(
 					FTabManager::NewSplitter()
 					->SetOrientation(Orient_Vertical)
-					->SetSizeCoefficient(0.4)
+					->SetSizeCoefficient(0.4f)
 					->Split(
 						FTabManager::NewStack()
 						->SetSizeCoefficient(0.75f)
@@ -212,7 +212,7 @@ void FJointEditorToolkit::InitJointEditor(const EToolkitMode::Type Mode,
 				->Split(
 					FTabManager::NewSplitter()
 					->SetOrientation(Orient_Vertical)
-					->SetSizeCoefficient(0.25)
+					->SetSizeCoefficient(0.25f)
 					->Split(
 						FTabManager::NewStack()
 						->SetSizeCoefficient(0.75f)
@@ -1871,8 +1871,15 @@ void FJointEditorToolkit::DeleteSelectedNodes()
 
 	const FGraphPanelSelectionSet SelectedNodes = CurrentGraphEditor->GetSelectedNodes();
 
-	FJointEdUtils::RemoveNodes(SelectedNodes.Array());
-
+	for (UObject*& Elem : SelectedNodes.Array())
+	{
+		UEdGraphNode* CastedNode = Cast<UEdGraphNode>(Elem);
+		
+		if (CastedNode == nullptr) continue;
+		
+		UJointEditorFunctionLibrary::RemoveNode(CastedNode);
+	}
+	
 	CurrentGraphEditor->ClearSelectionSet();
 
 	FJointToolkitInlineUtils::EndModifyingGraphs(UJointEdGraph::GetAllGraphsFrom(GetJointManager()));
@@ -2435,7 +2442,7 @@ void FJointEditorToolkit::OnExpandNodes()
 			UEdGraph* SourceGraph = SelectedCompositeNode->BoundGraph;
 			ExpandNode(SelectedCompositeNode, SourceGraph, /*inout*/ ExpandedNodes);
 
-			FJointEdUtils::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
+			UJointEditorFunctionLibrary::RemoveGraph(Cast<UJointEdGraph>(SourceGraph));
 		}
 		
 		UEdGraphNode* SourceNode = CastChecked<UEdGraphNode>(*NodeIt);

@@ -70,11 +70,11 @@ void SJointTree::CreateTreeColumns()
 			+ SHeaderRow::Column(SJointTree::Columns::Name)
 			.DefaultLabel(LOCTEXT("RowTitle_Name", "Name"))
 			.OnSort(this, &SJointTree::OnColumnSortModeChanged)
-			.FillWidth(0.5)
+			.FillWidth(0.5f)
 			+ SHeaderRow::Column(SJointTree::Columns::Value)
 			.DefaultLabel(LOCTEXT("RowTitle_Value", "Value"))
 			.OnSort(this, &SJointTree::OnColumnSortModeChanged)
-			.FillWidth(0.5)
+			.FillWidth(0.5f)
 		);
 
 	this->ChildSlot
@@ -195,7 +195,7 @@ TSharedPtr<SWidget> SJointTree::PopulateLoadingStateWidget()
 			.Visibility(EVisibility::Collapsed)
 			.Padding(0)
 			.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Solid"))
-			.BorderBackgroundColor(FLinearColor(0, 0, 0, 0.1))
+			.BorderBackgroundColor(FLinearColor(0, 0, 0, 0.1f))
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			[

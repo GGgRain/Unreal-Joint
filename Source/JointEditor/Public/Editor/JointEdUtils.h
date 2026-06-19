@@ -246,16 +246,6 @@ public:
 
 public:
 	
-	static void RemoveGraph(UJointEdGraph* GraphToRemove);
-
-	static void RemoveNode(class UObject* NodeRemove);
-
-	static void RemoveNodes(TArray<class UObject*> NodesToRemove);
-	
-	static void RemoveNodesWithGuid(UJointManager* Manager, TArray<FGuid> NodeGuidsToRemove);
-
-public:
-	
 	/**
 	 * Rename the provided object safely. It will check for the name conflict and rename it with a unique name if there is a conflict.
 	 */

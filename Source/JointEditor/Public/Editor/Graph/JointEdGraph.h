@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -269,7 +269,7 @@ public:
 	/**
 	 * Pointer to the MessageLogListing instance this graph has.
 	 * This property will not be always valid so make sure the check whether it is valid or not first. It will be accessible only when the system need this.
-	 * Joint 2.10 : sub graphs will not have their own message log listing - only the root graph will have it and sub graphs will use the root graph's one.
+	 * Joint 2.10f : sub graphs will not have their own message log listing - only the root graph will have it and sub graphs will use the root graph's one.
 	 */
 	TSharedPtr<class IMessageLogListing> CompileResultPtr;
 	

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "Node/JointEdGraphNode_Connector.h"
@@ -421,7 +421,7 @@ void UJointEdGraphNode_Connector::ModifyGraphNodeSlate(const TSharedPtr<SJointGr
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.ContentPadding(FJointEditorStyle::Margin_Normal)
-					.OutlinePadding(1.5)
+					.OutlinePadding(1.5f)
 					.OnPressed_UObject(this, &UJointEdGraphNode_Connector::OnAddInputNodeButtonPressed)
 					[
 						SNew(SHorizontalBox)

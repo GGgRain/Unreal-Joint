@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #pragma once
 
@@ -357,7 +357,7 @@ private:
 	/**
 	 * Reload the node's state to make it able to be played again.
 	 * 
-	 * Joint 2.10.0 : Now this function is marked to be public and can be called from the outside.
+	 * Joint 2.10.0f : Now this function is marked to be public and can be called from the outside.
 	 * Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's being play action, or execute RequestReloadNode() instead.
 	 */
@@ -366,21 +366,21 @@ private:
 	/**
 	 * Play this node's playback. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's being play action, or execute RequestNodeBeginPlay() instead.
-	 * Joint 2.12: Deprecated. We're using ProcessPreNodeBeginPlay() and ProcessPostNodeBeginPlay() instead.
+	 * Joint 2.12f: Deprecated. We're using ProcessPreNodeBeginPlay() and ProcessPostNodeBeginPlay() instead.
 	 */
 	//void NodeBeginPlay();
 
 	/**
 	 * End this node's playback. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's end play action, or execute RequestNodeEndPlay() instead.
-	 * Joint 2.12: Deprecated. We're using ProcessPreNodeEndPlay() and ProcessPostNodeEndPlay() instead.
+	 * Joint 2.12f: Deprecated. We're using ProcessPreNodeEndPlay() and ProcessPostNodeEndPlay() instead.
 	 */
 	//void NodeEndPlay();
 
 	/**
 	 * Mark this node as pending. Please notice that it is not able to call it directly from the other class object.
 	 * Use the Joint instance (AJointActor) for this node instead to call the other node's end play action, or execute RequestMarkNodeAsPending() instead.
-	 * Joint 2.12: Deprecated. We're using ProcessPreMarkNodePending() and ProcessPostMarkNodePending() instead.
+	 * Joint 2.12f: Deprecated. We're using ProcessPreMarkNodePending() and ProcessPostMarkNodePending() instead.
 	 */
 	//void MarkNodePending();
 	
@@ -396,7 +396,7 @@ private:
 private:
 	
 	/**
-	 * Joint 2.12.0 : We decided to deprecate NodeBeginPlay / NodeEndPlay / MarkNodePending functions because we want to separate Pre / Post actions' entrance.
+	 * Joint 2.12.0f : We decided to deprecate NodeBeginPlay / NodeEndPlay / MarkNodePending functions because we want to separate Pre / Post actions' entrance.
 	 * This created an issue that the system don't know if the pre - post action has been executed with pair, or maybe some cheaters are trying to call only one of them.
 	 * So we're storing the execution id for the actions to verify the matching end play / pending action.
 	 * TODO: Or should we just separate bIsNodeBegunPlay into two variables for Pre / Post action, and verify them instead?
@@ -454,7 +454,7 @@ public:
 	/**
 	 * Reload the node's state to make it able to be played again.
 	 * 
-	 * Joint 2.10.0 : Now this function is marked to be public and can be called from the outside.
+	 * Joint 2.10.0f : Now this function is marked to be public and can be called from the outside.
 	 * But please understand that this function is not intended to be used in the normal flow of the Joint.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Node")
@@ -697,7 +697,7 @@ private:
 	bool bReplicates = false;
 	
 	/**
-	 * Joint 2.11.0
+	 * Joint 2.11.0f
 	 * Whether to use the player controller's function callspace for the RPC function calls.
 	 * If you set this to true, then it will use the Player controller's function callspace instead of the Joint actor's one, allowing the RPC functions to be executed on the player controller side.
 	 * Which means that you don't need to implement some 'workaround' functions on the controller side to execute the RPC functions on the node instance.
@@ -781,11 +781,11 @@ public:
 #if WITH_EDITORONLY_DATA
 	
 	/**
-	 * Joint 2.9 : We moved all the properties that are related to the editor node on here. To update it properly, you must follow this:
+	 * Joint 2.9f : We moved all the properties that are related to the editor node on here. To update it properly, you must follow this:
 	 * 1. Visit Joint Management, and press "Update BP fragments' Node Editor Setting With Last Value" button, and save your projects.
 	 * 2. For the C++ nodes, you must update the properties manually. Just put "EdNodeSetting->" for your properties related to the editor node settings.
 	 *
-	 * Joint 2.10 : Also check out the Editor Node's DefaultEdNodeSetting when you want to specify editor node side default values for your cosmetic properties. (That's a fallback property of this one.)
+	 * Joint 2.10f : Also check out the Editor Node's DefaultEdNodeSetting when you want to specify editor node side default values for your cosmetic properties. (That's a fallback property of this one.)
 	 */
 	UPROPERTY(EditDefaultsOnly, Transient, Category="Editor", meta=(DisplayName="Editor Node", ShowOnlyInnerProperties))
 	FJointEdNodeSetting EdNodeSetting;

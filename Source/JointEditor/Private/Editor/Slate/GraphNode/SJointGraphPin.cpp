@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 #include "GraphNode/SJointGraphPin.h"
 
@@ -18,10 +18,10 @@ void SJointGraphPinBase::PopulateSlate()
 
 	TSharedPtr<SHorizontalBox> FullWidget;
 	
-	FLinearColor Color = (GetPinColor().GetSpecifiedColor() * 0.25).GetClamped(0.03,1);
+	FLinearColor Color = (GetPinColor().GetSpecifiedColor() * 0.25f).GetClamped(0.03f,1);
 	Color.A = 1;
 
-	FMargin Margin = FJointEditorStyle::Margin_Normal * 1.2;
+	FMargin Margin = FJointEditorStyle::Margin_Normal * 1.2f;
 	FMargin HorizontalOnlyMargin = Margin;
 	HorizontalOnlyMargin.Bottom = 0;
 	HorizontalOnlyMargin.Top = 0;
@@ -130,7 +130,7 @@ void SJointGraphPinBase::OnUnHovered()
 			.RateBasedInterpSpeed(10)
 			.bUseStartOpacity(true)
 			.StartOpacity(TextBlock.Pin()->GetRenderOpacity())
-			.TargetOpacity(ShouldAlwaysDisplayNameText() ? 0.6 : 0)
+			.TargetOpacity(ShouldAlwaysDisplayNameText() ? 0.6f : 0)
 		);
 	
 	TextBlockAnimationTrack = VOLT_PLAY_ANIM(TextBlock, Animation);
@@ -155,7 +155,7 @@ TSharedRef<SWidget> SJointGraphPinBase::GetLabelWidget(const FName& InLabelStyle
 {
 	
 	return SAssignNew(TextBlock, STextBlock)
-		.RenderOpacity(ShouldAlwaysDisplayNameText() ? 0.6 : 0)
+		.RenderOpacity(ShouldAlwaysDisplayNameText() ? 0.6f : 0)
 		.Text(GraphPinObj && GraphPinObj->GetOwningNode() && GraphPinObj->GetOwningNode()->GetSchema() ? GetPinLabel() : FText::GetEmpty())
 		.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Black.h3")
 		.Visibility(bShowLabel ? EVisibility::HitTestInvisible : EVisibility::Collapsed)

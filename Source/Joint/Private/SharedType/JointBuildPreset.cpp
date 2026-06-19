@@ -35,7 +35,7 @@ UJointBuildPreset::UJointBuildPreset()
 {
 #if WITH_EDITORONLY_DATA
 
-	PresetColor = FLinearColor(0.1, 0.1, 0.1);
+	PresetColor = FLinearColor(0.1f, 0.1f, 0.1f);
 	PresetFontSize = 5;
 	PresetInitial = INVTEXT("BTPS");
 

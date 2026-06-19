@@ -14,18 +14,18 @@ class JOINTEDITOR_API SJointOutlineBorder : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SJointOutlineBorder) :
-			_NormalColor(FLinearColor(0.01, 0.01, 0.01)),
-			_HoverColor(FLinearColor(0.02, 0.02, 0.02)),
-			_OutlineNormalColor(FLinearColor(0.01, 0.01, 0.01)),
-			_OutlineHoverColor(FLinearColor(0.1, 0.1, 0.1)),
-			_NormalTransform(FWidgetTransform(FVector2D(0, 0), FVector2D(1, 1), FVector2D(0, 0), 0)),
+			_NormalColor(FLinearColor(0.01f, 0.01f, 0.01f)),
+			_HoverColor(FLinearColor(0.02f, 0.02f, 0.02f)),
+			_OutlineNormalColor(FLinearColor(0.01f, 0.01f, 0.01f)),
+			_OutlineHoverColor(FLinearColor(0.1f, 0.1f, 0.1f)),
+			_NormalTransform(FWidgetTransform(FVector2D(0, 0.f), FVector2D(1, 1), FVector2D(0, 0), 0)),
 			_HoverTransform(FWidgetTransform(FVector2D(0, 0), FVector2D(1, 1), FVector2D(0, 0), 0)),
 			_ContentPadding(FMargin(10)),
 			_OutlinePadding(FMargin(1)),
 			_HoverAnimationSpeed(20),
 			_UnHoverAnimationSpeed(20),
 			_bUseOutline(true),
-			_UnhoveredCheckingInterval(0.02),
+			_UnhoveredCheckingInterval(0.02f),
 			_OnMouseButtonDown(),
 			_OnMouseButtonUp(),
 			_OnMouseMove(),
@@ -143,18 +143,18 @@ public:
 			_OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round")),
 			_ButtonStyle(&FJointEditorStyle::Get().GetWidgetStyle<FButtonStyle>("JointUI.Button.Round.White")),
 
-			_NormalColor(FLinearColor(0.03, 0.03, 0.03)),
-			_HoverColor(FLinearColor(0.06, 0.06, 0.1)),
-			_PressColor(FLinearColor(0.10, 0.10, 0.20)),
+			_NormalColor(FLinearColor(0.03f, 0.03f, 0.03f)),
+			_HoverColor(FLinearColor(0.06f, 0.06f, 0.1f)),
+			_PressColor(FLinearColor(0.10f, 0.10f, 0.20f)),
 
-			_OutlineNormalColor(FLinearColor(0.03, 0.03, 0.03)),
-			_OutlineHoverColor(FLinearColor(0.6, 0.6, 0.8)),
-			_OutlinePressColor(FLinearColor(0.9, 0.9, 0.9)),
+			_OutlineNormalColor(FLinearColor(0.03f, 0.03f, 0.03f)),
+			_OutlineHoverColor(FLinearColor(0.6f, 0.6f, 0.8f)),
+			_OutlinePressColor(FLinearColor(0.9f, 0.9f, 0.9f)),
 
-			_ContentPadding(FMargin(12)),
-			_OutlinePadding(FMargin(1)),
+			_ContentPadding(FMargin(12.f)),
+			_OutlinePadding(FMargin(1.f)),
 
-			_UnhoveredCheckingInterval(0.02)
+			_UnhoveredCheckingInterval(0.02f)
 
 		{
 		}
@@ -258,12 +258,12 @@ public:
 			_ToggleImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Sphere")),
 			_OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Sphere")),
 			_ButtonStyle(&FJointEditorStyle::Get().GetWidgetStyle<FButtonStyle>("JointUI.Button.Sphere.White")),
-			_OnColor(FLinearColor(0.1, 0.4, 0.2)),
-			_OffColor(FLinearColor(0.05, 0.05, 0.05)),
-			_ButtonLength(16),
-			_ToggleSize(12),
-			_ToggleMovementPercentage(0.8),
-			_UnhoveredCheckingInterval(0.02)
+			_OnColor(FLinearColor(0.1f, 0.4f, 0.2f)),
+			_OffColor(FLinearColor(0.05f, 0.05f, 0.05f)),
+			_ButtonLength(16.f),
+			_ToggleSize(12.f),
+			_ToggleMovementPercentage(0.8f),
+			_UnhoveredCheckingInterval(0.02f)
 		{
 		}
 
@@ -330,9 +330,9 @@ public:
 	
 	ECheckBoxState LastState = ECheckBoxState::Undetermined;
 
-	float ButtonLength = 0;
+	float ButtonLength = 0.f;
 
-	float ToggleMovementPercentage = 0.8;
+	float ToggleMovementPercentage = 0.8f;
 
 public:
 	

@@ -3,18 +3,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JointEditorSharedTypes.h"
+#include "Editor/SharedType/JointEditorSharedTypes.h"
 #include "SharedType/JointSharedTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Editor/Script/JointScriptLinker.h"
-#include "Markdown/SJointMDSlate_Admonitions.h"
+#include "Editor/Slate/Markdown/SJointMDSlate_Admonitions.h"
 #include "Node/JointFragment.h"
 #include "JointEditorFunctionLibrary.generated.h"
 
 enum class EJointMDAdmonitionType : uint8;
 class UJointNodePreset;
+class UJointEdGraph;
 class UJointEdGraphNode;
 class UJointManager;
+class UEdGraphNode;
+class UEdGraphPin;
 
 /**
  * A Blueprint function library for Joint Editor related utilities.
@@ -54,6 +57,13 @@ public:
 	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
 	static UJointEdGraphNode* GetManagerFragmentGraphNodeForNodeGuid(
 		const UJointManager* TargetJointManager,
+		const FGuid& NodeGuid
+	);
+
+	static UEdGraphNode* FindGraphNodeForNodeInstance(const UJointNodeBase* NodeInstance);
+
+	static UJointEdGraphNode* FindGraphNodeWithProvidedNodeInstanceGuid(
+		UJointManager* JointManager,
 		const FGuid& NodeGuid
 	);
 	
@@ -119,44 +129,67 @@ public:
 	);
 	
 public:
-
+	
 	/**
 	 * Remove the provided Joint Ed Graph Node from its Joint manager.
 	 * @param TargetEdNode The target Joint Ed Graph Node to remove.
+	 * @param OptionalFileEntry The optional script file entry associated with the node, which will be used to clear the node's Guid from the script linkage after removing the node.
 	 * @return true if the node was successfully removed, false otherwise.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
-	static bool RemoveNodeFromJointManager(
-		UJointEdGraphNode* TargetEdNode,
-		const FJointScriptLinkerFileEntry& FileEntry
+	static bool RemoveNode(
+		UEdGraphNode* TargetEdNode,
+		const FJointScriptLinkerFileEntry& OptionalFileEntry = FJointScriptLinkerFileEntry()
 	);
 	
 	/**
-	 * Remove Joint Ed Graph Nodes by the provided Node Guids from the Joint manager.
+	 * Remove Graph Nodes by the provided Node Guids from the Joint manager.
 	 * @param TargetJointManager The target Joint manager to remove the nodes from.
-	 * @param FileEntry The script file entry associated with the nodes.
-	 * @param KnownIds The array of Node Guids to remove.
-	 * @return true if at least one node was successfully removed, false otherwise.
+	 * @param OptionalFileEntry The optional script file entry associated with the nodes. If provided, it will be used to clear the nodes' Guids from the script linkage after removing the nodes.
+	 * @param NodeGuidsToRemove The array of Node Guids to remove.
+	 * @return true if the action was successfully executed.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
-	static bool RemoveNodesByIds(
+	static bool RemoveNodesByGuids(
 		UJointManager* TargetJointManager,
-		const FJointScriptLinkerFileEntry& FileEntry,
-		const TArray<FString>& KnownIds
+		const TArray<FGuid>& NodeGuidsToRemove,
+		const FJointScriptLinkerFileEntry& OptionalFileEntry = FJointScriptLinkerFileEntry()
+	);
+
+	/**
+	 * Remove graph nodes by the provided mapping keys, that has been recognized by the script linker.
+	 * @param TargetJointManager The target Joint manager to remove the nodes from.
+	 * @param NodeKeysToRemove 
+	 * @param FileEntry 
+	 * @return true if the action was successfully executed.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static bool RemoveNodesByMappingKey(
+		UJointManager* TargetJointManager,
+		const TArray<FString>& NodeKeysToRemove,
+		const FJointScriptLinkerFileEntry& FileEntry = FJointScriptLinkerFileEntry()
 	);
 	
 	/**
 	 * Remove all Joint Ed Graph Nodes linked with the provided script file entry from the Joint manager.
 	 * @param TargetJointManager The target Joint manager to remove the nodes from.
 	 * @param FileEntry The script file entry associated with the nodes.
-	 * @return true if at least one node was successfully removed, false otherwise.
+	 * @return true if the action was successfully executed.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void RemoveAllNodesLinkedWithScript(
 		UJointManager* TargetJointManager,
 		const FJointScriptLinkerFileEntry& FileEntry
 	);
+
+public:
 	
+	/**
+	 * Remove the provided Joint Ed Graph from its Joint manager.
+	 * This cannot remove the root graph of a Joint manager.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
+	static void RemoveGraph(UJointEdGraph* GraphToRemove);
 
 public:
 	
@@ -265,6 +298,18 @@ public:
 		const FJointScriptLinkerFileEntry& FileEntry
 	);
 
+	static void OpenJointScriptFileSelectionWindow(
+		TArray<FString>& OutFilePaths,
+		bool bAllowMultipleSelection
+	);
+
+	static void ImportFileToJointManager(
+		UJointManager* TargetManager,
+		const FString& FilePath,
+		UJointScriptParser* Parser,
+		const bool& bFireNotifications = true
+	);
+
 	/**
 	 * Unlink the provided Joint Ed Graph Node from its script linkage.
 	 */
@@ -273,18 +318,27 @@ public:
 		UJointEdGraphNode* TargetEdNode
 	);
 	
+	/**
+	 * Clear the provided external identifier from the script linkage, which will unlink all nodes linked with the external identifier.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void ClearIdKeyFromScriptLinkage(
 		const FJointScriptLinkerFileEntry& FileEntry,
 		const FString& Id
 	);
 	
+	/**
+	 * Clear the provided node Guid from the script linkage, which will unlink the node with the node Guid.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void ClearNodeGuidFromScriptLinkage(
 		const FJointScriptLinkerFileEntry& FileEntry,
 		const FGuid& NodeGuid
 	);
 	
+	/**
+	 * Link the provided Joint Ed Graph Nodes with the script file entry and external identifier in bulk.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void LinkNodesWithScriptBulk(
 		const TArray<UJointEdGraphNode*>& TargetEdNodes,
@@ -292,6 +346,9 @@ public:
 		const FString& Id
 	);
 	
+	/**
+	 * Unlink the provided Joint Ed Graph Nodes from their script linkage in bulk.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void UnlinkNodesFromScriptBulk(
 		const TArray<UJointEdGraphNode*>& TargetEdNodes
@@ -320,6 +377,9 @@ public:
 		const FString& Id
 	);
 	
+	/**
+	 * Get all the node Guids linked with the provided script file entry, regardless of the external identifier.
+	 */
 	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
 	static TMap<FString, FJointScriptLinkerNodeSet> GetAllNodeGuidsLinkedWithScript(
 		UJointManager* TargetJointManager,
@@ -334,17 +394,32 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void SetBaseNodeFitSizeToContent(UJointEdGraphNode* TargetEdNode, bool bFit = true);
 	
+	/**
+	 * Resize the provided Joint Ed Graph Node to the new size.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void ResizeNode(UJointEdGraphNode* TargetEdNode, const FVector2D& NewSize);
 	
+	/**
+	 * Get the position of the provided Joint Ed Graph Node.
+	 */
 	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
 	static FVector2D GetNodePosition(const UJointEdGraphNode* TargetEdNode);
 	
+	/**
+	 * Set the position of the provided Joint Ed Graph Node to the new position.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
 	static void SetNodePosition(UJointEdGraphNode* TargetEdNode, const FVector2D& NewPosition);
-	
+
+	/**
+	 * Automatically align all the nodes in the Joint graph of the provided Joint manager, starting from the entry node (the root node), and aligning the nodes in a top-down manner.
+	 * @param TargetJointManager 
+	 * @param LevelSpacingX 
+	 * @param NodeSpacingY 
+	 */
 	UFUNCTION(BlueprintCallable, Category="Joint Editor Utilities")
-	static void AlignNodes(
+	static void AutomaticallyAlignNodesFromEntry(
 		UJointManager* TargetJointManager,
 		float LevelSpacingX = 600.f,
 		float NodeSpacingY = 600.f
@@ -352,6 +427,9 @@ public:
 	
 public:
 	
+	/**
+	 * Get the Joint Ed Node settings from the provided Joint Ed Graph Node.
+	 */
 	UFUNCTION(BlueprintPure, Category="Joint Editor Utilities")
 	static FJointEdNodeSetting GetEdNodeSettings(UJointEdGraphNode* TargetEdNode);
 	
@@ -404,6 +482,16 @@ public:
 	static void ConnectToRootNode(
 		UJointEdGraphNode* Node,
 		FJointEdPinData Pin
+	);
+
+	static void MakeConnectionFromTheDraggedPin(
+		UEdGraphPin* FromPin,
+		UEdGraphNode* ConnectedNode
+	);
+
+	static bool TryMakeConnectionBetweenPins(
+		UEdGraphPin* FromPin,
+		UEdGraphPin* ToPin
 	);
 
 	

@@ -118,7 +118,7 @@ void SJointList::Construct(const FArguments& InArgs)
 		if (!GeneratedClassPathPtr.GetValue().IsEmpty())
 		{
 			// Optionally ignore abstract classes
-			// As of 4.12 I do not believe blueprints can be marked as abstract, but this may change so included for completeness.
+			// As of 4.12f I do not believe blueprints can be marked as abstract, but this may change so included for completeness.
 			if (!bAllowAbstract)
 			{
 				auto ClassFlagsPtr = Asset.TagsAndValues.FindTag(ClassFlagsTag);

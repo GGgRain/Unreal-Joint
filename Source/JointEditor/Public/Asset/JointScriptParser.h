@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "JointEdGraphNode.h"
+#include "Node/JointEdGraphNode.h"
 #include "Engine/DataTable.h"
-#include "Script/JointScriptLinker.h"
+#include "Editor/Script/JointScriptLinker.h"
 #include "UObject/NoExportTypes.h"
 #include "JointScriptParser.generated.h"
 

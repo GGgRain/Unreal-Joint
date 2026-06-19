@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "VoltModuleItem.h"
@@ -18,7 +18,7 @@ const TScriptInterface<IVoltInterface>& UVoltModuleItem::GetVoltSlate()
 
 void UVoltModuleItem::SetSubModulesVoltSlate(const TScriptInterface<IVoltInterface>& Slate)
 {
-	//Volt 1.1 : If this module supports sub-modules, set them as well.
+	//Volt 1.1f : If this module supports sub-modules, set them as well.
 	
 	if(IVoltSubModuleInterface* TheInterface = Cast<IVoltSubModuleInterface>(this))
 	{
@@ -82,7 +82,7 @@ void UVoltModuleItem::SetVoltSlate(const TScriptInterface<IVoltInterface>& Slate
 {
 	TargetVoltSlate = Slate;
 
-	//Volt 1.1 : If this module supports sub-modules, set them as well.
+	//Volt 1.1f : If this module supports sub-modules, set them as well.
 
 	SetSubModulesVoltSlate(Slate);
 }

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "GraphNode/JointGraphNodeSharedSlates.h"
@@ -133,10 +133,10 @@ void SJointGraphPinOwnerNodeBox::PopulateSlate()
 {
 	this->ChildSlot.DetachWidget();
 
-	FLinearColor Color = this->TargetNode ? this->TargetNode->GetNodeTitleColor() * 0.2 : FLinearColor::Black;
+	FLinearColor Color = this->TargetNode ? this->TargetNode->GetNodeTitleColor() * 0.2f : FLinearColor::Black;
 
-	FLinearColor NonAlphaColor = this->TargetNode ? this->TargetNode->GetNodeTitleColor() * 0.05 : FLinearColor::Black;
-	NonAlphaColor = NonAlphaColor.GetClamped(0.012, 1);
+	FLinearColor NonAlphaColor = this->TargetNode ? this->TargetNode->GetNodeTitleColor() * 0.05f : FLinearColor::Black;
+	NonAlphaColor = NonAlphaColor.GetClamped(0.012f, 1);
 	NonAlphaColor.A = 1;
 
 	this->ChildSlot[
@@ -161,7 +161,7 @@ void SJointGraphPinOwnerNodeBox::PopulateSlate()
 			/*
 			SNew(SJointOutlineBorder)
 			.NormalColor(Color)
-			.HoverColor(NonAlphaColor * 1.3)
+			.HoverColor(NonAlphaColor * 1.3f)
 			.OutlineNormalColor(Color)
 			.OutlineHoverColor(NonAlphaColor * 6)
 			.InnerBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
@@ -227,10 +227,10 @@ void SJointGraphNodeInsertPoint::PopulateSlate()
 	this->ChildSlot
 	[
 		SAssignNew(SlateBorder, SBorder)
-		.RenderTransformPivot(FVector2D(0.5, 0.5))
+		.RenderTransformPivot(FVector2D(0.5f, 0.5f))
 		.RenderOpacity(0)
 		.BorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
-		.Padding(FJointEditorStyle::Margin_Normal * 0.6)
+		.Padding(FJointEditorStyle::Margin_Normal * 0.6f)
 	];
 }
 
@@ -257,7 +257,7 @@ void SJointGraphNodeInsertPoint::OnDragEnter(const FGeometry& MyGeometry, const 
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.3)
+			.AlphaBasedDuration(0.3f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.TargetOpacity(1),
@@ -265,17 +265,17 @@ void SJointGraphNodeInsertPoint::OnDragEnter(const FGeometry& MyGeometry, const 
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.05)
+				.AlphaBasedDuration(0.05f)
 				.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 				.AlphaBasedBlendExp(6)
-				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1, 1.1),
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.1f, 1.1f),
 				                                        FVector2D::ZeroVector, 0)),
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.25)
+				.AlphaBasedDuration(0.25f)
 				.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 				.AlphaBasedBlendExp(6)
-				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.0, 1.0),
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.0f, 1.0f),
 				                                        FVector2D::ZeroVector, 0))
 			)
 		);
@@ -301,13 +301,13 @@ void SJointGraphNodeInsertPoint::OnDragLeave(const FDragDropEvent& DragDropEvent
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.4)
+			.AlphaBasedDuration(0.4f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.TargetOpacity(0),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.4)
+			.AlphaBasedDuration(0.4f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0, 0), FVector2D::ZeroVector, 0))
@@ -448,30 +448,30 @@ void SJointGraphNodeInsertPoint::Highlight(const float& Delay = 0)
 			(
 				VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 				.InterpolationMode(EVoltInterpMode::AlphaBased)
-				.AlphaBasedDuration(0.2)
+				.AlphaBasedDuration(0.2f)
 				.AlphaBasedBlendExp(6)
 				.AlphaBasedEasingFunction(EEasingFunc::CircularInOut)
 				.bUseStartWidgetTransform(true)
-				.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.6, 0.6),
+				.StartWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.6f, 0.6f),
 				                                       FVector2D::ZeroVector, 0))
-				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.5, 0.5),
+				.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(0.5f, 0.5f),
 				                                        FVector2D::ZeroVector, 0)),
 				VOLT_MAKE_MODULE(UVolt_ASM_Sequence)(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.1)
+					.AlphaBasedDuration(0.1f)
 					.AlphaBasedBlendExp(6)
 					.AlphaBasedEasingFunction(EEasingFunc::CircularOut)
 					.bUseStartOpacity(true)
 					.StartOpacity(0)
-					.TargetOpacity(0.5),
+					.TargetOpacity(0.5f),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.9)
+					.AlphaBasedDuration(0.9f)
 					.AlphaBasedBlendExp(6)
 					.AlphaBasedEasingFunction(EEasingFunc::CircularIn)
 					.bUseStartOpacity(true)
-					.StartOpacity(0.5)
+					.StartOpacity(0.5f)
 					.TargetOpacity(0)
 				)
 			)
@@ -495,11 +495,11 @@ void SJointBuildPreset::PopulateSlate()
 		this->ChildSlot.DetachWidget();
 
 		FLinearColor NormalColor = Preset->PresetColor;
-		FLinearColor HoverColor = Preset->PresetColor * 1.5;
-		HoverColor.A = 0.1;
-		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
-		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
-		OutlineHoverColor.A = 0.1;
+		FLinearColor HoverColor = Preset->PresetColor * 1.5f;
+		HoverColor.A = 0.1f;
+		FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5f;
+		FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5f;
+		OutlineHoverColor.A = 0.1f;
 		
 		
 		FTextBlockStyle PresetTextStyle = FJointEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>("JointUI.TextBlock.Black.h3");
@@ -535,11 +535,11 @@ void SJointBuildPreset::Update()
 		if (PresetBorder.IsValid())
 		{
 			FLinearColor NormalColor = Preset->PresetColor;
-			FLinearColor HoverColor = Preset->PresetColor * 1.5;
-			HoverColor.A = 0.1;
-			FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5;
-			FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5;
-			OutlineHoverColor.A = 0.1;
+			FLinearColor HoverColor = Preset->PresetColor * 1.5f;
+			HoverColor.A = 0.1f;
+			FLinearColor OutlineNormalColor = Preset->PresetColor * 1.5f;
+			FLinearColor OutlineHoverColor = Preset->PresetColor * 1.5f;
+			OutlineHoverColor.A = 0.1f;
 
 			PresetBorder->NormalColor = NormalColor;
 			PresetBorder->HoverColor = HoverColor;
@@ -582,7 +582,7 @@ UJointBuildPreset* SJointBuildPreset::GetBuildTargetPreset()
 
 void SJointBuildPreset::OnHovered()
 {
-	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1);
+	if (PresetTextBlock) PresetTextBlock->SetRenderOpacity(0.1f);
 }
 
 
@@ -594,7 +594,7 @@ void SJointBuildPreset::OnUnHovered()
 
 void SJointNodePointerSlate::Construct(const FArguments& InArgs)
 {
-	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 
 	StructureOwnerEdNode = InArgs._StructureOwnerEdNode;
 	PointerToTargetStructure = InArgs._PointerToStructure;
@@ -784,19 +784,19 @@ void SJointNodePointerSlate::BlinkSelf()
 		(
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.16)
+			.AlphaBasedDuration(0.16f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.bUseStartColor(true)
 			.StartColor(BorderWidget->NormalColor)
-			.TargetColor(FLinearColor(1, 1, 1, 0.5)),
+			.TargetColor(FLinearColor(1, 1, 1, 0.5f)),
 			VOLT_MAKE_MODULE(UVolt_ASM_InterpBackgroundColor)
 			.InterpolationMode(EVoltInterpMode::AlphaBased)
-			.AlphaBasedDuration(0.16)
+			.AlphaBasedDuration(0.16f)
 			.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 			.AlphaBasedBlendExp(6)
 			.bUseStartColor(true)
-			.StartColor(FLinearColor(1, 1, 1, 0.5))
+			.StartColor(FLinearColor(1, 1, 1, 0.5f))
 			.TargetColor(BorderWidget->NormalColor)
 		)
 	);
@@ -807,7 +807,7 @@ void SJointNodePointerSlate::BlinkSelf()
 void SJointNodePointerSlate::OnHovered()
 {
 	//Overlay Show
-	BackgroundBox->SetRenderOpacity(0.5);
+	BackgroundBox->SetRenderOpacity(0.5f);
 
 	FeatureButtonsSlate->UpdateVisualOnHovered();
 	OnHoveredDele.ExecuteIfBound();
@@ -1045,7 +1045,7 @@ FReply SJointNodePointerSlate::OnClearButtonPressed()
 
 void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 {
-	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 
 	SetCanTick(false);
 
@@ -1063,7 +1063,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 		[
 			SNew(SJointOutlineButton)
 			.NormalColor(FLinearColor::Transparent)
-			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor::Transparent)
 			.ContentPadding(FJointEditorStyle::Margin_Tiny)
@@ -1085,7 +1085,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 		[
 			SNew(SJointOutlineButton)
 			.NormalColor(FLinearColor::Transparent)
-			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor::Transparent)
 			.ContentPadding(FJointEditorStyle::Margin_Tiny)
@@ -1107,7 +1107,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 		[
 			SNew(SJointOutlineButton)
 			.NormalColor(FLinearColor::Transparent)
-			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor::Transparent)
 			.ContentPadding(FJointEditorStyle::Margin_Tiny)
@@ -1129,7 +1129,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 		[
 			SNew(SJointOutlineButton)
 			.NormalColor(FLinearColor::Transparent)
-			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor::Transparent)
 			.ContentPadding(FJointEditorStyle::Margin_Tiny)
@@ -1151,7 +1151,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 		[
 			SNew(SJointOutlineButton)
 			.NormalColor(FLinearColor::Transparent)
-			.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+			.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 			.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 			.OutlineNormalColor(FLinearColor::Transparent)
 			.ContentPadding(FJointEditorStyle::Margin_Tiny)
@@ -1163,7 +1163,7 @@ void SJointNodePointerSlateFeatureButtons::Construct(const FArguments& InArgs)
 			[
 				SNew(SImage)
 				.DesiredSizeOverride(FVector2D(16, 16))
-				.ColorAndOpacity(FLinearColor(1, 0.5, 0.3))
+				.ColorAndOpacity(FLinearColor(1, 0.5f, 0.3f))
 				.Image(FJointEditorStyle::GetUEEditorSlateStyleSet().GetBrush("Icons.Unlink"))
 			]
 		]
@@ -1198,18 +1198,18 @@ void SJointNodePointerSlateFeatureButtons::UpdateVisualOnHovered()
 				(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.3)
+					.AlphaBasedDuration(0.3f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetOpacity(1),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.25)
+					.AlphaBasedDuration(0.25f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetWidgetTransform(FWidgetTransform(
 						                                                 FVector2D::ZeroVector,
-						                                                 FVector2D(1.0, 1.0),
+						                                                 FVector2D(1.0f, 1.0f),
 						                                                 FVector2D::ZeroVector,
 						                                                 0))
 				)
@@ -1245,18 +1245,18 @@ void SJointNodePointerSlateFeatureButtons::UpdateVisualOnUnhovered()
 				(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.3)
+					.AlphaBasedDuration(0.3f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetOpacity(0),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.25)
+					.AlphaBasedDuration(0.25f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetWidgetTransform(FWidgetTransform(
 						                                                 FVector2D(0, 10),
-						                                                 FVector2D(1.0, 1.0),
+						                                                 FVector2D(1.0f, 1.0f),
 						                                                 FVector2D::ZeroVector,
 						                                                 0))
 				)
@@ -1290,7 +1290,7 @@ const SJointSlateDrawer::FSlot& SJointSlateDrawer::GetSlot(int32 SlotIndex) cons
 
 void SJointSlateDrawer::Construct(const FArguments& InArgs)
 {
-	SetRenderTransformPivot(FVector2D(0.5, 0.5));
+	SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 	SetCanTick(false);
 
 	Children.Reserve(InArgs._Slots.Num());
@@ -1336,18 +1336,18 @@ void SJointSlateDrawer::UpdateVisualOnHovered()
 				(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.3)
+					.AlphaBasedDuration(0.3f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetOpacity(1),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.25)
+					.AlphaBasedDuration(0.25f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetWidgetTransform(FWidgetTransform(
 					FVector2D::ZeroVector,
-					FVector2D(1.0, 1.0),
+					FVector2D(1.0f, 1.0f),
 					FVector2D::ZeroVector,
 					0))
 				)
@@ -1383,18 +1383,18 @@ void SJointSlateDrawer::UpdateVisualOnUnhovered()
 				(
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpRenderOpacity)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.3)
+					.AlphaBasedDuration(0.3f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetOpacity(0),
 					VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 					.InterpolationMode(EVoltInterpMode::AlphaBased)
-					.AlphaBasedDuration(0.25)
+					.AlphaBasedDuration(0.25f)
 					.AlphaBasedEasingFunction(EEasingFunc::ExpoOut)
 					.AlphaBasedBlendExp(6)
 					.TargetWidgetTransform(FWidgetTransform(
 					FVector2D(0, 10),
-					FVector2D(1.0, 1.0),
+					FVector2D(1.0f, 1.0f),
 					FVector2D::ZeroVector,
 					0))
 				)
@@ -1485,7 +1485,7 @@ void SJointNodeDescription::PopulateSlate()
 				[
 					SNew(SJointOutlineButton)
 					.NormalColor(FLinearColor::Transparent)
-					.HoverColor(FLinearColor(0.06, 0.06, 0.1, 1))
+					.HoverColor(FLinearColor(0.06f, 0.06f, 0.1f, 1))
 					.OutlineBorderImage(FJointEditorStyle::Get().GetBrush("JointUI.Border.Round"))
 					.OutlineNormalColor(FLinearColor::Transparent)
 					.ButtonStyle(FJointEditorStyle::Get(), "JointUI.Button.Round.White")
@@ -1532,7 +1532,7 @@ void SJointNodeDescription::PopulateSlate()
 				SNew(STextBlock)
 				.Visibility(EVisibility::SelfHitTestInvisible)
 				.TextStyle(FJointEditorStyle::Get(), "JointUI.TextBlock.Italic.h5")
-				.ColorAndOpacity(FLinearColor(0.7, 0.7, 0.7, 1))
+				.ColorAndOpacity(FLinearColor(0.7f, 0.7f, 0.7f, 1))
 				.Text(FText::FromString(ClassToDescribe->GetPathName()))
 			]
 			+ SVerticalBox::Slot()

@@ -1,4 +1,4 @@
-//Copyright 2022~2024 DevGrain. All Rights Reserved.
+﻿//Copyright 2022~2024 DevGrain. All Rights Reserved.
 
 
 #include "Debug/JointGraphNodeSharedDebuggerSlates.h"
@@ -37,7 +37,7 @@ void SJointBreakpointIndicator::PopulateSlate()
 			.HeightOverride(22)
 			[
 				SAssignNew(BreakpointImage, SImage)
-				.RenderTransformPivot(FVector2D(0.5, 0.5))
+				.RenderTransformPivot(FVector2D(0.5f, 0.5f))
 				.Image(GetBreakpointImageBrush())
 				.ColorAndOpacity(GetBreakpointColor())
 				.ToolTipText(GetBreakpointTooltipText())
@@ -65,13 +65,13 @@ const FSlateColor SJointBreakpointIndicator::GetBreakpointColor()
 	{
 		if (UJointDebugger::Get()->IsDebuggerEnabled())
 		{
-			return DebugData->bIsBreakpointEnabled ? FLinearColor(1, 0.4, 0.2) : FLinearColor(0.5, 0.2, 0.1);
+			return DebugData->bIsBreakpointEnabled ? FLinearColor(1, 0.4f, 0.2f) : FLinearColor(0.5f, 0.2f, 0.1f);
 		}
 		else
 		{
 			return DebugData->bIsBreakpointEnabled
-					   ? FLinearColor(0.01, 0.05, 1, 0.95)
-					   : FLinearColor(0.01, 0.05, 1, 0.95);
+					   ? FLinearColor(0.01f, 0.05f, 1, 0.95f)
+					   : FLinearColor(0.01f, 0.05f, 1, 0.95f);
 		}
 	}
 
@@ -156,9 +156,9 @@ void SJointBreakpointIndicator::OnMouseEnter(const FGeometry& MyGeometry, const 
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 		.InterpolationMode(EVoltInterpMode::AlphaBased)
 		.AlphaBasedEasingFunction(EEasingFunc::EaseOut)
-		.AlphaBasedDuration(0.2)
+		.AlphaBasedDuration(0.2f)
 		.AlphaBasedBlendExp(6)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.25, 1.25), FVector2D::ZeroVector, 0))
+		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.25f, 1.25f), FVector2D::ZeroVector, 0))
 	);
 
 	VOLT_STOP_ALL_ANIM(BreakpointImage);
@@ -175,9 +175,9 @@ void SJointBreakpointIndicator::OnMouseLeave(const FPointerEvent& MouseEvent)
 		VOLT_MAKE_MODULE(UVolt_ASM_InterpWidgetTransform)
 		.InterpolationMode(EVoltInterpMode::AlphaBased)
 		.AlphaBasedEasingFunction(EEasingFunc::EaseIn)
-		.AlphaBasedDuration(0.35)
+		.AlphaBasedDuration(0.35f)
 		.AlphaBasedBlendExp(6)
-		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.0, 1.0), FVector2D::ZeroVector, 0))
+		.TargetWidgetTransform(FWidgetTransform(FVector2D::ZeroVector, FVector2D(1.0f, 1.0f), FVector2D::ZeroVector, 0))
 	);
 
 	VOLT_STOP_ALL_ANIM(BreakpointImage);
