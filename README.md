@@ -25,8 +25,8 @@
 
 <div align="center">
   <h1>Joint</h1>
-  <h3>Modular Gameplay Scripting Framework For Unreal 4 & 5</h3>
-  <h4>( Supported Unreal Engine Versions: UE 4.27.x ~ Latest (5.8.x, UP-TO-DATE!) )</h4>
+  <h3>Modular Gameplay Scripting Framework For Unreal 5</h3>
+  <h4>( Supported Unreal Engine Versions: UE 5.0.x ~ Latest (5.8.x, UP-TO-DATE!) )</h4>
 </div>
 
 <p align="center">
@@ -95,7 +95,7 @@
 
 ## :mag: About ##
 
-Joint is Unreal Engine 4 & 5's strongest modular gameplay scripting framework for every type of projects.
+Joint is Unreal Engine 5's strongest modular gameplay scripting framework for every type of projects.
 
 Joint is a powerful tool for game developers, designers. You can create complex productions where your needs a power of modularity with whatever gameplay mechanics you want to use with Joint, using very intuitive, the state-of-the-art visual scripting interface.
 
