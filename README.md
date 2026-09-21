@@ -73,6 +73,7 @@
   <h3>🎉 Joint is now available on GitHub! (25.04.14)</h3>
 </div>
 
+
 ## :sparkles: Official Videos - Please click the images to watch! ##
 
 <p align="center">
@@ -92,6 +93,28 @@
   <br>
   <a>Quick-Start Tutorial Video (Please read the pinned comments!)</a>
 </p>
+
+## :film_projector: Joint Public Showcase ##
+
+If you want to see how Joint can be structured and used in a more practical project, check out the **Joint Public Showcase** repository:
+
+<div align="center">
+  <img  width="400" height="400" src="https://github.com/user-attachments/assets/d5975cf9-d236-414d-981c-850582c4f579" alt="Joint Public Showcase">
+</div>
+
+<img width="2560" height="1440" alt="1" src="https://github.com/user-attachments/assets/31095f59-5988-4c11-9b0d-6b35ef50cda8" />
+
+<img width="2561" height="1440" alt="2" src="https://github.com/user-attachments/assets/e3213f03-0754-4167-800a-4f678fc8c4b2" />
+
+https://github.com/GGgRain/Unreal-Joint-Public-Showcase
+
+The showcase is intended as a reference project for learning Joint's overall workflow, recommended usage patterns, graph organization, and how different systems can be assembled together in practice.
+
+Because Joint is built around a fairly abstract and modular architecture, there can be a noticeable learning curve when first getting started. The Public Showcase can be especially useful if you want to understand not only *what* Joint can do, but also *how* its systems are expected to be composed in an actual project.
+
+If you're currently evaluating Joint, we strongly recommend looking through the showcase alongside the official tutorial videos and documentation.
+
+
 
 ## :mag: About ##
 
